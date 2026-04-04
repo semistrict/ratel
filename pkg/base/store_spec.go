@@ -193,6 +193,11 @@ type StoreSpec struct {
 	// through to C CCL code to set up encryption-at-rest.  Must be set if and
 	// only if encryption is enabled, otherwise left empty.
 	EncryptionOptions []byte
+	// RemoteStoragePath, if set, specifies a URL for remote object storage
+	// where SSTables and metadata are persisted. Supported schemes:
+	//   file:///path/to/dir  — local filesystem directory
+	//   s3://bucket/prefix   — Amazon S3 (requires additional config)
+	RemoteStoragePath string
 }
 
 // String returns a fully parsable version of the store spec.
@@ -235,6 +240,9 @@ func (ss StoreSpec) String() string {
 		fmt.Fprint(&buffer, optsStr)
 		fmt.Fprint(&buffer, ",")
 	}
+	if len(ss.RemoteStoragePath) > 0 {
+		fmt.Fprintf(&buffer, "remote-storage=%s,", ss.RemoteStoragePath)
+	}
 	// Trim the extra comma from the end if it exists.
 	if l := buffer.Len(); l > 0 {
 		buffer.Truncate(l - 1)
@@ -264,19 +272,20 @@ var fractionRegex = regexp.MustCompile(`^([-]?([0-9]+\.[0-9]*|[0-9]*\.[0-9]+|[0-
 // NewStoreSpec parses the string passed into a --store flag and returns a
 // StoreSpec if it is correctly parsed.
 // There are four possible fields that can be passed in, comma separated:
-// - path=xxx The directory in which to the rocks db instance should be
-//   located, required unless using a in memory storage.
-// - type=mem This specifies that the store is an in memory storage instead of
-//   an on disk one. mem is currently the only other type available.
-// - size=xxx The optional maximum size of the storage. This can be in one of a
-//   few different formats.
+//   - path=xxx The directory in which to the rocks db instance should be
+//     located, required unless using a in memory storage.
+//   - type=mem This specifies that the store is an in memory storage instead of
+//     an on disk one. mem is currently the only other type available.
+//   - size=xxx The optional maximum size of the storage. This can be in one of a
+//     few different formats.
 //   - 10000000000     -> 10000000000 bytes
 //   - 20GB            -> 20000000000 bytes
 //   - 20GiB           -> 21474836480 bytes
 //   - 0.02TiB         -> 21474836480 bytes
 //   - 20%             -> 20% of the available space
 //   - 0.2             -> 20% of the available space
-// - attrs=xxx:yyy:zzz A colon separated list of optional attributes.
+//   - attrs=xxx:yyy:zzz A colon separated list of optional attributes.
+//
 // Note that commas are forbidden within any field name or value.
 func NewStoreSpec(value string) (StoreSpec, error) {
 	const pathField = "path"
@@ -399,6 +408,8 @@ func NewStoreSpec(value string) (StoreSpec, error) {
 				return StoreSpec{}, err
 			}
 			ss.PebbleOptions = buf.String()
+		case "remote-storage":
+			ss.RemoteStoragePath = value
 		default:
 			return StoreSpec{}, fmt.Errorf("%s is not a valid store field", field)
 		}

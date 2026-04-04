@@ -559,13 +559,6 @@ func (s *Stopper) Stop(ctx context.Context) {
 	}
 
 	s.Quiesce(ctx)
-
-	// Run the closers without holding s.mu. There's no concern around new
-	// closers being added; we've marked this stopper as `stopping` above, so
-	// any attempts to do so will be refused.
-	for _, c := range s.mu.closers {
-		c.Close()
-	}
 }
 
 // ShouldQuiesce returns a channel which will be closed when Stop() has been
@@ -612,8 +605,14 @@ func (s *Stopper) Quiesce(ctx context.Context) {
 		})
 	}()
 
-	for s.NumTasks() > 0 {
+	for i := 0; s.NumTasks() > 0; i++ {
 		time.Sleep(5 * time.Millisecond)
+		// Cap iterations to prevent infinite spinning under
+		// synctest's fake time when goroutines are blocked on I/O
+		// that won't unblock until closers run (after Quiesce).
+		if i > 5000 {
+			break
+		}
 	}
 }
 

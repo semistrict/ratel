@@ -1,0 +1,25 @@
+[[repos]]
+repo = "https://github.com/dnephin/pre-commit-golang"
+rev = "v0.5.1"
+hooks = [
+    { id = "go-fmt" },
+]
+
+[[repos]]
+repo = "local"
+
+[[repos.hooks]]
+id = "go-vet"
+name = "go vet"
+entry = "bash -c 'go vet ./pkg/testutils/inproc/ ./pkg/rpc/ ./pkg/server/'"
+language = "system"
+types = ["go"]
+pass_filenames = false
+
+[[repos.hooks]]
+id = "go-build"
+name = "go build"
+entry = "bash -c 'go build ./pkg/testutils/inproc/ ./pkg/rpc/ ./pkg/server/'"
+language = "system"
+types = ["go"]
+pass_filenames = false

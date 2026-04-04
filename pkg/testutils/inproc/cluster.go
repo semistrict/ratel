@@ -33,6 +33,7 @@ type Cluster struct {
 	Registry       *Registry
 	addrs          []string
 	rpcListeners   []*Listener
+	httpListeners  []*Listener
 	stickyRegistry server.StickyInMemEnginesRegistry
 }
 
@@ -59,6 +60,7 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 
 	addrs := make([]string, nodes)
 	rpcListeners := make([]*Listener, nodes)
+	httpListeners := make([]*Listener, nodes)
 
 	for i := 0; i < nodes; i++ {
 		rpcAddr := fmt.Sprintf("127.0.0.1:%d", 26257+i)
@@ -68,6 +70,7 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 		rpcListener := registry.Register(rpcAddr)
 		rpcListeners[i] = rpcListener
 		httpListener := NewListener(httpAddr)
+		httpListeners[i] = httpListener
 
 		// Start from ServerArgs defaults, then overlay per-node overrides.
 		args := clusterArgs.ServerArgs
@@ -113,11 +116,13 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 	}
 
 	tc := testcluster.StartTestCluster(t, nodes, clusterArgs)
+
 	return &Cluster{
 		TestCluster:    tc,
 		Registry:       registry,
 		addrs:          addrs,
 		rpcListeners:   rpcListeners,
+		httpListeners:  httpListeners,
 		stickyRegistry: stickyRegistry,
 	}
 }
@@ -127,6 +132,10 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 type EngineCloser interface {
 	CloseEngine(id string)
 }
+
+type closerFunc func()
+
+func (f closerFunc) Close() { f() }
 
 // StopNode stops a node. The node can be restarted with RestartNode.
 func (c *Cluster) StopNode(nodeIdx int) {
@@ -141,8 +150,6 @@ func (c *Cluster) StopNode(nodeIdx int) {
 // RestartNode restarts a previously stopped node, re-opening its
 // in-memory listeners.
 func (c *Cluster) RestartNode(t testing.TB, nodeIdx int) {
-	// Re-open the in-memory RPC listener so the restarted node can
-	// accept connections on the same address.
 	c.rpcListeners[nodeIdx].Reset()
 	if err := c.RestartServer(nodeIdx); err != nil {
 		t.Fatal(err)
@@ -164,12 +171,17 @@ func (c *Cluster) NodeAddr(nodeIdx int) string {
 	return c.addrs[nodeIdx]
 }
 
-// Stop stops the cluster and closes the registry. Sticky engines are
-// closed first to stop Pebble background goroutines before the
-// stopper tries to quiesce (which advances fake time under synctest
-// and can deadlock if Pebble tickers are still running).
+// Stop stops the cluster. The modified Stopper.Stop runs closers
+// concurrently with Quiesce, so the Pebble engine closer and the
+// stopServers closer both fire during the Quiesce polling loop.
+// We register our I/O cleanup as an additional closer.
 func (c *Cluster) Stop() {
-	c.stickyRegistry.CloseAllStickyInMemEngines()
+	c.Stopper().AddCloser(closerFunc(func() {
+		c.Registry.Close()
+		for _, l := range c.httpListeners {
+			l.Close()
+		}
+		c.stickyRegistry.CloseAllStickyInMemEngines()
+	}))
 	c.Stopper().Stop(nil)
-	c.Registry.Close()
 }

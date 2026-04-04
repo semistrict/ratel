@@ -389,24 +389,12 @@ func runRatelSQL(cmd *cobra.Command, args []string) error {
 		return errors.New("no nodes found; is the cluster running?")
 	}
 
-	// Pick the first node.
-	node := nodes[0]
-
 	// Download client certs.
 	ld := ratelLocalDir(clusterURL)
 	certsDir := filepath.Join(ld, "certs")
 	if err := storage.DownloadClientCerts(ctx, cs.Certs, certsDir); err != nil {
 		return err
 	}
-
-	// Build postgres connection URL with TLS.
-	connURL := fmt.Sprintf(
-		"postgresql://root@%s/defaultdb?sslmode=verify-full&sslrootcert=%s&sslcert=%s&sslkey=%s",
-		node.SQLAddr,
-		filepath.Join(certsDir, "ca.crt"),
-		filepath.Join(certsDir, "client.root.crt"),
-		filepath.Join(certsDir, "client.root.key"),
-	)
 
 	// Set up SQL shell config, following cockroach-sql pattern.
 	cliCfg := &clicfg.Context{}
@@ -419,7 +407,7 @@ func runRatelSQL(cmd *cobra.Command, args []string) error {
 	sqlCfg.Database = "defaultdb"
 	sqlCfg.User = "root"
 	sqlCfg.ApplicationName = "$ ratel sql"
-	sqlCfg.ConnectTimeout = 15
+	sqlCfg.ConnectTimeout = 5
 	sqlCfg.ShellCtx.ExecStmts = ratelSQLExecStmts
 
 	closeFn, err := sqlCfg.Open(os.Stdin)
@@ -437,9 +425,25 @@ func runRatelSQL(cmd *cobra.Command, args []string) error {
 `)
 	}
 
-	conn, err := sqlCfg.MakeConn(connURL)
-	if err != nil {
-		return err
+	// Try each registered node until one accepts a connection.
+	var conn clisqlclient.Conn
+	var lastErr error
+	for _, node := range nodes {
+		connURL := fmt.Sprintf(
+			"postgresql://root@%s/defaultdb?sslmode=verify-full&sslrootcert=%s&sslcert=%s&sslkey=%s",
+			node.SQLAddr,
+			filepath.Join(certsDir, "ca.crt"),
+			filepath.Join(certsDir, "client.root.crt"),
+			filepath.Join(certsDir, "client.root.key"),
+		)
+		conn, lastErr = sqlCfg.MakeConn(connURL)
+		if lastErr == nil {
+			break
+		}
+		fmt.Fprintf(os.Stderr, "node %d (%s): %v\n", node.NodeID, node.SQLAddr, lastErr)
+	}
+	if conn == nil {
+		return errors.Wrap(lastErr, "could not connect to any node")
 	}
 	defer func() { _ = conn.Close() }()
 

@@ -1,13 +1,15 @@
---- a/vendor/github.com/elastic/gosigar/sigar_stub.go   Fri Aug 19 11:34:48 2022
-+++ b/vendor/github.com/elastic/gosigar/sigar_stub.go   Fri Aug 19 11:34:48 2022
-@@ -1,4 +1,4 @@
+--- a/vendor/github.com/elastic/gosigar/sigar_stub.go
++++ b/vendor/github.com/elastic/gosigar/sigar_stub.go
+@@ -1,5 +1,5 @@
+-//go:build !aix && !darwin && !freebsd && !linux && !openbsd && !windows
 -// +build !aix,!darwin,!freebsd,!linux,!openbsd,!windows
++//go:build !aix && !darwin && !freebsd && !linux && !openbsd && !windows && !illumos
 +// +build !aix,!darwin,!freebsd,!linux,!openbsd,!windows,!illumos
- 
+
  package gosigar
- 
---- /dev/null   Fri Aug 19 11:34:48 2022
-+++ b/vendor/github.com/elastic/gosigar/sigar_illumos.go   Fri Aug 19 11:34:48 2022
+
+--- /dev/null
++++ b/vendor/github.com/elastic/gosigar/sigar_illumos.go
 @@ -0,0 +1,118 @@
 +// Copyright 2020 Oxide Computer Company
 +
@@ -127,11 +129,12 @@
 +
 +	return nil
 +}
---- /dev/null	Fri Aug 19 12:22:03 2022
-+++ b/vendor/github.com/elastic/gosigar/sigar_unix_common.go   Fri Aug 19 11:34:48 2022
+--- /dev/null
++++ b/vendor/github.com/elastic/gosigar/sigar_unix_common.go
 @@ -0,0 +1,33 @@
 +// Copyright (c) 2012 VMware, Inc.
 +
++//go:build illumos
 +// +build illumos
 +
 +package gosigar

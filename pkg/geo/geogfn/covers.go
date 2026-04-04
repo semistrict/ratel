@@ -29,6 +29,7 @@ import (
 // precision for Covers will be for up to 1cm.
 //
 // Current limitations (which are also limitations in PostGIS):
+//
 //   - POLYGON/LINESTRING only works as "contains" - if any point of the LINESTRING
 //     touches the boundary of the polygon, we will return false but should be true - e.g.
 //     SELECT st_covers(

@@ -46,6 +46,7 @@ func HasCandidateCode(err error) bool {
 // - at each level:
 //
 //   - if there is a candidate code at that level, that is used;
+//
 //   - otherwise, it calls computeDefaultCode().
 //     if the function returns an empty string,
 //     UncategorizedError is used.

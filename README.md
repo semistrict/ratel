@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="logo.svg" width="160" alt="Ratel logo">
+</p>
+
 # Ratel
 
 A lightweight SQL database that runs entirely on object storage.

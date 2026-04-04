@@ -14,24 +14,24 @@ services:
     volumes:
       - rustfs-data:/data
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:9000/minio/health/live"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/ || test $? -eq 22"]
       interval: 3s
       retries: 10
 
   create-bucket:
-    image: rustfs/rustfs:latest
+    image: amazon/aws-cli:latest
     depends_on:
       rustfs:
         condition: service_healthy
-    entrypoint: /bin/sh
-    command:
-      - -c
-      - |
-        /usr/local/bin/rustfs alias set local http://rustfs:9000 rustfsadmin rustfsadmin
-        /usr/local/bin/rustfs mb local/ratel --ignore-existing
     environment:
       AWS_ACCESS_KEY_ID: rustfsadmin
       AWS_SECRET_ACCESS_KEY: rustfsadmin
+      AWS_DEFAULT_REGION: us-east-1
+    command:
+      - s3
+      - mb
+      - s3://ratel
+      - --endpoint-url=http://rustfs:9000
 
   ratel-init:
     build:
@@ -46,8 +46,8 @@ services:
     command:
       - init
       - "s3://ratel/?endpoint=http://rustfs:9000&region=us-east-1"
-      - --listen-addr=ratel-init:26257
-      - --http-addr=ratel-init:8080
+      - --listen-addr=0.0.0.0:26257
+      - --http-addr=0.0.0.0:8080
     ports:
       - "26257:26257"
       - "8080:8080"
@@ -70,8 +70,8 @@ services:
     command:
       - join
       - "s3://ratel/?endpoint=http://rustfs:9000&region=us-east-1"
-      - --listen-addr=ratel-2:26257
-      - --http-addr=ratel-2:8080
+      - --listen-addr=0.0.0.0:26257
+      - --http-addr=0.0.0.0:8080
     ports:
       - "26258:26257"
       - "8081:8080"
@@ -89,8 +89,8 @@ services:
     command:
       - join
       - "s3://ratel/?endpoint=http://rustfs:9000&region=us-east-1"
-      - --listen-addr=ratel-3:26257
-      - --http-addr=ratel-3:8080
+      - --listen-addr=0.0.0.0:26257
+      - --http-addr=0.0.0.0:8080
     ports:
       - "26259:26257"
       - "8082:8080"
@@ -108,8 +108,8 @@ services:
     command:
       - join
       - "s3://ratel/?endpoint=http://rustfs:9000&region=us-east-1"
-      - --listen-addr=ratel-4:26257
-      - --http-addr=ratel-4:8080
+      - --listen-addr=0.0.0.0:26257
+      - --http-addr=0.0.0.0:8080
     ports:
       - "26260:26257"
       - "8083:8080"
@@ -127,8 +127,8 @@ services:
     command:
       - join
       - "s3://ratel/?endpoint=http://rustfs:9000&region=us-east-1"
-      - --listen-addr=ratel-5:26257
-      - --http-addr=ratel-5:8080
+      - --listen-addr=0.0.0.0:26257
+      - --http-addr=0.0.0.0:8080
     ports:
       - "26261:26257"
       - "8084:8080"

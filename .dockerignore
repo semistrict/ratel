@@ -1,7 +1,10 @@
 bin/
 lib/
 build/defs.mk
-c-deps/
+c-deps/geos/
+c-deps/jemalloc/
+c-deps/krb5/
+c-deps/libroach/
 *.tar.gz
 *.tgz
 cockroachoss

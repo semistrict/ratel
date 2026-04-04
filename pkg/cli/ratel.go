@@ -18,6 +18,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -244,10 +245,16 @@ func ratelStartServer(ctx context.Context, opts ratelServerOpts) error {
 	cfg := server.MakeConfig(ctx, st)
 	cfg.Insecure = false
 	cfg.SSLCertsDir = opts.certsDir
+	// If listening on 0.0.0.0, advertise as localhost so TLS certs validate.
+	advertiseAddr := opts.listenAddr
+	host, port, _ := net.SplitHostPort(opts.listenAddr)
+	if host == "0.0.0.0" || host == "" {
+		advertiseAddr = net.JoinHostPort("localhost", port)
+	}
 	cfg.Addr = opts.listenAddr
-	cfg.AdvertiseAddr = opts.listenAddr
+	cfg.AdvertiseAddr = advertiseAddr
 	cfg.SQLAddr = opts.listenAddr
-	cfg.SQLAdvertiseAddr = opts.listenAddr
+	cfg.SQLAdvertiseAddr = advertiseAddr
 	cfg.HTTPAddr = opts.httpAddr
 	cfg.AutoInitializeCluster = opts.autoInitialize
 	cfg.JoinList = opts.joinList

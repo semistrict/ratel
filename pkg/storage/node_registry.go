@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble/objstorage/remote"
@@ -57,13 +58,16 @@ func RegisterNode(ctx context.Context, store remote.Storage, reg NodeRegistratio
 
 // ListNodes reads all node registrations from the nodes/ storage.
 func ListNodes(ctx context.Context, store remote.Storage) ([]NodeRegistration, error) {
-	names, err := store.List("node-", "")
+	names, err := store.List("", "")
 	if err != nil {
 		return nil, errors.Wrap(err, "listing node registrations")
 	}
 	sort.Strings(names)
 	var nodes []NodeRegistration
 	for _, name := range names {
+		if !strings.HasPrefix(name, "node-") {
+			continue
+		}
 		reader, size, err := store.ReadObject(ctx, name)
 		if err != nil {
 			return nil, errors.Wrapf(err, "reading node registration %s", name)

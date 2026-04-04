@@ -12,37 +12,68 @@ A single storage URL is the cluster identity. Certificates, node discovery, and 
 # Build
 make buildratel
 
-# Initialize a new cluster (generates certs, bootstraps, starts first node)
-ratel init file:///tmp/my-cluster/
+# Initialize a new cluster
+ratel init s3://my-bucket/?endpoint=http://localhost:9000&region=us-east-1
 
 # Join additional nodes
-ratel join file:///tmp/my-cluster/ --listen-addr=localhost:26258 --http-addr=localhost:8081
+ratel join s3://my-bucket/?endpoint=http://localhost:9000&region=us-east-1
 
 # Connect a SQL shell
-ratel sql file:///tmp/my-cluster/
+ratel sql s3://my-bucket/?endpoint=http://localhost:9000&region=us-east-1
+```
+
+Local filesystem also works:
+
+```bash
+ratel init file:///tmp/my-cluster/
+ratel sql  file:///tmp/my-cluster/
 ```
 
 ## How It Works
 
-The storage URL points to a directory (local filesystem or S3 bucket) with this layout:
+The storage URL points to an S3 bucket (or local directory) with this layout:
 
 ```
-file:///tmp/my-cluster/     (or s3://my-bucket/prefix/)
-  certs/                    TLS certificates (generated on init)
-  nodes/                    Node registry (JSON files for peer discovery)
-  sstables/                 Pebble SSTables (shared storage)
-  metadata/                 MANIFEST bundle
+s3://my-bucket/                 (or file:///tmp/my-cluster/)
+  certs/                        CA cert, CA key (optionally encrypted), client certs
+  nodes/                        Node registry (JSON files for peer discovery)
+  sstables/                     Pebble SSTables (shared storage)
+  metadata/                     MANIFEST bundle
 ```
 
-- **`ratel init <url>`** — Generate TLS certs, bootstrap the cluster, register node 1, start serving.
-- **`ratel join <url>`** — Download certs, discover peers from `nodes/`, join the cluster, register this node.
-- **`ratel sql <url>`** — Download client certs, pick a node from `nodes/`, connect via PostgreSQL wire protocol.
+- **`ratel init <url>`** — Generate CA + client certs, upload to S3, bootstrap the cluster, start serving.
+- **`ratel join <url>`** — Download CA from S3, generate a node cert with this host's name, discover peers, join.
+- **`ratel sql <url>`** — Download client certs, pick a live node from the registry, connect via PostgreSQL wire protocol.
 
-No `--store`, `--join`, or `--init` flags. The URL is the only required argument.
+Each node generates its own TLS certificate signed by the shared CA, with its hostname as a SAN. No shared node certs.
 
 ## Security
 
-The storage URL is the trust boundary. Whoever has access to the bucket has full cluster access — certs are stored alongside data. The bucket must not be public.
+The storage URL is the trust boundary. Whoever has access to the bucket has full cluster access. The bucket must not be public.
+
+The CA private key can be encrypted with a passphrase:
+
+```bash
+# Interactive prompt (with confirmation)
+ratel init s3://my-bucket/
+
+# Via environment variable
+RATEL_PASSPHRASE=secret ratel join s3://my-bucket/
+
+# Skip encryption entirely
+ratel init --no-passphrase s3://my-bucket/
+```
+
+## Docker Demo
+
+A 5-node demo with [rustfs](https://rustfs.com) (S3-compatible storage):
+
+```bash
+cd demo
+docker compose up --build
+```
+
+See [demo/README.md](demo/README.md) for details.
 
 ## License
 

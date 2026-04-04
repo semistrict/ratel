@@ -186,19 +186,13 @@ func (p *pebbleIterator) init(
 		panic("min timestamp hint set without max timestamp hint")
 	}
 
-	if doClone && handle == nil {
-		// Clone path: used when we don't have a handle (e.g., cloning an engine
-		// iterator for the intent interleaving iterator). We clone to get a
-		// consistent view of the same DB state.
+	if doClone {
 		var err error
 		if p.iter, err = iterToClone.Clone(pebble.CloneOptions{}); err != nil {
 			panic(err)
 		}
 		p.iter.SetBounds(p.options.LowerBound, p.options.UpperBound)
 	} else if handle != nil {
-		// When a handle is available, always create a fresh iterator from it.
-		// This ensures batch iterators see the latest batch state, and avoids
-		// subtle snapshot issues with Clone.
 		var err error
 		if p.iter, err = handle.NewIter(&p.options); err != nil {
 			panic(err)
@@ -269,6 +263,32 @@ func (p *pebbleIterator) setBounds(lowerBound, upperBound roachpb.Key) {
 		p.options.UpperBound = p.upperBoundBuf[i]
 	}
 	p.iter.SetBounds(p.options.LowerBound, p.options.UpperBound)
+	if p.testingSetBoundsListener != nil {
+		p.testingSetBoundsListener.postSetBounds(p.options.LowerBound, p.options.UpperBound)
+	}
+}
+
+// setOptions is like setBounds but uses pebble.Iterator.SetOptions, which
+// additionally refreshes the batch view (making new batch writes visible).
+// This is necessary for batch iterator reuse in Pebble v1.1+ where
+// batchSeqNum is pinned at creation time.
+func (p *pebbleIterator) setOptions(opts IterOptions) {
+	p.options.LowerBound = nil
+	p.options.UpperBound = nil
+	p.curBuf = (p.curBuf + 1) % 2
+	i := p.curBuf
+	if opts.LowerBound != nil {
+		p.lowerBoundBuf[i] = append(p.lowerBoundBuf[i][:0], opts.LowerBound...)
+		p.lowerBoundBuf[i] = append(p.lowerBoundBuf[i], 0x00)
+		p.options.LowerBound = p.lowerBoundBuf[i]
+	}
+	if opts.UpperBound != nil {
+		p.upperBoundBuf[i] = append(p.upperBoundBuf[i][:0], opts.UpperBound...)
+		p.upperBoundBuf[i] = append(p.upperBoundBuf[i], 0x00)
+		p.options.UpperBound = p.upperBoundBuf[i]
+	}
+	p.prefix = opts.Prefix
+	p.iter.SetOptions(&p.options)
 	if p.testingSetBoundsListener != nil {
 		p.testingSetBoundsListener.postSetBounds(p.options.LowerBound, p.options.UpperBound)
 	}

@@ -231,7 +231,10 @@ func (p *pebbleBatch) NewMVCCIterator(iterKind MVCCIterKind, opts IterOptions) M
 	checkOptionsForIterReuse(opts)
 
 	if iter.iter != nil {
-		iter.setBounds(opts.LowerBound, opts.UpperBound)
+		// Use SetOptions (not SetBounds) to refresh the batch view.
+		// SetOptions refreshes the batchSeqNum so new batch writes become
+		// visible, while preserving the pinned engine readState.
+		iter.setOptions(opts)
 	} else {
 		if p.batch.Indexed() {
 			iter.init(p.batch, p.iter, opts, StandardDurability)
@@ -240,6 +243,12 @@ func (p *pebbleBatch) NewMVCCIterator(iterKind MVCCIterKind, opts IterOptions) M
 		}
 		if p.iter == nil {
 			p.iter = iter.iter
+		}
+		// Refresh the batch view so new batch writes are visible.
+		// Clone from p.iter preserves the engine readState but pins the
+		// batchSeqNum; SetOptions refreshes it.
+		if p.iter != nil {
+			iter.iter.SetOptions(&iter.options)
 		}
 	}
 
@@ -272,7 +281,7 @@ func (p *pebbleBatch) NewEngineIterator(opts IterOptions) EngineIterator {
 	checkOptionsForIterReuse(opts)
 
 	if iter.iter != nil {
-		iter.setBounds(opts.LowerBound, opts.UpperBound)
+		iter.setOptions(opts)
 	} else {
 		if p.batch.Indexed() {
 			iter.init(p.batch, p.iter, opts, StandardDurability)
@@ -281,6 +290,9 @@ func (p *pebbleBatch) NewEngineIterator(opts IterOptions) EngineIterator {
 		}
 		if p.iter == nil {
 			p.iter = iter.iter
+		}
+		if p.iter != nil {
+			iter.iter.SetOptions(&iter.options)
 		}
 	}
 

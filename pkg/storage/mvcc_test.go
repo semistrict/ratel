@@ -1004,15 +1004,22 @@ func TestMVCCPutAfterBatchIterCreate(t *testing.T) {
 				LowerBound: testKey1,
 				UpperBound: testKey5,
 			})
-			defer iter.Close()
 			iter.SeekGE(MVCCKey{testKey1, hlc.Timestamp{WallTime: 5}})
 			iter.Next() // key2/5
+			iter.Close()
 
 			// Lay down an intent on key3, which will go at key3/0 and sort before key3/5.
 			err = MVCCDelete(context.Background(), batch, nil, testKey3, txn.WriteTimestamp, txn)
 			if err != nil {
 				t.Fatal(err)
 			}
+			// Create a fresh iterator to see the new intent (Pebble v1.1+ pins
+			// batch state at iterator creation time).
+			iter = batch.NewMVCCIterator(MVCCKeyAndIntentsIterKind, IterOptions{
+				LowerBound: testKey1,
+				UpperBound: testKey5,
+			})
+			defer iter.Close()
 			iter.SeekGE(MVCCKey{Key: testKey3})
 			if ok, err := iter.Valid(); !ok || err != nil {
 				t.Fatalf("expected valid iter: ok %t, err %s", ok, err.Error())

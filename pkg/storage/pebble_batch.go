@@ -299,9 +299,9 @@ func (p *pebbleBatch) ConsistentIterators() bool {
 func (p *pebbleBatch) PinEngineStateForIterators() error {
 	if p.iter == nil {
 		if p.batch.Indexed() {
-			p.iter = p.batch.NewIter(nil)
+			p.iter, _ = p.batch.NewIter(nil)
 		} else {
-			p.iter = p.db.NewIter(nil)
+			p.iter, _ = p.db.NewIter(nil)
 		}
 	}
 	return nil

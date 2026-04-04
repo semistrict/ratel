@@ -191,7 +191,7 @@ func (r *RocksDBBatchReader) EngineEndKey() (EngineKey, error) {
 // Next advances to the next entry in the batch, returning false when the batch
 // is empty.
 func (r *RocksDBBatchReader) Next() bool {
-	kind, ukey, value, ok := r.batchReader.Next()
+	kind, ukey, value, ok, _ := r.batchReader.Next()
 
 	r.typ = BatchType(kind)
 	r.key = ukey

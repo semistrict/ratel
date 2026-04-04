@@ -118,9 +118,12 @@ func (r *pebbleMap) makeKeyWithSequence(k []byte) []byte {
 func (r *pebbleMap) NewIterator() diskmap.SortedDiskMapIterator {
 	return &pebbleMapIterator{
 		allowDuplicates: r.allowDuplicates,
-		iter: r.store.NewIter(&pebble.IterOptions{
-			UpperBound: roachpb.Key(r.prefix).PrefixEnd(),
-		}),
+		iter: func() *pebble.Iterator {
+			iter, _ := r.store.NewIter(&pebble.IterOptions{
+				UpperBound: roachpb.Key(r.prefix).PrefixEnd(),
+			})
+			return iter
+		}(),
 		makeKey: r.makeKey,
 		prefix:  r.prefix,
 	}

@@ -79,7 +79,7 @@ var pebbleIterPool = sync.Pool{
 }
 
 type cloneableIter interface {
-	Clone() (*pebble.Iterator, error)
+	Clone(pebble.CloneOptions) (*pebble.Iterator, error)
 }
 
 type testingSetBoundsListener interface {
@@ -188,15 +188,19 @@ func (p *pebbleIterator) init(
 
 	if doClone {
 		var err error
-		if p.iter, err = iterToClone.Clone(); err != nil {
+		if p.iter, err = iterToClone.Clone(pebble.CloneOptions{
+			IterOptions: &p.options,
+		}); err != nil {
 			panic(err)
 		}
-		p.iter.SetBounds(p.options.LowerBound, p.options.UpperBound)
 	} else {
 		if handle == nil {
 			panic("handle is nil for non-cloning path")
 		}
-		p.iter = handle.NewIter(&p.options)
+		var err error
+		if p.iter, err = handle.NewIter(&p.options); err != nil {
+			panic(err)
+		}
 	}
 	if p.iter == nil {
 		panic("unable to create iterator")

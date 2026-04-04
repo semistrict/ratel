@@ -312,7 +312,7 @@ func UpdateSSTTimestamps(
 		}
 		if _, err := sstable.RewriteKeySuffixes(sst,
 			opts,
-			sstOut,
+			sstOut.AsWritable(),
 			MakeIngestionWriterOptions(ctx, st),
 			EncodeMVCCTimestampSuffix(from),
 			EncodeMVCCTimestampSuffix(to),

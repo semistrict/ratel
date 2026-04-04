@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /src
 COPY go.mod go.sum ./
 COPY vendor/ vendor/
+COPY c-deps/proj/src/ c-deps/proj/src/
 COPY pkg/ pkg/
 
 RUN go build -mod=vendor -tags 'stdmalloc short' -o /usr/local/bin/ratel ./pkg/cmd/ratel

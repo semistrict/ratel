@@ -39,9 +39,15 @@ module.exports = (env, argv) => {
 
     resolve: {
       modules: [
-        path.resolve("../../node_modules"),
         path.resolve(__dirname, "node_modules"),
+        path.resolve("../../node_modules"),
       ],
+      alias: {
+        // babel-runtime and babel-polyfill require core-js v2 (which has
+        // library/ and shim.js). pnpm hoists core-js v3 to the root, so
+        // we alias core-js to the v2 copy nested inside babel-runtime.
+        "core-js": path.resolve("../../node_modules/babel-runtime/node_modules/core-js"),
+      },
     },
 
     module: {

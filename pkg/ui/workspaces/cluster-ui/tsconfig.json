@@ -12,6 +12,7 @@
     "noImplicitAny": true,
     "outDir": "./dist/types",
     "target": "es6",
+    "lib": ["es2017", "dom"],
     "skipLibCheck": true,
     "types": [],
     "sourceMap": false

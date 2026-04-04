@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   inproc-tests:
-    runs-on: macos-14
+    runs-on: ubuntu-latest
     env:
       GOTOOLCHAIN: local
     steps:
@@ -18,18 +18,17 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y autoconf libedit-dev
       - name: Toolchain setup
         run: |
           set -o xtrace
-          mkdir "$HOME/toolchain"
-          pushd "$HOME/toolchain"
           GO_VERSION=1.26.1
-          curl -sSfL --retry 10 -O "https://go.dev/dl/go${GO_VERSION}.darwin-arm64.tar.gz"
-          tar xf "go${GO_VERSION}.darwin-arm64.tar.gz"
-          echo "$PWD/go/bin" >> "$GITHUB_PATH"
-          popd
+          curl -sSfL --retry 10 -O "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz"
+          sudo tar -C /usr/local -xzf "go${GO_VERSION}.linux-amd64.tar.gz"
+          echo "/usr/local/go/bin" >> "$GITHUB_PATH"
       - name: Build c-deps
-        run: gmake -j$(sysctl -n hw.ncpu) c-deps
+        run: make -j$(nproc) c-deps
       - name: Run inproc tests
         run: |
           set -e
@@ -51,5 +50,5 @@ jobs:
           )
           for t in "${tests[@]}"; do
             echo "=== Running $t ==="
-            gmake test PKG=./pkg/testutils/inproc TESTS="$t" TESTFLAGS="-v -count=1 -timeout 30s"
+            make test PKG=./pkg/testutils/inproc TESTS="$t" TESTFLAGS="-v -count=1 -timeout 30s"
           done

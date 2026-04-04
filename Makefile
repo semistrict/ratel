@@ -274,6 +274,7 @@ MAKE_TERMERR ?= $(shell [[ -t 2 ]] && echo true)
 
 # This is how you get a literal space into a Makefile.
 space := $(eval) $(eval)
+comma := ,
 
 # Color support.
 yellow = $(shell { tput setaf 3 || tput AF 3; } 2>/dev/null)
@@ -375,6 +376,9 @@ ifdef host-is-macos
 # to the host machine's actual macOS version works around this. See:
 # https://github.com/jemalloc/jemalloc/issues/494.
 export MACOSX_DEPLOYMENT_TARGET ?= $(macos-version)
+# Suppress duplicate library warnings on macOS. Multiple cgo source files
+# independently specify the same -l flags (e.g. -ljemalloc, -lm).
+LDFLAGS += -Wl,-no_warn_duplicate_libraries
 endif
 
 # Cross-compilation occurs when you set TARGET_TRIPLE to something other than

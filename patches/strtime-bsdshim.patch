@@ -1,0 +1,16 @@
+diff --git a/vendor/github.com/knz/strtime/bsdshim.h b/vendor/github.com/knz/strtime/bsdshim.h
+--- a/vendor/github.com/knz/strtime/bsdshim.h
++++ b/vendor/github.com/knz/strtime/bsdshim.h
+@@ -5,7 +5,11 @@
+ #include <string.h>
+ #include <time.h>
+
+-#define locale_t int
++#ifdef __APPLE__
++#include <xlocale.h>
++#else
++#define locale_t int
++#endif
+
+ #ifdef isspace_l
+ #undef isspace_l

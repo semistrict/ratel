@@ -892,6 +892,19 @@ func (s *Server) InitialStart() bool {
 	return s.node.initialStart
 }
 
+// GetFirstStoreID returns the StoreID of the first store, or 0 if no stores
+// are available yet.
+func (s *Server) GetFirstStoreID() roachpb.StoreID {
+	var first roachpb.StoreID
+	_ = s.node.stores.VisitStores(func(store *kvserver.Store) error {
+		if first == 0 {
+			first = store.Ident.StoreID
+		}
+		return nil
+	})
+	return first
+}
+
 // listenerInfo is a helper used to write files containing various listener
 // information to the store directories. In contrast to the "listening url
 // file", these are written once the listeners are available, before the server

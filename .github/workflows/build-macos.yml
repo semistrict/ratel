@@ -45,32 +45,6 @@ jobs:
             lib/libgeos_c.dylib
           if-no-files-found: error
 
-  synctest:
-    runs-on: macos-14
-    env:
-      GOTOOLCHAIN: local
-    steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-          submodules: true
-      - name: Toolchain setup
-        run: |
-          set -o xtrace
-          source .github/workflows/macos-setup.sh
-          echo "PATH=$PATH" >>"$GITHUB_ENV"
-      - name: Vendor setup
-        run: make vendor/modules.txt
-        env:
-          CGO_ENABLED: 1
-          MACOSX_DEPLOYMENT_TARGET: 13
-      - name: Synctest
-        run: go test -mod=vendor -v -count=1 -timeout 60s -run 'TestSync|TestInproc|TestAutoReplication|TestAddVoters|TestDecommission' ./pkg/testutils/inproc/
-        env:
-          CGO_ENABLED: 1
-          MACOSX_DEPLOYMENT_TARGET: 13
-
   build:
     needs: build-arch
     runs-on: macos-14

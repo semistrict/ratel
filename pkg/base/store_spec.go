@@ -198,6 +198,10 @@ type StoreSpec struct {
 	//   file:///path/to/dir  — local filesystem directory
 	//   s3://bucket/prefix   — Amazon S3 (requires additional config)
 	RemoteStoragePath string
+	// RecoveryStoreID, if non-zero, is a store ID recovered from an external
+	// source (e.g. node registration) during crash recovery. It is passed
+	// through to PebbleConfig to download the correct manifest bundle.
+	RecoveryStoreID int32
 }
 
 // String returns a fully parsable version of the store spec.

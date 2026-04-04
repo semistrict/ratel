@@ -36,9 +36,10 @@ const (
 )
 
 // GenerateAndUploadCACerts generates the CA and root client certificates and
-// uploads them to the certs/ storage. Node certificates are NOT generated here
-// — each node generates its own via GenerateNodeCert after downloading the CA.
-func GenerateAndUploadCACerts(ctx context.Context, store remote.Storage) error {
+// uploads them to the certs/ storage. If passphrase is non-nil, the CA key is
+// encrypted before upload. Node certificates are NOT generated here — each node
+// generates its own via GenerateNodeCert after downloading the CA.
+func GenerateAndUploadCACerts(ctx context.Context, store remote.Storage, passphrase []byte) error {
 	caCertPEM, caKeyPEM, err := security.CreateCACertAndKey(ctx, nil, certLifetime, "Cockroach CA")
 	if err != nil {
 		return errors.Wrap(err, "generating CA cert")
@@ -54,12 +55,21 @@ func GenerateAndUploadCACerts(ctx context.Context, store remote.Storage) error {
 		return errors.Wrap(err, "generating client root cert")
 	}
 
+	// Optionally encrypt the CA key.
+	caKeyData := pem.EncodeToMemory(caKeyPEM)
+	if len(passphrase) > 0 {
+		caKeyData, err = EncryptWithPassphrase(caKeyData, passphrase)
+		if err != nil {
+			return errors.Wrap(err, "encrypting CA key")
+		}
+	}
+
 	uploads := []struct {
 		name string
 		data []byte
 	}{
 		{caCertName, pem.EncodeToMemory(caCertPEM)},
-		{caKeyName, pem.EncodeToMemory(caKeyPEM)},
+		{caKeyName, caKeyData},
 		{clientRootCert, pem.EncodeToMemory(clientCertPEM)},
 		{clientRootKey, pem.EncodeToMemory(clientKeyPEM)},
 	}
@@ -72,8 +82,9 @@ func GenerateAndUploadCACerts(ctx context.Context, store remote.Storage) error {
 }
 
 // DownloadCACerts downloads the CA cert and key from the certs/ storage to a
-// local directory.
-func DownloadCACerts(ctx context.Context, store remote.Storage, localDir string) error {
+// local directory. If the CA key is encrypted, passphrase must be provided to
+// decrypt it.
+func DownloadCACerts(ctx context.Context, store remote.Storage, localDir string, passphrase []byte) error {
 	if err := os.MkdirAll(localDir, 0700); err != nil {
 		return errors.Wrapf(err, "creating certs dir %s", localDir)
 	}
@@ -90,6 +101,16 @@ func DownloadCACerts(ctx context.Context, store remote.Storage, localDir string)
 		data, err := ReadObject(ctx, store, f.name)
 		if err != nil {
 			return errors.Wrapf(err, "downloading %s", f.name)
+		}
+		// Decrypt the CA key if it's encrypted.
+		if f.name == caKeyName && IsEncrypted(data) {
+			if len(passphrase) == 0 {
+				return errors.New("CA key is encrypted but no passphrase provided")
+			}
+			data, err = DecryptWithPassphrase(data, passphrase)
+			if err != nil {
+				return errors.Wrap(err, "decrypting CA key")
+			}
 		}
 		path := filepath.Join(localDir, f.name)
 		if err := os.WriteFile(path, data, f.mode); err != nil {

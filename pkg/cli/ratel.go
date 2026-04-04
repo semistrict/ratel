@@ -43,10 +43,12 @@ import (
 	"github.com/cockroachdb/pebble/objstorage/remote"
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/unix"
+	"golang.org/x/term"
 )
 
 var ratelListenAddr string
 var ratelHTTPAddr string
+var ratelNoPassphrase bool
 
 var ratelCmd = &cobra.Command{
 	Use:   "ratel [command]",
@@ -96,6 +98,8 @@ func init() {
 			"Address to listen on for RPC and SQL connections")
 		cmd.Flags().StringVar(&ratelHTTPAddr, "http-addr", "localhost:8080",
 			"Address to listen on for the admin HTTP interface")
+		cmd.Flags().BoolVar(&ratelNoPassphrase, "no-passphrase", false,
+			"Do not encrypt the CA key (skip passphrase prompt)")
 	}
 
 	// SQL-specific flags.
@@ -127,6 +131,38 @@ func ratelAdvertiseHost() string {
 	return host
 }
 
+// ratelPassphrase returns the CA key passphrase. It checks RATEL_PASSPHRASE
+// env var first, then prompts interactively. Returns nil if --no-passphrase.
+func ratelPassphrase(confirm bool) ([]byte, error) {
+	if ratelNoPassphrase {
+		return nil, nil
+	}
+	if env := os.Getenv("RATEL_PASSPHRASE"); env != "" {
+		return []byte(env), nil
+	}
+	fmt.Fprint(os.Stderr, "Enter CA key passphrase: ")
+	pass, err := term.ReadPassword(int(os.Stdin.Fd()))
+	fmt.Fprintln(os.Stderr)
+	if err != nil {
+		return nil, errors.Wrap(err, "reading passphrase")
+	}
+	if len(pass) == 0 {
+		return nil, errors.New("passphrase cannot be empty (use --no-passphrase to skip)")
+	}
+	if confirm {
+		fmt.Fprint(os.Stderr, "Confirm passphrase: ")
+		pass2, err := term.ReadPassword(int(os.Stdin.Fd()))
+		fmt.Fprintln(os.Stderr)
+		if err != nil {
+			return nil, errors.Wrap(err, "reading passphrase confirmation")
+		}
+		if string(pass) != string(pass2) {
+			return nil, errors.New("passphrases do not match")
+		}
+	}
+	return pass, nil
+}
+
 // ratelLocalDir returns a stable temp directory derived from the cluster URL.
 func ratelLocalDir(clusterURL string) string {
 	h := sha256.Sum256([]byte(clusterURL))
@@ -152,6 +188,12 @@ func runRatelInit(cmd *cobra.Command, args []string) error {
 		return errors.Newf("cluster already initialized: found %d node(s) at %s", len(nodes), clusterURL)
 	}
 
+	// Get passphrase for CA key encryption.
+	passphrase, err := ratelPassphrase(true /* confirm */)
+	if err != nil {
+		return err
+	}
+
 	// Generate and upload CA + client certs if not already present.
 	exists, err := storage.CertsExist(ctx, cs.Certs)
 	if err != nil {
@@ -159,7 +201,7 @@ func runRatelInit(cmd *cobra.Command, args []string) error {
 	}
 	if !exists {
 		fmt.Fprintln(os.Stderr, "Generating CA and client certificates...")
-		if err := storage.GenerateAndUploadCACerts(ctx, cs.Certs); err != nil {
+		if err := storage.GenerateAndUploadCACerts(ctx, cs.Certs, passphrase); err != nil {
 			return err
 		}
 	}
@@ -168,7 +210,7 @@ func runRatelInit(cmd *cobra.Command, args []string) error {
 	ld := ratelLocalDir(clusterURL)
 	certsDir := filepath.Join(ld, "certs")
 	storeDir := filepath.Join(ld, "store")
-	if err := storage.DownloadCACerts(ctx, cs.Certs, certsDir); err != nil {
+	if err := storage.DownloadCACerts(ctx, cs.Certs, certsDir, passphrase); err != nil {
 		return err
 	}
 	hostname := ratelAdvertiseHost()
@@ -214,11 +256,17 @@ func runRatelJoin(cmd *cobra.Command, args []string) error {
 		joinList = append(joinList, n.Addr)
 	}
 
+	// Get passphrase for CA key decryption.
+	passphrase, err := ratelPassphrase(false /* confirm */)
+	if err != nil {
+		return err
+	}
+
 	// Download CA + client certs, then generate this node's cert locally.
 	ld := ratelLocalDir(clusterURL)
 	certsDir := filepath.Join(ld, "certs")
 	storeDir := filepath.Join(ld, "store")
-	if err := storage.DownloadCACerts(ctx, cs.Certs, certsDir); err != nil {
+	if err := storage.DownloadCACerts(ctx, cs.Certs, certsDir, passphrase); err != nil {
 		return errors.Wrap(err, "downloading certs (is the cluster initialized?)")
 	}
 	hostname := ratelAdvertiseHost()

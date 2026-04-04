@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/cockroachdb/cockroach/pkg/testutils/testcluster"
+	"github.com/cockroachdb/pebble/objstorage/remote"
 	"github.com/stretchr/testify/require"
 )
 
@@ -133,6 +135,55 @@ func TestMultiNodeCompaction(t *testing.T) {
 
 	QueryRowSQL(t, db1, "SELECT node, payload FROM test_compact WHERE id = 2", &node, &payload)
 	require.Equal(t, 2, node, "row 2 should have been written by node 2")
+}
+
+// TestSharedMetadataCorruption demonstrates that sharing a single metadata
+// store across nodes causes corruption. Pebble's MANIFEST is per-node state —
+// when two nodes write their MANIFEST to the same location, one overwrites
+// the other's, causing references to non-existent SSTables.
+//
+// This test intentionally creates a broken configuration (shared metadata)
+// and verifies it fails. Combined with the CreatorID collision (hardcoded to
+// 1 for all nodes), this produces "object does not exist" errors during
+// compaction.
+func TestSharedMetadataCorruption(t *testing.T) {
+	// Create shared storage where all nodes use the SAME metadata store
+	// (simulating the bug where metadata/ is a single shared location).
+	sharedMeta := remote.NewInMem()
+	ss := &SharedStorage{
+		SSTables: remote.NewInMem(),
+		Metadata: []remote.Storage{sharedMeta, sharedMeta, sharedMeta},
+	}
+	defer ss.Close()
+
+	args := ClusterArgs(t, ss)
+	tc := testcluster.StartTestCluster(t, 3, args)
+	defer tc.Stopper().Stop(t.Context())
+
+	db0 := tc.ServerConn(0)
+	db1 := tc.ServerConn(1)
+	db2 := tc.ServerConn(2)
+
+	ExecSQL(t, db0, "CREATE TABLE meta_test (id INT PRIMARY KEY, v STRING)")
+
+	// Write through multiple nodes to exercise different Pebble instances.
+	for i := 0; i < 100; i++ {
+		ExecSQL(t, db0, "INSERT INTO meta_test VALUES ($1, 'from-0')", i*3)
+		ExecSQL(t, db1, "INSERT INTO meta_test VALUES ($1, 'from-1')", i*3+1)
+		ExecSQL(t, db2, "INSERT INTO meta_test VALUES ($1, 'from-2')", i*3+2)
+	}
+
+	// Force all nodes to flush and compact — this writes MANIFEST bundles
+	// to the shared metadata store, and compaction will reference SSTables
+	// tracked in a corrupted MANIFEST.
+	for i := 0; i < 3; i++ {
+		FlushAndCompact(t, tc, i)
+	}
+
+	// With shared metadata + shared CreatorID, reads should fail because
+	// SSTable references in the MANIFEST point to non-existent objects.
+	count := QueryCountSQL(t, db0, "meta_test")
+	require.Equal(t, 300, count)
 }
 
 // TestMultiNodeSchemaChange verifies that DDL changes propagate across nodes.

@@ -139,6 +139,10 @@ func EngineKeyCompare(a, b []byte) int {
 var EngineComparer = &pebble.Comparer{
 	Compare: EngineKeyCompare,
 
+	Equal: func(a, b []byte) bool {
+		return EngineKeyCompare(a, b) == 0
+	},
+
 	AbbreviatedKey: func(k []byte) uint64 {
 		key, ok := GetKeyPartFromEngineKey(k)
 		if !ok {
@@ -496,21 +500,15 @@ func DefaultPebbleOptions() *pebble.Options {
 		L0StopWritesThreshold:       1000,
 		LBaseMaxBytes:               64 << 20, // 64 MB
 		Levels:                      make([]pebble.LevelOptions, 7),
-		MaxConcurrentCompactions:    maxConcurrentCompactions,
+		MaxConcurrentCompactions:    func() int { return maxConcurrentCompactions },
 		MemTableSize:                64 << 20, // 64 MB
 		MemTableStopWritesThreshold: 4,
 		Merger:                      MVCCMerger,
 		TablePropertyCollectors:     PebbleTablePropertyCollectors,
 		BlockPropertyCollectors:     PebbleBlockPropertyCollectors,
 	}
-	// Automatically flush 10s after the first range tombstone is added to a
-	// memtable. This ensures that we can reclaim space even when there's no
-	// activity on the database generating flushes.
-	opts.Experimental.DeleteRangeFlushDelay = 10 * time.Second
-	// Enable deletion pacing. This helps prevent disk slowness events on some
-	// SSDs, that kick off an expensive GC if a lot of files are deleted at
-	// once.
-	opts.Experimental.MinDeletionRate = 128 << 20 // 128 MB
+	// DeleteRangeFlushDelay and MinDeletionRate were removed in newer Pebble.
+	// Pebble now handles these internally.
 	// Validate min/max keys in each SSTable when performing a compaction. This
 	// serves as a simple protection against corruption or programmer-error in
 	// Pebble.
@@ -569,10 +567,10 @@ func wrapFilesystemMiddleware(opts *pebble.Options) io.Closer {
 	// operations.
 	var closer io.Closer
 	opts.FS, closer = vfs.WithDiskHealthChecks(opts.FS, diskHealthCheckInterval,
-		func(name string, duration time.Duration) {
+		func(info vfs.DiskSlowInfo) {
 			opts.EventListener.DiskSlow(pebble.DiskSlowInfo{
-				Path:     name,
-				Duration: duration,
+				Path:     info.Path,
+				Duration: info.Duration,
 			})
 		})
 	// If we encounter ENOSPC, exit with an informative exit code.
@@ -902,11 +900,12 @@ func NewPebble(ctx context.Context, cfg PebbleConfig) (p *Pebble, err error) {
 		// Run oldDiskSlow asynchronously.
 		go oldDiskSlow(info)
 	}
-	cfg.Opts.EventListener = pebble.TeeEventListener(
+	el := pebble.TeeEventListener(
 		p.makeMetricEtcEventListener(ctx),
 		lel,
 	)
-	p.eventListener = &cfg.Opts.EventListener
+	cfg.Opts.EventListener = &el
+	p.eventListener = cfg.Opts.EventListener
 	p.wrappedIntentWriter = wrapIntentWriter(ctx, p)
 
 	// Read the current store cluster version.
@@ -1859,7 +1858,7 @@ func (p *pebbleReadOnly) rawMVCCGet(key []byte) ([]byte, error) {
 		UpperBound:                roachpb.BytesNext(key),
 		OnlyReadGuaranteedDurable: onlyReadGuaranteedDurable,
 	}
-	iter := p.parent.db.NewIter(&options)
+	iter, _ := p.parent.db.NewIter(&options)
 	defer func() {
 		// Already handled error.
 		_ = iter.Close()
@@ -1934,7 +1933,6 @@ func (p *pebbleReadOnly) NewMVCCIterator(iterKind MVCCIterKind, opts IterOptions
 	} else {
 		iter.init(p.parent.db, p.iter, opts, p.durability)
 		if p.iter == nil {
-			// For future cloning.
 			p.iter = iter.iter
 		}
 		iter.reusable = true
@@ -1969,7 +1967,6 @@ func (p *pebbleReadOnly) NewEngineIterator(opts IterOptions) EngineIterator {
 	} else {
 		iter.init(p.parent.db, p.iter, opts, p.durability)
 		if p.iter == nil {
-			// For future cloning.
 			p.iter = iter.iter
 		}
 		iter.reusable = true
@@ -2003,7 +2000,7 @@ func (p *pebbleReadOnly) PinEngineStateForIterators() error {
 		if p.durability == GuaranteedDurability {
 			o = &pebble.IterOptions{OnlyReadGuaranteedDurable: true}
 		}
-		p.iter = p.parent.db.NewIter(o)
+		p.iter, _ = p.parent.db.NewIter(o)
 	}
 	return nil
 }

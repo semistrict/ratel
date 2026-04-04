@@ -122,9 +122,20 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 	}
 }
 
+// EngineCloser is optionally implemented by StickyInMemEnginesRegistry
+// to close individual engines.
+type EngineCloser interface {
+	CloseEngine(id string)
+}
+
 // StopNode stops a node. The node can be restarted with RestartNode.
 func (c *Cluster) StopNode(nodeIdx int) {
 	c.StopServer(nodeIdx)
+	// Close the Pebble engine to stop its background goroutines
+	// (disk health tickers). The VFS is preserved for restart.
+	if ec, ok := c.stickyRegistry.(EngineCloser); ok {
+		ec.CloseEngine(fmt.Sprintf("inproc-%d", nodeIdx))
+	}
 }
 
 // RestartNode restarts a previously stopped node, re-opening its
@@ -153,9 +164,12 @@ func (c *Cluster) NodeAddr(nodeIdx int) string {
 	return c.addrs[nodeIdx]
 }
 
-// Stop stops the cluster and closes the registry.
+// Stop stops the cluster and closes the registry. Sticky engines are
+// closed first to stop Pebble background goroutines before the
+// stopper tries to quiesce (which advances fake time under synctest
+// and can deadlock if Pebble tickers are still running).
 func (c *Cluster) Stop() {
-	c.Stopper().Stop(nil)
 	c.stickyRegistry.CloseAllStickyInMemEngines()
+	c.Stopper().Stop(nil)
 	c.Registry.Close()
 }

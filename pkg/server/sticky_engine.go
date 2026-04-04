@@ -171,6 +171,19 @@ func (registry *stickyInMemEnginesRegistryImpl) GetUnderlyingFS(
 	return nil, errors.Errorf("engine '%s' was not created", spec.StickyInMemoryEngineID)
 }
 
+// CloseEngine closes the underlying Pebble engine for the given ID,
+// stopping its background goroutines. The VFS is preserved for restart.
+func (registry *stickyInMemEnginesRegistryImpl) CloseEngine(id string) {
+	registry.mu.Lock()
+	defer registry.mu.Unlock()
+	engine, ok := registry.entries[id]
+	if !ok || engine.closed {
+		return
+	}
+	engine.Engine.Close()
+	engine.closed = true
+}
+
 // CloseAllStickyInMemEngines closes and removes all sticky in memory engines.
 func (registry *stickyInMemEnginesRegistryImpl) CloseAllStickyInMemEngines() {
 	registry.mu.Lock()
@@ -186,8 +199,10 @@ func (registry *stickyInMemEnginesRegistryImpl) deleteEngine(id string) {
 	if !ok {
 		return
 	}
-	engine.closed = true
-	engine.Engine.Close()
+	if !engine.closed {
+		engine.closed = true
+		engine.Engine.Close()
+	}
 	delete(registry.entries, id)
 }
 

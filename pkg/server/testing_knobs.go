@@ -59,6 +59,19 @@ type TestingKnobs struct {
 	// server fails to start.
 	RPCListener net.Listener
 
+	// SQLListener, if set, is used for the SQL endpoint instead of binding
+	// a new TCP listener. Only used when SplitListenSQL is true.
+	SQLListener net.Listener
+
+	// HTTPListener, if set, is used for the HTTP endpoint instead of binding
+	// a new TCP listener.
+	HTTPListener net.Listener
+
+	// ShareRPCListenSQL, if set, forces SQL to share the RPC listener via
+	// cmux instead of binding a separate TCP listener. This is used for
+	// in-memory networking where we want all traffic on one listener.
+	ShareRPCListenSQL bool
+
 	// BinaryVersionOverride overrides the binary version the CRDB server thinks
 	// it's running.
 	//

@@ -1259,7 +1259,12 @@ func (rpcCtx *Context) grpcDialRaw(
 		redialChan: make(chan struct{}),
 	}
 	dialerFunc := dialer.dial
-	if rpcCtx.Knobs.ArtificialLatencyMap != nil {
+	if rpcCtx.Knobs.DialerFunc != nil {
+		// Use the injected dialer (e.g. bufconn for in-memory networking).
+		// This bypasses the onlyOnceDialer and artificial latency since
+		// the caller controls the transport entirely.
+		dialerFunc = rpcCtx.Knobs.DialerFunc
+	} else if rpcCtx.Knobs.ArtificialLatencyMap != nil {
 		latency := rpcCtx.Knobs.ArtificialLatencyMap[target]
 		log.VEventf(ctx, 1, "connecting with simulated latency %dms",
 			latency)

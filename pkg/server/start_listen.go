@@ -58,9 +58,16 @@ func startListenRPCAndSQL(
 
 	var pgL net.Listener
 	if cfg.SplitListenSQL {
-		pgL, err = ListenAndUpdateAddrs(ctx, &cfg.SQLAddr, &cfg.SQLAdvertiseAddr, "sql")
-		if err != nil {
-			return nil, nil, err
+		if k := cfg.TestingKnobs.Server; k != nil {
+			if knobs := k.(*TestingKnobs); knobs.SQLListener != nil {
+				pgL = knobs.SQLListener
+			}
+		}
+		if pgL == nil {
+			pgL, err = ListenAndUpdateAddrs(ctx, &cfg.SQLAddr, &cfg.SQLAdvertiseAddr, "sql")
+			if err != nil {
+				return nil, nil, err
+			}
 		}
 		// The SQL listener shutdown worker, which closes everything under
 		// the SQL port when the stopper indicates we are shutting down.

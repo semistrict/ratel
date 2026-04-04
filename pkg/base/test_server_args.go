@@ -151,6 +151,11 @@ type TestServerArgs struct {
 	// TODO(irfansharif): Remove all uses of this when we rip out the system
 	// config span.
 	DisableSpanConfigs bool
+
+	// SQLDialFunc, if set, is used to dial SQL (pgwire) connections instead
+	// of the default TCP dialer. This is needed for in-process test clusters
+	// that use in-memory networking where no real TCP port is listening.
+	SQLDialFunc func(network, addr string) (net.Conn, error)
 }
 
 // TestClusterArgs contains the parameters one can set when creating a test

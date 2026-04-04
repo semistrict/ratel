@@ -80,6 +80,14 @@ func (r *Registry) DialerFunc() func(ctx context.Context, addr string) (net.Conn
 	return r.Dial
 }
 
+// SQLDialFunc returns a function compatible with base.TestServerArgs.SQLDialFunc
+// that routes SQL (pgwire) connections through this registry.
+func (r *Registry) SQLDialFunc() func(network, addr string) (net.Conn, error) {
+	return func(network, addr string) (net.Conn, error) {
+		return r.Dial(context.Background(), addr)
+	}
+}
+
 // Block prevents new connections to the given address, simulating a
 // network partition. Existing connections are not affected.
 func (r *Registry) Block(addr string) {

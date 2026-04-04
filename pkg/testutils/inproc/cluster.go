@@ -76,6 +76,7 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 		}
 		args.Insecure = true
 		args.Addr = rpcAddr
+		args.SQLDialFunc = registry.SQLDialFunc()
 		args.Listener = rpcListener
 		args.StoreSpecs = []base.StoreSpec{
 			{InMemory: true, StickyInMemoryEngineID: fmt.Sprintf("inproc-%d", i)},

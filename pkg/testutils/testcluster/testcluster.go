@@ -496,10 +496,22 @@ func (tc *TestCluster) startServer(idx int, serverArgs base.TestServerArgs) erro
 		return err
 	}
 
-	dbConn, err := serverutils.OpenDBConnE(
-		server.ServingSQLAddr(), serverArgs.UseDatabase, serverArgs.Insecure, server.Stopper())
-	if err != nil {
-		return err
+	var dbConn *gosql.DB
+	if serverArgs.SQLDialFunc != nil {
+		var err error
+		dbConn, err = serverutils.OpenDBConnWithDialerE(
+			server.ServingSQLAddr(), serverArgs.UseDatabase, serverArgs.Insecure,
+			server.Stopper(), serverArgs.SQLDialFunc)
+		if err != nil {
+			return err
+		}
+	} else {
+		var err error
+		dbConn, err = serverutils.OpenDBConnE(
+			server.ServingSQLAddr(), serverArgs.UseDatabase, serverArgs.Insecure, server.Stopper())
+		if err != nil {
+			return err
+		}
 	}
 
 	tc.mu.Lock()
@@ -1499,8 +1511,14 @@ func (tc *TestCluster) RestartServerWithInspect(idx int, inspect func(s *server.
 			return err
 		}
 
-		dbConn, err := serverutils.OpenDBConnE(srv.ServingSQLAddr(),
-			serverArgs.UseDatabase, serverArgs.Insecure, srv.Stopper())
+		var dbConn *gosql.DB
+		if serverArgs.SQLDialFunc != nil {
+			dbConn, err = serverutils.OpenDBConnWithDialerE(srv.ServingSQLAddr(),
+				serverArgs.UseDatabase, serverArgs.Insecure, srv.Stopper(), serverArgs.SQLDialFunc)
+		} else {
+			dbConn, err = serverutils.OpenDBConnE(srv.ServingSQLAddr(),
+				serverArgs.UseDatabase, serverArgs.Insecure, srv.Stopper())
+		}
 		if err != nil {
 			return err
 		}

@@ -1,0 +1,11 @@
+bin/
+lib/
+build/defs.mk
+c-deps/
+*.tar.gz
+*.tgz
+cockroachoss
+cockroachshort
+cockroach-sql
+ratel
+.git

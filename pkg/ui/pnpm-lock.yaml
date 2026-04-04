@@ -13,7 +13,7 @@ overrides:
   immer: 9.0.21
   loader-utils: 2.0.4
   typescript: 5.9.3
-  uplot: 1.6.19
+  uplot: ~1.6.31
   xmldom: npm:@xmldom/xmldom@~0.8.10
   '@babel/traverse': ~7.26.10
   eventsource: ~1.1.2
@@ -31,7 +31,7 @@ overrides:
   ssri: ~6.0.2
   node-fetch: ~2.7.0
   trim-newlines: ~3.0.1
-  serialize-javascript: ~3.1.0
+  serialize-javascript: ~7.0.5
   minimatch: ~3.1.4
   braces: ~3.0.3
   path-to-regexp: ~0.1.12
@@ -39,6 +39,10 @@ overrides:
   semver: ~5.7.2
   immutable: ~3.8.3
   flatted: ~3.4.2
+  d3-color: ~3.1.0
+  webpack-dev-middleware: ~5.3.4
+  http-proxy-middleware: ~2.0.9
+  tar: ~7.5.11
 
 packageExtensionsChecksum: sha256-vMIaXaFGuvicICAFm9a34L5aJV8E9Tx7sN9JOhT53nw=
 
@@ -315,8 +319,8 @@ importers:
         specifier: ^10.2.0
         version: 10.7.3
       http-proxy-middleware:
-        specifier: ^1.0.5
-        version: 1.3.1
+        specifier: ~2.0.9
+        version: 2.0.9(debug@4.4.3(supports-color@6.1.0))
       identity-obj-proxy:
         specifier: ^3.0.0
         version: 3.0.0
@@ -414,8 +418,8 @@ importers:
         specifier: 5.9.3
         version: 5.9.3
       uplot:
-        specifier: 1.6.19
-        version: 1.6.19
+        specifier: ~1.6.31
+        version: 1.6.32
       url-loader:
         specifier: ^4.1.0
         version: 4.1.1(file-loader@6.2.0(webpack@4.47.0))(webpack@4.47.0)
@@ -742,8 +746,8 @@ importers:
         specifier: ^6.0.1
         version: 6.2.0(html-webpack-plugin@4.5.2(webpack@4.47.0))
       http-proxy-middleware:
-        specifier: ^0.19.1
-        version: 0.19.2
+        specifier: ~2.0.9
+        version: 2.0.9(debug@4.4.3(supports-color@6.1.0))
       jsdoc:
         specifier: ^3.4.2
         version: 3.6.11
@@ -841,8 +845,8 @@ importers:
         specifier: ^2.8.15
         version: 2.8.29
       uplot:
-        specifier: 1.6.19
-        version: 1.6.19
+        specifier: ~1.6.31
+        version: 1.6.32
       url-loader:
         specifier: 2.1.0
         version: 2.1.0(webpack@4.47.0)
@@ -1982,6 +1986,10 @@ packages:
     peerDependenciesMeta:
       '@types/node':
         optional: true
+
+  '@isaacs/fs-minipass@4.0.1':
+    resolution: {integrity: sha512-wgm9Ehl2jpeqP3zw/7mo3kRHFp5MEDhqAdwy1fTGkHAwnkGOVsgpvQhL8B5n1qlb01jV3n/bI0ZfZp5lWA1k4w==}
+    engines: {node: '>=18.0.0'}
 
   '@istanbuljs/load-nyc-config@1.1.0':
     resolution: {integrity: sha512-VjeHSlIzpv/NyD3N0YuHfXOPDIixcA1q2ZV98wsMqcYlPmv2n3Yb2lYP9XMElnaFVXg5A7YLTeLu6V84uQDjmQ==}
@@ -3899,6 +3907,10 @@ packages:
     resolution: {integrity: sha512-bIomtDF5KGpdogkLd9VspvFzk9KfpyyGlS8YFVZl7TGPBHL5snIOnxeshwVgPteQ9b4Eydl+pVbIyE1DcvCWgQ==}
     engines: {node: '>=10'}
 
+  chownr@3.0.0:
+    resolution: {integrity: sha512-+IxzY9BZOQd/XuYPRmrvEVjF/nqj5kgT4kEq7VofrDoM1MxoRjEWkrCC3EtLi59TVawxTAn+orJwFQcrqEN1+g==}
+    engines: {node: '>=18'}
+
   chrome-trace-event@1.0.4:
     resolution: {integrity: sha512-rNjApaLzuwaOTjCiT8lSDdGN1APCiqkChLMJxJPWLunPAt5fy8xgU9/jNOchV84wfIxrA0lRQB7oCT8jrn/wrQ==}
     engines: {node: '>=6.0'}
@@ -4028,6 +4040,9 @@ packages:
   color-support@1.1.3:
     resolution: {integrity: sha512-qiBjkpbMLO/HL68y+lh4q0/O1MZFj2RX6X/KmMa3+gJD3z+WwI1ZzDHysvqHGS3mP6mznPckpXmw1nI9cJjyRg==}
     hasBin: true
+
+  colorette@2.0.20:
+    resolution: {integrity: sha512-IfEDxwoWIjkeXL1eXcDiow4UbKjhLdq6/EuSVR9GMN7KVH3r9gQ83e73hsz1Nd1T3ijd5xv1wcWRYO+D6kCI2w==}
 
   colors@1.4.0:
     resolution: {integrity: sha512-a+UqTh4kgZg/SlGvfbzDHpgRu7AAQOmmqRHJnxhRZICKFUT91brVhNNt58CMWU9PsBbv3PDCZUHbVxuDiH2mtA==}
@@ -4327,8 +4342,9 @@ packages:
   d3-array@2.12.1:
     resolution: {integrity: sha512-B0ErZK/66mHtEsR1TkPEEkwdy+WDesimkM5gpZr5Dsg54BiTA5RXtYW5qTLIAcekaS9xfZrzBLF/OAkB3Qn1YQ==}
 
-  d3-color@2.0.0:
-    resolution: {integrity: sha512-SPXi0TSKPD4g9tw0NMZFnR95XVgUZiBH+uUTqQuDu1OsE2zomHU7ho0FISciaPvosimixwHFl3WHLGabv6dDgQ==}
+  d3-color@3.1.0:
+    resolution: {integrity: sha512-zg/chbXyeBtMQ1LbD/WSoW2DpC3I0mpmPdW+ynRTj/x2DAWYrIY7qeZIHidozwV24m4iavr15lNwIwLxRmOxhA==}
+    engines: {node: '>=12'}
 
   d3-format@2.0.0:
     resolution: {integrity: sha512-Ab3S6XuE/Q+flY96HXT0jOXcM4EAClYFnRGY5zsjRGNy6qCYrQsMffs7cV5Q9xejb35zxW5hf/guKw34kvIKsA==}
@@ -5854,17 +5870,14 @@ packages:
     resolution: {integrity: sha512-k0zdNgqWTGA6aeIRVpvfVob4fL52dTfaehylg0Y4UvSySvOq/Y+BOyPrgpUrA7HylqvU8vIZGsRuXmspskV0Tg==}
     engines: {node: '>= 6'}
 
-  http-proxy-middleware@0.19.1:
-    resolution: {integrity: sha512-yHYTgWMQO8VvwNS22eLLloAkvungsKdKTLO8AJlftYIKNfJr3GK3zK0ZCfzDDGUBttdGc8xFy1mCitvNKQtC3Q==}
-    engines: {node: '>=4.0.0'}
-
-  http-proxy-middleware@0.19.2:
-    resolution: {integrity: sha512-aYk1rTKqLTus23X3L96LGNCGNgWpG4cG0XoZIT1GUPhhulEHX/QalnO6Vbo+WmKWi4AL2IidjuC0wZtbpg0yhQ==}
-    engines: {node: '>=4.0.0'}
-
-  http-proxy-middleware@1.3.1:
-    resolution: {integrity: sha512-13eVVDYS4z79w7f1+NPllJtOQFx/FdUW4btIvVRMaRlUY9VGstAbo5MOhLEuUgZFRHn3x50ufn25zkj/boZnEg==}
-    engines: {node: '>=8.0.0'}
+  http-proxy-middleware@2.0.9:
+    resolution: {integrity: sha512-c1IyJYLYppU574+YI7R4QyX2ystMtVXZwIdzazUIPIJsHuWNd+mho2j+bKoHftndicGj9yh+xjd+l0yj7VeT1Q==}
+    engines: {node: '>=12.0.0'}
+    peerDependencies:
+      '@types/express': ^4.17.13
+    peerDependenciesMeta:
+      '@types/express':
+        optional: true
 
   http-proxy@1.18.1:
     resolution: {integrity: sha512-7mz/721AbnJwIVbnaSv1Cz3Am0ZLT/UBwkC92VlxhXv/k/BBQfM2fXElQNC27BVGr0uwUpplYPQM9LnaBMR5NQ==}
@@ -7291,13 +7304,13 @@ packages:
     resolution: {integrity: sha512-DxiNidxSEK+tHG6zOIklvNOwm3hvCrbUrdtzY74U6HKTJxvIDfOUL5W5P2Ghd3DTkhhKPYGqeNUIh5qcM4YBfw==}
     engines: {node: '>=8'}
 
-  minipass@5.0.0:
-    resolution: {integrity: sha512-3FnjYuehv9k6ovOEbyOswadCDPX1piCfhV8ncmYtHOjuPwylVWsghTLo7rabjC3Rx5xD4HDx8Wm1xnMF7S5qFQ==}
-    engines: {node: '>=8'}
+  minipass@7.1.3:
+    resolution: {integrity: sha512-tEBHqDnIoM/1rXME1zgka9g6Q2lcoCkxHLuc7ODJ5BxbP5d4c2Z5cGgtXAku59200Cx7diuHTOYfSBD8n6mm8A==}
+    engines: {node: '>=16 || 14 >=14.17'}
 
-  minizlib@2.1.2:
-    resolution: {integrity: sha512-bAxsR8BVfj60DWXHE3u30oHzfl4G7khkSuPW+qvpd7jFRHm7dLxOjUk1EHACJ/hxLY8phGJ0YhYHZo7jil7Qdg==}
-    engines: {node: '>= 8'}
+  minizlib@3.1.0:
+    resolution: {integrity: sha512-KZxYo1BUkWD2TVFLr0MQoM8vUUigWD3LlD83a/75BqC+4qE0Hb1Vo5v1FgcfaNXvfXzr+5EhQ6ing/CaBijTlw==}
+    engines: {node: '>= 18'}
 
   mississippi@2.0.0:
     resolution: {integrity: sha512-zHo8v+otD1J10j/tC+VNoGK9keCuByhKovAvdn74dmxJl9+mWHnx6EMsDN4lgRoMI/eYo2nchAxniIbUPb5onw==}
@@ -8952,8 +8965,9 @@ packages:
     resolution: {integrity: sha512-VMbMxbDeehAxpOtWJXlcUS5E8iXh6QmN+BkRX1GARS3wRaXEEgzCcB10gTQazO42tpNIya8xIyNx8fll1OFPrg==}
     engines: {node: '>= 0.8.0'}
 
-  serialize-javascript@3.1.0:
-    resolution: {integrity: sha512-JIJT1DGiWmIKhzRsG91aS6Ze4sFUrYbltlkg2onR5OrnNM02Kl/hnY/T4FN2omvyeBbQmMJv+K4cPOpGzOTFBg==}
+  serialize-javascript@7.0.5:
+    resolution: {integrity: sha512-F4LcB0UqUl1zErq+1nYEEzSHJnIwb3AF2XWB94b+afhrekOUijwooAYqFyRbjYkm2PAKBabx6oYv/xDxNi8IBw==}
+    engines: {node: '>=20.0.0'}
 
   serve-favicon@2.5.1:
     resolution: {integrity: sha512-JndLBslCLA/ebr7rS3d+/EKkzTsTi1jI2T9l+vHfAaGJ7A7NhtDpSZ0lx81HCNWnnE0yHncG+SSnVf9IMxOwXQ==}
@@ -9474,10 +9488,9 @@ packages:
     resolution: {integrity: sha512-4WK/bYZmj8xLr+HUCODHGF1ZFzsYffasLUgEiMBY4fgtltdO6B4WJtlSbPaDTLpYTcGVwM2qLnFTICEcNxs3kA==}
     engines: {node: '>=6'}
 
-  tar@6.2.1:
-    resolution: {integrity: sha512-DZ4yORTwrbTj/7MZYq2w+/ZFdI6OZ/f9SFHR+71gIVUZhOQPHzVCLpvRnPgyaMpfWxxk/4ONva3GQSyNIKRv6A==}
-    engines: {node: '>=10'}
-    deprecated: Old versions of tar are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+  tar@7.5.13:
+    resolution: {integrity: sha512-tOG/7GyXpFevhXVh8jOPJrmtRpOTsYqUIkVdVooZYJS/z8WhfQUX8RJILmeuJNinGAMSu1veBr4asSHFt5/hng==}
+    engines: {node: '>=18'}
 
   telejson@6.0.8:
     resolution: {integrity: sha512-nerNXi+j8NK1QEfBHtZUN/aLdDcyupA//9kAboYLrtzZlPLpUfqbVGWb9zz91f/mIjRbAYhbgtnJHY8I1b5MBg==}
@@ -9543,10 +9556,6 @@ packages:
 
   thunky@1.1.0:
     resolution: {integrity: sha512-eHY7nBftgThBqOyHGVN+l8gF0BucP09fMo0oO/Lb0w1OF80dJv+lDVpXG60WMQvkcxAkNybKsrEIE3ZtKGmPrA==}
-
-  time-stamp@2.2.0:
-    resolution: {integrity: sha512-zxke8goJQpBeEgD82CXABeMh0LSJcj7CXEd0OHOg45HgcofF7pxNwZm9+RknpxpDhwN4gFpySkApKfFYfRQnUA==}
-    engines: {node: '>=0.10.0'}
 
   timers-browserify@2.0.12:
     resolution: {integrity: sha512-9phl76Cqm6FhSX9Xe1ZUAMLtm1BLkKj2Qd5ApyWkXzsMRaA7dgr81kf4wJmQf/hAvg8EEyJxDo3du/0KlhPiKQ==}
@@ -9911,8 +9920,8 @@ packages:
     peerDependencies:
       browserslist: '>= 4.21.0'
 
-  uplot@1.6.19:
-    resolution: {integrity: sha512-s5Oab13s8zUzuZ/KiSV0GRhEvuKptAg2831fkt2PFsginIP1NSsiNrcozlc+tTPuUEAt+4rAXqX521I1DrZwEg==}
+  uplot@1.6.32:
+    resolution: {integrity: sha512-KIMVnG68zvu5XXUbC4LQEPnhwOxBuLyW1AHtpm6IKTXImkbLgkMy+jabjLgSLMasNuGGzQm/ep3tOkyTxpiQIw==}
 
   uri-js@4.4.1:
     resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
@@ -10092,15 +10101,9 @@ packages:
     peerDependencies:
       webpack: '*'
 
-  webpack-dev-middleware@1.12.2:
-    resolution: {integrity: sha512-FCrqPy1yy/sN6U/SaEZcHKRXGlqU0DUaEBL45jkUYoB8foVb6wCnbIJ1HKIx+qUFTW+3JpVcCJCxZ8VATL4e+A==}
-    engines: {node: '>=0.6'}
-    peerDependencies:
-      webpack: ^1.0.0 || ^2.0.0 || ^3.0.0
-
-  webpack-dev-middleware@3.7.3:
-    resolution: {integrity: sha512-djelc/zGiz9nZj/U7PTBi2ViorGJXEWo/3ltkPbDyxCXhhEXkW0ce99falaok4TPj+AsxLiXJR0EBOb0zh9fKQ==}
-    engines: {node: '>= 6'}
+  webpack-dev-middleware@5.3.4:
+    resolution: {integrity: sha512-BVdTqhhs+0IfoeAf7EoH5WE+exCmqGerHfDM0IL096Px60Tq2Mn9MAbnaGUe6HiMa41KMCYF19gyzZmBcq/o4Q==}
+    engines: {node: '>= 12.13.0'}
     peerDependencies:
       webpack: ^4.0.0 || ^5.0.0
 
@@ -10380,6 +10383,10 @@ packages:
 
   yallist@4.0.0:
     resolution: {integrity: sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A==}
+
+  yallist@5.0.0:
+    resolution: {integrity: sha512-YgvUTfwqyc7UXVMrB+SImsVYSmTS8X/tSrtdNZMImM+n7+QTriRXyXim0mBrTXNeqzVF0KWGgHPeiyViFFrNDw==}
+    engines: {node: '>=18'}
 
   yaml@1.10.3:
     resolution: {integrity: sha512-vIYeF1u3CjlhAFekPPAk2h/Kv4T3mAkMox5OymRiJQB0spDP10LHvt+K7G9Ny6NuuMAb25/6n1qyUjAcGNf/AA==}
@@ -12404,6 +12411,10 @@ snapshots:
       '@types/node': 13.13.52
     optional: true
 
+  '@isaacs/fs-minipass@4.0.1':
+    dependencies:
+      minipass: 7.1.3
+
   '@istanbuljs/load-nyc-config@1.1.0':
     dependencies:
       camelcase: 5.3.1
@@ -12982,7 +12993,7 @@ snapshots:
       url-loader: 4.1.1(file-loader@6.2.0(webpack@4.47.0))(webpack@4.47.0)
       util-deprecate: 1.0.2
       webpack: 4.47.0(webpack-cli@3.3.12)
-      webpack-dev-middleware: 3.7.3(webpack@4.47.0)
+      webpack-dev-middleware: 5.3.4(webpack@4.47.0)
       webpack-filter-warnings-plugin: 1.2.1(webpack@4.47.0)
       webpack-hot-middleware: 2.26.1
       webpack-virtual-modules: 0.2.2
@@ -13043,7 +13054,7 @@ snapshots:
       url-loader: 4.1.1(file-loader@6.2.0(webpack@4.47.0))(webpack@4.47.0)
       util-deprecate: 1.0.2
       webpack: 4.47.0(webpack-cli@3.3.12)
-      webpack-dev-middleware: 3.7.3(webpack@4.47.0)
+      webpack-dev-middleware: 5.3.4(webpack@4.47.0)
       webpack-filter-warnings-plugin: 1.2.1(webpack@4.47.0)
       webpack-hot-middleware: 2.26.1
       webpack-virtual-modules: 0.2.2
@@ -13524,7 +13535,7 @@ snapshots:
       url-loader: 4.1.1(file-loader@6.2.0(webpack@4.47.0))(webpack@4.47.0)
       util-deprecate: 1.0.2
       webpack: 4.47.0(webpack-cli@3.3.12)
-      webpack-dev-middleware: 3.7.3(webpack@4.47.0)
+      webpack-dev-middleware: 5.3.4(webpack@4.47.0)
       webpack-virtual-modules: 0.2.2
     optionalDependencies:
       typescript: 5.9.3
@@ -13574,7 +13585,7 @@ snapshots:
       url-loader: 4.1.1(file-loader@6.2.0(webpack@4.47.0))(webpack@4.47.0)
       util-deprecate: 1.0.2
       webpack: 4.47.0(webpack-cli@3.3.12)
-      webpack-dev-middleware: 3.7.3(webpack@4.47.0)
+      webpack-dev-middleware: 5.3.4(webpack@4.47.0)
       webpack-virtual-modules: 0.2.2
     optionalDependencies:
       typescript: 5.9.3
@@ -15489,7 +15500,7 @@ snapshots:
       promise-inflight: 1.0.1(bluebird@3.7.2)
       rimraf: 3.0.2
       ssri: 6.0.2
-      tar: 6.2.1
+      tar: 7.5.13
       unique-filename: 1.1.1
     transitivePeerDependencies:
       - bluebird
@@ -15735,6 +15746,8 @@ snapshots:
 
   chownr@2.0.0: {}
 
+  chownr@3.0.0: {}
+
   chrome-trace-event@1.0.4: {}
 
   ci-info@2.0.0:
@@ -15867,6 +15880,8 @@ snapshots:
   color-name@1.1.4: {}
 
   color-support@1.1.3: {}
+
+  colorette@2.0.20: {}
 
   colors@1.4.0:
     optional: true
@@ -16028,7 +16043,7 @@ snapshots:
       loader-utils: 2.0.4
       minimatch: 3.1.5
       p-limit: 1.3.0
-      serialize-javascript: 3.1.0
+      serialize-javascript: 7.0.5
 
   core-js-compat@3.49.0:
     dependencies:
@@ -16312,7 +16327,7 @@ snapshots:
     dependencies:
       internmap: 1.0.1
 
-  d3-color@2.0.0: {}
+  d3-color@3.1.0: {}
 
   d3-format@2.0.0: {}
 
@@ -16329,7 +16344,7 @@ snapshots:
 
   d3-interpolate@2.0.1:
     dependencies:
-      d3-color: 2.0.0
+      d3-color: 3.1.0
 
   d3-scale@3.3.0:
     dependencies:
@@ -18506,27 +18521,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  http-proxy-middleware@0.19.1(debug@4.4.3(supports-color@6.1.0))(supports-color@6.1.0):
-    dependencies:
-      http-proxy: 1.18.1(debug@4.4.3(supports-color@6.1.0))
-      is-glob: 4.0.3
-      lodash: 4.18.1
-      micromatch: 3.1.10(supports-color@6.1.0)
-    transitivePeerDependencies:
-      - debug
-      - supports-color
-
-  http-proxy-middleware@0.19.2:
-    dependencies:
-      http-proxy: 1.18.1(debug@4.4.3(supports-color@6.1.0))
-      is-glob: 4.0.3
-      lodash: 4.18.1
-      micromatch: 3.1.10
-    transitivePeerDependencies:
-      - debug
-      - supports-color
-
-  http-proxy-middleware@1.3.1:
+  http-proxy-middleware@2.0.9(debug@4.4.3(supports-color@6.1.0)):
     dependencies:
       '@types/http-proxy': 1.17.17
       http-proxy: 1.18.1(debug@4.4.3(supports-color@6.1.0))
@@ -19711,7 +19706,7 @@ snapshots:
       lodash: 4.18.1
       source-map: 0.5.7
       webpack: 4.47.0(webpack-cli@3.3.12)
-      webpack-dev-middleware: 1.12.2(webpack@4.47.0)
+      webpack-dev-middleware: 5.3.4(webpack@4.47.0)
 
   karma@6.4.4:
     dependencies:
@@ -20325,12 +20320,11 @@ snapshots:
     dependencies:
       yallist: 4.0.0
 
-  minipass@5.0.0: {}
+  minipass@7.1.3: {}
 
-  minizlib@2.1.2:
+  minizlib@3.1.0:
     dependencies:
-      minipass: 3.3.6
-      yallist: 4.0.0
+      minipass: 7.1.3
 
   mississippi@2.0.0:
     dependencies:
@@ -22530,9 +22524,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  serialize-javascript@3.1.0:
-    dependencies:
-      randombytes: 2.1.0
+  serialize-javascript@7.0.5: {}
 
   serve-favicon@2.5.1:
     dependencies:
@@ -23256,14 +23248,13 @@ snapshots:
 
   tapable@1.1.3: {}
 
-  tar@6.2.1:
+  tar@7.5.13:
     dependencies:
-      chownr: 2.0.0
-      fs-minipass: 2.1.0
-      minipass: 5.0.0
-      minizlib: 2.1.2
-      mkdirp: 1.0.4
-      yallist: 4.0.0
+      '@isaacs/fs-minipass': 4.0.1
+      chownr: 3.0.0
+      minipass: 7.1.3
+      minizlib: 3.1.0
+      yallist: 5.0.0
 
   telejson@6.0.8:
     dependencies:
@@ -23296,7 +23287,7 @@ snapshots:
       find-cache-dir: 2.1.0
       is-wsl: 1.1.0
       schema-utils: 1.0.0
-      serialize-javascript: 3.1.0
+      serialize-javascript: 7.0.5
       source-map: 0.6.1
       terser: 4.8.1
       webpack: 4.47.0(webpack-cli@3.3.12)
@@ -23310,7 +23301,7 @@ snapshots:
       jest-worker: 26.6.2
       p-limit: 3.1.0
       schema-utils: 3.3.0
-      serialize-javascript: 3.1.0
+      serialize-javascript: 7.0.5
       source-map: 0.6.1
       terser: 5.46.1
       webpack: 4.47.0(webpack-cli@3.3.12)
@@ -23360,8 +23351,6 @@ snapshots:
   through@2.3.8: {}
 
   thunky@1.1.0: {}
-
-  time-stamp@2.2.0: {}
 
   timers-browserify@2.0.12:
     dependencies:
@@ -23715,7 +23704,7 @@ snapshots:
       escalade: 3.2.0
       picocolors: 1.1.1
 
-  uplot@1.6.19: {}
+  uplot@1.6.32: {}
 
   uri-js@4.4.1:
     dependencies:
@@ -23931,23 +23920,14 @@ snapshots:
       - utf-8-validate
     optional: true
 
-  webpack-dev-middleware@1.12.2(webpack@4.47.0):
+  webpack-dev-middleware@5.3.4(webpack@4.47.0):
     dependencies:
-      memory-fs: 0.4.1
-      mime: 1.6.0
-      path-is-absolute: 1.0.1
+      colorette: 2.0.20
+      memfs: 3.5.3
+      mime-types: 2.1.35
       range-parser: 1.2.1
-      time-stamp: 2.2.0
+      schema-utils: 4.3.3
       webpack: 4.47.0(webpack-cli@3.3.12)
-
-  webpack-dev-middleware@3.7.3(webpack@4.47.0):
-    dependencies:
-      memory-fs: 0.4.1
-      mime: 2.6.0
-      mkdirp: 0.5.6
-      range-parser: 1.2.1
-      webpack: 4.47.0(webpack-cli@3.3.12)
-      webpack-log: 2.0.0
 
   webpack-dev-server@3.11.3(webpack-cli@3.3.12)(webpack@4.47.0):
     dependencies:
@@ -23960,7 +23940,7 @@ snapshots:
       del: 4.1.1
       express: 4.22.1(supports-color@6.1.0)
       html-entities: 1.4.0
-      http-proxy-middleware: 0.19.1(debug@4.4.3(supports-color@6.1.0))(supports-color@6.1.0)
+      http-proxy-middleware: 2.0.9(debug@4.4.3(supports-color@6.1.0))
       import-local: 2.0.0
       internal-ip: 4.3.0
       ip: 1.1.9
@@ -23981,13 +23961,14 @@ snapshots:
       supports-color: 6.1.0
       url: 0.11.4
       webpack: 4.47.0(webpack-cli@3.3.12)
-      webpack-dev-middleware: 3.7.3(webpack@4.47.0)
+      webpack-dev-middleware: 5.3.4(webpack@4.47.0)
       webpack-log: 2.0.0
       ws: 6.2.3
       yargs: 13.3.2
     optionalDependencies:
       webpack-cli: 3.3.12(webpack@4.47.0)
     transitivePeerDependencies:
+      - '@types/express'
       - bufferutil
       - utf-8-validate
 
@@ -24263,6 +24244,8 @@ snapshots:
   yallist@3.1.1: {}
 
   yallist@4.0.0: {}
+
+  yallist@5.0.0: {}
 
   yaml@1.10.3: {}
 

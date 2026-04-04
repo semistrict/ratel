@@ -29,19 +29,26 @@ import (
 // a synctest bubble where all I/O must be virtualized.
 type Cluster struct {
 	*testcluster.TestCluster
-	Registry *Registry
-	addrs    []string
+	Registry       *Registry
+	addrs          []string
+	rpcListeners   []*Listener
+	stickyRegistry server.StickyInMemEnginesRegistry
 }
 
 // StartCluster creates and starts a multi-node in-process cluster
 // with in-memory networking and storage. All gRPC connections between
 // nodes go through the Registry's in-memory transport. HTTP and SQL
 // listeners are also in-memory (SQL shares the RPC listener via cmux).
+//
+// The cluster uses StickyEngineRegistry and ReusableListeners to
+// support node restarts.
 func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterArgs)) *Cluster {
 	registry := NewRegistry()
+	stickyRegistry := server.NewStickyInMemEnginesRegistry()
 
 	clusterArgs := base.TestClusterArgs{
 		ReplicationMode:   base.ReplicationManual,
+		ReusableListeners: true,
 		ServerArgsPerNode: make(map[int]base.TestServerArgs),
 	}
 
@@ -50,6 +57,7 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 	}
 
 	addrs := make([]string, nodes)
+	rpcListeners := make([]*Listener, nodes)
 
 	for i := 0; i < nodes; i++ {
 		rpcAddr := fmt.Sprintf("127.0.0.1:%d", 26257+i)
@@ -57,14 +65,16 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 		addrs[i] = rpcAddr
 
 		rpcListener := registry.Register(rpcAddr)
+		rpcListeners[i] = rpcListener
 		httpListener := NewListener(httpAddr)
 
 		args := clusterArgs.ServerArgsPerNode[i]
 		args.Insecure = true
 		args.Addr = rpcAddr
 		args.Listener = rpcListener
-		// Do NOT set args.SQLAddr — this keeps SplitListenSQL=false so
-		// SQL shares the RPC listener via cmux (already in-memory).
+		args.StoreSpecs = []base.StoreSpec{
+			{InMemory: true, StickyInMemoryEngineID: fmt.Sprintf("inproc-%d", i)},
+		}
 		args.Locality = roachpb.Locality{
 			Tiers: []roachpb.Tier{
 				{Key: "region", Value: "test"},
@@ -80,6 +90,7 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 		tk.RPCListener = rpcListener
 		tk.HTTPListener = httpListener
 		tk.ShareRPCListenSQL = true
+		tk.StickyEngineRegistry = stickyRegistry
 		tk.ContextTestingKnobs.DialerFunc = registry.DialerFunc()
 		args.Knobs.Server = tk
 
@@ -88,9 +99,27 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 
 	tc := testcluster.StartTestCluster(t, nodes, clusterArgs)
 	return &Cluster{
-		TestCluster: tc,
-		Registry:    registry,
-		addrs:       addrs,
+		TestCluster:    tc,
+		Registry:       registry,
+		addrs:          addrs,
+		rpcListeners:   rpcListeners,
+		stickyRegistry: stickyRegistry,
+	}
+}
+
+// StopNode stops a node. The node can be restarted with RestartNode.
+func (c *Cluster) StopNode(nodeIdx int) {
+	c.StopServer(nodeIdx)
+}
+
+// RestartNode restarts a previously stopped node, re-opening its
+// in-memory listeners.
+func (c *Cluster) RestartNode(t testing.TB, nodeIdx int) {
+	// Re-open the in-memory RPC listener so the restarted node can
+	// accept connections on the same address.
+	c.rpcListeners[nodeIdx].Reset()
+	if err := c.RestartServer(nodeIdx); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -112,5 +141,6 @@ func (c *Cluster) NodeAddr(nodeIdx int) string {
 // Stop stops the cluster and closes the registry.
 func (c *Cluster) Stop() {
 	c.Stopper().Stop(nil)
+	c.stickyRegistry.CloseAllStickyInMemEngines()
 	c.Registry.Close()
 }

@@ -17,13 +17,19 @@ package inproc
 import (
 	"context"
 	"net"
+	"sync"
 )
 
 // Listener is an in-memory net.Listener that uses net.Pipe() to create
 // paired connections. It is suitable for use inside a synctest bubble
 // where real TCP is not permitted.
+//
+// The listener supports being closed and re-opened via Reset(), which
+// is needed for node restarts in test clusters.
 type Listener struct {
-	addr   memAddr
+	addr memAddr
+
+	mu     sync.Mutex
 	ch     chan net.Conn
 	closed chan struct{}
 }
@@ -39,16 +45,23 @@ func NewListener(addr string) *Listener {
 
 // Accept waits for and returns the next connection to the listener.
 func (l *Listener) Accept() (net.Conn, error) {
+	l.mu.Lock()
+	ch := l.ch
+	closed := l.closed
+	l.mu.Unlock()
+
 	select {
-	case conn := <-l.ch:
+	case conn := <-ch:
 		return conn, nil
-	case <-l.closed:
+	case <-closed:
 		return nil, net.ErrClosed
 	}
 }
 
-// Close closes the listener.
+// Close closes the listener. It can be re-opened via Reset().
 func (l *Listener) Close() error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	select {
 	case <-l.closed:
 		// Already closed.
@@ -56,6 +69,15 @@ func (l *Listener) Close() error {
 		close(l.closed)
 	}
 	return nil
+}
+
+// Reset re-opens a closed listener so it can accept connections again.
+// This is used when restarting a node in a test cluster.
+func (l *Listener) Reset() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.ch = make(chan net.Conn)
+	l.closed = make(chan struct{})
 }
 
 // Addr returns the listener's network address.
@@ -67,11 +89,16 @@ func (l *Listener) Addr() net.Addr {
 // side is delivered via Accept(). Returns an error if the listener is
 // closed or the context is canceled.
 func (l *Listener) Dial(ctx context.Context) (net.Conn, error) {
+	l.mu.Lock()
+	ch := l.ch
+	closed := l.closed
+	l.mu.Unlock()
+
 	server, client := net.Pipe()
 	select {
-	case l.ch <- server:
+	case ch <- server:
 		return client, nil
-	case <-l.closed:
+	case <-closed:
 		server.Close()
 		client.Close()
 		return nil, net.ErrClosed

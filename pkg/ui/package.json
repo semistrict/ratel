@@ -27,7 +27,22 @@
       "fbjs": "0.8.17",
       "protobufjs": "6.8.6",
       "jest-environment-jsdom": "^27.5.1",
-      "immer": "9.0.21"
+      "immer": "9.0.21",
+      "loader-utils": "2.0.4",
+      "eventsource": ">=2.0.2",
+      "url-parse": ">=1.5.8",
+      "plist": ">=3.0.5",
+      "@babel/traverse": ">=7.23.2",
+      "socket.io-parser": ">=4.2.3",
+      "minimist": ">=1.2.6",
+      "elliptic": ">=6.6.1",
+      "shell-quote": ">=1.7.3",
+      "cipher-base": ">=1.0.5",
+      "form-data": ">=2.5.4",
+      "handlebars": ">=4.7.7",
+      "xmldom": "npm:@xmldom/xmldom@>=0.8.10",
+      "typescript": "5.9.3",
+      "uplot": "1.6.19"
     },
     "packageExtensions": {
       "uglify-js@2": {

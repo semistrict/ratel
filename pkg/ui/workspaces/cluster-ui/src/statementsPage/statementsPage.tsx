@@ -507,8 +507,8 @@ export class StatementsPage extends React.Component<
       .filter(statement => (filters.fullScan ? statement.fullScan : true))
       .filter(
         statement =>
-          statement.stats.service_lat.mean >= timeValue ||
-          timeValue === "empty",
+          timeValue === "empty" ||
+          statement.stats.service_lat.mean >= timeValue,
       )
       .filter(
         statement =>

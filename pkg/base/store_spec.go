@@ -33,6 +33,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/errors/oserror"
 	"github.com/cockroachdb/pebble"
+	"github.com/cockroachdb/pebble/objstorage/remote"
 	"github.com/cockroachdb/redact"
 	humanize "github.com/dustin/go-humanize"
 	"github.com/spf13/pflag"
@@ -198,6 +199,13 @@ type StoreSpec struct {
 	//   file:///path/to/dir  — local filesystem directory
 	//   s3://bucket/prefix   — Amazon S3 (requires additional config)
 	RemoteStoragePath string
+
+	// RemoteStorageFactory, if set, is used directly instead of parsing
+	// RemoteStoragePath. This allows tests to inject in-memory storage.
+	RemoteStorageFactory remote.StorageFactory
+	// RemoteMetadataStorage, if set, is used directly instead of parsing
+	// RemoteStoragePath. This allows tests to inject in-memory storage.
+	RemoteMetadataStorage remote.Storage
 	// RecoveryStoreID, if non-zero, is a store ID recovered from an external
 	// source (e.g. node registration) during crash recovery. It is passed
 	// through to PebbleConfig to download the correct manifest bundle.

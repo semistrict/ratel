@@ -1,0 +1,14 @@
+bin/
+lib/
+build/defs.mk
+c-deps/geos/
+c-deps/jemalloc/
+c-deps/krb5/
+c-deps/libroach/
+*.tar.gz
+*.tgz
+cockroachoss
+cockroachshort
+cockroach-sql
+ratel
+.git

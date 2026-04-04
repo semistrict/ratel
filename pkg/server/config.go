@@ -652,7 +652,11 @@ func (cfg *Config) CreateEngines(ctx context.Context) (Engines, error) {
 				return nil, errors.Errorf("store %d: using Pebble storage engine but StoreSpec provides RocksDB options", i)
 			}
 			// Configure remote storage if specified.
-			if spec.RemoteStoragePath != "" {
+			if spec.RemoteStorageFactory != nil {
+				pebbleConfig.RemoteStorageFactory = spec.RemoteStorageFactory
+				pebbleConfig.MetadataStorage = spec.RemoteMetadataStorage
+				pebbleConfig.RecoveryStoreID = spec.RecoveryStoreID
+			} else if spec.RemoteStoragePath != "" {
 				factory, metaStore, rsErr := storage.RemoteStorageFromURL(spec.RemoteStoragePath)
 				if rsErr != nil {
 					return nil, errors.Wrapf(rsErr, "store %d: remote storage", i)

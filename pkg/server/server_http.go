@@ -17,6 +17,7 @@ package server
 import (
 	"context"
 	"crypto/tls"
+	"net"
 	"net/http"
 
 	"github.com/NYTimes/gziphandler"
@@ -214,9 +215,18 @@ func (s *httpServer) start(
 	uiTLSConfig *tls.Config,
 	stopper *stop.Stopper,
 ) error {
-	httpLn, err := ListenAndUpdateAddrs(ctx, &s.cfg.HTTPAddr, &s.cfg.HTTPAdvertiseAddr, "http")
-	if err != nil {
-		return err
+	var httpLn net.Listener
+	if k := s.cfg.TestingKnobs.Server; k != nil {
+		if knobs := k.(*TestingKnobs); knobs.HTTPListener != nil {
+			httpLn = knobs.HTTPListener
+		}
+	}
+	if httpLn == nil {
+		var err error
+		httpLn, err = ListenAndUpdateAddrs(ctx, &s.cfg.HTTPAddr, &s.cfg.HTTPAdvertiseAddr, "http")
+		if err != nil {
+			return err
+		}
 	}
 	log.Eventf(ctx, "listening on http port %s", s.cfg.HTTPAddr)
 

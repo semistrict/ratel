@@ -18,7 +18,11 @@ import _ from "lodash";
 
 import { withBackground, withRouterProvider } from "src/storybook/decorators";
 import { randomName } from "src/storybook/fixtures";
-import { DatabasesPage, DatabasesPageProps } from "./databasesPage";
+import {
+  DatabasesPage,
+  DatabasesPageProps,
+  DatabasesPageDataMissingTable,
+} from "./databasesPage";
 
 import * as H from "history";
 const history = H.createHashHistory();
@@ -87,12 +91,12 @@ const withData: DatabasesPageProps = {
     return {
       loading: false,
       loaded: true,
-      lastError: null,
+      lastError: null as Error | null,
       name: randomName(),
       sizeInBytes: _.random(1000.0) * 1024 ** _.random(1, 2),
       tableCount: _.random(5, 100),
       rangeCount: _.random(50, 500),
-      missingTables: [],
+      missingTables: [] as DatabasesPageDataMissingTable[],
       nodesByRegionString:
         "gcp-europe-west1(n8), gcp-us-east1(n1), gcp-us-west1(n6)",
     };

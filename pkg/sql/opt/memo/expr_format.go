@@ -1019,7 +1019,8 @@ func (f *ExprFmtCtx) formatScalarWithLabel(
 
 // scalarPropsStrings returns a slice of strings, each describing a property;
 // for example:
-//   {"type=bool", "outer=(1)", "constraints=(/1: [/1 - /1]; tight)"}
+//
+//	{"type=bool", "outer=(1)", "constraints=(/1: [/1 - /1]; tight)"}
 func (f *ExprFmtCtx) scalarPropsStrings(scalar opt.ScalarExpr) []string {
 	typ := scalar.DataType()
 	if typ == nil {
@@ -1075,7 +1076,8 @@ func (f *ExprFmtCtx) scalarPropsStrings(scalar opt.ScalarExpr) []string {
 
 // FormatScalarProps writes out a string representation of the scalar
 // properties (with a preceding space); for example:
-//  " [type=bool, outer=(1), constraints=(/1: [/1 - /1]; tight)]"
+//
+//	" [type=bool, outer=(1), constraints=(/1: [/1 - /1]; tight)]"
 func (f *ExprFmtCtx) FormatScalarProps(scalar opt.ScalarExpr) {
 	props := f.scalarPropsStrings(scalar)
 	if len(props) != 0 {
@@ -1173,7 +1175,7 @@ func (f *ExprFmtCtx) formatScalarPrivate(scalar opt.ScalarExpr) {
 // formatIndex outputs the specified index into the context's buffer with the
 // format:
 //
-//   table_alias@index_name
+//	table_alias@index_name
 //
 // If reverse is true, ",rev" is appended.
 //
@@ -1318,8 +1320,7 @@ func (f *ExprFmtCtx) formatOptionalColList(
 // given list. Each child shows how the column will be mutated, with the id of
 // the "before" and "after" columns, similar to this:
 //
-//   a:1 => x:4
-//
+//	a:1 => x:4
 func (f *ExprFmtCtx) formatMutationCols(
 	nd RelExpr, tp treeprinter.Node, heading string, colList opt.OptionalColList, tabID opt.TableID,
 ) {
@@ -1358,7 +1359,8 @@ func (f *ExprFmtCtx) ColumnString(id opt.ColumnID) string {
 
 // formatColSimple outputs the specified column into the context's buffer using the
 // following format:
-//   label:id
+//
+//	label:id
 //
 // The :id part is omitted if the formatting flags include ExprFmtHideColumns.
 //
@@ -1394,10 +1396,12 @@ func (f *ExprFmtCtx) formatColSimpleToBuffer(buf *bytes.Buffer, label string, id
 
 // formatCol outputs the specified column into the context's buffer using the
 // following format:
-//   label:id(type)
+//
+//	label:id(type)
 //
 // If the column is not nullable, then this is the format:
-//   label:id(type!null)
+//
+//	label:id(type!null)
 //
 // Some of the components can be omitted depending on formatting flags.
 //

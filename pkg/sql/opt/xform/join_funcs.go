@@ -157,11 +157,10 @@ func (c *CustomFuncs) GenerateMergeJoins(
 //  1. The index has all the columns we need; this is the simple case, where we
 //     generate a LookupJoin expression in the current group:
 //
-//         Join                       LookupJoin(t@idx)
-//         /   \                           |
-//        /     \            ->            |
-//      Input  Scan(t)                   Input
-//
+//     Join                       LookupJoin(t@idx)
+//     /   \                           |
+//     /     \            ->            |
+//     Input  Scan(t)                   Input
 //
 //  2. The index is not covering, but we can fully evaluate the ON condition
 //     using the index, or we are doing an InnerJoin. We have to generate
@@ -170,18 +169,18 @@ func (c *CustomFuncs) GenerateMergeJoins(
 //     columns from one table, whereas we also need to output columns from
 //     Input.
 //
-//         Join                       LookupJoin(t@primary)
-//         /   \                           |
-//        /     \            ->            |
-//      Input  Scan(t)                LookupJoin(t@idx)
-//                                         |
-//                                         |
-//                                       Input
+//     Join                       LookupJoin(t@primary)
+//     /   \                           |
+//     /     \            ->            |
+//     Input  Scan(t)                LookupJoin(t@idx)
+//     |
+//     |
+//     Input
 //
 //     For example:
-//      CREATE TABLE abc (a INT PRIMARY KEY, b INT, c INT)
-//      CREATE TABLE xyz (x INT PRIMARY KEY, y INT, z INT, INDEX (y))
-//      SELECT * FROM abc JOIN xyz ON a=y
+//     CREATE TABLE abc (a INT PRIMARY KEY, b INT, c INT)
+//     CREATE TABLE xyz (x INT PRIMARY KEY, y INT, z INT, INDEX (y))
+//     SELECT * FROM abc JOIN xyz ON a=y
 //
 //     We want to first join abc with the index on y (which provides columns y, x)
 //     and then use a lookup join to retrieve column z. The "index join" (top
@@ -201,14 +200,13 @@ func (c *CustomFuncs) GenerateMergeJoins(
 //     behave accordingly.
 //
 //     For example, using the same tables in the example for case 2:
-//      SELECT * FROM abc LEFT JOIN xyz ON a=y AND b=z
+//     SELECT * FROM abc LEFT JOIN xyz ON a=y AND b=z
 //
 //     The first join will evaluate a=y and produce columns a,b,c,x,y,cont
 //     where cont is the continuation column used to group together rows that
 //     correspond to the same original a,b,c. The second join will fetch z from
 //     the primary index, evaluate b=z, and produce columns a,b,c,x,y,z. A
 //     similar approach works for anti-joins and semi-joins.
-//
 //
 // A lookup join can be created when the ON condition or implicit filters from
 // CHECK constraints and computed columns constrain a prefix of the index
@@ -218,37 +216,36 @@ func (c *CustomFuncs) GenerateMergeJoins(
 //
 // For example, consider the tables and query below.
 //
-//   CREATE TABLE abc (a INT PRIMARY KEY, b INT, c INT)
-//   CREATE TABLE xyz (
-//     x INT PRIMARY KEY,
-//     y INT,
-//     z INT NOT NULL,
-//     CHECK z IN (1, 2, 3),
-//     INDEX (z, y)
-//   )
-//   SELECT a, x FROM abc JOIN xyz ON a=y
+//	CREATE TABLE abc (a INT PRIMARY KEY, b INT, c INT)
+//	CREATE TABLE xyz (
+//	  x INT PRIMARY KEY,
+//	  y INT,
+//	  z INT NOT NULL,
+//	  CHECK z IN (1, 2, 3),
+//	  INDEX (z, y)
+//	)
+//	SELECT a, x FROM abc JOIN xyz ON a=y
 //
 // GenerateLookupJoins will perform the following transformation.
 //
-//         Join                       LookupJoin(t@idx)
-//         /   \                           |
-//        /     \            ->            |
-//      Input  Scan(t)                   Join
-//                                       /   \
-//                                      /     \
-//                                    Input  Values(1, 2, 3)
+//	   Join                       LookupJoin(t@idx)
+//	   /   \                           |
+//	  /     \            ->            |
+//	Input  Scan(t)                   Join
+//	                                 /   \
+//	                                /     \
+//	                              Input  Values(1, 2, 3)
 //
 // If a column is constrained to a single constant value, inlining normalization
 // rules will reduce the cross join into a project.
 //
-//         Join                       LookupJoin(t@idx)
-//         /   \                           |
-//        /     \            ->            |
-//      Input  Scan(t)                  Project
-//                                         |
-//                                         |
-//                                       Input
-//
+//	   Join                       LookupJoin(t@idx)
+//	   /   \                           |
+//	  /     \            ->            |
+//	Input  Scan(t)                  Project
+//	                                   |
+//	                                   |
+//	                                 Input
 func (c *CustomFuncs) GenerateLookupJoins(
 	grp memo.RelExpr,
 	joinType opt.Operator,
@@ -279,19 +276,19 @@ func (c *CustomFuncs) GenerateLookupJoins(
 //
 // For example:
 //
-//         Join                       LookupJoin(t@idx)
-//         /   \                           |
-//        /     \            ->            |
-//      Input  Project                   Input
-//               |
-//               |
-//             Scan(t)
+//	   Join                       LookupJoin(t@idx)
+//	   /   \                           |
+//	  /     \            ->            |
+//	Input  Project                   Input
+//	         |
+//	         |
+//	       Scan(t)
 //
 // This function and its associated rule currently require that:
 //
-//   1. The join is an inner join.
-//   2. The right side projects only virtual computed columns.
-//   3. All the projected virtual columns are covered by a single index.
+//  1. The join is an inner join.
+//  2. The right side projects only virtual computed columns.
+//  3. All the projected virtual columns are covered by a single index.
 //
 // It should be possible to support semi- and anti- joins. Left joins may be
 // possible with additional complexity.
@@ -1340,49 +1337,49 @@ func (c *CustomFuncs) mapInvertedJoin(
 // ok=true when a join equality constraint can be generated for the column. This
 // is possible when:
 //
-//   1. col is non-nullable.
-//   2. col is a computed column.
-//   3. Columns referenced in the computed expression are a subset of columns
-//      that already have equality constraints.
+//  1. col is non-nullable.
+//  2. col is a computed column.
+//  3. Columns referenced in the computed expression are a subset of columns
+//     that already have equality constraints.
 //
 // For example, consider the table and query:
 //
-//   CREATE TABLE a (
-//     a INT
-//   )
+//	CREATE TABLE a (
+//	  a INT
+//	)
 //
-//   CREATE TABLE bc (
-//     b INT,
-//     c INT NOT NULL AS (b + 1) STORED
-//   )
+//	CREATE TABLE bc (
+//	  b INT,
+//	  c INT NOT NULL AS (b + 1) STORED
+//	)
 //
-//   SELECT * FROM a JOIN b ON a = b
+//	SELECT * FROM a JOIN b ON a = b
 //
 // We can add an equality constraint for c because c is a function of b and b
 // has an equality constraint in the join predicate:
 //
-//   SELECT * FROM a JOIN b ON a = b AND a + 1 = c
+//	SELECT * FROM a JOIN b ON a = b AND a + 1 = c
 //
 // Condition (1) is required to prevent generating invalid equality constraints
 // for computed column expressions that can evaluate to NULL even when the
 // columns referenced in the expression are non-NULL. For example, consider the
 // table and query:
 //
-//   CREATE TABLE a (
-//     a INT
-//   )
+//	CREATE TABLE a (
+//	  a INT
+//	)
 //
-//   CREATE TABLE bc (
-//     b INT,
-//     c INT AS (CASE WHEN b > 0 THEN NULL ELSE -1 END) STORED
-//   )
+//	CREATE TABLE bc (
+//	  b INT,
+//	  c INT AS (CASE WHEN b > 0 THEN NULL ELSE -1 END) STORED
+//	)
 //
-//   SELECT a, b FROM a JOIN b ON a = b
+//	SELECT a, b FROM a JOIN b ON a = b
 //
 // The following is an invalid transformation: a row such as (a=1, b=1) would no
 // longer be returned because NULL=NULL is false.
 //
-//   SELECT a, b FROM a JOIN b ON a = b AND (CASE WHEN a > 0 THEN NULL ELSE -1 END) = c
+//	SELECT a, b FROM a JOIN b ON a = b AND (CASE WHEN a > 0 THEN NULL ELSE -1 END) = c
 //
 // TODO(mgartner): We can relax condition (1) to allow nullable columns if it
 // can be proven that the expression will never evaluate to NULL. We can use

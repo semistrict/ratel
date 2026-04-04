@@ -120,9 +120,9 @@ func methodExcludedFromTracing(method string) bool {
 //
 // For example:
 //
-//     s := grpcutil.NewServer(
-//         ...,  // (existing ServerOptions)
-//         grpc.UnaryInterceptor(ServerInterceptor(tracer)))
+//	s := grpcutil.NewServer(
+//	    ...,  // (existing ServerOptions)
+//	    grpc.UnaryInterceptor(ServerInterceptor(tracer)))
 //
 // All gRPC server spans will look for an tracing SpanMeta in the gRPC
 // metadata; if found, the server span will act as the ChildOf that RPC
@@ -172,9 +172,9 @@ func ServerInterceptor(tracer *Tracer) grpc.UnaryServerInterceptor {
 //
 // For example:
 //
-//     s := grpcutil.NewServer(
-//         ...,  // (existing ServerOptions)
-//         grpc.StreamInterceptor(StreamServerInterceptor(tracer)))
+//	s := grpcutil.NewServer(
+//	    ...,  // (existing ServerOptions)
+//	    grpc.StreamInterceptor(StreamServerInterceptor(tracer)))
 //
 // All gRPC server spans will look for a SpanMeta in the gRPC
 // metadata; if found, the server span will act as the ChildOf that RPC
@@ -253,10 +253,10 @@ func injectSpanMeta(ctx context.Context, tracer *Tracer, clientSpan *Span) conte
 //
 // For example:
 //
-//     conn, err := grpc.Dial(
-//         address,
-//         ...,  // (existing DialOptions)
-//         grpc.WithUnaryInterceptor(ClientInterceptor(tracer)))
+//	conn, err := grpc.Dial(
+//	    address,
+//	    ...,  // (existing DialOptions)
+//	    grpc.WithUnaryInterceptor(ClientInterceptor(tracer)))
 //
 // All gRPC client spans will inject the tracing SpanMeta into the gRPC
 // metadata; they will also look in the context.Context for an active
@@ -318,10 +318,10 @@ func ClientInterceptor(
 //
 // For example:
 //
-//     conn, err := grpc.Dial(
-//         address,
-//         ...,  // (existing DialOptions)
-//         grpc.WithStreamInterceptor(StreamClientInterceptor(tracer)))
+//	conn, err := grpc.Dial(
+//	    address,
+//	    ...,  // (existing DialOptions)
+//	    grpc.WithStreamInterceptor(StreamClientInterceptor(tracer)))
 //
 // All gRPC client spans will inject the tracing SpanMeta into the gRPC
 // metadata; they will also look in the context.Context for an active

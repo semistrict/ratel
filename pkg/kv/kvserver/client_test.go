@@ -12,7 +12,9 @@
 // implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-/* Package storage_test provides a means of testing store
+/*
+	Package storage_test provides a means of testing store
+
 functionality which depends on a fully-functional KV client. This
 cannot be done within the storage package because of circular
 dependencies.

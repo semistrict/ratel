@@ -28,7 +28,7 @@ import "github.com/cockroachdb/cockroach/pkg/roachpb"
 
 // D1 ————————————————————————————————————————————————
 //
-// Transaction.GlobalUncertaintyLimit
+// # Transaction.GlobalUncertaintyLimit
 //
 // A transaction's global uncertainty limit is the inclusive upper bound of its
 // uncertainty interval. The value is set to the transaction's initial timestamp
@@ -40,7 +40,7 @@ var D1 = roachpb.Transaction{}.GlobalUncertaintyLimit
 
 // D2 ————————————————————————————————————————————————
 //
-// Interval
+// # Interval
 //
 // When the transaction sends a request to a replica, an uncertainty interval
 // is computed. This interval consists of a global and a local component. The
@@ -51,7 +51,7 @@ var D2 = Interval{}
 
 // D3 ————————————————————————————————————————————————
 //
-// ReadWithinUncertaintyIntervalError
+// # ReadWithinUncertaintyIntervalError
 //
 // While reading, if a transaction encounters a value above its read timestamp
 // but equal to or below its global limit, it triggers a read within uncertainty
@@ -67,7 +67,7 @@ var D3 = roachpb.ReadWithinUncertaintyIntervalError{}
 
 // D4 ————————————————————————————————————————————————
 //
-// ObservedTimestamp
+// # ObservedTimestamp
 //
 // An observed timestamp is a combination of a NodeID and a Timestamp. The
 // timestamp is said to have been "observed" because it was pulled from the
@@ -81,7 +81,7 @@ var D4 = roachpb.ObservedTimestamp{}
 
 // D5 ————————————————————————————————————————————————
 //
-// Transaction.UpdateObservedTimestamp
+// # Transaction.UpdateObservedTimestamp
 //
 // A transaction collects observed timestamps as it visits nodes in the cluster
 // when performing reads and writes.
@@ -89,7 +89,7 @@ var D5 = (&roachpb.Transaction{}).UpdateObservedTimestamp
 
 // D6 ————————————————————————————————————————————————
 //
-// Transaction.ObservedTimestamps
+// # Transaction.ObservedTimestamps
 //
 // The observed timestamps are collected in a list on the transaction proto. The
 // purpose of this list is to avoid uncertainty related restarts which occur
@@ -97,7 +97,7 @@ var D5 = (&roachpb.Transaction{}).UpdateObservedTimestamp
 // field. The list helps avoid these restarts by establishing a lower
 // local_uncertainty_limit when evaluating a request on a node in the list.
 //
-// Meaning
+// # Meaning
 //
 // Morally speaking, having an entry for a node in this list means that this
 // node has been visited before, and that no more uncertainty restarts are
@@ -115,7 +115,7 @@ var D5 = (&roachpb.Transaction{}).UpdateObservedTimestamp
 // timestamp that is at least high as our entry in the list for node A, so no
 // future operation on node A will be uncertain.
 //
-// Correctness
+// # Correctness
 //
 // Thus, expressed properly, we can say that when a node has been read from
 // successfully before by a transaction, uncertainty for values written by a
@@ -126,10 +126,10 @@ var D5 = (&roachpb.Transaction{}).UpdateObservedTimestamp
 // leaseholder for had served any writes at higher timestamps than the clock
 // reading we observe. This implies the following property:
 //
-//    Any writes that the transaction may later see written by leaseholders on
-//    this node at higher timestamps than the observed timestamp could not have
-//    taken place causally before this transaction and can be ignored for the
-//    purposes of uncertainty.
+//	Any writes that the transaction may later see written by leaseholders on
+//	this node at higher timestamps than the observed timestamp could not have
+//	taken place causally before this transaction and can be ignored for the
+//	purposes of uncertainty.
 //
 // There are two invariants necessary for this property to hold:
 //
@@ -153,7 +153,7 @@ var D5 = (&roachpb.Transaction{}).UpdateObservedTimestamp
 //     invariant holds for all leaseholders, given that a Range's initial
 //     leaseholder assumes responsibility for an empty range with no writes.
 //
-// Usage
+// # Usage
 //
 // The property ensures that when this list holds a corresponding entry for the
 // node who owns the lease that the current request is executing under, we can
@@ -179,7 +179,7 @@ var D5 = (&roachpb.Transaction{}).UpdateObservedTimestamp
 // we may add that to the list, which eliminates read uncertainty for reads on
 // that node.
 //
-// Follower Reads
+// # Follower Reads
 //
 // If the replica serving a transaction's read is not the leaseholder for its
 // range, an observed timestamp pulled from the follower node's clock has no
@@ -198,7 +198,7 @@ var D6 = roachpb.Transaction{}.ObservedTimestamps
 
 // D7 ————————————————————————————————————————————————
 //
-// TimestampFromServerClock
+// # TimestampFromServerClock
 //
 // Non-transactional requests that defer their timestamp allocation to the
 // leaseholder of their (single) range also have uncertainty intervals, which
@@ -229,85 +229,85 @@ var D6 = roachpb.Transaction{}.ObservedTimestamps
 // "no" for the following reasons, so they cannot forgo the use of uncertainty
 // interval:
 //
-// 1. the request timestamp is allocated before consulting the replica's lease.
-//    This means that there are times when the replica is not the leaseholder at
-//    the point of timestamp allocation, and only becomes the leaseholder later.
-//    In such cases, the timestamp assigned to the request is not guaranteed to
-//    be greater than the written_timestamp of all writes served by the range at
-//    the time of allocation. This is true despite invariants 1 & 2 from above,
-//    because the replica allocating the timestamp is not yet the leaseholder.
+//  1. the request timestamp is allocated before consulting the replica's lease.
+//     This means that there are times when the replica is not the leaseholder at
+//     the point of timestamp allocation, and only becomes the leaseholder later.
+//     In such cases, the timestamp assigned to the request is not guaranteed to
+//     be greater than the written_timestamp of all writes served by the range at
+//     the time of allocation. This is true despite invariants 1 & 2 from above,
+//     because the replica allocating the timestamp is not yet the leaseholder.
 //
-//    In cases where the replica that assigned the non-transactional request's
-//    timestamp takes over as the leaseholder after the timestamp allocation, we
-//    expect minimumLocalLimitForLeaseholder to forward the local uncertainty
-//    limit above TimestampFromServerClock, to the lease start time.
+//     In cases where the replica that assigned the non-transactional request's
+//     timestamp takes over as the leaseholder after the timestamp allocation, we
+//     expect minimumLocalLimitForLeaseholder to forward the local uncertainty
+//     limit above TimestampFromServerClock, to the lease start time.
 //
-//    For example, consider the following series of events:
-//    - client writes k = v1
-//    - leaseholder writes v1 at ts = 100
-//    - client receives ack for write
-//    - client later wants to read k using a non-txn request
-//    - follower replica with slower clock receives non-txn request
-//    - follower replica assigns request ts = 95
-//    - lease transferred to follower replica with lease start time = 101
-//    - non-txn request must use 101 as local limit of uncertainty interval to
-//      ensure that it observes k = v1 in its uncertainty interval, performs a
-//      server-side retry, bumps its read timestamp, and returns k = v1. Failure
-//      to do so would be a stale read.
+//     For example, consider the following series of events:
+//     - client writes k = v1
+//     - leaseholder writes v1 at ts = 100
+//     - client receives ack for write
+//     - client later wants to read k using a non-txn request
+//     - follower replica with slower clock receives non-txn request
+//     - follower replica assigns request ts = 95
+//     - lease transferred to follower replica with lease start time = 101
+//     - non-txn request must use 101 as local limit of uncertainty interval to
+//     ensure that it observes k = v1 in its uncertainty interval, performs a
+//     server-side retry, bumps its read timestamp, and returns k = v1. Failure
+//     to do so would be a stale read.
 //
-// 2. even if the replica's lease is stable and the timestamp is assigned to the
-//    non-transactional request by the leaseholder, the assigned clock reading
-//    only reflects the written_timestamp of all of the writes served by the
-//    leaseholder (and previous leaseholders) thus far. This clock reading is
-//    not guaranteed to lead the commit timestamp of all of these writes,
-//    especially if they are committed remotely and resolved after the request
-//    has received its clock reading but before the request begins evaluating.
+//  2. even if the replica's lease is stable and the timestamp is assigned to the
+//     non-transactional request by the leaseholder, the assigned clock reading
+//     only reflects the written_timestamp of all of the writes served by the
+//     leaseholder (and previous leaseholders) thus far. This clock reading is
+//     not guaranteed to lead the commit timestamp of all of these writes,
+//     especially if they are committed remotely and resolved after the request
+//     has received its clock reading but before the request begins evaluating.
 //
-//    As a result, the non-transactional request needs an uncertainty interval
-//    with a global uncertainty limit far enough in advance of the leaseholder's
-//    local HLC clock to ensure that it considers any value that was part of a
-//    transaction which could have committed before the request was received by
-//    the leaseholder to be uncertain. Concretely, the non-transactional request
-//    needs to consider values of the following form to be uncertain:
+//     As a result, the non-transactional request needs an uncertainty interval
+//     with a global uncertainty limit far enough in advance of the leaseholder's
+//     local HLC clock to ensure that it considers any value that was part of a
+//     transaction which could have committed before the request was received by
+//     the leaseholder to be uncertain. Concretely, the non-transactional request
+//     needs to consider values of the following form to be uncertain:
 //
-//      written_timestamp < local_limit && commit_timestamp < global_limit
+//     written_timestamp < local_limit && commit_timestamp < global_limit
 //
-//    The value that the non-transactional request is observing may have been
-//    written on the local leaseholder at time 10, its transaction may have been
-//    committed remotely at time 20, acknowledged, then the non-transactional
-//    request may have begun and received a timestamp of 15 from the local
-//    leaseholder, then finally the value may have been resolved asynchronously
-//    and moved to timestamp 20 (written_timestamp: 10, commit_timestamp: 20).
-//    The failure of the non-transactional request to observe this value would
-//    be a stale read.
+//     The value that the non-transactional request is observing may have been
+//     written on the local leaseholder at time 10, its transaction may have been
+//     committed remotely at time 20, acknowledged, then the non-transactional
+//     request may have begun and received a timestamp of 15 from the local
+//     leaseholder, then finally the value may have been resolved asynchronously
+//     and moved to timestamp 20 (written_timestamp: 10, commit_timestamp: 20).
+//     The failure of the non-transactional request to observe this value would
+//     be a stale read.
 //
-//    For example, consider the following series of events:
-//    - client begins a txn and is assigned provisional commit timestamp = 10
-//    - client's txn performs a Put(k, v1)
-//    - leaseholder serves Put(k, v1), lays down intent at written_timestamp = 10
-//    - client's txn performs a write elsewhere and hits a WriteTooOldError
-//      that bumps its provisional commit timestamp to 20
-//    - client's txn refreshes to ts = 20. This notably happens without
-//      involvement of the leaseholder that served the Put (this is at the heart
-//      of #36431), so that leaseholder's clock is not updated
-//    - client's txn commits remotely and client receives the acknowledgment
-//    - client later initiates non-txn read of k
-//    - leaseholder assigns read timestamp ts = 15
-//    - asynchronous intent resolution resolves the txn's intent at k, moving v1
-//      to ts = 20 in the process
-//    - non-txn request must use an uncertainty interval that extends past 20
-//      to ensure that it observes k = v1 in uncertainty interval, performs a
-//      server-side retry, bumps its read timestamp, and returns k = v1. Failure
-//      to do so would be a stale read.
+//     For example, consider the following series of events:
+//     - client begins a txn and is assigned provisional commit timestamp = 10
+//     - client's txn performs a Put(k, v1)
+//     - leaseholder serves Put(k, v1), lays down intent at written_timestamp = 10
+//     - client's txn performs a write elsewhere and hits a WriteTooOldError
+//     that bumps its provisional commit timestamp to 20
+//     - client's txn refreshes to ts = 20. This notably happens without
+//     involvement of the leaseholder that served the Put (this is at the heart
+//     of #36431), so that leaseholder's clock is not updated
+//     - client's txn commits remotely and client receives the acknowledgment
+//     - client later initiates non-txn read of k
+//     - leaseholder assigns read timestamp ts = 15
+//     - asynchronous intent resolution resolves the txn's intent at k, moving v1
+//     to ts = 20 in the process
+//     - non-txn request must use an uncertainty interval that extends past 20
+//     to ensure that it observes k = v1 in uncertainty interval, performs a
+//     server-side retry, bumps its read timestamp, and returns k = v1. Failure
+//     to do so would be a stale read.
 //
-//    TODO(nvanbenschoten): expand on this when we fix #36431. For now, this can
-//    be framed in relation to synthetic timestamps, but it's easier to discuss
-//    in terms of the impending "written_timestamp" attribute of each value,
-//    even though written_timestamps do not yet exist in code.
+//     TODO(nvanbenschoten): expand on this when we fix #36431. For now, this can
+//     be framed in relation to synthetic timestamps, but it's easier to discuss
+//     in terms of the impending "written_timestamp" attribute of each value,
+//     even though written_timestamps do not yet exist in code.
 //
-//    TODO(nvanbenschoten): add more direct testing for this when we fix #36431.
+//     TODO(nvanbenschoten): add more direct testing for this when we fix #36431.
 //
-//    TODO(nvanbenschoten): add another reason here once we address #73292.
+//     TODO(nvanbenschoten): add another reason here once we address #73292.
 //
 // Convenient, because non-transactional requests are always scoped to a
 // single-range, those that hit uncertainty errors can always retry on the
@@ -317,7 +317,7 @@ var D7 = roachpb.Header{}.TimestampFromServerClock
 
 // D8 ————————————————————————————————————————————————
 //
-// ComputeInterval
+// # ComputeInterval
 //
 // Observed timestamps allow transactions to avoid uncertainty related restarts
 // because they allow transactions to bound their uncertainty limit when reading

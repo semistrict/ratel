@@ -47,7 +47,9 @@ import (
 //
 // externalLock.Lock()
 // for each command being proposed:
-// 		Tracker.Untrack(tok)
+//
+//	Tracker.Untrack(tok)
+//
 // newClosedTimestamp := min(now() - kv.closed_timestamp.target_duration, Tracker.LowerBound() - 1)
 // externalLock.Unlock()
 //

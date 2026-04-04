@@ -304,7 +304,7 @@ export class SessionsPage extends React.Component<
           TimestampToMoment(s.session.start),
           "seconds",
         );
-        return sessionTime >= timeValue || timeValue === "empty";
+        return timeValue === "empty" || sessionTime >= timeValue;
       });
 
     return {

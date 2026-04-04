@@ -924,9 +924,9 @@ func (pb *ProcessorBaseNoHelper) Ctx() context.Context {
 // Notably, it calls ConsumerClosed() on all the inputsToDrain and updates
 // pb.Ctx to the context passed into StartInternal() call.
 //
-//   if pb.InternalClose() {
-//     // Perform processor specific close work.
-//   }
+//	if pb.InternalClose() {
+//	  // Perform processor specific close work.
+//	}
 func (pb *ProcessorBase) InternalClose() bool {
 	return pb.InternalCloseEx(nil /* onClose */)
 }

@@ -208,9 +208,10 @@ func timeZoneOffsetStringConversion(
 }
 
 // The timestamp must be of one of the following formats:
-//   HH
-//   HH:MM
-//   HH:MM:SS
+//
+//	HH
+//	HH:MM
+//	HH:MM:SS
 func hoursMinutesSecondsToSeconds(timeString string) int {
 	var (
 		hoursString   = "0"
@@ -234,9 +235,10 @@ func hoursMinutesSecondsToSeconds(timeString string) int {
 }
 
 // secondsToHoursMinutesSeconds converts seconds to a timestamp of the format
-//   HH
-//   HH:MM
-//   HH:MM:SS
+//
+//	HH
+//	HH:MM
+//	HH:MM:SS
 func secondsToHoursMinutesSeconds(totalSeconds int) string {
 	secondsPerHour := 60 * 60
 	secondsPerMinute := 60
@@ -261,9 +263,10 @@ func secondsToHoursMinutesSeconds(totalSeconds int) string {
 // The minutes and seconds sections are only included in the precision is
 // necessary.
 // For example:
-//    11.00 -> 11
-//    11.5 -> 11:30
-//    11.51 -> 11:30:36
+//
+//	11.00 -> 11
+//	11.5 -> 11:30
+//	11.51 -> 11:30:36
 func floatToHoursMinutesSeconds(f float64) string {
 	hours := int(f)
 	remaining := f - float64(hours)

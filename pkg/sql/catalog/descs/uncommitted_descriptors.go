@@ -124,7 +124,6 @@ var _ catalog.NameEntry = (*uncommittedDescriptor)(nil)
 // - checking out a mutable descriptor that hasn't yet been added,
 // - checking in a descriptor that has been added but not yet checked out,
 // - any checked-out-but-not-checked-in mutable descriptors at commit time.
-//
 type uncommittedDescriptors struct {
 
 	// Descriptors modified by the uncommitted transaction affiliated with this

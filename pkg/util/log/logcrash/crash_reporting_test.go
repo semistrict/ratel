@@ -340,7 +340,8 @@ type leafErr struct{}
 func (leafErr) Error() string { return "error" }
 
 // makeTypeAssertionErr returns a runtime.Error with the message:
-//     interface conversion: interface {} is nil, not int
+//
+//	interface conversion: interface {} is nil, not int
 func makeTypeAssertionErr() (result runtime.Error) {
 	defer func() {
 		e := recover()

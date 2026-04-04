@@ -521,7 +521,8 @@ func (w *denseRankWindow) Reset(context.Context) {
 func (w *denseRankWindow) Close(context.Context, *tree.EvalContext) {}
 
 // percentRankWindow computes the relative rank of the current row using:
-//   (rank - 1) / (total rows - 1)
+//
+//	(rank - 1) / (total rows - 1)
 type percentRankWindow struct {
 	peerRes *tree.DFloat
 }
@@ -555,7 +556,8 @@ func (w *percentRankWindow) Reset(context.Context) {
 func (w *percentRankWindow) Close(context.Context, *tree.EvalContext) {}
 
 // cumulativeDistWindow computes the relative rank of the current row using:
-//   (number of rows preceding or peer with current row) / (total rows)
+//
+//	(number of rows preceding or peer with current row) / (total rows)
 type cumulativeDistWindow struct {
 	peerRes *tree.DFloat
 }

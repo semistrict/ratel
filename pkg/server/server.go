@@ -87,6 +87,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/util/uuid"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
 
@@ -1020,6 +1021,9 @@ func (s *Server) PreStart(ctx context.Context) error {
 		dialOpts, err := s.rpcContext.GRPCDialOptions()
 		if err != nil {
 			return err
+		}
+		if s.rpcContext.Knobs.DialerFunc != nil {
+			dialOpts = append(dialOpts, grpc.WithContextDialer(s.rpcContext.Knobs.DialerFunc))
 		}
 
 		initConfig := newInitServerConfig(ctx, s.cfg, dialOpts)

@@ -68,8 +68,8 @@ func TestBinaryAllowsNullArgs(t *testing.T) {
 
 // TestTypingUnaryAssumptions ensures that unary overloads conform to certain
 // assumptions we're making in the type inference code:
-//   1. The return type can be inferred from the operator type and the data
-//      types of its operand.
+//  1. The return type can be inferred from the operator type and the data
+//     types of its operand.
 func TestTypingUnaryAssumptions(t *testing.T) {
 	for name, overloads := range tree.UnaryOps {
 		for i, overload := range overloads {
@@ -94,10 +94,10 @@ func TestTypingUnaryAssumptions(t *testing.T) {
 
 // TestTypingBinaryAssumptions ensures that binary overloads conform to certain
 // assumptions we're making in the type inference code:
-//   1. The return type can be inferred from the operator type and the data
-//      types of its operands.
-//   2. When of the operands is null, and if NullableArgs is true, then the
-//      return type can be inferred from just the non-null operand.
+//  1. The return type can be inferred from the operator type and the data
+//     types of its operands.
+//  2. When of the operands is null, and if NullableArgs is true, then the
+//     return type can be inferred from just the non-null operand.
 func TestTypingBinaryAssumptions(t *testing.T) {
 	for name, overloads := range tree.BinOps {
 		for i, overload := range overloads {
@@ -145,10 +145,10 @@ func TestTypingBinaryAssumptions(t *testing.T) {
 
 // TestTypingComparisonAssumptions ensures that comparison overloads conform to
 // certain assumptions we're making in the type inference code:
-//   1. All comparison ops will be present in tree.CmpOps after being mapped
-//      with NormalizeComparison.
-//   2. The overload can be inferred from the operator type and the data
-//      types of its operands.
+//  1. All comparison ops will be present in tree.CmpOps after being mapped
+//     with NormalizeComparison.
+//  2. The overload can be inferred from the operator type and the data
+//     types of its operands.
 func TestTypingComparisonAssumptions(t *testing.T) {
 	for _, op := range opt.ComparisonOperators {
 		newOp, _, _ := memo.NormalizeComparison(op)
@@ -180,10 +180,10 @@ func TestTypingComparisonAssumptions(t *testing.T) {
 
 // TestTypingAggregateAssumptions ensures that aggregate overloads conform to
 // certain assumptions we're making in the type inference code:
-//   1. The return type can be inferred from the operator type and the data
-//      types of its operand.
-//   2. The return type of overloads is fixed.
-//   3. The return type for min/max aggregates is same as type of argument.
+//  1. The return type can be inferred from the operator type and the data
+//     types of its operand.
+//  2. The return type of overloads is fixed.
+//  3. The return type for min/max aggregates is same as type of argument.
 func TestTypingAggregateAssumptions(t *testing.T) {
 	for _, name := range builtins.AllAggregateBuiltinNames {
 		if name == builtins.AnyNotNull ||

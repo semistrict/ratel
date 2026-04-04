@@ -11,7 +11,7 @@ repo = "local"
 [[repos.hooks]]
 id = "go-vet"
 name = "go vet"
-entry = "bash -c 'go vet -mod=vendor ./pkg/rpc/ ./pkg/server/ ./pkg/storage/'"
+entry = "bash -c 'go vet -mod=vendor ./pkg/testutils/inproc/ ./pkg/rpc/ ./pkg/server/ ./pkg/storage/'"
 language = "system"
 types = ["go"]
 pass_filenames = false
@@ -19,7 +19,7 @@ pass_filenames = false
 [[repos.hooks]]
 id = "go-build"
 name = "go build"
-entry = "bash -c 'go build -mod=vendor ./pkg/rpc/ ./pkg/server/ ./pkg/storage/'"
+entry = "bash -c 'go build -mod=vendor ./pkg/testutils/inproc/ ./pkg/rpc/ ./pkg/server/ ./pkg/storage/'"
 language = "system"
 types = ["go"]
 pass_filenames = false

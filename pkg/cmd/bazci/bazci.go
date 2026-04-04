@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -77,11 +77,12 @@ func init() {
 // parsedArgs looks basically like the `args` slice that Cobra gives us, but
 // a little more tightly structured.
 // e.g. the args ["test", "//pkg:small_tests", "--" "--verbose_failures"]
-// get converted to parsedArgs {
-//   subcmd: "test",
-//   targets: ["//pkg:small_tests"],
-//   additional: ["--verbose_failures"]
-// }
+//
+//	get converted to parsedArgs {
+//	  subcmd: "test",
+//	  targets: ["//pkg:small_tests"],
+//	  additional: ["--verbose_failures"]
+//	}
 type parsedArgs struct {
 	// The subcommand: either "build" or "test".
 	subcmd string

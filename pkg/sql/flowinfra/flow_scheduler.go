@@ -149,7 +149,8 @@ func (fs *FlowScheduler) Init(metrics *execinfra.DistSQLMetrics) {
 // canRunFlow returns whether the FlowScheduler can run the flow. If true is
 // returned, numRunning is also incremented.
 // TODO(radu): we will have more complex resource accounting (like memory).
-//  For now we just limit the number of concurrent flows.
+//
+//	For now we just limit the number of concurrent flows.
 func (fs *FlowScheduler) canRunFlow(_ Flow) bool {
 	// Optimistically increase numRunning to account for this new flow.
 	newNumRunning := atomic.AddInt32(&fs.atomics.numRunning, 1)

@@ -13,8 +13,8 @@
 // permissions and limitations under the License.
 
 // Package rules contains rules to:
-//  - generate dependency edges for a graph which contains op edges,
-//  - mark certain op-edges as no-op.
+//   - generate dependency edges for a graph which contains op edges,
+//   - mark certain op-edges as no-op.
 package rules
 
 import (

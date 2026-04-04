@@ -110,7 +110,7 @@ const withData: DatabaseDetailsPageProps = {
       details: {
         loading: false,
         loaded: true,
-        lastError: null,
+        lastError: null as Error | null,
         columnCount: _.random(5, 42),
         indexCount: _.random(1, 6),
         userCount: roles.length,
@@ -122,7 +122,7 @@ const withData: DatabaseDetailsPageProps = {
       stats: {
         loading: false,
         loaded: true,
-        lastError: null,
+        lastError: null as Error | null,
         replicationSizeInBytes: _.random(1000.0) * 1024 ** _.random(1, 2),
         rangeCount: _.random(50, 500),
         nodesByRegionString:

@@ -77,26 +77,29 @@ func rocksDBBatchDecodeHeader(repr []byte) (count int, orepr pebble.BatchReader,
 //
 // Example:
 // r, err := NewRocksDBBatchReader(...)
-// if err != nil {
-//   return err
-// }
-// for r.Next() {
-// 	 switch r.BatchType() {
-// 	 case BatchTypeDeletion:
-// 	   fmt.Printf("delete(%x)", r.Key())
-// 	 case BatchTypeValue:
-// 	   fmt.Printf("put(%x,%x)", r.Key(), r.Value())
-// 	 case BatchTypeMerge:
-// 	   fmt.Printf("merge(%x,%x)", r.Key(), r.Value())
-//   case BatchTypeSingleDeletion:
-// 	   fmt.Printf("single_delete(%x)", r.Key())
-//   case BatchTypeRangeDeletion:
-// 	   fmt.Printf("delete_range(%x,%x)", r.Key(), r.Value())
-// 	 }
-// }
-// if err := r.Error(); err != nil {
-//   return err
-// }
+//
+//	if err != nil {
+//	  return err
+//	}
+//
+//	for r.Next() {
+//		 switch r.BatchType() {
+//		 case BatchTypeDeletion:
+//		   fmt.Printf("delete(%x)", r.Key())
+//		 case BatchTypeValue:
+//		   fmt.Printf("put(%x,%x)", r.Key(), r.Value())
+//		 case BatchTypeMerge:
+//		   fmt.Printf("merge(%x,%x)", r.Key(), r.Value())
+//	  case BatchTypeSingleDeletion:
+//		   fmt.Printf("single_delete(%x)", r.Key())
+//	  case BatchTypeRangeDeletion:
+//		   fmt.Printf("delete_range(%x,%x)", r.Key(), r.Value())
+//		 }
+//	}
+//
+//	if err := r.Error(); err != nil {
+//	  return err
+//	}
 type RocksDBBatchReader struct {
 	batchReader pebble.BatchReader
 
@@ -168,6 +171,7 @@ func (r *RocksDBBatchReader) Value() []byte {
 }
 
 // MVCCEndKey returns the MVCC end key of the current batch entry.
+//
 //lint:ignore U1001 unused
 func (r *RocksDBBatchReader) MVCCEndKey() (MVCCKey, error) {
 	if r.typ != BatchTypeRangeDeletion {

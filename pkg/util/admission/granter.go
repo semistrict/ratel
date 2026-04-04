@@ -1297,18 +1297,18 @@ func (sgc *StoreGrantCoordinators) SetPebbleMetricsProvider(
 }
 
 // Experimental observations:
-// - Sub-level count of ~40 caused a node heartbeat latency p90, p99 of 2.5s,
-//   4s. With a setting that limits sub-level count to 10, before the system
-//   is considered overloaded, and adjustmentInterval = 60, we see the actual
-//   sub-level count ranging from 5-30, with p90, p99 node heartbeat latency
-//   showing a similar wide range, with 1s, 2s being the middle of the range
-//   respectively.
-// - With tpcc, we sometimes see a sub-level count > 10 with only 100 files in
-//   L0. We don't want to restrict tokens in this case since the store is able
-//   to recover on its own. One possibility would be to require both the
-//   thresholds to be exceeded before we consider the store overloaded. But
-//   then we run the risk of having 100+ sub-levels when we hit a file count
-//   of 1000. Instead we use a sub-level overload threshold of 20.
+//   - Sub-level count of ~40 caused a node heartbeat latency p90, p99 of 2.5s,
+//     4s. With a setting that limits sub-level count to 10, before the system
+//     is considered overloaded, and adjustmentInterval = 60, we see the actual
+//     sub-level count ranging from 5-30, with p90, p99 node heartbeat latency
+//     showing a similar wide range, with 1s, 2s being the middle of the range
+//     respectively.
+//   - With tpcc, we sometimes see a sub-level count > 10 with only 100 files in
+//     L0. We don't want to restrict tokens in this case since the store is able
+//     to recover on its own. One possibility would be to require both the
+//     thresholds to be exceeded before we consider the store overloaded. But
+//     then we run the risk of having 100+ sub-levels when we hit a file count
+//     of 1000. Instead we use a sub-level overload threshold of 20.
 //
 // We've set these overload thresholds in a way that allows the system to
 // absorb short durations (say a few minutes) of heavy write load.
@@ -1545,11 +1545,11 @@ const unlimitedTokens = math.MaxInt64
 // compactions can take ~10s to complete. The totalTokens to give out over
 // the 15s interval are given out in a smoothed manner, at 1s intervals.
 // This has similarities with the following kinds of token buckets:
-// - Zero replenishment rate and a burst value that is changed every 15s. We
-//   explicitly don't want a huge burst every 15s.
-// - A replenishment rate equal to totalTokens/15, with a burst capped at
-//   totalTokens/15. The only difference with the code here is that if
-//   totalTokens is small, the integer rounding effects are compensated for.
+//   - Zero replenishment rate and a burst value that is changed every 15s. We
+//     explicitly don't want a huge burst every 15s.
+//   - A replenishment rate equal to totalTokens/15, with a burst capped at
+//     totalTokens/15. The only difference with the code here is that if
+//     totalTokens is small, the integer rounding effects are compensated for.
 //
 // In an experiment with extreme overload using KV0 with block size 64KB,
 // and 4096 clients, we observed the following states of L0 at 1min
@@ -1557,13 +1557,13 @@ const unlimitedTokens = math.MaxInt64
 // admission control:
 //
 // __level_____count____size___score______in__ingest(sz_cnt)____move(sz_cnt)___write(sz_cnt)____read___r-amp___w-amp›
-//       0        96   158 M    2.09   315 M     0 B       0     0 B       0   305 M     178     0 B       3     1.0›
-//       0      1026   1.7 G    3.15   4.7 G     0 B       0     0 B       0   4.7 G   2.8 K     0 B      24     1.0›
-//       0      1865   3.0 G    2.86   9.1 G     0 B       0     0 B       0   9.1 G   5.5 K     0 B      38     1.0›
-//       0      3225   4.9 G    3.46    13 G     0 B       0     0 B       0    13 G   8.3 K     0 B      59     1.0›
-//       0      4720   7.0 G    3.46    17 G     0 B       0     0 B       0    17 G    11 K     0 B      85     1.0›
-//       0      6120   9.0 G    4.13    21 G     0 B       0     0 B       0    21 G    14 K     0 B     109     1.0›
 //
+//	0        96   158 M    2.09   315 M     0 B       0     0 B       0   305 M     178     0 B       3     1.0›
+//	0      1026   1.7 G    3.15   4.7 G     0 B       0     0 B       0   4.7 G   2.8 K     0 B      24     1.0›
+//	0      1865   3.0 G    2.86   9.1 G     0 B       0     0 B       0   9.1 G   5.5 K     0 B      38     1.0›
+//	0      3225   4.9 G    3.46    13 G     0 B       0     0 B       0    13 G   8.3 K     0 B      59     1.0›
+//	0      4720   7.0 G    3.46    17 G     0 B       0     0 B       0    17 G    11 K     0 B      85     1.0›
+//	0      6120   9.0 G    4.13    21 G     0 B       0     0 B       0    21 G    14 K     0 B     109     1.0›
 //
 // Note the fast growth in sub-level count. Production issues typically have
 // slower growth towards an unhealthy state (remember that similar stats in

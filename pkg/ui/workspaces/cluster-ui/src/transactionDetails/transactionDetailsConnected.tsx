@@ -53,7 +53,7 @@ export const selectTransaction = createSelector(
     if (!transactions) {
       return {
         isLoading: transactionState.inFlight,
-        transaction: null,
+        transaction: null as any,
         isValid: transactionState.valid,
       };
     }

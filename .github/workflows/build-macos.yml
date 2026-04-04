@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
 
+concurrency:
+  group: build-macos-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-arch:
     strategy:

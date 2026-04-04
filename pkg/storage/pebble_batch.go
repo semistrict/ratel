@@ -239,7 +239,6 @@ func (p *pebbleBatch) NewMVCCIterator(iterKind MVCCIterKind, opts IterOptions) M
 			iter.init(p.db, p.iter, opts, StandardDurability)
 		}
 		if p.iter == nil {
-			// For future cloning.
 			p.iter = iter.iter
 		}
 	}
@@ -281,7 +280,6 @@ func (p *pebbleBatch) NewEngineIterator(opts IterOptions) EngineIterator {
 			iter.init(p.db, p.iter, opts, StandardDurability)
 		}
 		if p.iter == nil {
-			// For future cloning.
 			p.iter = iter.iter
 		}
 	}

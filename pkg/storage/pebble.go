@@ -139,6 +139,10 @@ func EngineKeyCompare(a, b []byte) int {
 var EngineComparer = &pebble.Comparer{
 	Compare: EngineKeyCompare,
 
+	Equal: func(a, b []byte) bool {
+		return EngineKeyCompare(a, b) == 0
+	},
+
 	AbbreviatedKey: func(k []byte) uint64 {
 		key, ok := GetKeyPartFromEngineKey(k)
 		if !ok {
@@ -1925,15 +1929,34 @@ func (p *pebbleReadOnly) NewMVCCIterator(iterKind MVCCIterKind, opts IterOptions
 	checkOptionsForIterReuse(opts)
 
 	if iter.iter != nil {
-		iter.setBounds(opts.LowerBound, opts.UpperBound)
-	} else {
-		iter.init(p.parent.db, p.iter, opts, p.durability)
-		if p.iter == nil {
-			// For future cloning.
-			p.iter = iter.iter
-		}
-		iter.reusable = true
+		// Destroy and recreate. Use Clone from p.iter to preserve the
+		// pinned read state. In Pebble v1.1+, NewIter refreshes the view.
+		iter.destroy()
 	}
+	if iter.iter != nil {
+		// Close previous reusable iterator (it's a clone, not p.iter).
+		_ = iter.iter.Close()
+		iter.iter = nil
+	}
+	// Always create a fresh iterator. When p.iter exists, clone from it
+	// to preserve the pinned read state (Pebble v1.1+ refreshes the
+	// memtable view on SetBounds + SeekGE). On first use, create via NewIter.
+	var handle pebble.Reader
+	if p.iter == nil {
+		handle = p.parent.db
+	}
+	iter.init(handle, p.iter, opts, p.durability)
+	if p.iter == nil {
+		// Save the first iterator as the clone source. It must NOT be the
+		// same object as iter.iter so we can close iter.iter on reuse
+		// without losing p.iter. Clone it.
+		var err error
+		p.iter, err = iter.iter.Clone(pebble.CloneOptions{})
+		if err != nil {
+			panic(err)
+		}
+	}
+	iter.reusable = true
 
 	iter.inuse = true
 	var rv MVCCIterator = iter
@@ -1960,15 +1983,22 @@ func (p *pebbleReadOnly) NewEngineIterator(opts IterOptions) EngineIterator {
 	checkOptionsForIterReuse(opts)
 
 	if iter.iter != nil {
-		iter.setBounds(opts.LowerBound, opts.UpperBound)
-	} else {
-		iter.init(p.parent.db, p.iter, opts, p.durability)
-		if p.iter == nil {
-			// For future cloning.
-			p.iter = iter.iter
-		}
-		iter.reusable = true
+		_ = iter.iter.Close()
+		iter.iter = nil
 	}
+	var handle pebble.Reader
+	if p.iter == nil {
+		handle = p.parent.db
+	}
+	iter.init(handle, p.iter, opts, p.durability)
+	if p.iter == nil {
+		var err error
+		p.iter, err = iter.iter.Clone(pebble.CloneOptions{})
+		if err != nil {
+			panic(err)
+		}
+	}
+	iter.reusable = true
 
 	iter.inuse = true
 	return iter

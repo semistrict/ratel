@@ -186,21 +186,25 @@ func (p *pebbleIterator) init(
 		panic("min timestamp hint set without max timestamp hint")
 	}
 
-	if doClone {
+	if doClone && handle == nil {
+		// Clone path: used when we don't have a handle (e.g., cloning an engine
+		// iterator for the intent interleaving iterator). We clone to get a
+		// consistent view of the same DB state.
 		var err error
-		if p.iter, err = iterToClone.Clone(pebble.CloneOptions{
-			IterOptions: &p.options,
-		}); err != nil {
+		if p.iter, err = iterToClone.Clone(pebble.CloneOptions{}); err != nil {
 			panic(err)
 		}
-	} else {
-		if handle == nil {
-			panic("handle is nil for non-cloning path")
-		}
+		p.iter.SetBounds(p.options.LowerBound, p.options.UpperBound)
+	} else if handle != nil {
+		// When a handle is available, always create a fresh iterator from it.
+		// This ensures batch iterators see the latest batch state, and avoids
+		// subtle snapshot issues with Clone.
 		var err error
 		if p.iter, err = handle.NewIter(&p.options); err != nil {
 			panic(err)
 		}
+	} else {
+		panic("handle is nil and no iterator to clone")
 	}
 	if p.iter == nil {
 		panic("unable to create iterator")

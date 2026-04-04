@@ -1181,25 +1181,25 @@ func (f *FuncDepSet) MakeProduct(inner *FuncDepSet) {
 // longer hold and some other dependencies need to be augmented in order to be
 // valid for the apply join operator. Consider this example:
 //
-//	SELECT *
-//	FROM a
-//	INNER JOIN LATERAL (SELECT * FROM b WHERE b.y=a.y)
-//	ON True
+//		SELECT *
+//		FROM a
+//		INNER JOIN LATERAL (SELECT * FROM b WHERE b.y=a.y)
+//		ON True
 //
-//  1. The constant dependency created from the outer column reference b.y=a.y
-//     does not hold for the Apply operator, since b.y is no longer constant at
-//     this level. In general, constant dependencies cannot be retained, because
-//     they may have been generated from outer column equivalencies.
-//  2. If a strict dependency (b.x,b.y)-->(b.z) held, it would have been reduced
-//     to (b.x)-->(b.z) because (b.y) is constant in the inner query. However,
-//     (b.x)-->(b.z) does not hold for the Apply operator, since (b.y) is not
-//     constant in that case. However, the dependency *does* hold as long as its
-//     determinant is augmented by the left input's key columns (if key exists).
-//  3. Lax dependencies follow the same rules as #2.
-//  4. Equivalence dependencies in the inner query still hold for the Apply
-//     operator.
-//  5. If both the outer and inner inputs of the apply join have keys, then the
-//     concatenation of those keys is a key on the apply join result.
+//	 1. The constant dependency created from the outer column reference b.y=a.y
+//	    does not hold for the Apply operator, since b.y is no longer constant at
+//	    this level. In general, constant dependencies cannot be retained, because
+//	    they may have been generated from outer column equivalencies.
+//	 2. If a strict dependency (b.x,b.y)-->(b.z) held, it would have been reduced
+//	    to (b.x)-->(b.z) because (b.y) is constant in the inner query. However,
+//	    (b.x)-->(b.z) does not hold for the Apply operator, since (b.y) is not
+//	    constant in that case. However, the dependency *does* hold as long as its
+//	    determinant is augmented by the left input's key columns (if key exists).
+//	 3. Lax dependencies follow the same rules as #2.
+//	 4. Equivalence dependencies in the inner query still hold for the Apply
+//	    operator.
+//	 5. If both the outer and inner inputs of the apply join have keys, then the
+//	    concatenation of those keys is a key on the apply join result.
 func (f *FuncDepSet) MakeApply(inner *FuncDepSet) {
 	for i := range inner.deps {
 		fd := &inner.deps[i]

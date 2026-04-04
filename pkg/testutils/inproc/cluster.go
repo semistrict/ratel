@@ -30,10 +30,10 @@ import (
 // a synctest bubble where all I/O must be virtualized.
 type Cluster struct {
 	*testcluster.TestCluster
-	Registry       *Registry
-	addrs          []string
-	rpcListeners   []*Listener
-	stickyRegistry server.StickyInMemEnginesRegistry
+	Registry      *Registry
+	addrs         []string
+	rpcListeners  []*Listener
+	httpListeners []*Listener
 }
 
 // StartCluster creates and starts a multi-node in-process cluster
@@ -45,11 +45,8 @@ type Cluster struct {
 // support node restarts.
 func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterArgs)) *Cluster {
 	registry := NewRegistry()
-	stickyRegistry := server.NewStickyInMemEnginesRegistry()
-
 	clusterArgs := base.TestClusterArgs{
 		ReplicationMode:   base.ReplicationManual,
-		ReusableListeners: true,
 		ServerArgsPerNode: make(map[int]base.TestServerArgs),
 	}
 
@@ -59,6 +56,7 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 
 	addrs := make([]string, nodes)
 	rpcListeners := make([]*Listener, nodes)
+	httpListeners := make([]*Listener, nodes)
 
 	for i := 0; i < nodes; i++ {
 		rpcAddr := fmt.Sprintf("127.0.0.1:%d", 26257+i)
@@ -68,6 +66,7 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 		rpcListener := registry.Register(rpcAddr)
 		rpcListeners[i] = rpcListener
 		httpListener := NewListener(httpAddr)
+		httpListeners[i] = httpListener
 
 		// Start from ServerArgs defaults, then overlay per-node overrides.
 		args := clusterArgs.ServerArgs
@@ -77,9 +76,7 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 		args.Insecure = true
 		args.Addr = rpcAddr
 		args.Listener = rpcListener
-		args.StoreSpecs = []base.StoreSpec{
-			{InMemory: true, StickyInMemoryEngineID: fmt.Sprintf("inproc-%d", i)},
-		}
+		args.StoreSpecs = []base.StoreSpec{base.DefaultTestStoreSpec}
 		args.Locality = roachpb.Locality{
 			Tiers: []roachpb.Tier{
 				{Key: "region", Value: "test"},
@@ -105,7 +102,6 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 		tk.RPCListener = rpcListener
 		tk.HTTPListener = httpListener
 		tk.ShareRPCListenSQL = true
-		tk.StickyEngineRegistry = stickyRegistry
 		tk.ContextTestingKnobs.DialerFunc = registry.DialerFunc()
 		args.Knobs.Server = tk
 
@@ -113,40 +109,19 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 	}
 
 	tc := testcluster.StartTestCluster(t, nodes, clusterArgs)
+
 	return &Cluster{
-		TestCluster:    tc,
-		Registry:       registry,
-		addrs:          addrs,
-		rpcListeners:   rpcListeners,
-		stickyRegistry: stickyRegistry,
+		TestCluster:   tc,
+		Registry:      registry,
+		addrs:         addrs,
+		rpcListeners:  rpcListeners,
+		httpListeners: httpListeners,
 	}
 }
 
-// EngineCloser is optionally implemented by StickyInMemEnginesRegistry
-// to close individual engines.
-type EngineCloser interface {
-	CloseEngine(id string)
-}
-
-// StopNode stops a node. The node can be restarted with RestartNode.
+// StopNode stops a node.
 func (c *Cluster) StopNode(nodeIdx int) {
 	c.StopServer(nodeIdx)
-	// Close the Pebble engine to stop its background goroutines
-	// (disk health tickers). The VFS is preserved for restart.
-	if ec, ok := c.stickyRegistry.(EngineCloser); ok {
-		ec.CloseEngine(fmt.Sprintf("inproc-%d", nodeIdx))
-	}
-}
-
-// RestartNode restarts a previously stopped node, re-opening its
-// in-memory listeners.
-func (c *Cluster) RestartNode(t testing.TB, nodeIdx int) {
-	// Re-open the in-memory RPC listener so the restarted node can
-	// accept connections on the same address.
-	c.rpcListeners[nodeIdx].Reset()
-	if err := c.RestartServer(nodeIdx); err != nil {
-		t.Fatal(err)
-	}
 }
 
 // PartitionNode blocks all new inbound connections to the given node.
@@ -164,12 +139,8 @@ func (c *Cluster) NodeAddr(nodeIdx int) string {
 	return c.addrs[nodeIdx]
 }
 
-// Stop stops the cluster and closes the registry. Sticky engines are
-// closed first to stop Pebble background goroutines before the
-// stopper tries to quiesce (which advances fake time under synctest
-// and can deadlock if Pebble tickers are still running).
+// Stop stops the cluster and closes the registry.
 func (c *Cluster) Stop() {
-	c.stickyRegistry.CloseAllStickyInMemEngines()
 	c.Stopper().Stop(nil)
 	c.Registry.Close()
 }

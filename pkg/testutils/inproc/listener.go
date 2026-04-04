@@ -24,14 +24,16 @@ import (
 // paired connections. It is suitable for use inside a synctest bubble
 // where real TCP is not permitted.
 //
-// The listener supports being closed and re-opened via Reset(), which
-// is needed for node restarts in test clusters.
+// The listener tracks all active connections so they can be closed
+// when the listener is closed, which is necessary for synctest to
+// detect quiescence.
 type Listener struct {
 	addr memAddr
 
 	mu     sync.Mutex
 	ch     chan net.Conn
 	closed chan struct{}
+	conns  []net.Conn // both sides of each pipe
 }
 
 // NewListener creates a new in-memory listener with the given address string.
@@ -58,7 +60,7 @@ func (l *Listener) Accept() (net.Conn, error) {
 	}
 }
 
-// Close closes the listener. It can be re-opened via Reset().
+// Close closes the listener and all active connections.
 func (l *Listener) Close() error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -68,6 +70,12 @@ func (l *Listener) Close() error {
 	default:
 		close(l.closed)
 	}
+	// Close all tracked connections to unblock goroutines doing
+	// reads/writes on pipes.
+	for _, c := range l.conns {
+		c.Close()
+	}
+	l.conns = nil
 	return nil
 }
 
@@ -78,6 +86,7 @@ func (l *Listener) Reset() {
 	defer l.mu.Unlock()
 	l.ch = make(chan net.Conn)
 	l.closed = make(chan struct{})
+	l.conns = nil
 }
 
 // Addr returns the listener's network address.
@@ -97,6 +106,10 @@ func (l *Listener) Dial(ctx context.Context) (net.Conn, error) {
 	server, client := net.Pipe()
 	select {
 	case ch <- server:
+		// Track both ends so Close() can break the connections.
+		l.mu.Lock()
+		l.conns = append(l.conns, server, client)
+		l.mu.Unlock()
 		return client, nil
 	case <-closed:
 		server.Close()

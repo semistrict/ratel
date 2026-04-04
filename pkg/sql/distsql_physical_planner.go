@@ -3551,6 +3551,7 @@ func (dsp *DistSQLPlanner) isOnlyOnGateway(plan *PhysicalPlan) bool {
 // unnecessary network I/O.
 //
 // Examples (single node):
+//
 //   - Query: ( VALUES (1), (2), (2) ) UNION ( VALUES (2), (3) )
 //     Plan:
 //     VALUES        VALUES

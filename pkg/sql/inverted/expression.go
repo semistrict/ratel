@@ -213,12 +213,15 @@ func (is Spans) End(i int) []byte {
 // # Optimizer cost estimation
 //
 // There are two cases:
+//
 //   - Single table expression: after generating the Expression, the
 //     optimizer will check that it is a *SpanExpression -- if not, it is a
 //     NonInvertedColExpression, which implies a full inverted index scan, and
 //     it is definitely not worth using the inverted index. There are two costs for
 //     using the inverted index:
+//
 //   - The scan cost: this should be estimated by using SpanExpression.SpansToRead.
+//
 //   - The cardinality of the output set after evaluating the expression: this
 //     requires a traversal of the expression to assign cardinality to the
 //     spans in each FactoredUnionSpans (this could be done using a mean,

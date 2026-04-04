@@ -804,6 +804,7 @@ OPTGEN_TARGETS = \
 
 test-targets := \
 	check test testshort testslow testrace testraceslow testdeadlock testbuild \
+	testcompile smoketest vet \
 	stress stressrace \
 	roachprod-stress roachprod-stressrace \
 	testlogic testbaselogic testoptlogic
@@ -813,6 +814,7 @@ go-targets := $(COCKROACHOSS) $(COCKROACHSHORT) $(COCKROACHSQL) $(RATEL) \
 	go-install \
 	bench benchshort \
 	check test testshort testslow testrace testraceslow testdeadlock testbuild \
+	testcompile smoketest vet \
 	stress stressrace \
 	roachprod-stress roachprod-stressrace \
 	generate \
@@ -949,6 +951,28 @@ bench benchshort: TESTTIMEOUT := $(BENCHTIMEOUT)
 # -benchtime=1ns runs one iteration of each benchmark. The -short flag is set so
 # that longer running benchmarks can skip themselves.
 benchshort: override TESTFLAGS += -benchtime=1ns -short
+
+SMOKETEST_PKGS := \
+	./pkg/util/hlc \
+	./pkg/roachpb \
+	./pkg/sql/parser \
+	./pkg/util/json \
+	./pkg/storage \
+	./pkg/util/log \
+	./pkg/geo \
+	./pkg/util/metric
+
+.PHONY: vet
+vet: ## Run go vet on all packages.
+	$(xgo) vet $(GOFLAGS) $(GOMODVENDORFLAGS) -tags '$(TAGS)' $(PKG)
+
+.PHONY: testcompile
+testcompile: ## Compile all test binaries without running them.
+	$(xgo) test $(GOFLAGS) $(GOMODVENDORFLAGS) -tags '$(TAGS)' -ldflags '$(LINKFLAGS)' -run=^$$ -count=0 $(PKG)
+
+.PHONY: smoketest
+smoketest: ## Run a fast subset of unit tests for CI.
+	$(xgo) test $(GOTESTFLAGS) $(GOFLAGS) $(GOMODVENDORFLAGS) -tags '$(TAGS)' -ldflags '$(LINKFLAGS)' -run "$(TESTS)" -timeout $(TESTTIMEOUT) -short -count=1 $(SMOKETEST_PKGS) $(TESTFLAGS)
 
 .PHONY: check test testshort testrace testdeadlock testlogic testbaselogic testoptlogic bench benchshort
 test: ## Run tests.

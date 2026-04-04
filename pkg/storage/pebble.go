@@ -577,15 +577,18 @@ func wrapFilesystemMiddleware(opts *pebble.Options) io.Closer {
 	}
 	// Instantiate a file system with disk health checking enabled. This FS
 	// wraps the filesystem with a layer that times all write-oriented
-	// operations.
+	// operations. Skip for in-memory FS since the per-file ticker
+	// goroutines prevent synctest from detecting quiescence.
 	var closer io.Closer
-	opts.FS, closer = vfs.WithDiskHealthChecks(opts.FS, diskHealthCheckInterval,
-		func(info vfs.DiskSlowInfo) {
-			opts.EventListener.DiskSlow(pebble.DiskSlowInfo{
-				Path:     info.Path,
-				Duration: info.Duration,
+	if _, isMem := opts.FS.(*vfs.MemFS); !isMem {
+		opts.FS, closer = vfs.WithDiskHealthChecks(opts.FS, diskHealthCheckInterval,
+			func(info vfs.DiskSlowInfo) {
+				opts.EventListener.DiskSlow(pebble.DiskSlowInfo{
+					Path:     info.Path,
+					Duration: info.Duration,
+				})
 			})
-		})
+	}
 	// If we encounter ENOSPC, exit with an informative exit code.
 	opts.FS = vfs.OnDiskFull(opts.FS, func() {
 		exit.WithCode(exit.DiskFull())

@@ -119,10 +119,8 @@ func (m *Metadata) GetUnit() Unit {
 // in pkg/util/metric/metric.proto.
 func (m *Metadata) GetLabels() []*prometheusgo.LabelPair {
 	lps := make([]*prometheusgo.LabelPair, len(m.Labels))
-	// x satisfies the field XXX_unrecognized in prometheusgo.LabelPair.
-	var x []byte
 	for i, v := range m.Labels {
-		lps[i] = &prometheusgo.LabelPair{Name: v.Name, Value: v.Value, XXX_unrecognized: x}
+		lps[i] = &prometheusgo.LabelPair{Name: v.Name, Value: v.Value}
 	}
 	return lps
 }

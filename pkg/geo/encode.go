@@ -15,8 +15,8 @@
 package geo
 
 import (
-	"bytes"
 	"encoding/binary"
+	"encoding/xml"
 	"fmt"
 	"strings"
 
@@ -182,11 +182,11 @@ func SpatialObjectToKML(so geopb.SpatialObject) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	var buf bytes.Buffer
-	if err := kmlElement.Write(&buf); err != nil {
+	b, err := xml.Marshal(kmlElement)
+	if err != nil {
 		return "", err
 	}
-	return buf.String(), nil
+	return xml.Header + string(b), nil
 }
 
 // GeoHashAutoPrecision means to calculate the precision of SpatialObjectToGeoHash

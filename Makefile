@@ -803,7 +803,7 @@ OPTGEN_TARGETS = \
 
 test-targets := \
 	check test testshort testslow testrace testraceslow testdeadlock testbuild \
-	testcompile smoketest \
+	testcompile smoketest vet \
 	stress stressrace \
 	roachprod-stress roachprod-stressrace \
 	testlogic testbaselogic testoptlogic
@@ -813,7 +813,7 @@ go-targets := $(COCKROACHOSS) $(COCKROACHSHORT) $(COCKROACHSQL) \
 	go-install \
 	bench benchshort \
 	check test testshort testslow testrace testraceslow testdeadlock testbuild \
-	testcompile smoketest \
+	testcompile smoketest vet \
 	stress stressrace \
 	roachprod-stress roachprod-stressrace \
 	generate \
@@ -954,6 +954,10 @@ SMOKETEST_PKGS := \
 	./pkg/util/log \
 	./pkg/geo \
 	./pkg/util/metric
+
+.PHONY: vet
+vet: ## Run go vet on all packages.
+	$(xgo) vet $(GOFLAGS) $(GOMODVENDORFLAGS) -tags '$(TAGS)' $(PKG)
 
 .PHONY: testcompile
 testcompile: ## Compile all test binaries without running them.

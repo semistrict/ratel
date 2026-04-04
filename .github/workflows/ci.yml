@@ -67,7 +67,7 @@ jobs:
         env:
           BROWSERSLIST_IGNORE_OLD_DATA: 1
       - name: Vet
-        run: go vet -mod=vendor -tags 'make short' ./pkg/...
+        run: make vet
       - name: Compile all tests
         run: make testcompile
       - name: Smoketest

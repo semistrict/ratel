@@ -9,3 +9,6 @@
 	path = c-deps/proj
 	url = https://github.com/oxidecomputer/PROJ.git
 	branch = 4.9.3-cockroach
+[submodule "third_party/pebble"]
+	path = third_party/pebble
+	url = git@github.com:semistrict/ratel-pebble.git

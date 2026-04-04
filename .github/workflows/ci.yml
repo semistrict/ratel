@@ -14,7 +14,7 @@ jobs:
           go-version-file: go.mod
       - name: Check gofmt
         run: |
-          unformatted=$(gofmt -l pkg/)
+          unformatted=$(find pkg/ -name '*.go' -not -path '*/testdata/*' | xargs gofmt -l)
           if [ -n "$unformatted" ]; then
             echo "::error::Files not formatted with gofmt:"
             echo "$unformatted"

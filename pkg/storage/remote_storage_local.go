@@ -17,6 +17,7 @@ package storage
 import (
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble/objstorage/remote"
@@ -53,14 +54,51 @@ type ClusterStorage struct {
 	Certs          remote.Storage        // certs/
 }
 
+// parseS3URL extracts S3StorageConfig from an s3:// URL.
+//
+// Format: s3://bucket/prefix/?endpoint=http://host:9000&region=us-east-1
+//
+// Query parameters:
+//   - endpoint: S3 endpoint URL (required for S3-compatible stores like rustfs/minio)
+//   - region: AWS region (defaults to "us-east-1")
+//
+// AWS credentials are read from the environment (AWS_ACCESS_KEY_ID,
+// AWS_SECRET_ACCESS_KEY) or the default credential chain.
+func parseS3URL(u *url.URL) S3StorageConfig {
+	prefix := strings.TrimPrefix(u.Path, "/")
+	if prefix != "" && !strings.HasSuffix(prefix, "/") {
+		prefix += "/"
+	}
+	region := u.Query().Get("region")
+	if region == "" {
+		region = "us-east-1"
+	}
+	return S3StorageConfig{
+		Bucket:           u.Host,
+		Prefix:           prefix,
+		Region:           region,
+		Endpoint:         u.Query().Get("endpoint"),
+		S3ForcePathStyle: true,
+	}
+}
+
+// newS3Storage creates an S3Storage instance with the given config and
+// sub-prefix appended.
+func newS3Storage(cfg S3StorageConfig, subPrefix string) (remote.Storage, error) {
+	sub := cfg
+	sub.Prefix = cfg.Prefix + subPrefix
+	factory := NewS3StorageFactory(sub)
+	return factory.CreateStorage("")
+}
+
 // RemoteStorageFromURL parses a storage URL and returns both a
 // remote.StorageFactory (for SSTables) and a remote.Storage (for metadata).
 // Supported schemes:
 //
 //	file:///path/to/dir — local filesystem
+//	s3://bucket/prefix/?endpoint=...&region=... — S3-compatible storage
 //
-// For file:// URLs, SSTables go in <path>/sstables/ and metadata in
-// <path>/metadata/.
+// SSTables go in <base>/sstables/ and metadata in <base>/metadata/.
 func RemoteStorageFromURL(rawURL string) (remote.StorageFactory, remote.Storage, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
@@ -80,6 +118,16 @@ func RemoteStorageFromURL(rawURL string) (remote.StorageFactory, remote.Storage,
 		factory := NewLocalFSStorageFactory(sstDir)
 		metaStore := remote.NewLocalFS(metaDir, vfs.Default)
 		return factory, metaStore, nil
+	case "s3":
+		cfg := parseS3URL(u)
+		sstCfg := cfg
+		sstCfg.Prefix = cfg.Prefix + "sstables/"
+		factory := NewS3StorageFactory(sstCfg)
+		metaStore, err := newS3Storage(cfg, "metadata/")
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "creating S3 metadata storage")
+		}
+		return factory, metaStore, nil
 	default:
 		return nil, nil, errors.Errorf("unsupported remote storage scheme %q (use file:// or s3://)", u.Scheme)
 	}
@@ -90,6 +138,7 @@ func RemoteStorageFromURL(rawURL string) (remote.StorageFactory, remote.Storage,
 // certs. Supported schemes:
 //
 //	file:///path/to/dir — local filesystem
+//	s3://bucket/prefix/?endpoint=...&region=... — S3-compatible storage
 func ClusterStorageFromURL(rawURL string) (*ClusterStorage, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
@@ -115,7 +164,29 @@ func ClusterStorageFromURL(rawURL string) (*ClusterStorage, error) {
 			Nodes:          remote.NewLocalFS(dirs[2], vfs.Default),
 			Certs:          remote.NewLocalFS(dirs[3], vfs.Default),
 		}, nil
+	case "s3":
+		cfg := parseS3URL(u)
+		sstCfg := cfg
+		sstCfg.Prefix = cfg.Prefix + "sstables/"
+		metaStore, err := newS3Storage(cfg, "metadata/")
+		if err != nil {
+			return nil, errors.Wrap(err, "creating S3 metadata storage")
+		}
+		nodesStore, err := newS3Storage(cfg, "nodes/")
+		if err != nil {
+			return nil, errors.Wrap(err, "creating S3 nodes storage")
+		}
+		certsStore, err := newS3Storage(cfg, "certs/")
+		if err != nil {
+			return nil, errors.Wrap(err, "creating S3 certs storage")
+		}
+		return &ClusterStorage{
+			SSTableFactory: NewS3StorageFactory(sstCfg),
+			Metadata:       metaStore,
+			Nodes:          nodesStore,
+			Certs:          certsStore,
+		}, nil
 	default:
-		return nil, errors.Errorf("unsupported cluster storage scheme %q (use file://)", u.Scheme)
+		return nil, errors.Errorf("unsupported cluster storage scheme %q (use file:// or s3://)", u.Scheme)
 	}
 }

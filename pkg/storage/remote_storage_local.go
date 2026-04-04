@@ -54,7 +54,7 @@ const layoutVersion = "v1"
 type ClusterStorage struct {
 	SSTableFactory remote.StorageFactory // sstables/
 	Metadata       remote.Storage        // metadata/
-	Nodes          remote.Storage        // nodes/
+	Nodes          remote.Storage        // discovery/
 	Certs          remote.Storage        // certs/
 }
 
@@ -155,7 +155,7 @@ func ClusterStorageFromURL(rawURL string) (*ClusterStorage, error) {
 		dirs := []string{
 			basePath + "/sstables",
 			basePath + "/metadata",
-			basePath + "/nodes",
+			basePath + "/discovery",
 			basePath + "/certs",
 		}
 		for _, d := range dirs {
@@ -178,7 +178,7 @@ func ClusterStorageFromURL(rawURL string) (*ClusterStorage, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "creating S3 metadata storage")
 		}
-		nodesStore, err := newS3Storage(cfg, "nodes/")
+		nodesStore, err := newS3Storage(cfg, "discovery/")
 		if err != nil {
 			return nil, errors.Wrap(err, "creating S3 nodes storage")
 		}

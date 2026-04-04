@@ -37,7 +37,7 @@ The storage URL points to an S3 bucket (or local directory) with this layout:
 s3://my-bucket/                 (or file:///tmp/my-cluster/)
   v1/
     certs/                      CA cert, CA key (optionally encrypted), client certs
-    nodes/                      Node registry (JSON files for peer discovery)
+    discovery/                  Node registry (JSON files for peer discovery)
     sstables/                   Pebble SSTables (shared storage)
     metadata/                   MANIFEST bundle
 ```

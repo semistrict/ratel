@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/cockroachdb/cockroach/pkg/base"
+	"github.com/cockroachdb/cockroach/pkg/kv/kvserver"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/server"
 	"github.com/cockroachdb/cockroach/pkg/testutils/testcluster"
@@ -68,7 +69,11 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 		rpcListeners[i] = rpcListener
 		httpListener := NewListener(httpAddr)
 
-		args := clusterArgs.ServerArgsPerNode[i]
+		// Start from ServerArgs defaults, then overlay per-node overrides.
+		args := clusterArgs.ServerArgs
+		if perNode, ok := clusterArgs.ServerArgsPerNode[i]; ok {
+			args = perNode
+		}
 		args.Insecure = true
 		args.Addr = rpcAddr
 		args.Listener = rpcListener
@@ -81,6 +86,16 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 				{Key: "dc", Value: fmt.Sprintf("dc%d", i+1)},
 			},
 		}
+
+		// Disable range log writes to avoid a deadlock where the SQL
+		// INSERT INTO system.rangelog inside ChangeReplicas/Split
+		// transactions hangs waiting for its own Raft proposal.
+		storeKnobs := args.Knobs.Store
+		if storeKnobs == nil {
+			storeKnobs = &kvserver.StoreTestingKnobs{}
+		}
+		storeKnobs.(*kvserver.StoreTestingKnobs).DisableRangeLogWrite = true
+		args.Knobs.Store = storeKnobs
 
 		serverKnobs := args.Knobs.Server
 		if serverKnobs == nil {

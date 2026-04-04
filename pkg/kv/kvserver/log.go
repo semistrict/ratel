@@ -83,6 +83,10 @@ func (s *Store) insertRangeLogEvent(
 		s.metrics.RangeRemoves.Inc(1)
 	}
 
+	if s.TestingKnobs() != nil && s.TestingKnobs().DisableRangeLogWrite {
+		return nil
+	}
+
 	rows, err := s.cfg.SQLExecutor.ExecEx(ctx, "log-range-event", txn,
 		sessiondata.InternalExecutorOverride{User: security.RootUserName()},
 		insertEventTableStmt, args...)

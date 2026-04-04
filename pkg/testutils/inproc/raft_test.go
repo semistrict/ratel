@@ -26,9 +26,56 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestAddVoters verifies that explicit Raft replication via AddVoters
+// works with in-memory networking.
+func TestAddVoters(t *testing.T) {
+	c := inproc.StartCluster(t, 3)
+	defer c.Stop()
+
+	ctx := context.Background()
+	db := c.Server(0).DB()
+
+	key := keys.ScratchRangeMin
+	require.NoError(t, db.Put(ctx, key, []byte("data")))
+
+	desc := c.LookupRangeOrFatal(t, key)
+	c.AddVotersOrFatal(t, desc.StartKey.AsRawKey(), c.Target(1), c.Target(2))
+
+	// Verify data is readable from all nodes.
+	for i := 0; i < 3; i++ {
+		val, err := c.Server(i).DB().Get(ctx, key)
+		require.NoError(t, err)
+		require.Equal(t, []byte("data"), val.ValueBytes())
+	}
+}
+
+// TestSyncAddVoters verifies that explicit Raft replication via
+// AddVoters works inside a synctest bubble with fake time.
+func TestSyncAddVoters(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		c := inproc.StartCluster(t, 3)
+		defer c.Stop()
+
+		ctx := t.Context()
+		db := c.Server(0).DB()
+
+		key := keys.ScratchRangeMin
+		require.NoError(t, db.Put(ctx, key, []byte("data")))
+
+		desc := c.LookupRangeOrFatal(t, key)
+		c.AddVotersOrFatal(t, desc.StartKey.AsRawKey(), c.Target(1), c.Target(2))
+
+		for i := 0; i < 3; i++ {
+			val, err := c.Server(i).DB().Get(ctx, key)
+			require.NoError(t, err)
+			require.Equal(t, []byte("data"), val.ValueBytes())
+		}
+	})
+}
+
 // TestAutoReplication verifies that Raft replication works with
-// in-memory networking: a cluster with ReplicationAuto automatically
-// replicates ranges and data is readable from any node.
+// ReplicationAuto: data is automatically replicated and readable
+// from any node.
 func TestAutoReplication(t *testing.T) {
 	c := inproc.StartCluster(t, 3, func(args *base.TestClusterArgs) {
 		args.ReplicationMode = base.ReplicationAuto
@@ -41,18 +88,14 @@ func TestAutoReplication(t *testing.T) {
 	key := keys.ScratchRangeMin
 	require.NoError(t, db.Put(ctx, key, []byte("replicated")))
 
-	// Read from each node to verify replication.
 	for i := 0; i < 3; i++ {
 		val, err := c.Server(i).DB().Get(ctx, key)
 		require.NoError(t, err)
-		require.Equal(t, []byte("replicated"), val.ValueBytes(),
-			"node %d should be able to read replicated data", i)
+		require.Equal(t, []byte("replicated"), val.ValueBytes())
 	}
 }
 
-// TestSyncAutoReplication is the same as TestAutoReplication but runs
-// inside a synctest bubble with fake time, verifying that Raft
-// consensus and replication work deterministically.
+// TestSyncAutoReplication is TestAutoReplication inside synctest.
 func TestSyncAutoReplication(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		c := inproc.StartCluster(t, 3, func(args *base.TestClusterArgs) {
@@ -69,15 +112,13 @@ func TestSyncAutoReplication(t *testing.T) {
 		for i := 0; i < 3; i++ {
 			val, err := c.Server(i).DB().Get(ctx, key)
 			require.NoError(t, err)
-			require.Equal(t, []byte("replicated"), val.ValueBytes(),
-				"node %d should be able to read replicated data", i)
+			require.Equal(t, []byte("replicated"), val.ValueBytes())
 		}
 	})
 }
 
 // TestSyncRaftRestartWithReplication verifies that after a node
-// restart, Raft recovers and data remains accessible. Uses
-// ReplicationAuto so ranges are replicated to all nodes.
+// restart with replicated data, reads still work.
 func TestSyncRaftRestartWithReplication(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		c := inproc.StartCluster(t, 3, func(args *base.TestClusterArgs) {
@@ -88,19 +129,12 @@ func TestSyncRaftRestartWithReplication(t *testing.T) {
 		ctx := t.Context()
 		db := c.Server(0).DB()
 
-		// Write data that will be replicated.
 		require.NoError(t, db.Put(ctx, roachpb.Key("raft-restart"), []byte("v1")))
 
-		// Stop node 2.
 		c.StopNode(2)
-
-		// Write more data while node 2 is down.
 		require.NoError(t, db.Put(ctx, roachpb.Key("while-down"), []byte("v2")))
-
-		// Restart node 2.
 		c.RestartNode(t, 2)
 
-		// Verify data from before and during downtime is readable.
 		val, err := db.Get(ctx, roachpb.Key("raft-restart"))
 		require.NoError(t, err)
 		require.Equal(t, []byte("v1"), val.ValueBytes())

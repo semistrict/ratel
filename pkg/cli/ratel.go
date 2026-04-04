@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"time"
 
 	"github.com/cockroachdb/cockroach/pkg/base"
 	"github.com/cockroachdb/cockroach/pkg/cli/clicfg"
@@ -49,6 +50,7 @@ import (
 var ratelListenAddr string
 var ratelHTTPAddr string
 var ratelNoPassphrase bool
+var ratelNodeID string
 
 var ratelCmd = &cobra.Command{
 	Use:   "ratel [command]",
@@ -100,6 +102,9 @@ func init() {
 			"Address to listen on for the admin HTTP interface")
 		cmd.Flags().BoolVar(&ratelNoPassphrase, "no-passphrase", false,
 			"Do not encrypt the CA key (skip passphrase prompt)")
+		cmd.Flags().StringVar(&ratelNodeID, "node-id", "",
+			"Stable operator-assigned node identity (e.g. ratel-1)")
+		_ = cmd.MarkFlagRequired("node-id")
 	}
 
 	// SQL-specific flags.
@@ -179,6 +184,11 @@ func runRatelInit(cmd *cobra.Command, args []string) error {
 
 	ctx := context.Background()
 
+	// Check for duplicate running node with same --node-id.
+	if err := checkNodeLiveness(ctx, cs.Nodes, ratelNodeID); err != nil {
+		return err
+	}
+
 	// Check that cluster is not already initialized.
 	nodes, err := storage.ListNodes(ctx, cs.Nodes)
 	if err != nil {
@@ -229,6 +239,7 @@ func runRatelInit(cmd *cobra.Command, args []string) error {
 		joinList:       nil, // no peers; we are bootstrapping
 		autoInitialize: true,
 		nodesStore:     cs.Nodes,
+		ratelNodeID:    ratelNodeID,
 	})
 }
 
@@ -241,6 +252,11 @@ func runRatelJoin(cmd *cobra.Command, args []string) error {
 	}
 
 	ctx := context.Background()
+
+	// Check for duplicate running node with same --node-id.
+	if err := checkNodeLiveness(ctx, cs.Nodes, ratelNodeID); err != nil {
+		return err
+	}
 
 	// Discover peers.
 	nodes, err := storage.ListNodes(ctx, cs.Nodes)
@@ -284,6 +300,7 @@ func runRatelJoin(cmd *cobra.Command, args []string) error {
 		joinList:       joinList,
 		autoInitialize: false,
 		nodesStore:     cs.Nodes,
+		ratelNodeID:    ratelNodeID,
 	})
 }
 
@@ -296,6 +313,26 @@ type ratelServerOpts struct {
 	joinList       []string
 	autoInitialize bool
 	nodesStore     remote.Storage
+	ratelNodeID    string
+}
+
+// checkNodeLiveness reads the node registration for the given ratel node ID
+// and returns an error if the node appears to be already running (heartbeat
+// within the last 60 seconds).
+func checkNodeLiveness(ctx context.Context, store remote.Storage, nodeID string) error {
+	reg, exists, err := storage.NodeRegistrationExists(ctx, store, nodeID)
+	if err != nil {
+		return errors.Wrapf(err, "checking liveness for node %s", nodeID)
+	}
+	if !exists {
+		return nil
+	}
+	if reg.LastHeartbeat != nil && time.Since(*reg.LastHeartbeat) < 60*time.Second {
+		return errors.Newf(
+			"node %s appears to be already running (last heartbeat: %s, %s ago)",
+			nodeID, reg.LastHeartbeat.Format(time.RFC3339), time.Since(*reg.LastHeartbeat).Round(time.Second))
+	}
+	return nil
 }
 
 func ratelStartServer(ctx context.Context, opts ratelServerOpts) error {
@@ -321,9 +358,26 @@ func ratelStartServer(ctx context.Context, opts ratelServerOpts) error {
 	if err := os.MkdirAll(opts.storeDir, 0755); err != nil {
 		return errors.Wrapf(err, "creating store dir %s", opts.storeDir)
 	}
+
+	// Crash recovery: if a previous registration exists for this node-id,
+	// recover its store_id so we download the right manifest bundle.
+	var recoveryStoreID int32
+	if opts.ratelNodeID != "" {
+		reg, exists, err := storage.NodeRegistrationExists(ctx, opts.nodesStore, opts.ratelNodeID)
+		if err != nil {
+			return errors.Wrap(err, "checking for previous node registration")
+		}
+		if exists && reg.StoreID > 0 {
+			recoveryStoreID = int32(reg.StoreID)
+			fmt.Fprintf(os.Stderr, "Recovered store_id=%d from previous registration for node %s\n",
+				recoveryStoreID, opts.ratelNodeID)
+		}
+	}
+
 	storeSpec := base.StoreSpec{
 		Path:              opts.storeDir,
 		RemoteStoragePath: opts.clusterURL,
+		RecoveryStoreID:   recoveryStoreID,
 	}
 	cfg.Stores = base.StoreSpecList{Specs: []base.StoreSpec{storeSpec}}
 
@@ -374,20 +428,28 @@ func ratelStartServer(ctx context.Context, opts ratelServerOpts) error {
 				return errors.Wrap(err, "accepting clients failed")
 			}
 
-			// Register the node using the real NodeID assigned by CockroachDB.
+			// Register the node using the real NodeID assigned by CockroachDB,
+			// keyed by the operator-assigned ratel node ID.
 			nodeID := int(s.NodeID())
+			storeID := int(s.GetFirstStoreID())
 			reg := storage.NodeRegistration{
-				NodeID:   nodeID,
-				Addr:     cfg.AdvertiseAddr,
-				SQLAddr:  cfg.SQLAdvertiseAddr,
-				HTTPAddr: cfg.HTTPAddr,
+				NodeID:      nodeID,
+				RatelNodeID: opts.ratelNodeID,
+				StoreID:     storeID,
+				Addr:        cfg.AdvertiseAddr,
+				SQLAddr:     cfg.SQLAdvertiseAddr,
+				HTTPAddr:    cfg.HTTPAddr,
 			}
 			if regErr := storage.RegisterNode(ctx, opts.nodesStore, reg); regErr != nil {
 				return errors.Wrap(regErr, "registering node")
 			}
 
-			fmt.Fprintf(os.Stderr, "Node %d is ready. SQL address: %s, HTTP address: %s\n",
-				nodeID, cfg.SQLAdvertiseAddr, cfg.HTTPAddr)
+			// Start background heartbeat goroutine.
+			heartbeatCtx := context.Background()
+			go runHeartbeat(heartbeatCtx, stopper.ShouldQuiesce(), opts.nodesStore, reg)
+
+			fmt.Fprintf(os.Stderr, "Node %d (store %d) is ready. SQL address: %s, HTTP address: %s\n",
+				nodeID, storeID, cfg.SQLAdvertiseAddr, cfg.HTTPAddr)
 			return nil
 		}(); err != nil {
 			errChan <- err
@@ -412,6 +474,22 @@ func ratelStartServer(ctx context.Context, opts ratelServerOpts) error {
 		}()
 		<-stopper.IsStopped()
 		return nil
+	}
+}
+
+// runHeartbeat periodically updates the node registration's LastHeartbeat.
+func runHeartbeat(ctx context.Context, quiesce <-chan struct{}, store remote.Storage, reg storage.NodeRegistration) {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-quiesce:
+			return
+		case <-ticker.C:
+			if err := storage.HeartbeatNode(ctx, store, reg); err != nil {
+				fmt.Fprintf(os.Stderr, "heartbeat failed: %v\n", err)
+			}
+		}
 	}
 }
 

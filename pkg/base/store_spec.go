@@ -206,6 +206,10 @@ type StoreSpec struct {
 	// RemoteMetadataStorage, if set, is used directly instead of parsing
 	// RemoteStoragePath. This allows tests to inject in-memory storage.
 	RemoteMetadataStorage remote.Storage
+	// RecoveryStoreID, if non-zero, is a store ID recovered from an external
+	// source (e.g. node registration) during crash recovery. It is passed
+	// through to PebbleConfig to download the correct manifest bundle.
+	RecoveryStoreID int32
 }
 
 // String returns a fully parsable version of the store spec.

@@ -79,14 +79,14 @@ func TestManifestBundleRoundTrip(t *testing.T) {
 	require.NoError(t, db.Close())
 
 	// Upload the manifest bundle.
-	require.NoError(t, UploadManifestBundle(ctx, memFS, "/db", metaStore))
+	require.NoError(t, UploadManifestBundle(ctx, memFS, "/db", metaStore, 1))
 
 	// Wipe the local directory.
 	require.NoError(t, memFS.RemoveAll("/db"))
 	require.NoError(t, memFS.MkdirAll("/db2", 0755))
 
 	// Download the manifest bundle to a new directory.
-	require.NoError(t, DownloadManifestBundle(ctx, memFS, "/db2", metaStore))
+	require.NoError(t, DownloadManifestBundle(ctx, memFS, "/db2", metaStore, 1))
 
 	// Reopen the DB from the new directory with the same remote storage.
 	db2 := openTestDB(t, memFS, "/db2", remoteStore)
@@ -109,7 +109,7 @@ func TestManifestBundleExists(t *testing.T) {
 	metaStore := remote.NewInMem()
 
 	// Empty storage should return false.
-	exists, err := ManifestBundleExists(ctx, metaStore)
+	exists, err := ManifestBundleExists(ctx, metaStore, 1)
 	require.NoError(t, err)
 	require.False(t, exists)
 
@@ -117,10 +117,10 @@ func TestManifestBundleExists(t *testing.T) {
 	db := openTestDB(t, memFS, "/db", remoteStore)
 	writeTestData(t, db, "exists", 10)
 	require.NoError(t, db.Close())
-	require.NoError(t, UploadManifestBundle(ctx, memFS, "/db", metaStore))
+	require.NoError(t, UploadManifestBundle(ctx, memFS, "/db", metaStore, 1))
 
 	// Now it should exist.
-	exists, err = ManifestBundleExists(ctx, metaStore)
+	exists, err = ManifestBundleExists(ctx, metaStore, 1)
 	require.NoError(t, err)
 	require.True(t, exists)
 }
@@ -139,22 +139,22 @@ func TestManifestBundleOverwrite(t *testing.T) {
 	writeTestData(t, db, "first", 50)
 	require.NoError(t, db.Compact([]byte("first-key-000000"), []byte("first-key-999999"), true))
 	require.NoError(t, db.Close())
-	require.NoError(t, UploadManifestBundle(ctx, memFS, "/db1", metaStore))
+	require.NoError(t, UploadManifestBundle(ctx, memFS, "/db1", metaStore, 1))
 
 	// Second DB session — reopen from the first bundle, write more data.
 	require.NoError(t, memFS.MkdirAll("/db2", 0755))
-	require.NoError(t, DownloadManifestBundle(ctx, memFS, "/db2", metaStore))
+	require.NoError(t, DownloadManifestBundle(ctx, memFS, "/db2", metaStore, 1))
 	db2 := openTestDB(t, memFS, "/db2", remoteStore)
 	writeTestData(t, db2, "second", 50)
 	require.NoError(t, db2.Compact([]byte("second-key-000000"), []byte("second-key-999999"), true))
 	require.NoError(t, db2.Close())
 
 	// Overwrite the bundle with the second session's state.
-	require.NoError(t, UploadManifestBundle(ctx, memFS, "/db2", metaStore))
+	require.NoError(t, UploadManifestBundle(ctx, memFS, "/db2", metaStore, 1))
 
 	// Download into a fresh dir and verify both sessions' data is present.
 	require.NoError(t, memFS.MkdirAll("/db3", 0755))
-	require.NoError(t, DownloadManifestBundle(ctx, memFS, "/db3", metaStore))
+	require.NoError(t, DownloadManifestBundle(ctx, memFS, "/db3", metaStore, 1))
 	db3 := openTestDB(t, memFS, "/db3", remoteStore)
 
 	val, closer, err := db3.Get([]byte("first-key-000025"))

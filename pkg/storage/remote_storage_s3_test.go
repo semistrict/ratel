@@ -105,14 +105,14 @@ func TestS3OnlyOpenClose(t *testing.T) {
 	require.NoError(t, db.Compact([]byte("oc-key-000000"), []byte("oc-key-999999"), true))
 	require.NoError(t, db.Flush())
 	require.NoError(t, db.Close())
-	require.NoError(t, UploadManifestBundle(ctx, memFS, "/db", metaStore))
+	require.NoError(t, UploadManifestBundle(ctx, memFS, "/db", metaStore, 1))
 
 	// Wipe local state.
 	require.NoError(t, memFS.RemoveAll("/db"))
 	require.NoError(t, memFS.MkdirAll("/db2", 0755))
 
 	// Session 2: download bundle, reopen, verify.
-	require.NoError(t, DownloadManifestBundle(ctx, memFS, "/db2", metaStore))
+	require.NoError(t, DownloadManifestBundle(ctx, memFS, "/db2", metaStore, 1))
 	db2 := openTestDB(t, memFS, "/db2", remoteStore)
 
 	for _, i := range []int{0, 50, 100, 199} {
@@ -139,7 +139,7 @@ func TestS3OnlyFreshStart(t *testing.T) {
 	require.NoError(t, db.Close())
 
 	// Upload manifest bundle.
-	require.NoError(t, UploadManifestBundle(ctx, memFS, "/db", metaStore))
+	require.NoError(t, UploadManifestBundle(ctx, memFS, "/db", metaStore, 1))
 
 	// Verify remote SSTables exist.
 	remoteObjs, err := remoteStore.List("", "")
@@ -147,7 +147,7 @@ func TestS3OnlyFreshStart(t *testing.T) {
 	require.Greater(t, len(remoteObjs), 0, "expected remote SSTables")
 
 	// Verify manifest bundle exists.
-	exists, err := ManifestBundleExists(ctx, metaStore)
+	exists, err := ManifestBundleExists(ctx, metaStore, 1)
 	require.NoError(t, err)
 	require.True(t, exists)
 }
@@ -164,7 +164,7 @@ func TestS3OnlyCleanShutdownNoLocalState(t *testing.T) {
 	writeTestData(t, db, "clean", 50)
 	require.NoError(t, db.Flush())
 	require.NoError(t, db.Close())
-	require.NoError(t, UploadManifestBundle(ctx, memFS, "/db", metaStore))
+	require.NoError(t, UploadManifestBundle(ctx, memFS, "/db", metaStore, 1))
 
 	// Remove temp dir — simulating the clean shutdown lifecycle.
 	require.NoError(t, memFS.RemoveAll("/db"))
@@ -190,23 +190,23 @@ func TestS3OnlyMultipleRestarts(t *testing.T) {
 	require.NoError(t, db.Compact([]byte("s1-key-000000"), []byte("s1-key-999999"), true))
 	require.NoError(t, db.Flush())
 	require.NoError(t, db.Close())
-	require.NoError(t, UploadManifestBundle(ctx, memFS, dir, metaStore))
+	require.NoError(t, UploadManifestBundle(ctx, memFS, dir, metaStore, 1))
 	require.NoError(t, memFS.RemoveAll(dir))
 
 	// Session 2: download, open, write more, close, upload.
 	require.NoError(t, memFS.MkdirAll(dir, 0755))
-	require.NoError(t, DownloadManifestBundle(ctx, memFS, dir, metaStore))
+	require.NoError(t, DownloadManifestBundle(ctx, memFS, dir, metaStore, 1))
 	db = openTestDB(t, memFS, dir, remoteStore)
 	writeTestData(t, db, "s2", 100)
 	require.NoError(t, db.Compact([]byte("s2-key-000000"), []byte("s2-key-999999"), true))
 	require.NoError(t, db.Flush())
 	require.NoError(t, db.Close())
-	require.NoError(t, UploadManifestBundle(ctx, memFS, dir, metaStore))
+	require.NoError(t, UploadManifestBundle(ctx, memFS, dir, metaStore, 1))
 	require.NoError(t, memFS.RemoveAll(dir))
 
 	// Session 3: download, open, verify all data from sessions 1 and 2.
 	require.NoError(t, memFS.MkdirAll(dir, 0755))
-	require.NoError(t, DownloadManifestBundle(ctx, memFS, dir, metaStore))
+	require.NoError(t, DownloadManifestBundle(ctx, memFS, dir, metaStore, 1))
 	db = openTestDB(t, memFS, dir, remoteStore)
 
 	for _, prefix := range []string{"s1", "s2"} {
@@ -237,17 +237,17 @@ func TestS3OnlyPeriodicCheckpoint(t *testing.T) {
 	// Flush to ensure all data is on remote storage, then upload the
 	// manifest bundle from the live DB directory.
 	require.NoError(t, db.Flush())
-	require.NoError(t, UploadManifestBundle(ctx, memFS, "/db", metaStore))
+	require.NoError(t, UploadManifestBundle(ctx, memFS, "/db", metaStore, 1))
 
 	// Verify bundle exists without closing the DB.
-	exists, err := ManifestBundleExists(ctx, metaStore)
+	exists, err := ManifestBundleExists(ctx, metaStore, 1)
 	require.NoError(t, err)
 	require.True(t, exists)
 
 	// Verify the checkpoint bundle can be used to open a new DB that
 	// reads the same remote SSTables.
 	require.NoError(t, memFS.MkdirAll("/db2", 0755))
-	require.NoError(t, DownloadManifestBundle(ctx, memFS, "/db2", metaStore))
+	require.NoError(t, DownloadManifestBundle(ctx, memFS, "/db2", metaStore, 1))
 	db2 := openTestDB(t, memFS, "/db2", remoteStore)
 
 	val, closer, err := db2.Get([]byte("cp-key-000050"))

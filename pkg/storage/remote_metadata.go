@@ -18,6 +18,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"strings"
 
@@ -26,7 +27,15 @@ import (
 	"github.com/cockroachdb/pebble/vfs"
 )
 
-const manifestBundleObject = "manifest-bundle.zip"
+// manifestBundleName returns the object name for a store's manifest bundle.
+// When storeID is 0 (first boot, before the store identity is known), it
+// falls back to the legacy name for backwards compatibility.
+func manifestBundleName(storeID int32) string {
+	if storeID == 0 {
+		return "manifest-bundle.zip"
+	}
+	return fmt.Sprintf("manifest-bundle-%d.zip", storeID)
+}
 
 // isManifestBundleFile returns true if the filename is a Pebble metadata file
 // that should be included in the manifest bundle. These are the files needed
@@ -52,7 +61,7 @@ func isManifestBundleFile(name string) bool {
 // marker, manifest marker, and remote object catalog — everything needed to
 // reopen the DB with its remote SSTables.
 func UploadManifestBundle(
-	ctx context.Context, fs vfs.FS, dir string, store remote.Storage,
+	ctx context.Context, fs vfs.FS, dir string, store remote.Storage, storeID int32,
 ) error {
 	ls, err := fs.List(dir)
 	if err != nil {
@@ -83,7 +92,7 @@ func UploadManifestBundle(
 		return errors.Wrap(err, "closing zip writer")
 	}
 
-	w, err := store.CreateObject(manifestBundleObject)
+	w, err := store.CreateObject(manifestBundleName(storeID))
 	if err != nil {
 		return errors.Wrap(err, "creating manifest bundle object")
 	}
@@ -98,9 +107,9 @@ func UploadManifestBundle(
 // extracts the Pebble metadata files into dir on the given filesystem. The
 // directory must already exist.
 func DownloadManifestBundle(
-	ctx context.Context, fs vfs.FS, dir string, store remote.Storage,
+	ctx context.Context, fs vfs.FS, dir string, store remote.Storage, storeID int32,
 ) error {
-	reader, size, err := store.ReadObject(ctx, manifestBundleObject)
+	reader, size, err := store.ReadObject(ctx, manifestBundleName(storeID))
 	if err != nil {
 		return errors.Wrap(err, "reading manifest bundle object")
 	}
@@ -135,8 +144,8 @@ func DownloadManifestBundle(
 
 // ManifestBundleExists returns true if a manifest bundle has been uploaded
 // to the given remote storage.
-func ManifestBundleExists(ctx context.Context, store remote.Storage) (bool, error) {
-	_, err := store.Size(manifestBundleObject)
+func ManifestBundleExists(ctx context.Context, store remote.Storage, storeID int32) (bool, error) {
+	_, err := store.Size(manifestBundleName(storeID))
 	if err != nil {
 		if store.IsNotExistError(err) {
 			return false, nil

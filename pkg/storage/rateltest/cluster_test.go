@@ -137,18 +137,14 @@ func TestMultiNodeCompaction(t *testing.T) {
 	require.Equal(t, 2, node, "row 2 should have been written by node 2")
 }
 
-// TestSharedMetadataCorruption demonstrates that sharing a single metadata
-// store across nodes causes corruption. Pebble's MANIFEST is per-node state —
-// when two nodes write their MANIFEST to the same location, one overwrites
-// the other's, causing references to non-existent SSTables.
-//
-// This test intentionally creates a broken configuration (shared metadata)
-// and verifies it fails. Combined with the CreatorID collision (hardcoded to
-// 1 for all nodes), this produces "object does not exist" errors during
-// compaction.
-func TestSharedMetadataCorruption(t *testing.T) {
-	// Create shared storage where all nodes use the SAME metadata store
-	// (simulating the bug where metadata/ is a single shared location).
+// TestSharedMetadataNoCorruption verifies that per-store manifest bundle names
+// prevent corruption even when all nodes share the same metadata store. Each
+// node writes to manifest-bundle-<storeID>.zip so bundles don't collide.
+// Combined with per-store CreatorIDs (set via SetStoreID), SSTable filenames
+// are also unique, preventing object overwrites on shared storage.
+func TestSharedMetadataNoCorruption(t *testing.T) {
+	// Create shared storage where all nodes use the SAME metadata store.
+	// Previously this caused corruption; now per-store bundle names prevent it.
 	sharedMeta := remote.NewInMem()
 	ss := &SharedStorage{
 		SSTables: remote.NewInMem(),
@@ -174,16 +170,17 @@ func TestSharedMetadataCorruption(t *testing.T) {
 	}
 
 	// Force all nodes to flush and compact — this writes MANIFEST bundles
-	// to the shared metadata store, and compaction will reference SSTables
-	// tracked in a corrupted MANIFEST.
+	// to the shared metadata store. With per-store bundle names, each node
+	// writes its own bundle without overwriting others.
 	for i := 0; i < 3; i++ {
 		FlushAndCompact(t, tc, i)
 	}
 
-	// With shared metadata + shared CreatorID, reads should fail because
-	// SSTable references in the MANIFEST point to non-existent objects.
-	count := QueryCountSQL(t, db0, "meta_test")
-	require.Equal(t, 300, count)
+	// All 300 rows should be readable — no corruption.
+	for i, db := range []*gosql.DB{db0, db1, db2} {
+		count := QueryCountSQL(t, db, "meta_test")
+		require.Equal(t, 300, count, "node %d should see all 300 rows", i)
+	}
 }
 
 // TestMultiNodeSchemaChange verifies that DDL changes propagate across nodes.

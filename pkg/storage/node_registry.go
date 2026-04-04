@@ -21,6 +21,7 @@ import (
 	"io"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble/objstorage/remote"
@@ -28,15 +29,28 @@ import (
 
 // NodeRegistration describes a node registered in the cluster's shared storage.
 type NodeRegistration struct {
-	NodeID   int    `json:"node_id"`
-	Addr     string `json:"addr"`      // RPC/KV address
-	SQLAddr  string `json:"sql_addr"`  // PostgreSQL wire address
-	HTTPAddr string `json:"http_addr"` // Admin UI address
+	NodeID        int        `json:"node_id"`
+	RatelNodeID   string     `json:"ratel_node_id,omitempty"` // operator-assigned stable identity
+	StoreID       int        `json:"store_id,omitempty"`      // CockroachDB-assigned store ID
+	Addr          string     `json:"addr"`                    // RPC/KV address
+	SQLAddr       string     `json:"sql_addr"`                // PostgreSQL wire address
+	HTTPAddr      string     `json:"http_addr"`               // Admin UI address
+	LastHeartbeat *time.Time `json:"last_heartbeat,omitempty"`
 }
 
 // nodeFileName returns the object name for a node registration file.
-func nodeFileName(nodeID int) string {
-	return fmt.Sprintf("node-%d.json", nodeID)
+// When a RatelNodeID is set, the file is keyed by that stable identity.
+// Otherwise, it falls back to the CockroachDB node ID for backwards compat.
+func nodeFileName(reg NodeRegistration) string {
+	if reg.RatelNodeID != "" {
+		return fmt.Sprintf("node-%s.json", reg.RatelNodeID)
+	}
+	return fmt.Sprintf("node-%d.json", reg.NodeID)
+}
+
+// nodeFileNameByRatelID returns the object name for a ratel node ID.
+func nodeFileNameByRatelID(ratelNodeID string) string {
+	return fmt.Sprintf("node-%s.json", ratelNodeID)
 }
 
 // RegisterNode writes a node registration to the nodes/ storage.
@@ -45,7 +59,7 @@ func RegisterNode(ctx context.Context, store remote.Storage, reg NodeRegistratio
 	if err != nil {
 		return errors.Wrap(err, "marshaling node registration")
 	}
-	w, err := store.CreateObject(nodeFileName(reg.NodeID))
+	w, err := store.CreateObject(nodeFileName(reg))
 	if err != nil {
 		return errors.Wrap(err, "creating node registration object")
 	}
@@ -88,29 +102,57 @@ func ListNodes(ctx context.Context, store remote.Storage) ([]NodeRegistration, e
 	return nodes, nil
 }
 
-// RemoveNode deletes a node registration from the nodes/ storage.
-func RemoveNode(ctx context.Context, store remote.Storage, nodeID int) error {
-	return errors.Wrapf(store.Delete(nodeFileName(nodeID)), "removing node %d", nodeID)
+// RemoveNode deletes a node registration from the nodes/ storage by ratel node ID.
+func RemoveNode(ctx context.Context, store remote.Storage, ratelNodeID string) error {
+	return errors.Wrapf(store.Delete(nodeFileNameByRatelID(ratelNodeID)), "removing node %s", ratelNodeID)
 }
 
-// ReadNodeRegistration reads a single node registration by ID.
-func ReadNodeRegistration(ctx context.Context, store remote.Storage, nodeID int) (NodeRegistration, error) {
-	reader, size, err := store.ReadObject(ctx, nodeFileName(nodeID))
+// ReadNodeRegistration reads a single node registration by ratel node ID.
+func ReadNodeRegistration(
+	ctx context.Context, store remote.Storage, ratelNodeID string,
+) (NodeRegistration, error) {
+	reader, size, err := store.ReadObject(ctx, nodeFileNameByRatelID(ratelNodeID))
 	if err != nil {
-		return NodeRegistration{}, errors.Wrapf(err, "reading node %d", nodeID)
+		return NodeRegistration{}, errors.Wrapf(err, "reading node %s", ratelNodeID)
 	}
 	buf := make([]byte, size)
 	if err := reader.ReadAt(ctx, buf, 0); err != nil {
 		_ = reader.Close()
-		return NodeRegistration{}, errors.Wrapf(err, "reading node %d data", nodeID)
+		return NodeRegistration{}, errors.Wrapf(err, "reading node %s data", ratelNodeID)
 	}
 	_ = reader.Close()
 
 	var reg NodeRegistration
 	if err := json.Unmarshal(buf, &reg); err != nil {
-		return NodeRegistration{}, errors.Wrapf(err, "unmarshaling node %d", nodeID)
+		return NodeRegistration{}, errors.Wrapf(err, "unmarshaling node %s", ratelNodeID)
 	}
 	return reg, nil
+}
+
+// NodeRegistrationExists returns true if a registration exists for the given
+// ratel node ID, and the registration itself.
+func NodeRegistrationExists(
+	ctx context.Context, store remote.Storage, ratelNodeID string,
+) (NodeRegistration, bool, error) {
+	_, err := store.Size(nodeFileNameByRatelID(ratelNodeID))
+	if err != nil {
+		if store.IsNotExistError(err) {
+			return NodeRegistration{}, false, nil
+		}
+		return NodeRegistration{}, false, errors.Wrapf(err, "checking node %s", ratelNodeID)
+	}
+	reg, err := ReadNodeRegistration(ctx, store, ratelNodeID)
+	if err != nil {
+		return NodeRegistration{}, false, err
+	}
+	return reg, true, nil
+}
+
+// HeartbeatNode updates a node registration's LastHeartbeat timestamp.
+func HeartbeatNode(ctx context.Context, store remote.Storage, reg NodeRegistration) error {
+	now := time.Now().UTC()
+	reg.LastHeartbeat = &now
+	return RegisterNode(ctx, store, reg)
 }
 
 // WriteObject is a helper that writes data to a remote.Storage object.

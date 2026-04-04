@@ -630,6 +630,11 @@ type PebbleConfig struct {
 	// reconnect to its remote SSTables. On close, the bundle is uploaded
 	// after flushing.
 	MetadataStorage remote.Storage
+	// RecoveryStoreID, if non-zero, is a store ID recovered from an external
+	// source (e.g. node registration in S3) during crash recovery. It is used
+	// to download the correct per-store manifest bundle and to set the Pebble
+	// CreatorID before the store identity is read from the local dir.
+	RecoveryStoreID int32
 }
 
 // EncryptionStatsHandler provides encryption related stats.
@@ -666,6 +671,7 @@ type Pebble struct {
 	fileLock        *pebble.Lock
 	fileRegistry    *PebbleFileRegistry
 	metadataStorage remote.Storage
+	storeID         int32
 	checkpointStop  chan struct{}
 	checkpointDone  chan struct{}
 
@@ -724,15 +730,23 @@ type StoreIDSetter interface {
 	SetStoreID(ctx context.Context, storeID int32)
 }
 
-// SetStoreID adds the store id to pebble logs.
+// SetStoreID adds the store id to pebble logs and sets the Pebble CreatorID
+// for remote/shared storage. The CreatorID is deferred to this point because
+// the store ID is not known until after the store identity is read.
 func (p *Pebble) SetStoreID(ctx context.Context, storeID int32) {
 	if p == nil {
 		return
 	}
-	if p.storeIDPebbleLog == nil {
-		return
+	p.storeID = storeID
+	if p.storeIDPebbleLog != nil {
+		p.storeIDPebbleLog.Set(ctx, storeID)
 	}
-	p.storeIDPebbleLog.Set(ctx, storeID)
+	// Set the Pebble CreatorID so remote SSTables get unique filenames per node.
+	if p.db != nil && storeID > 0 {
+		if err := p.db.SetCreatorID(uint64(storeID)); err != nil {
+			log.Warningf(ctx, "failed to set pebble creator ID to %d: %v", storeID, err)
+		}
+	}
 }
 
 // ResolveEncryptedEnvOptions fills in cfg.Opts.FS with an encrypted vfs if this
@@ -838,13 +852,14 @@ func NewPebble(ctx context.Context, cfg PebbleConfig) (p *Pebble, err error) {
 	// If metadata storage is configured, download the manifest bundle so
 	// pebble.Open can reconnect to its remote SSTables.
 	if cfg.MetadataStorage != nil {
-		exists, existsErr := ManifestBundleExists(ctx, cfg.MetadataStorage)
+		bundleStoreID := cfg.RecoveryStoreID
+		exists, existsErr := ManifestBundleExists(ctx, cfg.MetadataStorage, bundleStoreID)
 		if existsErr != nil {
 			return nil, errors.Wrap(existsErr, "checking for manifest bundle")
 		}
 		if exists {
-			log.Infof(ctx, "downloading manifest bundle from metadata storage")
-			if dlErr := DownloadManifestBundle(ctx, cfg.Opts.FS, cfg.Dir, cfg.MetadataStorage); dlErr != nil {
+			log.Infof(ctx, "downloading manifest bundle (store_id=%d) from metadata storage", bundleStoreID)
+			if dlErr := DownloadManifestBundle(ctx, cfg.Opts.FS, cfg.Dir, cfg.MetadataStorage, bundleStoreID); dlErr != nil {
 				return nil, errors.Wrap(dlErr, "downloading manifest bundle")
 			}
 		}
@@ -990,11 +1005,15 @@ func NewPebble(ctx context.Context, cfg PebbleConfig) (p *Pebble, err error) {
 	}
 	p.db = db
 
-	// SetCreatorID is required for shared/remote storage.
-	if cfg.SharedStorage != nil || cfg.RemoteStorageFactory != nil {
-		if err := db.SetCreatorID(1); err != nil {
+	// SetCreatorID for remote storage is deferred to SetStoreID, which is
+	// called from kvserver once the store identity is known. Pebble disables
+	// remote storage until SetCreatorID is called, so this is safe.
+	// If a RecoveryStoreID is provided (crash recovery), set it now.
+	if cfg.RecoveryStoreID > 0 && (cfg.SharedStorage != nil || cfg.RemoteStorageFactory != nil) {
+		p.storeID = cfg.RecoveryStoreID
+		if err := db.SetCreatorID(uint64(cfg.RecoveryStoreID)); err != nil {
 			p.Close()
-			return nil, errors.Wrap(err, "setting creator ID for remote storage")
+			return nil, errors.Wrap(err, "setting recovery creator ID for remote storage")
 		}
 	}
 
@@ -1058,7 +1077,7 @@ func (p *Pebble) runManifestCheckpoint(ctx context.Context) {
 			}
 			if err := p.db.Flush(); err != nil {
 				p.logger.Infof("manifest checkpoint: flush failed: %v", err)
-			} else if err := UploadManifestBundle(context.Background(), p.fs, p.path, p.metadataStorage); err != nil {
+			} else if err := UploadManifestBundle(context.Background(), p.fs, p.path, p.metadataStorage, p.storeID); err != nil {
 				p.logger.Infof("manifest checkpoint: upload failed: %v", err)
 			} else {
 				p.logger.Infof("manifest checkpoint: uploaded successfully")
@@ -1159,7 +1178,7 @@ func (p *Pebble) Close() {
 	_ = p.db.Close()
 
 	if p.metadataStorage != nil {
-		if err := UploadManifestBundle(context.Background(), p.fs, p.path, p.metadataStorage); err != nil {
+		if err := UploadManifestBundle(context.Background(), p.fs, p.path, p.metadataStorage, p.storeID); err != nil {
 			p.logger.Infof("error uploading manifest bundle: %v", err)
 		}
 	}

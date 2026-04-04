@@ -655,6 +655,7 @@ func (cfg *Config) CreateEngines(ctx context.Context) (Engines, error) {
 			if spec.RemoteStorageFactory != nil {
 				pebbleConfig.RemoteStorageFactory = spec.RemoteStorageFactory
 				pebbleConfig.MetadataStorage = spec.RemoteMetadataStorage
+				pebbleConfig.RecoveryStoreID = spec.RecoveryStoreID
 			} else if spec.RemoteStoragePath != "" {
 				factory, metaStore, rsErr := storage.RemoteStorageFromURL(spec.RemoteStoragePath)
 				if rsErr != nil {
@@ -662,6 +663,7 @@ func (cfg *Config) CreateEngines(ctx context.Context) (Engines, error) {
 				}
 				pebbleConfig.RemoteStorageFactory = factory
 				pebbleConfig.MetadataStorage = metaStore
+				pebbleConfig.RecoveryStoreID = spec.RecoveryStoreID
 			}
 			eng, err := storage.NewPebble(ctx, pebbleConfig)
 			if err != nil {

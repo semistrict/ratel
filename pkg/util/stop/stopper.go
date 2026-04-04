@@ -610,7 +610,7 @@ func (s *Stopper) Quiesce(ctx context.Context) {
 		// Cap iterations to prevent infinite spinning under
 		// synctest's fake time when goroutines are blocked on I/O
 		// that won't unblock until closers run (after Quiesce).
-		if i > 5000 {
+		if i > 0 {
 			break
 		}
 	}

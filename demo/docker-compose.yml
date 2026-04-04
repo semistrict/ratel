@@ -1,0 +1,125 @@
+services:
+  rustfs:
+    image: rustfs/rustfs:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      RUSTFS_ADDRESS: "0.0.0.0:9000"
+      RUSTFS_CONSOLE_ADDRESS: "0.0.0.0:9001"
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_ACCESS_KEY: rustfsadmin
+      RUSTFS_SECRET_KEY: rustfsadmin
+      RUSTFS_VOLUMES: /data
+    volumes:
+      - rustfs-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9000/minio/health/live"]
+      interval: 3s
+      retries: 10
+
+  create-bucket:
+    image: rustfs/rustfs:latest
+    depends_on:
+      rustfs:
+        condition: service_healthy
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        /usr/local/bin/rustfs alias set local http://rustfs:9000 rustfsadmin rustfsadmin
+        /usr/local/bin/rustfs mb local/ratel --ignore-existing
+    environment:
+      AWS_ACCESS_KEY_ID: rustfsadmin
+      AWS_SECRET_ACCESS_KEY: rustfsadmin
+
+  ratel-init:
+    build:
+      context: ..
+      dockerfile: demo/Dockerfile
+    depends_on:
+      create-bucket:
+        condition: service_completed_successfully
+    environment:
+      AWS_ACCESS_KEY_ID: rustfsadmin
+      AWS_SECRET_ACCESS_KEY: rustfsadmin
+    command:
+      - init
+      - "s3://ratel/?endpoint=http://rustfs:9000&region=us-east-1"
+      - --listen-addr=ratel-init:26257
+      - --http-addr=ratel-init:8080
+    ports:
+      - "26257:26257"
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
+      interval: 5s
+      retries: 30
+      start_period: 30s
+
+  ratel-2:
+    build:
+      context: ..
+      dockerfile: demo/Dockerfile
+    depends_on:
+      ratel-init:
+        condition: service_healthy
+    environment:
+      AWS_ACCESS_KEY_ID: rustfsadmin
+      AWS_SECRET_ACCESS_KEY: rustfsadmin
+    command:
+      - join
+      - "s3://ratel/?endpoint=http://rustfs:9000&region=us-east-1"
+      - --listen-addr=ratel-2:26257
+      - --http-addr=ratel-2:8080
+
+  ratel-3:
+    build:
+      context: ..
+      dockerfile: demo/Dockerfile
+    depends_on:
+      ratel-init:
+        condition: service_healthy
+    environment:
+      AWS_ACCESS_KEY_ID: rustfsadmin
+      AWS_SECRET_ACCESS_KEY: rustfsadmin
+    command:
+      - join
+      - "s3://ratel/?endpoint=http://rustfs:9000&region=us-east-1"
+      - --listen-addr=ratel-3:26257
+      - --http-addr=ratel-3:8080
+
+  ratel-4:
+    build:
+      context: ..
+      dockerfile: demo/Dockerfile
+    depends_on:
+      ratel-init:
+        condition: service_healthy
+    environment:
+      AWS_ACCESS_KEY_ID: rustfsadmin
+      AWS_SECRET_ACCESS_KEY: rustfsadmin
+    command:
+      - join
+      - "s3://ratel/?endpoint=http://rustfs:9000&region=us-east-1"
+      - --listen-addr=ratel-4:26257
+      - --http-addr=ratel-4:8080
+
+  ratel-5:
+    build:
+      context: ..
+      dockerfile: demo/Dockerfile
+    depends_on:
+      ratel-init:
+        condition: service_healthy
+    environment:
+      AWS_ACCESS_KEY_ID: rustfsadmin
+      AWS_SECRET_ACCESS_KEY: rustfsadmin
+    command:
+      - join
+      - "s3://ratel/?endpoint=http://rustfs:9000&region=us-east-1"
+      - --listen-addr=ratel-5:26257
+      - --http-addr=ratel-5:8080
+
+volumes:
+  rustfs-data:

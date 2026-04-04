@@ -1,38 +1,49 @@
-This is Oxide's long-term maintenance branch/fork of [CockroachDB 22.1](https://github.com/cockroachdb/cockroach/tree/release-22.1).
+# Ratel
 
-Oxide uses CockroachDB for control plane data storage on the Oxide Cloud Computer, which uses [illumos](https://illumos.org) (specifically [Helios](https://github.com/oxidecomputer/helios)) as the underlying operating system. We launched our product with CockroachDB 22.1. After Cockroach Labs' announcement that they will change to a strictly proprietary (source-available) model, we made the decision to continue self-supporting on this version for the foreseeable future. For more context, see [RFD 110](https://rfd.shared.oxide.computer/rfd/110) and [RFD 508](https://rfd.shared.oxide.computer/rfd/508).
+A lightweight SQL database that runs entirely on object storage.
 
-The primary goal of this branch is to keep the wheels of building and testing CockroachDB rolling smoothly to enable our ability to self-support. Our product runs illumos, but we also support development of our product on Linux and macOS, so it's important to us that our bug fixes that go into the illumos build also end up on developer machines too. Currently we have builds for illumos, Linux, and macOS; and run the test suite on illumos and Linux.
+Ratel is a single-node SQL database — think SQLite but backed by S3 instead of a local file. Local disk is used only as a temporary working area for WAL and memtables. All persistent state (SSTables, manifest) lives on object storage. Shut down the process, wipe the local directory, restart pointing at the same bucket — all your data is there.
 
-This code was originally licensed under the Business Source License 1.1 (BSL).
-The BSL for CockroachDB 22.1 specified a Change Date of April 1, 2025, at which
-point the license automatically converted to the Apache License, Version 2.0.
-We verified this by examining the git history of `licenses/BSL.txt`: every BSL
-version from 19.2 through 22.1 has passed its Change Date, with 22.1 (the
-latest in this fork) converting on 2025-04-01. We have replaced all BSL license
-headers in source files with Apache 2.0 headers and removed the BSL license
-file. You're welcome to use this branch under the [Apache License, Version 2.0](./licenses/APL.txt),
-but note that we're unable to provide any support outside the context of its use
-in our product.
+## How it works
 
-## Binary downloads
+Ratel is built on [Pebble](https://github.com/cockroachdb/pebble) (an LSM storage engine) with its shared storage support configured to write all SSTables to remote object storage. A MANIFEST bundle (zip of Pebble metadata files) is periodically checkpointed to object storage so the database can be reopened from scratch on any machine.
 
-Binaries for each commit are available via Buildomat's published artefact APIs:
+**Lifecycle:**
+- **Start**: download MANIFEST bundle from object storage (if exists) → open Pebble → resume
+- **Run**: WAL and memtables on local disk, SSTables flushed directly to object storage
+- **Checkpoint**: every 5 minutes, flush and upload MANIFEST bundle (tunable)
+- **Shutdown**: final flush → upload MANIFEST bundle → local disk can be discarded
 
+## Quick start
+
+```bash
+ratel start-single-node --insecure \
+  --store="path=/tmp/ratel-local,remote-storage=file:///tmp/ratel-data" \
+  --listen-addr=localhost:26257
+
+# In another terminal
+ratel sql --insecure -e "CREATE TABLE hello (id INT PRIMARY KEY, msg STRING)"
+ratel sql --insecure -e "INSERT INTO hello VALUES (1, 'world')"
+ratel sql --insecure -e "SELECT * FROM hello"
 ```
-https://buildomat.eng.oxide.computer/public/file/oxidecomputer/cockroach/$SERIES/$COMMIT/cockroach.tgz
-```
 
-where:
+The `file://` backend stores data on the local filesystem (useful for development and testing). For production, use `s3://bucket/prefix`.
 
-- `$SERIES` is one of `illumos-amd64`, `linux-amd64`, or `darwin-amd64` (or `darwin-arm64`, both refer to the same universal binary)
-- `$COMMIT` is the full 40-character commit hash
+## Current status
 
-A SHA-256 checksum is also available at `cockroach.tgz.sha256`.
+Early development. What works today:
 
-## Major changes from upstream
+- Full SQL (PostgreSQL wire protocol) — inherited from the CockroachDB 22.1 SQL engine
+- SSTables on object storage via Pebble's shared storage (`CreateOnSharedAll`)
+- MANIFEST bundle upload/download for crash recovery
+- Periodic background checkpointing
+- `file://` backend for local testing without S3
+- `--store remote-storage=<url>` flag to configure object storage
 
-- We've removed all CCL-licensed code. The "Cockroach Community License" primarily covers enterprise features of the database. The split between Apache-licensed and CCL-licensed code was fairly clean, but we're not planning to maintain it, so we shouldn't keep it around.
-- The repository no longer needs to be cloned into `$GOPATH/github.com/cockroachdb/cockroach`; everything works without setting `$GOPATH`.
-- We're in the process of removing code specific to Cockroach Labs development processes (such as their tools for automated GitHub issues and pull requests). We're also not using the newer Bazel-based build system, and are planning on removing the related files eventually.
-- Our Linux builds are built with an Ubuntu 22.04 toolchain, so they won't run on systems with glibc < 2.35 or GCC < 11.
+## Heritage
+
+Ratel is a fork of [CockroachDB 22.1](https://github.com/cockroachdb/cockroach) (Apache 2.0), stripped down for single-node object-storage use. The multi-node clustering, Raft consensus, and distributed SQL machinery are still present in the code but unused — the goal is to progressively simplify toward a lean single-node SQL engine on object storage.
+
+## License
+
+Apache License, Version 2.0

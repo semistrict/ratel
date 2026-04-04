@@ -22,7 +22,7 @@ jobs:
           fi
 
   build-and-test:
-    runs-on: macos-14
+    runs-on: ubuntu-latest
     env:
       GOTOOLCHAIN: local
     steps:
@@ -34,15 +34,13 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: Install build deps
-        run: brew install autoconf coreutils cmake make
       - name: Build
-        run: gmake -j$(sysctl -n hw.ncpu) buildshort
+        run: make -j$(nproc) buildshort
         env:
           BROWSERSLIST_IGNORE_OLD_DATA: 1
       - name: Vet
         run: go vet -mod=vendor -tags 'make short' ./pkg/...
       - name: Compile all tests
-        run: gmake testcompile
+        run: make testcompile
       - name: Smoketest
-        run: gmake smoketest
+        run: make smoketest

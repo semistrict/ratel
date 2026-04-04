@@ -72,6 +72,9 @@ services:
       - "s3://ratel/?endpoint=http://rustfs:9000&region=us-east-1"
       - --listen-addr=ratel-2:26257
       - --http-addr=ratel-2:8080
+    ports:
+      - "26258:26257"
+      - "8081:8080"
 
   ratel-3:
     build:
@@ -88,6 +91,9 @@ services:
       - "s3://ratel/?endpoint=http://rustfs:9000&region=us-east-1"
       - --listen-addr=ratel-3:26257
       - --http-addr=ratel-3:8080
+    ports:
+      - "26259:26257"
+      - "8082:8080"
 
   ratel-4:
     build:
@@ -104,6 +110,9 @@ services:
       - "s3://ratel/?endpoint=http://rustfs:9000&region=us-east-1"
       - --listen-addr=ratel-4:26257
       - --http-addr=ratel-4:8080
+    ports:
+      - "26260:26257"
+      - "8083:8080"
 
   ratel-5:
     build:
@@ -120,6 +129,9 @@ services:
       - "s3://ratel/?endpoint=http://rustfs:9000&region=us-east-1"
       - --listen-addr=ratel-5:26257
       - --http-addr=ratel-5:8080
+    ports:
+      - "26261:26257"
+      - "8084:8080"
 
 volumes:
   rustfs-data:

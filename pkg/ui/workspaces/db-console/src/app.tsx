@@ -76,6 +76,7 @@ import TransactionDetails from "src/views/transactions/transactionDetails";
 import StatementsDiagnosticsHistoryView from "src/views/reports/containers/statementDiagnosticsHistory";
 import { RedirectToStatementDetails } from "src/routes/RedirectToStatementDetails";
 import HotRangesPage from "src/views/hotRanges/index";
+import SQLQueryPage from "src/views/sqlQuery/sqlQueryPage";
 import "styl/app.styl";
 import { Tracez } from "src/views/tracez/tracez";
 import { CockroachCloudContext } from "@cockroachlabs/cluster-ui";
@@ -198,6 +199,13 @@ export const App: React.FC<AppProps> = (props: AppProps) => {
                     exact
                     path="/data-distribution"
                     component={DataDistributionPage}
+                  />
+
+                  {/* SQL query */}
+                  <Route
+                    exact
+                    path="/sql-query"
+                    component={SQLQueryPage}
                   />
 
                   {/* SQL activity */}

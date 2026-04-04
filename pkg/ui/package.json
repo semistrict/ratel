@@ -4,15 +4,6 @@
   "private": true,
   "repository": "github.com/cockroachdb/cockroach",
   "license": "MIT",
-  "workspaces": {
-    "packages": ["workspaces/*"],
-    "nohoist": [
-      "**/db-console/react-select",
-      "**/db-console/react-select/**",
-      "**/db-console/@types/react-select",
-      "**/db-console/@types/react-select/**"
-    ]
-  },
   "devDependencies": {
     "@bazel/typescript": "4.1.0",
     "@types/long": "3.0.32",
@@ -27,13 +18,21 @@
     "protobufjs": "6.8.6",
     "semver": "^5.3.0",
     "tmp": "0.0.33",
-    "uglify-js": "^2.8.15"
+    "uglify-js": "^3.17.4"
   },
-  "resolutions": {
-    "**/@typescript-eslint/eslint-plugin": "^4.1.1",
-    "**/@typescript-eslint/parser": "^4.1.1",
-    "**/fbjs": "0.8.17",
-    "**/protobufjs": "6.8.6",
-    "**/jest-environment-jsdom": "^27.5.1"
+  "pnpm": {
+    "overrides": {
+      "@typescript-eslint/eslint-plugin": "^4.1.1",
+      "@typescript-eslint/parser": "^4.1.1",
+      "fbjs": "0.8.17",
+      "protobufjs": "6.8.6",
+      "jest-environment-jsdom": "^27.5.1",
+      "immer": "9.0.21"
+    },
+    "packageExtensions": {
+      "uglify-js@2": {
+        "optionalDependencies": {}
+      }
+    }
   }
 }

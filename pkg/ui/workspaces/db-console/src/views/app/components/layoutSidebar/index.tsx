@@ -44,6 +44,11 @@ export class Sidebar extends React.Component<SidebarProps> {
     { path: "/metrics", text: "Metrics", activeFor: [] },
     { path: "/databases", text: "Databases", activeFor: ["/database"] },
     {
+      path: "/sql-query",
+      text: "SQL Query",
+      activeFor: ["/sql-query"],
+    },
+    {
       path: "/sql-activity",
       text: "SQL Activity",
       activeFor: ["/sql-activity", "/session", "/transaction", "/statement"],

@@ -18,7 +18,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"net"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -168,7 +167,6 @@ func runRatelInit(cmd *cobra.Command, args []string) error {
 		storeDir:       storeDir,
 		joinList:       nil, // no peers; we are bootstrapping
 		autoInitialize: true,
-		nodeID:         1,
 		nodesStore:     cs.Nodes,
 	})
 }
@@ -214,15 +212,6 @@ func runRatelJoin(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Pick next sequential node ID for the registry.
-	nextID := 0
-	for _, n := range nodes {
-		if n.NodeID > nextID {
-			nextID = n.NodeID
-		}
-	}
-	nextID++
-
 	fmt.Fprintf(os.Stderr, "Joining cluster with %d existing node(s)...\n", len(nodes))
 	return ratelStartServer(ctx, ratelServerOpts{
 		clusterURL:     clusterURL,
@@ -232,7 +221,6 @@ func runRatelJoin(cmd *cobra.Command, args []string) error {
 		storeDir:       storeDir,
 		joinList:       joinList,
 		autoInitialize: false,
-		nodeID:         nextID,
 		nodesStore:     cs.Nodes,
 	})
 }
@@ -245,7 +233,6 @@ type ratelServerOpts struct {
 	storeDir       string
 	joinList       []string
 	autoInitialize bool
-	nodeID         int
 	nodesStore     remote.Storage
 }
 
@@ -290,24 +277,6 @@ func ratelStartServer(ctx context.Context, opts ratelServerOpts) error {
 		return errors.Wrap(err, "initializing node config")
 	}
 
-	// Register this node so peers can discover us.
-	listenHost, _, _ := net.SplitHostPort(opts.listenAddr)
-	if listenHost == "" {
-		listenHost = "localhost"
-	}
-	_, sqlPort, _ := net.SplitHostPort(opts.listenAddr)
-	_, httpPort, _ := net.SplitHostPort(opts.httpAddr)
-
-	reg := storage.NodeRegistration{
-		NodeID:   opts.nodeID,
-		Addr:     opts.listenAddr,
-		SQLAddr:  net.JoinHostPort(listenHost, sqlPort),
-		HTTPAddr: net.JoinHostPort(listenHost, httpPort),
-	}
-	if err := storage.RegisterNode(ctx, opts.nodesStore, reg); err != nil {
-		return errors.Wrap(err, "registering node")
-	}
-
 	// Set up stopper and signal handling.
 	stopper := stop.NewStopper()
 	signalCh := make(chan os.Signal, 1)
@@ -341,8 +310,20 @@ func ratelStartServer(ctx context.Context, opts ratelServerOpts) error {
 				return errors.Wrap(err, "accepting clients failed")
 			}
 
+			// Register the node using the real NodeID assigned by CockroachDB.
+			nodeID := int(s.NodeID())
+			reg := storage.NodeRegistration{
+				NodeID:   nodeID,
+				Addr:     cfg.AdvertiseAddr,
+				SQLAddr:  cfg.SQLAdvertiseAddr,
+				HTTPAddr: cfg.HTTPAddr,
+			}
+			if regErr := storage.RegisterNode(ctx, opts.nodesStore, reg); regErr != nil {
+				return errors.Wrap(regErr, "registering node")
+			}
+
 			fmt.Fprintf(os.Stderr, "Node %d is ready. SQL address: %s, HTTP address: %s\n",
-				reg.NodeID, cfg.SQLAddr, cfg.HTTPAddr)
+				nodeID, cfg.SQLAdvertiseAddr, cfg.HTTPAddr)
 			return nil
 		}(); err != nil {
 			errChan <- err

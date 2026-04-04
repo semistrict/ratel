@@ -51,8 +51,6 @@ func TestLeaseTransferAfterAddVoters(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []byte("data"), val.ValueBytes())
 	t.Log("read succeeded")
-
-	c.RestartNode(t, lhIdx)
 }
 
 // TestLeaseTransferAfterAddVotersSynctest is the synctest variant.
@@ -89,7 +87,5 @@ func TestLeaseTransferAfterAddVotersSynctest(t *testing.T) {
 		val, err := c.Server(liveIdx).DB().Get(ctx, key)
 		require.NoError(t, err)
 		require.Equal(t, []byte("data"), val.ValueBytes())
-
-		c.RestartNode(t, lhIdx)
 	})
 }

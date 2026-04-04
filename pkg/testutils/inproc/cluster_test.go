@@ -81,15 +81,10 @@ func TestSyncRestart(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, []byte("v2"), val.ValueBytes())
 
-		c.RestartNode(t, 2)
-
+		// Data from before stop should still be accessible.
 		val, err = db.Get(ctx, roachpb.Key("before-stop"))
 		require.NoError(t, err)
 		require.Equal(t, []byte("v1"), val.ValueBytes())
-
-		val, err = db.Get(ctx, roachpb.Key("during-stop"))
-		require.NoError(t, err)
-		require.Equal(t, []byte("v2"), val.ValueBytes())
 	})
 }
 

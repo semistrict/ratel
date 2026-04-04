@@ -224,6 +224,11 @@ func makeTestConfigFromParams(params base.TestServerArgs) Config {
 		cfg.SQLAdvertiseAddr = params.SQLAddr
 		cfg.SplitListenSQL = true
 	}
+	if knobs := cfg.TestingKnobs.Server; knobs != nil {
+		if knobs.(*TestingKnobs).ShareRPCListenSQL {
+			cfg.SplitListenSQL = false
+		}
+	}
 	if params.HTTPAddr != "" {
 		cfg.HTTPAddr = params.HTTPAddr
 	}

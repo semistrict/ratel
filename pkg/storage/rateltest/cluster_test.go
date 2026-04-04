@@ -85,6 +85,56 @@ func TestMultiNodeAggregation(t *testing.T) {
 	require.InDelta(t, 150.0, sum, 0.01)
 }
 
+// TestMultiNodeCompaction writes data through multiple nodes, forces flush and
+// compaction on each, then verifies all data is still readable. This is
+// designed to catch CreatorID collisions (all nodes using the same Pebble
+// CreatorID would produce identical SSTable filenames, causing overwrites on
+// shared storage).
+func TestMultiNodeCompaction(t *testing.T) {
+	tc, ss := StartCluster(t, 3)
+	defer tc.Stopper().Stop(t.Context())
+	defer ss.Close()
+
+	db0 := tc.ServerConn(0)
+	db1 := tc.ServerConn(1)
+	db2 := tc.ServerConn(2)
+
+	// Create a table and write enough data through each node to generate SSTables.
+	ExecSQL(t, db0, "CREATE TABLE test_compact (id INT PRIMARY KEY, node INT, payload STRING)")
+
+	// Write ~1000 rows per node to generate meaningful SSTable data.
+	for i := 0; i < 1000; i++ {
+		ExecSQL(t, db0, "INSERT INTO test_compact VALUES ($1, 0, $2)", i*3, fmt.Sprintf("payload-%d", i))
+		ExecSQL(t, db1, "INSERT INTO test_compact VALUES ($1, 1, $2)", i*3+1, fmt.Sprintf("payload-%d", i))
+		ExecSQL(t, db2, "INSERT INTO test_compact VALUES ($1, 2, $2)", i*3+2, fmt.Sprintf("payload-%d", i))
+	}
+
+	// Force flush and compaction on all nodes to push data to shared storage.
+	for i := 0; i < 3; i++ {
+		FlushAndCompact(t, tc, i)
+	}
+
+	t.Logf("shared SSTable count after compaction: %d", SharedSSTCount(t, ss))
+
+	// Verify all 3000 rows are readable from every node.
+	for i, db := range []*gosql.DB{db0, db1, db2} {
+		count := QueryCountSQL(t, db, "test_compact")
+		require.Equal(t, 3000, count, "node %d should see all 3000 rows after compaction", i)
+	}
+
+	// Verify data integrity — spot check values from each originating node.
+	var node int
+	var payload string
+	QueryRowSQL(t, db2, "SELECT node, payload FROM test_compact WHERE id = 0", &node, &payload)
+	require.Equal(t, 0, node, "row 0 should have been written by node 0")
+
+	QueryRowSQL(t, db0, "SELECT node, payload FROM test_compact WHERE id = 1", &node, &payload)
+	require.Equal(t, 1, node, "row 1 should have been written by node 1")
+
+	QueryRowSQL(t, db1, "SELECT node, payload FROM test_compact WHERE id = 2", &node, &payload)
+	require.Equal(t, 2, node, "row 2 should have been written by node 2")
+}
+
 // TestMultiNodeSchemaChange verifies that DDL changes propagate across nodes.
 func TestMultiNodeSchemaChange(t *testing.T) {
 	tc, ss := StartCluster(t, 3)

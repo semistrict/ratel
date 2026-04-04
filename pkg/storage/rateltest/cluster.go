@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/cockroachdb/cockroach/pkg/base"
+	"github.com/cockroachdb/cockroach/pkg/storage"
 	"github.com/cockroachdb/cockroach/pkg/testutils/testcluster"
 	"github.com/cockroachdb/pebble/objstorage/remote"
 )
@@ -72,16 +73,16 @@ func (f *fixedFactory) CreateStorage(locator remote.Locator) (remote.Storage, er
 }
 
 // ClusterArgs returns TestClusterArgs configured with shared in-memory remote
-// storage for n nodes.
-func ClusterArgs(ss *SharedStorage) base.TestClusterArgs {
+// storage for n nodes. Each node gets an on-disk local store (in a temp dir)
+// so that the remote storage factory is wired into Pebble — in-memory stores
+// skip remote storage configuration.
+func ClusterArgs(t testing.TB, ss *SharedStorage) base.TestClusterArgs {
 	perNode := make(map[int]base.TestServerArgs, len(ss.Metadata))
 	for i := range ss.Metadata {
+		storeDir := t.TempDir()
 		perNode[i] = base.TestServerArgs{
 			StoreSpecs: []base.StoreSpec{{
-				InMemory: true,
-				Size: base.SizeSpec{
-					InBytes: 512 << 20,
-				},
+				Path:                  storeDir,
 				RemoteStorageFactory:  ss.factoryFor(),
 				RemoteMetadataStorage: ss.Metadata[i],
 			}},
@@ -97,7 +98,7 @@ func ClusterArgs(ss *SharedStorage) base.TestClusterArgs {
 func StartCluster(t testing.TB, nodes int) (*testcluster.TestCluster, *SharedStorage) {
 	t.Helper()
 	ss := NewSharedStorage(nodes)
-	tc := testcluster.StartTestCluster(t, nodes, ClusterArgs(ss))
+	tc := testcluster.StartTestCluster(t, nodes, ClusterArgs(t, ss))
 	return tc, ss
 }
 
@@ -127,4 +128,35 @@ func QueryCountSQL(t testing.TB, db *gosql.DB, table string) int {
 	var count int
 	QueryRowSQL(t, db, fmt.Sprintf("SELECT count(*) FROM %s", table), &count)
 	return count
+}
+
+// FlushAndCompact forces a flush and full compaction on all engines of the
+// given node. This pushes data from memtables to SSTables and triggers
+// compaction to remote storage.
+func FlushAndCompact(t testing.TB, tc *testcluster.TestCluster, nodeIdx int) {
+	t.Helper()
+	engines := tc.Server(nodeIdx).Engines()
+	for i, eng := range engines {
+		if err := eng.Flush(); err != nil {
+			t.Fatalf("flush engine %d on node %d: %v", i, nodeIdx, err)
+		}
+		if err := eng.Compact(); err != nil {
+			t.Fatalf("compact engine %d on node %d: %v", i, nodeIdx, err)
+		}
+	}
+}
+
+// SharedSSTCount returns the number of objects in the shared SSTable store.
+func SharedSSTCount(t testing.TB, ss *SharedStorage) int {
+	t.Helper()
+	files, err := ss.SSTables.List("", "")
+	if err != nil {
+		t.Fatalf("listing shared sstables: %v", err)
+	}
+	return len(files)
+}
+
+// GetEngine returns the first storage engine for the given node.
+func GetEngine(tc *testcluster.TestCluster, nodeIdx int) storage.Engine {
+	return tc.Server(nodeIdx).Engines()[0]
 }

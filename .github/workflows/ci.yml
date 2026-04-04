@@ -34,6 +34,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - name: Install build deps
+        run: sudo apt-get update && sudo apt-get install -y libedit-dev libncurses-dev
       - name: Build
         run: make -j$(nproc) buildshort
         env:

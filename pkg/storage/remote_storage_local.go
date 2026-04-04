@@ -46,6 +46,10 @@ func (f *LocalFSStorageFactory) CreateStorage(locator remote.Locator) (remote.St
 	return remote.NewLocalFS(f.dir, vfs.Default), nil
 }
 
+// layoutVersion is prepended to all sub-paths in the storage URL so that
+// incompatible layout changes can coexist or be detected.
+const layoutVersion = "v1"
+
 // ClusterStorage holds all remote.Storage instances for a ratel cluster URL.
 type ClusterStorage struct {
 	SSTableFactory remote.StorageFactory // sstables/
@@ -106,7 +110,7 @@ func RemoteStorageFromURL(rawURL string) (remote.StorageFactory, remote.Storage,
 	}
 	switch u.Scheme {
 	case "file":
-		basePath := u.Path
+		basePath := u.Path + "/" + layoutVersion
 		sstDir := basePath + "/sstables"
 		metaDir := basePath + "/metadata"
 		if err := os.MkdirAll(sstDir, 0755); err != nil {
@@ -120,6 +124,7 @@ func RemoteStorageFromURL(rawURL string) (remote.StorageFactory, remote.Storage,
 		return factory, metaStore, nil
 	case "s3":
 		cfg := parseS3URL(u)
+		cfg.Prefix = cfg.Prefix + layoutVersion + "/"
 		sstCfg := cfg
 		sstCfg.Prefix = cfg.Prefix + "sstables/"
 		factory := NewS3StorageFactory(sstCfg)
@@ -146,7 +151,7 @@ func ClusterStorageFromURL(rawURL string) (*ClusterStorage, error) {
 	}
 	switch u.Scheme {
 	case "file":
-		basePath := u.Path
+		basePath := u.Path + "/" + layoutVersion
 		dirs := []string{
 			basePath + "/sstables",
 			basePath + "/metadata",
@@ -166,6 +171,7 @@ func ClusterStorageFromURL(rawURL string) (*ClusterStorage, error) {
 		}, nil
 	case "s3":
 		cfg := parseS3URL(u)
+		cfg.Prefix = cfg.Prefix + layoutVersion + "/"
 		sstCfg := cfg
 		sstCfg.Prefix = cfg.Prefix + "sstables/"
 		metaStore, err := newS3Storage(cfg, "metadata/")

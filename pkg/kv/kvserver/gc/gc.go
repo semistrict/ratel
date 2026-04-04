@@ -621,6 +621,7 @@ func isGarbage(threshold hlc.Timestamp, cur, next *storage.MVCCKeyValue, isNewes
 // transaction records, queue last processed timestamps, and range descriptors.
 //
 // - Transaction entries:
+//
 //   - For expired transactions , schedule the intents for
 //     asynchronous resolution. The actual transaction spans are not
 //     returned for GC in this pass, but are separately GC'ed after

@@ -54,10 +54,10 @@ func (h *memReadHandle) ReadAt(_ context.Context, p []byte, off int64) error {
 	return h.r.ReadAt(context.Background(), p, off)
 }
 
-func (h *memReadHandle) Close() error                                      { return nil }
-func (h *memReadHandle) SetupForCompaction()                               {}
-func (h *memReadHandle) RecordCacheHit(_ context.Context, _, _ int64)      {}
-func (h *memReadHandle) MaxReadahead()                                     {}
+func (h *memReadHandle) Close() error                                 { return nil }
+func (h *memReadHandle) SetupForCompaction()                          {}
+func (h *memReadHandle) RecordCacheHit(_ context.Context, _, _ int64) {}
+func (h *memReadHandle) MaxReadahead()                                {}
 
 // fileReadable adapts an sstable.ReadableFile into an objstorage.Readable.
 type fileReadable struct {
@@ -96,10 +96,10 @@ func (h *fileReadHandle) ReadAt(_ context.Context, p []byte, off int64) error {
 	return h.r.ReadAt(context.Background(), p, off)
 }
 
-func (h *fileReadHandle) Close() error                                      { return nil }
-func (h *fileReadHandle) SetupForCompaction()                               {}
-func (h *fileReadHandle) RecordCacheHit(_ context.Context, _, _ int64)      {}
-func (h *fileReadHandle) MaxReadahead()                                     {}
+func (h *fileReadHandle) Close() error                                 { return nil }
+func (h *fileReadHandle) SetupForCompaction()                          {}
+func (h *fileReadHandle) RecordCacheHit(_ context.Context, _, _ int64) {}
+func (h *fileReadHandle) MaxReadahead()                                {}
 
 // writableAdapter wraps an io.Writer into an objstorage.Writable.
 type writableAdapter struct {

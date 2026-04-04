@@ -361,6 +361,7 @@ var DefaultPoolAllocationSize = envutil.EnvOrDefaultInt64("COCKROACH_ALLOCATION_
 
 // NewMonitor creates a new monitor.
 // Arguments:
+//
 //   - name is used to annotate log messages, can be used to distinguish
 //     monitors.
 //

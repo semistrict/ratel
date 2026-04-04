@@ -51,8 +51,8 @@ var reStripNothing = regexp.MustCompile(`^$`)
 //
 // For example:
 //
-//     /home/kena/src/go/src/github.com/cockroachdb/cockroach/pkg/util/caller
-//     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ package root
+//	/home/kena/src/go/src/github.com/cockroachdb/cockroach/pkg/util/caller
+//	^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ package root
 //
 // The first return value is false if the paths could not be determined.
 func findPackageRoot() (ok bool, pkgRoot string) {
@@ -113,11 +113,11 @@ func findPackageRoot() (ok bool, pkgRoot string) {
 
 // defaultRE strips as follows:
 //
-// - <pkgroot>/(pkg/)?module/submodule/file.go
-//   -> module/submodule/file.go
+//   - <pkgroot>/(pkg/)?module/submodule/file.go
+//     -> module/submodule/file.go
 //
-// - <pkgroot>/vendor/<otherpkg>/path/to/file
-//   -> vendor/<otherpkg>/path/to/file
+//   - <pkgroot>/vendor/<otherpkg>/path/to/file
+//     -> vendor/<otherpkg>/path/to/file
 //
 // It falls back to stripping nothing when it's unable to look up its
 // own location via runtime.Caller().

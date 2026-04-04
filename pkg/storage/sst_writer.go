@@ -97,7 +97,7 @@ func MakeBackupSSTWriter(_ context.Context, _ *cluster.Settings, f io.Writer) SS
 	opts.BlockSize = 128 << 10
 
 	opts.MergerName = "nullptr"
-	sst := sstable.NewWriter(noopSyncCloser{f}, opts)
+	sst := sstable.NewWriter(newWritableAdapter(noopSyncCloser{f}), opts)
 	return SSTWriter{fw: sst, f: f}
 }
 
@@ -108,7 +108,7 @@ func MakeIngestionSSTWriter(
 	ctx context.Context, cs *cluster.Settings, f writeCloseSyncer,
 ) SSTWriter {
 	return SSTWriter{
-		fw: sstable.NewWriter(f, MakeIngestionWriterOptions(ctx, cs)),
+		fw: sstable.NewWriter(newWritableAdapter(f), MakeIngestionWriterOptions(ctx, cs)),
 		f:  f,
 	}
 }
@@ -348,6 +348,33 @@ func (*MemFile) Flush() error {
 func (*MemFile) Sync() error {
 	return nil
 }
+
+// Finish implements the objstorage.Writable interface.
+func (*MemFile) Finish() error {
+	return nil
+}
+
+// Abort implements the objstorage.Writable interface.
+func (*MemFile) Abort() {}
+
+// AsWritable returns a wrapper that implements objstorage.Writable.
+func (f *MemFile) AsWritable() *memFileWritable {
+	return &memFileWritable{f: f}
+}
+
+// memFileWritable wraps a MemFile to implement objstorage.Writable,
+// which requires Write(p []byte) error (not io.Writer's (int, error)).
+type memFileWritable struct {
+	f *MemFile
+}
+
+func (w *memFileWritable) Write(p []byte) error {
+	_, err := w.f.Buffer.Write(p)
+	return err
+}
+
+func (w *memFileWritable) Finish() error { return nil }
+func (w *memFileWritable) Abort()        {}
 
 // Data returns the in-memory buffer behind this MemFile.
 func (f *MemFile) Data() []byte {

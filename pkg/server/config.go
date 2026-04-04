@@ -407,13 +407,13 @@ func MakeSQLConfig(tenID roachpb.TenantID, tempStorageCfg base.TempStorageConfig
 // limit if needed. Returns an error if the hard limit is too low. Returns the
 // value to set maxOpenFiles to for each store.
 //
-// Minimum - 1700 per store, 256 saved for networking
+// # Minimum - 1700 per store, 256 saved for networking
 //
-// Constrained - 256 saved for networking, rest divided evenly per store
+// # Constrained - 256 saved for networking, rest divided evenly per store
 //
-// Constrained (network only) - 10000 per store, rest saved for networking
+// # Constrained (network only) - 10000 per store, rest saved for networking
 //
-// Recommended - 10000 per store, 5000 for network
+// # Recommended - 10000 per store, 5000 for network
 //
 // Please note that current and max limits are commonly referred to as the soft
 // and hard limits respectively.
@@ -498,6 +498,7 @@ type Engines []storage.Engine
 
 // Close closes all the Engines.
 // This method has a pointer receiver so that the following pattern works:
+//
 //	func f() {
 //		engines := Engines(engineSlice)
 //		defer engines.Close()  // make sure the engines are Closed if this
@@ -649,6 +650,20 @@ func (cfg *Config) CreateEngines(ctx context.Context) (Engines, error) {
 			}
 			if len(spec.RocksDBOptions) > 0 {
 				return nil, errors.Errorf("store %d: using Pebble storage engine but StoreSpec provides RocksDB options", i)
+			}
+			// Configure remote storage if specified.
+			if spec.RemoteStorageFactory != nil {
+				pebbleConfig.RemoteStorageFactory = spec.RemoteStorageFactory
+				pebbleConfig.MetadataStorage = spec.RemoteMetadataStorage
+				pebbleConfig.RecoveryStoreID = spec.RecoveryStoreID
+			} else if spec.RemoteStoragePath != "" {
+				factory, metaStore, rsErr := storage.RemoteStorageFromURL(spec.RemoteStoragePath)
+				if rsErr != nil {
+					return nil, errors.Wrapf(rsErr, "store %d: remote storage", i)
+				}
+				pebbleConfig.RemoteStorageFactory = factory
+				pebbleConfig.MetadataStorage = metaStore
+				pebbleConfig.RecoveryStoreID = spec.RecoveryStoreID
 			}
 			eng, err := storage.NewPebble(ctx, pebbleConfig)
 			if err != nil {

@@ -85,7 +85,9 @@ func (tr *testRequester) getAdmittedCount() uint64 {
 // TestGranterBasic is a datadriven test with the following commands:
 //
 // init-grant-coordinator min-cpu=<int> max-cpu=<int> sql-kv-tokens=<int>
-//   sql-sql-tokens=<int> sql-leaf=<int> sql-root=<int>
+//
+//	sql-sql-tokens=<int> sql-leaf=<int> sql-root=<int>
+//
 // set-has-waiting-requests work=<kind> v=<true|false>
 // set-return-value-from-granted work=<kind> v=<true|false>
 // try-get work=<kind>

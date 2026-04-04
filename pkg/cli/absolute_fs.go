@@ -66,6 +66,14 @@ func (fs *absoluteFS) Open(name string, opts ...vfs.OpenOption) (vfs.File, error
 	return fs.fs.Open(name, opts...)
 }
 
+func (fs *absoluteFS) OpenReadWrite(name string, opts ...vfs.OpenOption) (vfs.File, error) {
+	name, err := filepath.Abs(name)
+	if err != nil {
+		return nil, err
+	}
+	return fs.fs.OpenReadWrite(name, opts...)
+}
+
 func (fs *absoluteFS) OpenDir(name string) (vfs.File, error) {
 	return fs.fs.OpenDir(name)
 }

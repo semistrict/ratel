@@ -20,7 +20,6 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble/sstable"
-	"github.com/cockroachdb/pebble/vfs"
 )
 
 type sstIterator struct {
@@ -49,7 +48,11 @@ type sstIterator struct {
 // assumes was written by pebble `sstable.Writer`and contains keys which use
 // Cockroach's MVCC format.
 func NewSSTIterator(file sstable.ReadableFile) (SimpleMVCCIterator, error) {
-	sst, err := sstable.NewReader(file, sstable.ReaderOptions{
+	readable, err := newFileReadable(file)
+	if err != nil {
+		return nil, err
+	}
+	sst, err := sstable.NewReader(readable, sstable.ReaderOptions{
 		Comparer: EngineComparer,
 	})
 	if err != nil {
@@ -63,7 +66,7 @@ func NewSSTIterator(file sstable.ReadableFile) (SimpleMVCCIterator, error) {
 // Pebble's `sstable.Writer`, and assumes the keys use Cockroach's MVCC
 // format.
 func NewMemSSTIterator(data []byte, verify bool) (SimpleMVCCIterator, error) {
-	sst, err := sstable.NewReader(vfs.NewMemFile(data), sstable.ReaderOptions{
+	sst, err := sstable.NewReader(newMemReadable(data), sstable.ReaderOptions{
 		Comparer: EngineComparer,
 	})
 	if err != nil {
@@ -95,19 +98,18 @@ func (r *sstIterator) SeekGE(key MVCCKey) {
 		}
 	}
 	r.keyBuf = EncodeMVCCKeyToBuf(r.keyBuf, key)
-	var iKey *sstable.InternalKey
-	trySeekUsingNext := false
-	if r.seekGELastOp {
-		// trySeekUsingNext = r.prevSeekKey <= key
-		trySeekUsingNext = !key.Less(r.prevSeekKey)
+	var flags sstable.SeekGEFlags
+	if r.seekGELastOp && !key.Less(r.prevSeekKey) {
+		flags = flags.EnableTrySeekUsingNext()
 	}
 	// NB: seekGELastOp may still be true, and we haven't updated prevSeekKey.
 	// So be careful not to return before the end of the function that sets these
 	// fields up for the next SeekGE.
-	iKey, r.value = r.iter.SeekGE(r.keyBuf, trySeekUsingNext)
+	iKey, val := r.iter.SeekGE(r.keyBuf, flags)
 	if iKey != nil {
 		r.iterValid = true
 		r.mvccKey, r.err = DecodeMVCCKey(iKey.UserKey)
+		r.value, _, r.err = val.Value(nil)
 	} else {
 		r.iterValid = false
 		r.err = r.iter.Error()
@@ -131,10 +133,12 @@ func (r *sstIterator) Next() {
 	if !r.iterValid || r.err != nil {
 		return
 	}
-	var iKey *sstable.InternalKey
-	iKey, r.value = r.iter.Next()
+	iKey, val := r.iter.Next()
 	if iKey != nil {
 		r.mvccKey, r.err = DecodeMVCCKey(iKey.UserKey)
+		if r.err == nil {
+			r.value, _, r.err = val.Value(nil)
+		}
 	} else {
 		r.iterValid = false
 		r.err = r.iter.Error()

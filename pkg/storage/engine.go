@@ -408,12 +408,13 @@ type ExportOptions struct {
 // Reader is the read interface to an engine's data. Certain implementations
 // of Reader guarantee consistency of the underlying engine state across the
 // different iterators created by NewMVCCIterator, NewEngineIterator:
-// - pebbleSnapshot, because it uses an engine snapshot.
-// - pebbleReadOnly, pebbleBatch: when the IterOptions do not specify a
-//   timestamp hint (see IterOptions). Note that currently the engine state
-//   visible here is not as of the time of the Reader creation. It is the time
-//   when the first iterator is created, or earlier if
-//   PinEngineStateForIterators is called.
+//   - pebbleSnapshot, because it uses an engine snapshot.
+//   - pebbleReadOnly, pebbleBatch: when the IterOptions do not specify a
+//     timestamp hint (see IterOptions). Note that currently the engine state
+//     visible here is not as of the time of the Reader creation. It is the time
+//     when the first iterator is created, or earlier if
+//     PinEngineStateForIterators is called.
+//
 // The ConsistentIterators method returns true when this consistency is
 // guaranteed by the Reader.
 // TODO(sumeer): this partial consistency can be a source of bugs if future

@@ -219,7 +219,8 @@ func FlowVerIsCompatible(
 //
 // Args:
 // localState: Specifies if the flow runs entirely on this node and, if it does,
-//   specifies the txn and other attributes.
+//
+//	specifies the txn and other attributes.
 //
 // Note: unless an error is returned, the returned context contains a span that
 // must be finished through Flow.Cleanup.

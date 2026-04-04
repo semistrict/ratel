@@ -53,7 +53,7 @@ func init() {
 // efficient encoding version should be incremented.
 //
 // Version history:
-//   1. Initial version.
+//  1. Initial version.
 var gistVersion = 1
 
 // PlanGist is a compact representation of a logical plan meant to be used as

@@ -1646,8 +1646,9 @@ func (c *checkConsistencyGenerator) Close(_ context.Context) {}
 // rangeKeyIterator requests at a time. If this changes, make sure
 // to update the test in sql_keys.
 // TODO(kv): The current KV API only supports a maxRows limitation
-//  on the amount of data returned from Scan. In the future, there will
-//  be a maxBytes limitation which should be used instead here.
+//
+//	on the amount of data returned from Scan. In the future, there will
+//	be a maxBytes limitation which should be used instead here.
 const rangeKeyIteratorChunkSize = 256
 
 var rangeKeyIteratorType = types.MakeLabeledTuple(

@@ -55,8 +55,7 @@
       "node-forge": "~1.4.0",
       "semver": "~5.7.2",
       "immutable": "~3.8.3",
-      "flatted": "~3.4.2",
-      "node-fetch": "~2.7.0"
+      "flatted": "~3.4.2"
     },
     "packageExtensions": {
       "uglify-js@2": {

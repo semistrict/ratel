@@ -244,14 +244,14 @@ func init() {
 }
 
 // These rules ensure that:
-// - when a descriptor element reaches the DROPPED state in the pre-commit phase
-//   its dependent elements (namespace entry, comments, column names, etc) have
-//   already reached the ABSENT state, if they can do so in this phase;
-// - for those dependent elements which have to wait post-commit to reach the
-//   ABSENT state, we tie them to the same stage as when the descriptor element
-//   reaches the ABSENT state, but afterwards in the stage, so as to not
-//   interfere with the event logging op which is tied to the descriptor element
-//   removal.
+//   - when a descriptor element reaches the DROPPED state in the pre-commit phase
+//     its dependent elements (namespace entry, comments, column names, etc) have
+//     already reached the ABSENT state, if they can do so in this phase;
+//   - for those dependent elements which have to wait post-commit to reach the
+//     ABSENT state, we tie them to the same stage as when the descriptor element
+//     reaches the ABSENT state, but afterwards in the stage, so as to not
+//     interfere with the event logging op which is tied to the descriptor element
+//     removal.
 func init() {
 	depRule(
 		"dependent element removal before descriptor drop",

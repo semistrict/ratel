@@ -668,6 +668,7 @@ build/defs.mk.sig: .ALWAYS_REBUILD
 COCKROACHOSS   := ./cockroachoss$(SUFFIX)
 COCKROACHSHORT := ./cockroachshort$(SUFFIX)
 COCKROACHSQL   := ./cockroach-sql$(SUFFIX)
+RATEL          := ./ratel$(SUFFIX)
 
 LOG_TARGETS = \
 	pkg/util/log/severity/severity_generated.go \
@@ -803,15 +804,17 @@ OPTGEN_TARGETS = \
 
 test-targets := \
 	check test testshort testslow testrace testraceslow testdeadlock testbuild \
+	testcompile smoketest vet \
 	stress stressrace \
 	roachprod-stress roachprod-stressrace \
 	testlogic testbaselogic testoptlogic
 
-go-targets := $(COCKROACHOSS) $(COCKROACHSHORT) $(COCKROACHSQL) \
+go-targets := $(COCKROACHOSS) $(COCKROACHSHORT) $(COCKROACHSQL) $(RATEL) \
 	bin/workload bin/roachprod bin/roachtest \
 	go-install \
 	bench benchshort \
 	check test testshort testslow testrace testraceslow testdeadlock testbuild \
+	testcompile smoketest vet \
 	stress stressrace \
 	roachprod-stress roachprod-stressrace \
 	generate \
@@ -835,6 +838,10 @@ $(COCKROACHSHORT): TAGS += short
 $(COCKROACHSHORT): $(C_LIBS_SHORT) | $(C_LIBS_DYNAMIC)
 
 $(COCKROACHSQL): BUILDTARGET = ./pkg/cmd/cockroach-sql
+
+$(RATEL): BUILDTARGET = ./pkg/cmd/ratel
+$(RATEL): TAGS += short
+$(RATEL): $(C_LIBS_SHORT) | $(C_LIBS_DYNAMIC)
 
 # For test targets, add a tag (used to enable extra assertions).
 $(test-targets): TAGS += crdb_test
@@ -877,7 +884,7 @@ SETTINGS_DOC_PAGES := docs/generated/settings/settings.html docs/generated/setti
 # dependencies are rebuilt which is useful when switching between
 # normal and race test builds.
 .PHONY: go-install
-$(COCKROACHOSS) $(COCKROACHSHORT) $(COCKROACHSQL) go-install:
+$(COCKROACHOSS) $(COCKROACHSHORT) $(COCKROACHSQL) $(RATEL) go-install:
 	 $(xgo) $(build-mode) -v $(GOFLAGS) $(GOMODVENDORFLAGS) -tags '$(TAGS)' -ldflags '$(LINKFLAGS)' $(BUILDTARGET)
 
 # The build targets, in addition to producing a Cockroach binary, silently
@@ -893,11 +900,13 @@ $(COCKROACHOSS) $(COCKROACHSHORT) $(COCKROACHSQL) go-install:
 # diagrams. When the generated files are not checked in, the breakage goes
 # unnoticed until the docs team comes along, potentially months later. Much
 # better to make the developer who introduces the breakage fix the breakage.
-.PHONY: buildoss buildshort
+.PHONY: buildoss buildshort buildratel
 buildoss: ## Build the CockroachDB binary.
 buildshort: ## Build the CockroachDB binary without the admin UI and RocksDB.
+buildratel: ## Build the ratel binary (S3-native CockroachDB).
 buildoss: $(COCKROACHOSS)
 buildshort: $(COCKROACHSHORT)
+buildratel: $(RATEL)
 buildoss buildshort: $(if $(is-cross-compile),,$(DOCGEN_TARGETS))
 buildshort: $(if $(is-cross-compile),,$(SETTINGS_DOC_PAGES))
 
@@ -942,6 +951,28 @@ bench benchshort: TESTTIMEOUT := $(BENCHTIMEOUT)
 # -benchtime=1ns runs one iteration of each benchmark. The -short flag is set so
 # that longer running benchmarks can skip themselves.
 benchshort: override TESTFLAGS += -benchtime=1ns -short
+
+SMOKETEST_PKGS := \
+	./pkg/util/hlc \
+	./pkg/roachpb \
+	./pkg/sql/parser \
+	./pkg/util/json \
+	./pkg/storage \
+	./pkg/util/log \
+	./pkg/geo \
+	./pkg/util/metric
+
+.PHONY: vet
+vet: ## Run go vet on all packages.
+	$(xgo) vet $(GOFLAGS) $(GOMODVENDORFLAGS) -tags '$(TAGS)' $(PKG)
+
+.PHONY: testcompile
+testcompile: ## Compile all test binaries without running them.
+	$(xgo) test $(GOFLAGS) $(GOMODVENDORFLAGS) -tags '$(TAGS)' -ldflags '$(LINKFLAGS)' -run=^$$ -count=0 $(PKG)
+
+.PHONY: smoketest
+smoketest: ## Run a fast subset of unit tests for CI.
+	$(xgo) test $(GOTESTFLAGS) $(GOFLAGS) $(GOMODVENDORFLAGS) -tags '$(TAGS)' -ldflags '$(LINKFLAGS)' -run "$(TESTS)" -timeout $(TESTTIMEOUT) -short -count=1 $(SMOKETEST_PKGS) $(TESTFLAGS)
 
 .PHONY: check test testshort testrace testdeadlock testlogic testbaselogic testoptlogic bench benchshort
 test: ## Run tests.

@@ -901,6 +901,9 @@ func waitForShutdown(
 			const msgDone = "server drained and shutdown completed"
 			log.Ops.Infof(shutdownCtx, msgDone)
 			fmt.Fprintln(os.Stdout, msgDone)
+			// Graceful shutdown succeeded — clear any error from the
+			// signal handler so the process exits with code 0.
+			returnErr = nil
 
 		case <-stopWithoutDrain:
 			const msgDone = "too early to drain; used hard shutdown instead"

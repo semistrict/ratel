@@ -1004,15 +1004,22 @@ func TestMVCCPutAfterBatchIterCreate(t *testing.T) {
 				LowerBound: testKey1,
 				UpperBound: testKey5,
 			})
-			defer iter.Close()
 			iter.SeekGE(MVCCKey{testKey1, hlc.Timestamp{WallTime: 5}})
 			iter.Next() // key2/5
+			iter.Close()
 
 			// Lay down an intent on key3, which will go at key3/0 and sort before key3/5.
 			err = MVCCDelete(context.Background(), batch, nil, testKey3, txn.WriteTimestamp, txn)
 			if err != nil {
 				t.Fatal(err)
 			}
+			// Create a fresh iterator to see the new intent (Pebble v1.1+ pins
+			// batch state at iterator creation time).
+			iter = batch.NewMVCCIterator(MVCCKeyAndIntentsIterKind, IterOptions{
+				LowerBound: testKey1,
+				UpperBound: testKey5,
+			})
+			defer iter.Close()
 			iter.SeekGE(MVCCKey{Key: testKey3})
 			if ok, err := iter.Valid(); !ok || err != nil {
 				t.Fatalf("expected valid iter: ok %t, err %s", ok, err.Error())
@@ -2800,7 +2807,9 @@ func TestMVCCReverseScanSeeksOverRepeatedKeys(t *testing.T) {
 // The bug happened in this scenario.
 // (1) reverse scan is positioned at the range's smallest key and calls `prevKey()`
 // (2) `prevKey()` peeks and sees newer versions of the same logical key
-//	   `iters_before_seek_-1` times, moving the iterator backwards each time
+//
+//	`iters_before_seek_-1` times, moving the iterator backwards each time
+//
 // (3) on the `iters_before_seek_`th peek, there are no previous keys found
 //
 // Then, the problem was `prevKey()` treated finding no previous key as if it had found a

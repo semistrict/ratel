@@ -1066,11 +1066,11 @@ func TestShowLastQueryStatisticsUnknown(t *testing.T) {
 }
 
 // TestTransactionDeadline tests that the transaction deadline is set correctly:
-// - In a single-tenant environment, the transaction deadline should use the leased
-//   descriptor expiration.
-// - In a multi-tenant environment, the transaction deadline should be set to
-//   min(sqlliveness.Session expiry, lease descriptor expiration). (These tests
-//   were removed because the tenant connector requires a CCL binary.)
+//   - In a single-tenant environment, the transaction deadline should use the leased
+//     descriptor expiration.
+//   - In a multi-tenant environment, the transaction deadline should be set to
+//     min(sqlliveness.Session expiry, lease descriptor expiration). (These tests
+//     were removed because the tenant connector requires a CCL binary.)
 func TestTransactionDeadline(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 

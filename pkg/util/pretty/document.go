@@ -31,7 +31,6 @@
 //
 // For example code with SQL to experiment further, refer to
 // https://github.com/knz/prettier/
-//
 package pretty
 
 import "fmt"
@@ -86,8 +85,9 @@ var Line Doc = line{}
 //
 // For example, text "hello" <> softbreak <> text "world"
 // flattens to "helloworld" (one word) but splits across lines as:
-//     hello
-//     world
+//
+//	hello
+//	world
 //
 // This is a common extension to Wadler's printer.
 //

@@ -16,6 +16,7 @@ package rpc
 
 import (
 	"context"
+	"net"
 
 	"github.com/cockroachdb/cockroach/pkg/base"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
@@ -48,6 +49,11 @@ type ContextTestingKnobs struct {
 	// milliseconds to inject. Setting this will cause the server to pause for
 	// the given amount of milliseconds on every network write.
 	ArtificialLatencyMap map[string]int
+
+	// DialerFunc if non-nil replaces the default TCP dialer used for gRPC
+	// client connections. This allows tests to use in-memory transports
+	// (e.g. bufconn) instead of real network connections.
+	DialerFunc func(ctx context.Context, addr string) (net.Conn, error)
 
 	// StorageClusterID initializes the Context's StorageClusterID container to
 	// this value if non-nil at construction time.

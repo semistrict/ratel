@@ -523,13 +523,12 @@ func TestPebbleIterConsistency(t *testing.T) {
 	require.True(t, roEngine2.ConsistentIterators())
 	require.True(t, batch2.ConsistentIterators())
 
-	// Since an iterator is created on pebbleReadOnly, pebbleBatch before
-	// writing a newer version of "a", the newer version will not be visible to
-	// iterators that are created later.
+	// Pin the engine state for iterators. In Pebble v1.1+, creating and closing
+	// an iterator on a pebbleReadOnly pins state (via p.iter), but for batches
+	// we must use PinEngineStateForIterators explicitly.
 	roEngine.NewMVCCIterator(MVCCKeyIterKind, IterOptions{UpperBound: []byte("a")}).Close()
-	batch.NewMVCCIterator(MVCCKeyIterKind, IterOptions{UpperBound: []byte("a")}).Close()
+	require.Nil(t, batch.PinEngineStateForIterators())
 	eng.NewMVCCIterator(MVCCKeyIterKind, IterOptions{UpperBound: []byte("a")}).Close()
-	// Pin the state for iterators.
 	require.Nil(t, roEngine2.PinEngineStateForIterators())
 	require.Nil(t, batch2.PinEngineStateForIterators())
 

@@ -1,0 +1,47 @@
+--- a/vendor/github.com/cockroachdb/pebble/objstorage/remote/localfs.go	2026-04-04 05:36:35
++++ b/vendor/github.com/cockroachdb/pebble/objstorage/remote/localfs.go	2026-04-04 05:55:43
+@@ -6,9 +6,11 @@
+ 
+ import (
+ 	"context"
++	"errors"
+ 	"io"
+ 	"os"
+ 	"path"
++	"strings"
+ 
+ 	"github.com/cockroachdb/pebble/vfs"
+ )
+@@ -86,11 +88,20 @@
+ 
+ // List is part of the remote.Storage interface.
+ func (s *localFSStore) List(prefix, delimiter string) ([]string, error) {
+-	// TODO(josh): For the intended use case of localfs.go of running 'pebble bench',
+-	// List can always return <nil, nil>, since this indicates a file has only one ref,
+-	// and since `pebble bench` implies running in a single-pebble-instance context.
+-	// https://github.com/cockroachdb/pebble/blob/a9a079d4fb6bf4a9ebc52e4d83a76ad4cbf676cb/objstorage/objstorageprovider/shared.go#L292
+-	return nil, nil
++	files, err := s.vfs.List(s.dirname)
++	if err != nil {
++		if s.IsNotExistError(err) {
++			return nil, nil
++		}
++		return nil, err
++	}
++	var res []string
++	for _, name := range files {
++		if strings.HasPrefix(name, prefix) {
++			res = append(res, name)
++		}
++	}
++	return res, nil
+ }
+ 
+ // Delete is part of the remote.Storage interface.
+@@ -114,5 +125,5 @@
+ 
+ // IsNotExistError is part of the remote.Storage interface.
+ func (s *localFSStore) IsNotExistError(err error) bool {
+-	return err == os.ErrNotExist
++	return errors.Is(err, os.ErrNotExist)
+ }

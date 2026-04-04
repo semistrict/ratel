@@ -65,7 +65,7 @@ next: output: value k=b ts=30.000000000,0 v=b30
 next: output: meta k=c
 next: output: value k=d ts=25.000000000,0 v=d25
 next: output: .
-stats: (interface (dir, seek, step): (fwd, 2, 7), (rev, 0, 0)), (internal (dir, seek, step): (fwd, 2, 7), (rev, 0, 0))
+stats: seeked 2 times (2 internal); stepped 7 times (7 internal)
 prev: output: value k=d ts=25.000000000,0 v=d25
 prev: output: meta k=c
 prev: output: value k=b ts=30.000000000,0 v=b30
@@ -74,17 +74,17 @@ prev: output: value k=a ts=10.000000000,0 v=a10
 prev: output: value k=a ts=20.000000000,0 v=a20
 prev: output: meta k=a ts=20.000000000,0 txn=1
 prev: output: .
-stats: (interface (dir, seek, step): (fwd, 2, 7), (rev, 0, 13)), (internal (dir, seek, step): (fwd, 2, 7), (rev, 2, 7))
+stats: seeked 2 times (2 fwd/0 rev, internal: 2 fwd/2 rev); stepped 20 times (7 fwd/13 rev, internal: 7 fwd/7 rev)
 set-upper c
 seek-ge "b"/0,0: output: meta k=b ts=30.000000000,0 txn=2
-stats: (interface (dir, seek, step): (fwd, 4, 7), (rev, 0, 13)), (internal (dir, seek, step): (fwd, 4, 7), (rev, 2, 7))
+stats: seeked 4 times (4 fwd/0 rev, internal: 4 fwd/2 rev); stepped 20 times (7 fwd/13 rev, internal: 7 fwd/7 rev)
 next: output: value k=b ts=30.000000000,0 v=b30
 next: output: .
 prev: output: value k=b ts=30.000000000,0 v=b30
 prev: output: meta k=b ts=30.000000000,0 txn=2
 prev: output: value k=a ts=10.000000000,0 v=a10
 seek-lt "b"/0,0: output: value k=a ts=10.000000000,0 v=a10
-stats: (interface (dir, seek, step): (fwd, 4, 9), (rev, 2, 19)), (internal (dir, seek, step): (fwd, 4, 9), (rev, 6, 13))
+stats: seeked 6 times (4 fwd/2 rev, internal: 4 fwd/6 rev); stepped 28 times (9 fwd/19 rev, internal: 9 fwd/13 rev)
 next: output: meta k=b ts=30.000000000,0 txn=2
 prev: output: value k=a ts=10.000000000,0 v=a10
 prev: output: value k=a ts=20.000000000,0 v=a20

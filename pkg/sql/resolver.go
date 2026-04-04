@@ -52,9 +52,11 @@ var _ resolver.SchemaResolver = &planner{}
 //
 // var someVar T
 // var err error
-// p.runWithOptions(resolveFlags{skipCache: true}, func() {
-//    someVar, err = ResolveExistingTableObject(ctx, p, ...)
-// })
+//
+//	p.runWithOptions(resolveFlags{skipCache: true}, func() {
+//	   someVar, err = ResolveExistingTableObject(ctx, p, ...)
+//	})
+//
 // if err != nil { ... }
 // use(someVar)
 func (p *planner) runWithOptions(flags resolveFlags, fn func()) {

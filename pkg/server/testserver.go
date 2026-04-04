@@ -224,6 +224,11 @@ func makeTestConfigFromParams(params base.TestServerArgs) Config {
 		cfg.SQLAdvertiseAddr = params.SQLAddr
 		cfg.SplitListenSQL = true
 	}
+	if knobs := cfg.TestingKnobs.Server; knobs != nil {
+		if knobs.(*TestingKnobs).ShareRPCListenSQL {
+			cfg.SplitListenSQL = false
+		}
+	}
 	if params.HTTPAddr != "" {
 		cfg.HTTPAddr = params.HTTPAddr
 	}
@@ -297,12 +302,11 @@ func makeTestConfigFromParams(params base.TestServerArgs) Config {
 //
 // Example usage of a TestServer:
 //
-//   s, db, kvDB := serverutils.StartServer(t, base.TestServerArgs{})
-//   defer s.Stopper().Stop()
-//   // If really needed, in tests that can depend on server, downcast to
-//   // server.TestServer:
-//   ts := s.(*server.TestServer)
-//
+//	s, db, kvDB := serverutils.StartServer(t, base.TestServerArgs{})
+//	defer s.Stopper().Stop()
+//	// If really needed, in tests that can depend on server, downcast to
+//	// server.TestServer:
+//	ts := s.(*server.TestServer)
 type TestServer struct {
 	Cfg    *Config
 	params base.TestServerArgs

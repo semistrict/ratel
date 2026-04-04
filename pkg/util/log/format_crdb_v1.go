@@ -227,7 +227,6 @@ func (formatCrdbV1TTYWithCounter) contentType() string { return "text/plain" }
 // Log lines are colorized depending on severity.
 // It uses a newly allocated *buffer. The caller is responsible
 // for calling putBuffer() afterwards.
-//
 func formatLogEntryInternalV1(
 	entry logpb.Entry, isHeader, showCounter bool, cp ttycolor.Profile,
 ) *buffer {

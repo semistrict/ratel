@@ -1267,8 +1267,9 @@ func TestFuncDeps_RemapFrom(t *testing.T) {
 }
 
 // Construct base table FD from figure 3.3, page 114:
-//   CREATE TABLE abcde (a INT PRIMARY KEY, b INT, c INT, d INT, e INT)
-//   CREATE UNIQUE INDEX ON abcde (b, c)
+//
+//	CREATE TABLE abcde (a INT PRIMARY KEY, b INT, c INT, d INT, e INT)
+//	CREATE UNIQUE INDEX ON abcde (b, c)
 func makeAbcdeFD(t *testing.T) *props.FuncDepSet {
 	// Set Key to all cols to start, and ensure it's overridden in AddStrictKey.
 	allCols := c(1, 2, 3, 4, 5)
@@ -1287,7 +1288,8 @@ func makeAbcdeFD(t *testing.T) *props.FuncDepSet {
 }
 
 // Construct base table FD from figure 3.3, page 114:
-//   CREATE TABLE mnpq (m INT, n INT, p INT, q INT, PRIMARY KEY (m, n))
+//
+//	CREATE TABLE mnpq (m INT, n INT, p INT, q INT, PRIMARY KEY (m, n))
 func makeMnpqFD(t *testing.T) *props.FuncDepSet {
 	allCols := c(10, 11, 12, 13)
 	mnpq := &props.FuncDepSet{}
@@ -1301,8 +1303,9 @@ func makeMnpqFD(t *testing.T) *props.FuncDepSet {
 }
 
 // Construct cartesian product FD from figure 3.6, page 122:
-//   CREATE TABLE mnpq (m INT, n INT, p INT, q INT, PRIMARY KEY (m, n))
-//   SELECT * FROM abcde, mnpq
+//
+//	CREATE TABLE mnpq (m INT, n INT, p INT, q INT, PRIMARY KEY (m, n))
+//	SELECT * FROM abcde, mnpq
 func makeProductFD(t *testing.T) *props.FuncDepSet {
 	product := makeAbcdeFD(t)
 	product.MakeProduct(makeMnpqFD(t))
@@ -1316,7 +1319,8 @@ func makeProductFD(t *testing.T) *props.FuncDepSet {
 }
 
 // Construct inner join FD:
-//   SELECT * FROM abcde, mnpq WHERE a=m
+//
+//	SELECT * FROM abcde, mnpq WHERE a=m
 func makeJoinFD(t *testing.T) *props.FuncDepSet {
 	// Start with cartesian product FD and add equivalency to it.
 	join := makeProductFD(t)

@@ -58,7 +58,9 @@ func newTestStructured(i string) *testStructuredImpl {
 // Trace for t1:
 // -------------
 // root													<-- traceID1
-// 		root.child								<-- traceID1
+//
+//	root.child								<-- traceID1
+//
 // root2.child.remotechild 			<-- traceID2
 // root2.child.remotechild2 		<-- traceID2
 //
@@ -67,7 +69,8 @@ func newTestStructured(i string) *testStructuredImpl {
 // root.child.remotechild				<-- traceID1
 // root.child.remotechilddone		<-- traceID1
 // root2												<-- traceID2
-// 		root2.child								<-- traceID2
+//
+//	root2.child								<-- traceID2
 func setupTraces(t1, t2 *tracing.Tracer) (tracingpb.TraceID, tracingpb.TraceID, func()) {
 	// Start a root span on "node 1".
 	root := t1.StartSpan("root", tracing.WithRecording(tracing.RecordingVerbose))

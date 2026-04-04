@@ -47,15 +47,15 @@ import (
 //
 // Here is the diagram of relationships for argTypeOverload struct:
 //
-//   argTypeOverloadBase            overloadBase
-//            \          \              |
-//            \           ------        |
-//            ↓                 ↓       ↓
-//   argWidthOverloadBase       argTypeOverload
-//               \                /
-//                \              | (single)
-//                ↓              ↓
-//                argWidthOverload
+//	argTypeOverloadBase            overloadBase
+//	         \          \              |
+//	         \           ------        |
+//	         ↓                 ↓       ↓
+//	argWidthOverloadBase       argTypeOverload
+//	            \                /
+//	             \              | (single)
+//	             ↓              ↓
+//	             argWidthOverload
 //
 // lastArgTypeOverload is similar in nature to argTypeOverload in that it
 // describes an overloaded argument, but that argument is the last one, so the
@@ -66,15 +66,15 @@ import (
 //
 // Here is the diagram of relationships for lastArgTypeOverload struct:
 //
-//   argTypeOverloadBase            overloadBase
-//            \          \              |
-//            \           ------        |
-//            ↓                 ↓       ↓
-//   argWidthOverloadBase     lastArgTypeOverload
-//               \                /
-//                \              | (multiple)
-//                ↓              ↓
-//                lastArgWidthOverload
+//	argTypeOverloadBase            overloadBase
+//	         \          \              |
+//	         \           ------        |
+//	         ↓                 ↓       ↓
+//	argWidthOverloadBase     lastArgTypeOverload
+//	            \                /
+//	             \              | (multiple)
+//	             ↓              ↓
+//	             lastArgWidthOverload
 //
 // Two argument overload consists of multiple corresponding to each other
 // argTypeOverloads and lastArgTypeOverloads.
@@ -86,21 +86,21 @@ import (
 // These structs (or their "resolved" equivalents) are intended to be used by
 // the code generation with the following patterns:
 //
-//   switch canonicalTypeFamily {
-//     switch width {
-//       <resolved one arg overload>
-//     }
-//   }
+//	switch canonicalTypeFamily {
+//	  switch width {
+//	    <resolved one arg overload>
+//	  }
+//	}
 //
-//   switch leftCanonicalTypeFamily {
-//     switch leftWidth {
-//       switch rightCanonicalTypeFamily {
-//         switch rightWidth {
-//           <resolved two arg overload>
-//         }
-//       }
-//     }
-//   }
+//	switch leftCanonicalTypeFamily {
+//	  switch leftWidth {
+//	    switch rightCanonicalTypeFamily {
+//	      switch rightWidth {
+//	        <resolved two arg overload>
+//	      }
+//	    }
+//	  }
+//	}
 type overloadBase struct {
 	kind overloadKind
 

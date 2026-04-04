@@ -1,0 +1,42 @@
+name: build-ratel
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-14
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Toolchain setup
+        run: |
+          set -o xtrace
+          source .github/workflows/macos-setup.sh
+          echo "PATH=$PATH" >>"$GITHUB_ENV"
+      - name: Build ratel
+        run: gmake -j`sysctl -n hw.ncpu` buildratel BUILDTYPE=release
+        env:
+          CGO_ENABLED: 1
+          MACOSX_DEPLOYMENT_TARGET: 13
+      - name: Package
+        run: |
+          mkdir -p artifacts/ratel/lib
+          cp ratel artifacts/ratel/
+          cp lib/libgeos.dylib lib/libgeos_c.dylib artifacts/ratel/lib/
+          chmod a+x artifacts/ratel/{ratel,lib/*.dylib}
+          tar -cvf - -C artifacts ratel | gzip -9 > ratel.tgz
+          shasum -a 256 ratel.tgz | awk '{ print $1 }' > ratel.tgz.sha256
+      - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: ratel
+          path: |
+            ratel.tgz
+            ratel.tgz.sha256
+          if-no-files-found: error
+          compression-level: 0

@@ -559,6 +559,13 @@ func (s *Stopper) Stop(ctx context.Context) {
 	}
 
 	s.Quiesce(ctx)
+
+	// Run the closers without holding s.mu. There's no concern around new
+	// closers being added; we've marked this stopper as `stopping` above, so
+	// any attempts to do so will be refused.
+	for _, c := range s.mu.closers {
+		c.Close()
+	}
 }
 
 // ShouldQuiesce returns a channel which will be closed when Stop() has been

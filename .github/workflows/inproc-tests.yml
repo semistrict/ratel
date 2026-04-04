@@ -1,0 +1,55 @@
+name: inproc-tests
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  inproc-tests:
+    runs-on: macos-14
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Toolchain setup
+        run: |
+          set -o xtrace
+          mkdir "$HOME/toolchain"
+          pushd "$HOME/toolchain"
+          GO_VERSION=1.26.1
+          curl -sSfL --retry 10 -O "https://go.dev/dl/go${GO_VERSION}.darwin-arm64.tar.gz"
+          tar xf "go${GO_VERSION}.darwin-arm64.tar.gz"
+          echo "$PWD/go/bin" >> "$GITHUB_PATH"
+          popd
+      - name: Build c-deps
+        run: gmake -j$(sysctl -n hw.ncpu) c-deps
+      - name: Run inproc tests
+        run: |
+          set -e
+          # Run each test individually to avoid goroutine leaks between
+          # non-synctest and synctest tests within the same test binary.
+          tests=(
+            TestInprocSmoke
+            TestSyncTestSmoke
+            TestSyncRestart
+            TestSyncNetworkPartition
+            TestSyncFakeTime
+            TestSyncClockJump
+            TestAddVoters
+            TestSyncAddVoters
+            TestAutoReplication
+            TestSyncAutoReplication
+            TestSyncRaftRestartWithReplication
+            TestSyncLeaseTransfer
+          )
+          for t in "${tests[@]}"; do
+            echo "=== Running $t ==="
+            gmake test PKG=./pkg/testutils/inproc TESTS="$t" TESTFLAGS="-v -count=1 -timeout 30s"
+          done

@@ -53,6 +53,7 @@ import (
 	"github.com/cockroachdb/logtags"
 	"github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/bloom"
+	"github.com/cockroachdb/pebble/objstorage/remote"
 	"github.com/cockroachdb/pebble/sstable"
 	"github.com/cockroachdb/pebble/vfs"
 	"github.com/cockroachdb/redact"
@@ -602,6 +603,10 @@ type PebbleConfig struct {
 	base.StorageConfig
 	// Pebble specific options.
 	Opts *pebble.Options
+	// SharedStorage, if set, configures Pebble to store lower-level SSTables
+	// (L5/L6) on remote shared storage (e.g. S3). This enables tiered LSM
+	// storage where hot data stays local and cold data lives on object storage.
+	SharedStorage *S3StorageConfig
 }
 
 // EncryptionStatsHandler provides encryption related stats.
@@ -789,6 +794,16 @@ func NewPebble(ctx context.Context, cfg PebbleConfig) (p *Pebble, err error) {
 
 	cfg.Opts.EnsureDefaults()
 	cfg.Opts.ErrorIfNotExists = cfg.MustExist
+
+	// Configure shared remote storage if specified.
+	if cfg.SharedStorage != nil {
+		cfg.Opts.Experimental.RemoteStorage = NewS3StorageFactory(*cfg.SharedStorage)
+		cfg.Opts.Experimental.CreateOnShared = remote.CreateOnSharedAll
+		cfg.Opts.Experimental.CreateOnSharedLocator = ""
+		log.Infof(ctx, "shared storage enabled: bucket=%s prefix=%s region=%s",
+			cfg.SharedStorage.Bucket, cfg.SharedStorage.Prefix, cfg.SharedStorage.Region)
+	}
+
 	if settings := cfg.Settings; settings != nil {
 		cfg.Opts.WALMinSyncInterval = func() time.Duration {
 			return minWALSyncInterval.Get(&settings.SV)

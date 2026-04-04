@@ -1,38 +1,9 @@
-This is Oxide's long-term maintenance branch/fork of [CockroachDB 22.1](https://github.com/cockroachdb/cockroach/tree/release-22.1).
+# Ratel
 
-Oxide uses CockroachDB for control plane data storage on the Oxide Cloud Computer, which uses [illumos](https://illumos.org) (specifically [Helios](https://github.com/oxidecomputer/helios)) as the underlying operating system. We launched our product with CockroachDB 22.1. After Cockroach Labs' announcement that they will change to a strictly proprietary (source-available) model, we made the decision to continue self-supporting on this version for the foreseeable future. For more context, see [RFD 110](https://rfd.shared.oxide.computer/rfd/110) and [RFD 508](https://rfd.shared.oxide.computer/rfd/508).
+> **WARNING: Pre-alpha software. It will lose your data. Do not use for anything you care about.**
 
-The primary goal of this branch is to keep the wheels of building and testing CockroachDB rolling smoothly to enable our ability to self-support. Our product runs illumos, but we also support development of our product on Linux and macOS, so it's important to us that our bug fixes that go into the illumos build also end up on developer machines too. Currently we have builds for illumos, Linux, and macOS; and run the test suite on illumos and Linux.
+A lightweight, distributed SQL database that runs entirely on object storage. Nodes are stateless and ephemeral — all persistent state lives on S3.
 
-This code was originally licensed under the Business Source License 1.1 (BSL).
-The BSL for CockroachDB 22.1 specified a Change Date of April 1, 2025, at which
-point the license automatically converted to the Apache License, Version 2.0.
-We verified this by examining the git history of `licenses/BSL.txt`: every BSL
-version from 19.2 through 22.1 has passed its Change Date, with 22.1 (the
-latest in this fork) converting on 2025-04-01. We have replaced all BSL license
-headers in source files with Apache 2.0 headers and removed the BSL license
-file. You're welcome to use this branch under the [Apache License, Version 2.0](./licenses/APL.txt),
-but note that we're unable to provide any support outside the context of its use
-in our product.
+## License
 
-## Binary downloads
-
-Binaries for each commit are available via Buildomat's published artefact APIs:
-
-```
-https://buildomat.eng.oxide.computer/public/file/oxidecomputer/cockroach/$SERIES/$COMMIT/cockroach.tgz
-```
-
-where:
-
-- `$SERIES` is one of `illumos-amd64`, `linux-amd64`, or `darwin-amd64` (or `darwin-arm64`, both refer to the same universal binary)
-- `$COMMIT` is the full 40-character commit hash
-
-A SHA-256 checksum is also available at `cockroach.tgz.sha256`.
-
-## Major changes from upstream
-
-- We've removed all CCL-licensed code. The "Cockroach Community License" primarily covers enterprise features of the database. The split between Apache-licensed and CCL-licensed code was fairly clean, but we're not planning to maintain it, so we shouldn't keep it around.
-- The repository no longer needs to be cloned into `$GOPATH/github.com/cockroachdb/cockroach`; everything works without setting `$GOPATH`.
-- We're in the process of removing code specific to Cockroach Labs development processes (such as their tools for automated GitHub issues and pull requests). We're also not using the newer Bazel-based build system, and are planning on removing the related files eventually.
-- Our Linux builds are built with an Ubuntu 22.04 toolchain, so they won't run on systems with glibc < 2.35 or GCC < 11.
+Apache License, Version 2.0

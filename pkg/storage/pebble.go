@@ -53,6 +53,7 @@ import (
 	"github.com/cockroachdb/logtags"
 	"github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/bloom"
+	"github.com/cockroachdb/pebble/objstorage/remote"
 	"github.com/cockroachdb/pebble/sstable"
 	"github.com/cockroachdb/pebble/vfs"
 	"github.com/cockroachdb/redact"
@@ -81,6 +82,18 @@ var MaxSyncDurationFatalOnExceeded = settings.RegisterBoolSetting(
 	"storage.max_sync_duration.fatal.enabled",
 	"if true, fatal the process when a disk operation exceeds storage.max_sync_duration",
 	maxSyncDurationFatalOnExceededDefault,
+)
+
+// ManifestBundleCheckpointInterval controls how often the manifest bundle is
+// uploaded to remote metadata storage while the DB is running. This provides
+// crash recovery: if the process dies without a clean shutdown, the last
+// periodic checkpoint's manifest bundle limits data loss to writes since
+// that checkpoint.
+var ManifestBundleCheckpointInterval = settings.RegisterDurationSetting(
+	settings.TenantWritable,
+	"storage.manifest_bundle.checkpoint_interval",
+	"how often to upload the manifest bundle to remote metadata storage (0 disables)",
+	5*time.Minute,
 )
 
 // EngineKeyCompare compares cockroach keys, including the version (which
@@ -602,6 +615,21 @@ type PebbleConfig struct {
 	base.StorageConfig
 	// Pebble specific options.
 	Opts *pebble.Options
+	// SharedStorage, if set, configures Pebble to store lower-level SSTables
+	// (L5/L6) on remote shared storage (e.g. S3). This enables tiered LSM
+	// storage where hot data stays local and cold data lives on object storage.
+	// Mutually exclusive with RemoteStorageFactory.
+	SharedStorage *S3StorageConfig
+	// RemoteStorageFactory, if set, provides a pre-built StorageFactory for
+	// remote SSTable storage. This is used for non-S3 backends (e.g. local
+	// filesystem via file:// URLs). Mutually exclusive with SharedStorage.
+	RemoteStorageFactory remote.StorageFactory
+	// MetadataStorage, if set, is used to persist the Pebble MANIFEST bundle
+	// (MANIFEST, OPTIONS, markers, remote object catalog) on remote storage.
+	// On open, the bundle is downloaded before pebble.Open so the DB can
+	// reconnect to its remote SSTables. On close, the bundle is uploaded
+	// after flushing.
+	MetadataStorage remote.Storage
 }
 
 // EncryptionStatsHandler provides encryption related stats.
@@ -633,10 +661,13 @@ type Pebble struct {
 	properties  roachpb.StoreProperties
 	// settings must be non-nil if this Pebble instance will be used to write
 	// intents.
-	settings     *cluster.Settings
-	encryption   *EncryptionEnv
-	fileLock     *pebble.Lock
-	fileRegistry *PebbleFileRegistry
+	settings        *cluster.Settings
+	encryption      *EncryptionEnv
+	fileLock        *pebble.Lock
+	fileRegistry    *PebbleFileRegistry
+	metadataStorage remote.Storage
+	checkpointStop  chan struct{}
+	checkpointDone  chan struct{}
 
 	// Stats updated by pebble.EventListener invocations, and returned in
 	// GetMetrics. Updated and retrieved atomically.
@@ -789,6 +820,36 @@ func NewPebble(ctx context.Context, cfg PebbleConfig) (p *Pebble, err error) {
 
 	cfg.Opts.EnsureDefaults()
 	cfg.Opts.ErrorIfNotExists = cfg.MustExist
+
+	// Configure shared remote storage if specified.
+	if cfg.SharedStorage != nil {
+		cfg.Opts.Experimental.RemoteStorage = NewS3StorageFactory(*cfg.SharedStorage)
+		cfg.Opts.Experimental.CreateOnShared = remote.CreateOnSharedAll
+		cfg.Opts.Experimental.CreateOnSharedLocator = ""
+		log.Infof(ctx, "shared storage enabled: bucket=%s prefix=%s region=%s",
+			cfg.SharedStorage.Bucket, cfg.SharedStorage.Prefix, cfg.SharedStorage.Region)
+	} else if cfg.RemoteStorageFactory != nil {
+		cfg.Opts.Experimental.RemoteStorage = cfg.RemoteStorageFactory
+		cfg.Opts.Experimental.CreateOnShared = remote.CreateOnSharedAll
+		cfg.Opts.Experimental.CreateOnSharedLocator = ""
+		log.Infof(ctx, "remote storage enabled via factory")
+	}
+
+	// If metadata storage is configured, download the manifest bundle so
+	// pebble.Open can reconnect to its remote SSTables.
+	if cfg.MetadataStorage != nil {
+		exists, existsErr := ManifestBundleExists(ctx, cfg.MetadataStorage)
+		if existsErr != nil {
+			return nil, errors.Wrap(existsErr, "checking for manifest bundle")
+		}
+		if exists {
+			log.Infof(ctx, "downloading manifest bundle from metadata storage")
+			if dlErr := DownloadManifestBundle(ctx, cfg.Opts.FS, cfg.Dir, cfg.MetadataStorage); dlErr != nil {
+				return nil, errors.Wrap(dlErr, "downloading manifest bundle")
+			}
+		}
+	}
+
 	if settings := cfg.Settings; settings != nil {
 		cfg.Opts.WALMinSyncInterval = func() time.Duration {
 			return minWALSyncInterval.Get(&settings.SV)
@@ -871,6 +932,7 @@ func NewPebble(ctx context.Context, cfg PebbleConfig) (p *Pebble, err error) {
 		unencryptedFS:    unencryptedFS,
 		logger:           cfg.Opts.Logger,
 		storeIDPebbleLog: storeIDContainer,
+		metadataStorage:  cfg.MetadataStorage,
 		closer:           filesystemCloser,
 	}
 
@@ -914,11 +976,27 @@ func NewPebble(ctx context.Context, cfg PebbleConfig) (p *Pebble, err error) {
 		return nil, err
 	}
 
+	// When remote storage is configured, we need FormatVirtualSSTables
+	// for shared SSTable support.
+	if cfg.SharedStorage != nil || cfg.RemoteStorageFactory != nil {
+		if cfg.Opts.FormatMajorVersion < pebble.FormatVirtualSSTables {
+			cfg.Opts.FormatMajorVersion = pebble.FormatVirtualSSTables
+		}
+	}
+
 	db, err := pebble.Open(cfg.StorageConfig.Dir, cfg.Opts)
 	if err != nil {
 		return nil, err
 	}
 	p.db = db
+
+	// SetCreatorID is required for shared/remote storage.
+	if cfg.SharedStorage != nil || cfg.RemoteStorageFactory != nil {
+		if err := db.SetCreatorID(1); err != nil {
+			p.Close()
+			return nil, errors.Wrap(err, "setting creator ID for remote storage")
+		}
+	}
 
 	if storeClusterVersion != (roachpb.Version{}) {
 		// The storage engine performs its own internal migrations
@@ -942,7 +1020,52 @@ func NewPebble(ctx context.Context, cfg PebbleConfig) (p *Pebble, err error) {
 		}
 	}
 
+	// Start periodic manifest bundle checkpoint if metadata storage is configured.
+	if p.metadataStorage != nil {
+		p.checkpointStop = make(chan struct{})
+		p.checkpointDone = make(chan struct{})
+		go p.runManifestCheckpoint(ctx)
+	}
+
 	return p, nil
+}
+
+// runManifestCheckpoint periodically flushes the DB and uploads the manifest
+// bundle to remote metadata storage. This limits data loss on crash to writes
+// since the last checkpoint.
+func (p *Pebble) runManifestCheckpoint(ctx context.Context) {
+	defer close(p.checkpointDone)
+
+	getInterval := func() time.Duration {
+		if p.settings != nil {
+			return ManifestBundleCheckpointInterval.Get(&p.settings.SV)
+		}
+		return 5 * time.Minute
+	}
+
+	timer := time.NewTimer(getInterval())
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-p.checkpointStop:
+			return
+		case <-timer.C:
+			interval := getInterval()
+			if interval <= 0 {
+				timer.Reset(5 * time.Minute)
+				continue
+			}
+			if err := p.db.Flush(); err != nil {
+				p.logger.Infof("manifest checkpoint: flush failed: %v", err)
+			} else if err := UploadManifestBundle(context.Background(), p.fs, p.path, p.metadataStorage); err != nil {
+				p.logger.Infof("manifest checkpoint: upload failed: %v", err)
+			} else {
+				p.logger.Infof("manifest checkpoint: uploaded successfully")
+			}
+			timer.Reset(interval)
+		}
+	}
 }
 
 func (p *Pebble) makeMetricEtcEventListener(ctx context.Context) pebble.EventListener {
@@ -1018,7 +1141,29 @@ func (p *Pebble) Close() {
 		return
 	}
 	p.closed = true
+
+	// Stop the periodic checkpoint goroutine before flushing.
+	if p.checkpointStop != nil {
+		close(p.checkpointStop)
+		<-p.checkpointDone
+	}
+
+	// If metadata storage is configured, flush before closing so that all
+	// data is on remote storage, then upload the manifest bundle after close.
+	if p.metadataStorage != nil {
+		if err := p.db.Flush(); err != nil {
+			p.logger.Infof("error flushing before manifest upload: %v", err)
+		}
+	}
+
 	_ = p.db.Close()
+
+	if p.metadataStorage != nil {
+		if err := UploadManifestBundle(context.Background(), p.fs, p.path, p.metadataStorage); err != nil {
+			p.logger.Infof("error uploading manifest bundle: %v", err)
+		}
+	}
+
 	if p.fileRegistry != nil {
 		_ = p.fileRegistry.Close()
 	}

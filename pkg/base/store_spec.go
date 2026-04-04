@@ -193,6 +193,11 @@ type StoreSpec struct {
 	// through to C CCL code to set up encryption-at-rest.  Must be set if and
 	// only if encryption is enabled, otherwise left empty.
 	EncryptionOptions []byte
+	// RemoteStoragePath, if set, specifies a URL for remote object storage
+	// where SSTables and metadata are persisted. Supported schemes:
+	//   file:///path/to/dir  — local filesystem directory
+	//   s3://bucket/prefix   — Amazon S3 (requires additional config)
+	RemoteStoragePath string
 }
 
 // String returns a fully parsable version of the store spec.
@@ -234,6 +239,9 @@ func (ss StoreSpec) String() string {
 		fmt.Fprint(&buffer, "pebble=")
 		fmt.Fprint(&buffer, optsStr)
 		fmt.Fprint(&buffer, ",")
+	}
+	if len(ss.RemoteStoragePath) > 0 {
+		fmt.Fprintf(&buffer, "remote-storage=%s,", ss.RemoteStoragePath)
 	}
 	// Trim the extra comma from the end if it exists.
 	if l := buffer.Len(); l > 0 {
@@ -400,6 +408,8 @@ func NewStoreSpec(value string) (StoreSpec, error) {
 				return StoreSpec{}, err
 			}
 			ss.PebbleOptions = buf.String()
+		case "remote-storage":
+			ss.RemoteStoragePath = value
 		default:
 			return StoreSpec{}, fmt.Errorf("%s is not a valid store field", field)
 		}

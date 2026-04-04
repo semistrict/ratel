@@ -113,6 +113,20 @@ func RatelMain() {
 	}
 }
 
+// ratelAdvertiseHost returns the hostname this node should advertise and use
+// in its TLS certificate. Derived from --listen-addr; if listening on 0.0.0.0,
+// resolves the system hostname instead.
+func ratelAdvertiseHost() string {
+	host, _, _ := net.SplitHostPort(ratelListenAddr)
+	if host == "0.0.0.0" || host == "" {
+		if h, err := os.Hostname(); err == nil && h != "" {
+			return h
+		}
+		return "localhost"
+	}
+	return host
+}
+
 // ratelLocalDir returns a stable temp directory derived from the cluster URL.
 func ratelLocalDir(clusterURL string) string {
 	h := sha256.Sum256([]byte(clusterURL))
@@ -138,23 +152,27 @@ func runRatelInit(cmd *cobra.Command, args []string) error {
 		return errors.Newf("cluster already initialized: found %d node(s) at %s", len(nodes), clusterURL)
 	}
 
-	// Check if certs already exist; generate if not.
+	// Generate and upload CA + client certs if not already present.
 	exists, err := storage.CertsExist(ctx, cs.Certs)
 	if err != nil {
 		return err
 	}
 	if !exists {
-		fmt.Fprintln(os.Stderr, "Generating TLS certificates...")
-		if err := storage.GenerateAndUploadCerts(ctx, cs.Certs); err != nil {
+		fmt.Fprintln(os.Stderr, "Generating CA and client certificates...")
+		if err := storage.GenerateAndUploadCACerts(ctx, cs.Certs); err != nil {
 			return err
 		}
 	}
 
-	// Download certs to local dir.
+	// Download CA + client certs, then generate this node's cert locally.
 	ld := ratelLocalDir(clusterURL)
 	certsDir := filepath.Join(ld, "certs")
 	storeDir := filepath.Join(ld, "store")
-	if err := storage.DownloadCerts(ctx, cs.Certs, certsDir); err != nil {
+	if err := storage.DownloadCACerts(ctx, cs.Certs, certsDir); err != nil {
+		return err
+	}
+	hostname := ratelAdvertiseHost()
+	if err := storage.GenerateNodeCert(certsDir, []string{hostname, "localhost"}); err != nil {
 		return err
 	}
 
@@ -196,20 +214,15 @@ func runRatelJoin(cmd *cobra.Command, args []string) error {
 		joinList = append(joinList, n.Addr)
 	}
 
-	// Check certs exist.
-	exists, err := storage.CertsExist(ctx, cs.Certs)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		return errors.New("no certificates found at storage URL; run 'ratel init' first")
-	}
-
-	// Download certs to local dir.
+	// Download CA + client certs, then generate this node's cert locally.
 	ld := ratelLocalDir(clusterURL)
 	certsDir := filepath.Join(ld, "certs")
 	storeDir := filepath.Join(ld, "store")
-	if err := storage.DownloadCerts(ctx, cs.Certs, certsDir); err != nil {
+	if err := storage.DownloadCACerts(ctx, cs.Certs, certsDir); err != nil {
+		return errors.Wrap(err, "downloading certs (is the cluster initialized?)")
+	}
+	hostname := ratelAdvertiseHost()
+	if err := storage.GenerateNodeCert(certsDir, []string{hostname, "localhost"}); err != nil {
 		return err
 	}
 
@@ -245,12 +258,8 @@ func ratelStartServer(ctx context.Context, opts ratelServerOpts) error {
 	cfg := server.MakeConfig(ctx, st)
 	cfg.Insecure = false
 	cfg.SSLCertsDir = opts.certsDir
-	// If listening on 0.0.0.0, advertise as localhost so TLS certs validate.
-	advertiseAddr := opts.listenAddr
-	host, port, _ := net.SplitHostPort(opts.listenAddr)
-	if host == "0.0.0.0" || host == "" {
-		advertiseAddr = net.JoinHostPort("localhost", port)
-	}
+	_, port, _ := net.SplitHostPort(opts.listenAddr)
+	advertiseAddr := net.JoinHostPort(ratelAdvertiseHost(), port)
 	cfg.Addr = opts.listenAddr
 	cfg.AdvertiseAddr = advertiseAddr
 	cfg.SQLAddr = opts.listenAddr

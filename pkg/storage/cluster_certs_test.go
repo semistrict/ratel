@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGenerateAndUploadCerts(t *testing.T) {
+func TestGenerateAndUploadCACerts(t *testing.T) {
 	ctx := t.Context()
 	store := remote.NewInMem()
 	defer func() { _ = store.Close() }()
@@ -33,41 +33,42 @@ func TestGenerateAndUploadCerts(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, exists)
 
-	// Generate and upload.
-	require.NoError(t, GenerateAndUploadCerts(ctx, store))
+	// Generate and upload CA + client certs.
+	require.NoError(t, GenerateAndUploadCACerts(ctx, store))
 
 	// Now certs exist.
 	exists, err = CertsExist(ctx, store)
 	require.NoError(t, err)
 	require.True(t, exists)
 
-	// All expected files are present.
-	for _, name := range []string{
-		"ca.crt", "ca.key",
-		"node.crt", "node.key",
-		"client.root.crt", "client.root.key",
-	} {
+	// CA and client certs are present. Node certs are NOT (each node generates its own).
+	for _, name := range []string{"ca.crt", "ca.key", "client.root.crt", "client.root.key"} {
 		_, size, err := store.ReadObject(ctx, name)
 		require.NoError(t, err, "cert %s should exist", name)
 		require.Greater(t, size, int64(0), "cert %s should be non-empty", name)
 	}
+	for _, name := range []string{"node.crt", "node.key"} {
+		_, _, err := store.ReadObject(ctx, name)
+		require.True(t, store.IsNotExistError(err), "node cert %s should not be in S3", name)
+	}
 }
 
-func TestDownloadCerts(t *testing.T) {
+func TestGenerateNodeCert(t *testing.T) {
 	ctx := t.Context()
 	store := remote.NewInMem()
 	defer func() { _ = store.Close() }()
 
-	require.NoError(t, GenerateAndUploadCerts(ctx, store))
+	require.NoError(t, GenerateAndUploadCACerts(ctx, store))
 
+	// Download CA to local dir.
 	localDir := t.TempDir()
-	require.NoError(t, DownloadCerts(ctx, store, localDir))
+	require.NoError(t, DownloadCACerts(ctx, store, localDir))
 
-	for _, name := range []string{
-		"ca.crt", "ca.key",
-		"node.crt", "node.key",
-		"client.root.crt", "client.root.key",
-	} {
+	// Generate node cert with custom hostname.
+	require.NoError(t, GenerateNodeCert(localDir, []string{"myhost.example.com", "localhost"}))
+
+	// Node cert and key should exist locally.
+	for _, name := range []string{"node.crt", "node.key"} {
 		data, err := os.ReadFile(filepath.Join(localDir, name))
 		require.NoError(t, err, "should be able to read %s", name)
 		require.NotEmpty(t, data, "%s should be non-empty", name)
@@ -79,7 +80,7 @@ func TestDownloadClientCerts(t *testing.T) {
 	store := remote.NewInMem()
 	defer func() { _ = store.Close() }()
 
-	require.NoError(t, GenerateAndUploadCerts(ctx, store))
+	require.NoError(t, GenerateAndUploadCACerts(ctx, store))
 
 	localDir := t.TempDir()
 	require.NoError(t, DownloadClientCerts(ctx, store, localDir))
@@ -90,7 +91,7 @@ func TestDownloadClientCerts(t *testing.T) {
 		require.NoError(t, err, "should be able to read %s", name)
 		require.NotEmpty(t, data, "%s should be non-empty", name)
 	}
-	// Node certs should NOT be present.
+	// Node certs and CA key should NOT be present.
 	for _, name := range []string{"node.crt", "node.key", "ca.key"} {
 		_, err := os.ReadFile(filepath.Join(localDir, name))
 		require.Error(t, err, "%s should not be present", name)

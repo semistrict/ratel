@@ -28,56 +28,38 @@ import (
 
 const (
 	// Cert object names in the certs/ storage.
-	caCertName       = "ca.crt"
-	caKeyName        = "ca.key"
-	nodeCertName     = "node.crt"
-	nodeKeyName      = "node.key"
-	clientRootCert   = "client.root.crt"
-	clientRootKey    = "client.root.key"
-	certLifetime     = 10 * 365 * 24 * time.Hour // 10 years
-	certNodeHostname = "localhost"
+	caCertName     = "ca.crt"
+	caKeyName      = "ca.key"
+	clientRootCert = "client.root.crt"
+	clientRootKey  = "client.root.key"
+	certLifetime   = 10 * 365 * 24 * time.Hour // 10 years
 )
 
-// GenerateAndUploadCerts generates CA, node, and root client TLS certificates
-// and uploads them to the certs/ storage.
-func GenerateAndUploadCerts(ctx context.Context, store remote.Storage) error {
-	// Generate CA cert and key.
+// GenerateAndUploadCACerts generates the CA and root client certificates and
+// uploads them to the certs/ storage. Node certificates are NOT generated here
+// — each node generates its own via GenerateNodeCert after downloading the CA.
+func GenerateAndUploadCACerts(ctx context.Context, store remote.Storage) error {
 	caCertPEM, caKeyPEM, err := security.CreateCACertAndKey(ctx, nil, certLifetime, "Cockroach CA")
 	if err != nil {
 		return errors.Wrap(err, "generating CA cert")
 	}
 
-	// Generate node cert and key signed by the CA.
-	nodeCertPEM, nodeKeyPEM, err := security.CreateServiceCertAndKey(
-		ctx, nil, certLifetime, security.NodeUser,
-		[]string{certNodeHostname},
-		caCertPEM, caKeyPEM,
-		true, // serviceCertIsAlsoValidAsClient — node certs are used for both
-	)
-	if err != nil {
-		return errors.Wrap(err, "generating node cert")
-	}
-
-	// Generate root client cert and key signed by the CA.
 	clientCertPEM, clientKeyPEM, err := security.CreateServiceCertAndKey(
 		ctx, nil, certLifetime, security.RootUser,
-		nil, // no hostnames for client cert
+		nil,
 		caCertPEM, caKeyPEM,
-		true, // client cert
+		true,
 	)
 	if err != nil {
 		return errors.Wrap(err, "generating client root cert")
 	}
 
-	// Upload all certs to storage.
 	uploads := []struct {
 		name string
 		data []byte
 	}{
 		{caCertName, pem.EncodeToMemory(caCertPEM)},
 		{caKeyName, pem.EncodeToMemory(caKeyPEM)},
-		{nodeCertName, pem.EncodeToMemory(nodeCertPEM)},
-		{nodeKeyName, pem.EncodeToMemory(nodeKeyPEM)},
 		{clientRootCert, pem.EncodeToMemory(clientCertPEM)},
 		{clientRootKey, pem.EncodeToMemory(clientKeyPEM)},
 	}
@@ -89,21 +71,18 @@ func GenerateAndUploadCerts(ctx context.Context, store remote.Storage) error {
 	return nil
 }
 
-// DownloadCerts downloads all TLS certificates from the certs/ storage to a
-// local directory, creating the directory if needed.
-func DownloadCerts(ctx context.Context, store remote.Storage, localDir string) error {
+// DownloadCACerts downloads the CA cert and key from the certs/ storage to a
+// local directory.
+func DownloadCACerts(ctx context.Context, store remote.Storage, localDir string) error {
 	if err := os.MkdirAll(localDir, 0700); err != nil {
 		return errors.Wrapf(err, "creating certs dir %s", localDir)
 	}
-
 	files := []struct {
 		name string
 		mode os.FileMode
 	}{
 		{caCertName, 0644},
 		{caKeyName, 0600},
-		{nodeCertName, 0644},
-		{nodeKeyName, 0600},
 		{clientRootCert, 0644},
 		{clientRootKey, 0600},
 	}
@@ -116,6 +95,48 @@ func DownloadCerts(ctx context.Context, store remote.Storage, localDir string) e
 		if err := os.WriteFile(path, data, f.mode); err != nil {
 			return errors.Wrapf(err, "writing %s", path)
 		}
+	}
+	return nil
+}
+
+// GenerateNodeCert generates a node certificate signed by the CA in localDir,
+// with the given hostnames as SANs. The CA cert and key must already exist in
+// localDir (downloaded via DownloadCACerts). The node cert and key are written
+// to localDir as node.crt and node.key.
+func GenerateNodeCert(localDir string, hostnames []string) error {
+	caCertPath := filepath.Join(localDir, caCertName)
+	caKeyPath := filepath.Join(localDir, caKeyName)
+
+	caCertData, err := os.ReadFile(caCertPath)
+	if err != nil {
+		return errors.Wrap(err, "reading CA cert")
+	}
+	caKeyData, err := os.ReadFile(caKeyPath)
+	if err != nil {
+		return errors.Wrap(err, "reading CA key")
+	}
+
+	caCertBlock, _ := pem.Decode(caCertData)
+	caKeyBlock, _ := pem.Decode(caKeyData)
+	if caCertBlock == nil || caKeyBlock == nil {
+		return errors.New("failed to decode CA PEM")
+	}
+
+	nodeCertPEM, nodeKeyPEM, err := security.CreateServiceCertAndKey(
+		context.Background(), nil, certLifetime, security.NodeUser,
+		hostnames,
+		caCertBlock, caKeyBlock,
+		true,
+	)
+	if err != nil {
+		return errors.Wrap(err, "generating node cert")
+	}
+
+	if err := os.WriteFile(filepath.Join(localDir, "node.crt"), pem.EncodeToMemory(nodeCertPEM), 0644); err != nil {
+		return errors.Wrap(err, "writing node cert")
+	}
+	if err := os.WriteFile(filepath.Join(localDir, "node.key"), pem.EncodeToMemory(nodeKeyPEM), 0600); err != nil {
+		return errors.Wrap(err, "writing node key")
 	}
 	return nil
 }
@@ -126,7 +147,6 @@ func DownloadClientCerts(ctx context.Context, store remote.Storage, localDir str
 	if err := os.MkdirAll(localDir, 0700); err != nil {
 		return errors.Wrapf(err, "creating certs dir %s", localDir)
 	}
-
 	files := []struct {
 		name string
 		mode os.FileMode
@@ -148,7 +168,7 @@ func DownloadClientCerts(ctx context.Context, store remote.Storage, localDir str
 	return nil
 }
 
-// CertsExist checks whether certificates have already been uploaded to the
+// CertsExist checks whether the CA certificate has been uploaded to the
 // certs/ storage.
 func CertsExist(ctx context.Context, store remote.Storage) (bool, error) {
 	_, _, err := store.ReadObject(ctx, caCertName)

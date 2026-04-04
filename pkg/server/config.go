@@ -659,6 +659,7 @@ func (cfg *Config) CreateEngines(ctx context.Context) (Engines, error) {
 				}
 				pebbleConfig.RemoteStorageFactory = factory
 				pebbleConfig.MetadataStorage = metaStore
+				pebbleConfig.RecoveryStoreID = spec.RecoveryStoreID
 			}
 			eng, err := storage.NewPebble(ctx, pebbleConfig)
 			if err != nil {

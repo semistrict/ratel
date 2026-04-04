@@ -35,7 +35,18 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Install build deps
-        run: sudo apt-get update && sudo apt-get install -y libedit-dev libncurses-dev
+        run: sudo apt-get update && sudo apt-get install -y libedit-dev libncurses-dev ccache
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-linux-${{ hashFiles('c-deps/geos/**', 'c-deps/jemalloc/**', 'c-deps/proj/**') }}
+          restore-keys: ccache-linux-
+      - name: Configure ccache
+        run: |
+          echo "/usr/lib/ccache" >> $GITHUB_PATH
+          ccache --set-config=max_size=500M
+          ccache --zero-stats
       - name: Cache c-deps
         uses: actions/cache@v4
         with:

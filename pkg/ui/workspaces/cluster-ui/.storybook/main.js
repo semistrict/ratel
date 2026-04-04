@@ -13,7 +13,8 @@
 // permissions and limitations under the License.
 
 const path = require("path");
-const appConfig = require("../webpack.config");
+const appConfigFn = require("../webpack.config");
+const appConfig = typeof appConfigFn === "function" ? appConfigFn({}, {}) : appConfigFn;
 
 module.exports = {
   stories: ['../src/**/*.stories.tsx'],

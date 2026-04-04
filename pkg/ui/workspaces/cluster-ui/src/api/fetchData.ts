@@ -30,7 +30,7 @@ export function toArrayBuffer(encodedRequest: Uint8Array): ArrayBuffer {
   return encodedRequest.buffer.slice(
     encodedRequest.byteOffset,
     encodedRequest.byteOffset + encodedRequest.byteLength,
-  );
+  ) as ArrayBuffer;
 }
 
 /**

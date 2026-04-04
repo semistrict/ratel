@@ -116,7 +116,7 @@ module.exports = (env, argv) => {
           ],
           test: /\.less$/,
         },
-        // All output '.js' files will have any sourcemaps re-processed by 'source-map-loader'.
+// All output '.js' files will have any sourcemaps re-processed by 'source-map-loader'.
         {
           enforce: "pre",
           test: /\.js$/,

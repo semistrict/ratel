@@ -934,7 +934,10 @@ func validReadTimes(
 	var validTimes disjointTimeSpans
 	end := hlc.MaxTimestamp
 
-	iter := b.NewIter(nil)
+	iter, err := b.NewIter(nil)
+	if err != nil {
+		panic(err)
+	}
 	defer func() { _ = iter.Close() }()
 	iter.SeekGE(storage.EncodeMVCCKey(storage.MVCCKey{Key: key}))
 	for ; iter.Valid(); iter.Next() {
@@ -999,7 +1002,10 @@ func validScanTime(
 	}
 
 	missingKeys := make(map[string]disjointTimeSpans)
-	iter := b.NewIter(nil)
+	iter, err := b.NewIter(nil)
+	if err != nil {
+		panic(err)
+	}
 	defer func() { _ = iter.Close() }()
 	iter.SeekGE(storage.EncodeMVCCKey(storage.MVCCKey{Key: span.Key}))
 	for ; iter.Valid(); iter.Next() {

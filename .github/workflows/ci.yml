@@ -1,0 +1,48 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  gofmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Check gofmt
+        run: |
+          unformatted=$(gofmt -l pkg/)
+          if [ -n "$unformatted" ]; then
+            echo "::error::Files not formatted with gofmt:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+  build-and-test:
+    runs-on: macos-14
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          submodules: true
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Install build deps
+        run: brew install autoconf coreutils cmake make
+      - name: Build
+        run: gmake -j$(sysctl -n hw.ncpu) buildshort
+        env:
+          BROWSERSLIST_IGNORE_OLD_DATA: 1
+      - name: Vet
+        run: go vet -mod=vendor -tags 'make short' ./pkg/...
+      - name: Compile all tests
+        run: gmake testcompile
+      - name: Smoketest
+        run: gmake smoketest

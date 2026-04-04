@@ -18,6 +18,7 @@ import (
 	"context"
 	"testing"
 	"testing/synctest"
+	"time"
 
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/testutils/inproc"
@@ -61,7 +62,7 @@ func TestSyncTestSmoke(t *testing.T) {
 
 // TestSyncRestart reimplements the "restart/down-for-2m" roachtest:
 // stop a node, verify the cluster still serves traffic, restart the
-// node, verify it recovers. Inside synctest, the downtime is instant.
+// node, verify it recovers.
 func TestSyncRestart(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		c := inproc.StartCluster(t, 3)
@@ -70,10 +71,8 @@ func TestSyncRestart(t *testing.T) {
 		ctx := t.Context()
 		db := c.Server(0).DB()
 
-		// Write initial data.
 		require.NoError(t, db.Put(ctx, roachpb.Key("before-stop"), []byte("v1")))
 
-		// Stop node 2.
 		c.StopNode(2)
 
 		// Cluster should still serve reads/writes (2 of 3 nodes up).
@@ -82,10 +81,8 @@ func TestSyncRestart(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, []byte("v2"), val.ValueBytes())
 
-		// Restart node 2.
 		c.RestartNode(t, 2)
 
-		// Verify the restarted node's data is accessible.
 		val, err = db.Get(ctx, roachpb.Key("before-stop"))
 		require.NoError(t, err)
 		require.Equal(t, []byte("v1"), val.ValueBytes())
@@ -107,25 +104,75 @@ func TestSyncNetworkPartition(t *testing.T) {
 		ctx := t.Context()
 		db := c.Server(0).DB()
 
-		// Write before partition.
 		require.NoError(t, db.Put(ctx, roachpb.Key("pre-partition"), []byte("v1")))
 
-		// Partition node 2 — new connections to it will fail.
 		c.PartitionNode(2)
 
-		// Cluster should still serve reads/writes (nodes 0 and 1 are up
-		// and can form quorum for RF=1 ranges on those nodes).
 		require.NoError(t, db.Put(ctx, roachpb.Key("during-partition"), []byte("v2")))
 		val, err := db.Get(ctx, roachpb.Key("during-partition"))
 		require.NoError(t, err)
 		require.Equal(t, []byte("v2"), val.ValueBytes())
 
-		// Heal the partition.
 		c.HealPartition(2)
 
-		// Data written during partition should be readable.
 		val, err = db.Get(ctx, roachpb.Key("pre-partition"))
 		require.NoError(t, err)
 		require.Equal(t, []byte("v1"), val.ValueBytes())
+	})
+}
+
+// TestSyncFakeTime verifies that synctest's fake clock controls
+// CockroachDB's HLC.
+func TestSyncFakeTime(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		c := inproc.StartCluster(t, 1)
+		defer c.Stop()
+
+		clock := c.Server(0).Clock()
+
+		// synctest starts at midnight UTC 2000-01-01.
+		ts1 := clock.Now()
+		require.Equal(t, 2000, ts1.GoTime().Year())
+
+		// Advance fake time by 1 hour.
+		time.Sleep(time.Hour)
+
+		ts2 := clock.Now()
+		elapsed := ts2.GoTime().Sub(ts1.GoTime())
+		require.GreaterOrEqual(t, elapsed, time.Hour)
+	})
+}
+
+// TestSyncClockJump reimplements the "clock-jump" roachtest: verify
+// that the HLC tracks time advancement correctly under synctest's
+// full control over time progression.
+func TestSyncClockJump(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		c := inproc.StartCluster(t, 1)
+		defer c.Stop()
+
+		ctx := t.Context()
+		db := c.Server(0).DB()
+		clock := c.Server(0).Clock()
+
+		require.NoError(t, db.Put(ctx, roachpb.Key("t0"), []byte("before")))
+		t0 := clock.Now()
+
+		// Jump forward 10 minutes.
+		time.Sleep(10 * time.Minute)
+
+		require.NoError(t, db.Put(ctx, roachpb.Key("t1"), []byte("after")))
+		t1 := clock.Now()
+
+		// HLC advanced by at least 10 minutes.
+		require.GreaterOrEqual(t, t1.WallTime-t0.WallTime, int64(10*time.Minute))
+
+		v0, err := db.Get(ctx, roachpb.Key("t0"))
+		require.NoError(t, err)
+		require.Equal(t, []byte("before"), v0.ValueBytes())
+
+		v1, err := db.Get(ctx, roachpb.Key("t1"))
+		require.NoError(t, err)
+		require.Equal(t, []byte("after"), v1.ValueBytes())
 	})
 }

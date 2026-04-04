@@ -30,7 +30,7 @@
       "immer": "9.0.21",
       "loader-utils": "2.0.4",
       "typescript": "5.9.3",
-      "uplot": "~1.6.31",
+      "uplot": "1.6.19",
       "xmldom": "npm:@xmldom/xmldom@~0.8.10",
       "@babel/traverse": "~7.26.10",
       "eventsource": "~1.1.2",

@@ -498,7 +498,7 @@ export const updateSortSettingQueryParamsOnTab = (
       columnTitle: sortSetting.columnTitle,
     };
     const nextSearchParams = new URLSearchParams(history.location.search);
-    Object.entries(params).forEach(([key, value]) => {
+    Object.entries(params).forEach(([key, value]: [string, string]) => {
       if (!value) {
         nextSearchParams.delete(key);
       } else {

@@ -18,6 +18,7 @@ import classNames from "classnames/bind";
 import {
   ArrowDirection,
   TimeScale,
+  TimeScaleOption,
   TimeScaleOptions,
   TimeWindow,
 } from "./timeScaleTypes";
@@ -190,7 +191,7 @@ export const TimeScaleDropdown: React.FC<TimeScaleDropdownProps> = ({
     if (!endTime || endTime > moment.utc().subtract(currentScale.windowValid)) {
       const foundTimeScale = Object.entries(options).find(
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        ([_, value]) => value.windowSize.asSeconds() === windowSize.asSeconds(),
+        ([_, value]: [string, TimeScaleOption]) => value.windowSize.asSeconds() === windowSize.asSeconds(),
       );
       if (foundTimeScale) {
         /**
@@ -223,7 +224,7 @@ export const TimeScaleDropdown: React.FC<TimeScaleDropdownProps> = ({
   };
 
   const timeScaleOptions = useMemo(() => {
-    const optionsList = Object.entries(options).map(([key, value]) => ({
+    const optionsList = Object.entries(options).map(([key, value]: [string, TimeScaleOption]) => ({
       value: key,
       label: key,
       timeLabel: getTimeLabel(null, value.windowSize),

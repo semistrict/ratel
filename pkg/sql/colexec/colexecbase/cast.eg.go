@@ -890,6 +890,7 @@ func (c *castOpNullAny) Next() coldata.Batch {
 //     contain casts)
 //  3. performing the deselection would require copying over all vectors, not
 //     just the output one.
+//
 // This operator should be planned rarely enough (if ever) to not be very
 // important.
 type castIdentityOp struct {

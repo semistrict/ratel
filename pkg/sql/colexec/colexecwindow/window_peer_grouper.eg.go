@@ -30,6 +30,7 @@ import (
 // then all tuples within the partition are peers.
 //   - partitionColIdx, if not columnOmitted, *must* specify the column in which
 //     'true' indicates the start of a new partition.
+//
 // NOTE: the input *must* already be ordered on ordCols.
 func NewWindowPeerGrouper(
 	allocator *colmem.Allocator,

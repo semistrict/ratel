@@ -40,9 +40,9 @@ import (
 // and the replicas, it could be true. Here's how long it'll take for various
 // block sizes:
 //
-//   page size of 1   ~ 2h 46m
-//   page size of 50  ~ 3m 20s
-//   page size of 200 ~ 50s
+//	page size of 1   ~ 2h 46m
+//	page size of 50  ~ 3m 20s
+//	page size of 200 ~ 50s
 const defaultPageSize = 200
 
 // persistWatermarkBatchInterval specifies how often to persist the progress

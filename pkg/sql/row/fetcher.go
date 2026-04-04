@@ -113,20 +113,21 @@ type tableInfo struct {
 
 // Fetcher handles fetching kvs and forming table rows for a single table.
 // Usage:
-//   var rf Fetcher
-//   err := rf.Init(..)
-//   // Handle err
-//   err := rf.StartScan(..)
-//   // Handle err
-//   for {
-//      res, err := rf.NextRow()
-//      // Handle err
-//      if res.row == nil {
-//         // Done
-//         break
-//      }
-//      // Process res.row
-//   }
+//
+//	var rf Fetcher
+//	err := rf.Init(..)
+//	// Handle err
+//	err := rf.StartScan(..)
+//	// Handle err
+//	for {
+//	   res, err := rf.NextRow()
+//	   // Handle err
+//	   if res.row == nil {
+//	      // Done
+//	      break
+//	   }
+//	   // Process res.row
+//	}
 type Fetcher struct {
 	table tableInfo
 

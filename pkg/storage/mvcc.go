@@ -835,15 +835,16 @@ func MVCCGetAsTxn(
 // mvccGetMetadata returns or reconstructs the meta key for the given key.
 // A prefix scan using the iterator is performed, resulting in one of the
 // following successful outcomes:
-// 1) iterator finds nothing; returns (false, 0, 0, nil).
-// 2) iterator finds an explicit meta key; unmarshals and returns its size.
-//    ok is set to true.
-// 3) iterator finds a value, i.e. the meta key is implicit.
-//    In this case, it accounts for the size of the key with the portion
-//    of the user key found which is not the MVCC timestamp suffix (since
-//    that is the usual contribution of the meta key). The value size returned
-//    will be zero, as there is no stored MVCCMetadata.
-//    ok is set to true.
+//  1. iterator finds nothing; returns (false, 0, 0, nil).
+//  2. iterator finds an explicit meta key; unmarshals and returns its size.
+//     ok is set to true.
+//  3. iterator finds a value, i.e. the meta key is implicit.
+//     In this case, it accounts for the size of the key with the portion
+//     of the user key found which is not the MVCC timestamp suffix (since
+//     that is the usual contribution of the meta key). The value size returned
+//     will be zero, as there is no stored MVCCMetadata.
+//     ok is set to true.
+//
 // The passed in MVCCMetadata must not be nil.
 //
 // If the supplied iterator is nil, no seek operation is performed. This is
@@ -2845,12 +2846,12 @@ func mvccGetIntent(
 // Note that a transaction can "partially abort" and still commit due to nested
 // SAVEPOINTs, such as in the below example:
 //
-//   BEGIN;
-//     SAVEPOINT foo;
-//       INSERT INTO kv VALUES(1, 1);
-//     ROLLBACK TO SAVEPOINT foo;
-//     INSERT INTO kv VALUES(1, 2);
-//   COMMIT;
+//	BEGIN;
+//	  SAVEPOINT foo;
+//	    INSERT INTO kv VALUES(1, 1);
+//	  ROLLBACK TO SAVEPOINT foo;
+//	  INSERT INTO kv VALUES(1, 2);
+//	COMMIT;
 //
 // This would first remove the intent (1,1) during the ROLLBACK using a Del (the
 // anomaly below would occur the same if a SingleDel were used here), and thus
@@ -2866,12 +2867,12 @@ func mvccGetIntent(
 // However, this sequence could compact as follows (at the time of writing, bound
 // to change with #69891):
 //
-// - Set (Del Set') SingleDel
-//          ↓
-// - Set   Set'     SingleDel
-// - Set  (Set'     SingleDel)
-//               ↓
-// - Set
+//   - Set (Del Set') SingleDel
+//     ↓
+//   - Set   Set'     SingleDel
+//   - Set  (Set'     SingleDel)
+//     ↓
+//   - Set
 //
 // which means that a previously deleted intent metadata would erroneously
 // become visible again. So on top of restricting SingleDel to the COMMIT case,

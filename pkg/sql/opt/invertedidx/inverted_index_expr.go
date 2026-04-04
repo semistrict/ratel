@@ -66,11 +66,11 @@ func NewBoundPreFilterer(typ *types.T, expr tree.TypedExpr) (*PreFilterer, inter
 // derived, then TryFilterInvertedIndex returns ok=false.
 //
 // In addition to the inverted filter condition (spanExpr), returns:
-// - a constraint of the prefix columns if there are any,
-// - remaining filters that must be applied if the span expression is not tight,
-//   and
-// - pre-filterer state that can be used by the invertedFilterer operator to
-//   reduce the number of false positives returned by the span expression.
+//   - a constraint of the prefix columns if there are any,
+//   - remaining filters that must be applied if the span expression is not tight,
+//     and
+//   - pre-filterer state that can be used by the invertedFilterer operator to
+//     reduce the number of false positives returned by the span expression.
 func TryFilterInvertedIndex(
 	evalCtx *tree.EvalContext,
 	factory *norm.Factory,
@@ -462,10 +462,10 @@ type invertedFilterPlanner interface {
 // delegated to the given invertedFilterPlanner.
 //
 // In addition to the inverted.Expression, returns:
-// - remaining filters that must be applied if the inverted expression is not
-//   tight, and
-// - pre-filterer state that can be used to reduce false positives. This is
-//   only non-nil if filterCond is a leaf condition (i.e., has no ANDs or ORs).
+//   - remaining filters that must be applied if the inverted expression is not
+//     tight, and
+//   - pre-filterer state that can be used to reduce false positives. This is
+//     only non-nil if filterCond is a leaf condition (i.e., has no ANDs or ORs).
 func extractInvertedFilterCondition(
 	evalCtx *tree.EvalContext,
 	factory *norm.Factory,
@@ -507,10 +507,9 @@ func extractInvertedFilterCondition(
 
 // isIndexColumn returns true if e is an expression that corresponds to an
 // inverted index column. The expression can be either:
-//  - a variable on the index column, or
-//  - an expression that matches the computed column expression (if the index
-//    column is computed).
-//
+//   - a variable on the index column, or
+//   - an expression that matches the computed column expression (if the index
+//     column is computed).
 func isIndexColumn(
 	tabID opt.TableID, index cat.Index, e opt.Expr, computedColumns map[opt.ColumnID]opt.ScalarExpr,
 ) bool {

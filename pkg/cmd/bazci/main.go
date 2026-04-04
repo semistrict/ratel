@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,8 +15,8 @@
 // bazci is glue code to make debugging Bazel builds and tests in Teamcity as
 // painless as possible.
 //
-// bazci [build|test] \
-//     --artifacts_dir=$ARTIFACTS_DIR targets... -- [command-line options]
+//	bazci [build|test] \
+//	    --artifacts_dir=$ARTIFACTS_DIR targets... -- [command-line options]
 //
 // bazci will invoke a `bazel build` or `bazel test` of all the given targets
 // and stage the resultant build/test artifacts in the given `artifacts_dir`.

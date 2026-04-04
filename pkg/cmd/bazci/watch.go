@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -311,7 +311,8 @@ func (w *cancelableWriter) Close() error {
 //
 // For example, one might stage a set of log files with a call like:
 // w.maybeStageArtifact(testlogsSourceDir, "pkg/server/server_test/*/test.log",
-//                      0644, incrementalUpdatePhase, copycontentTo)
+//
+//	0644, incrementalUpdatePhase, copycontentTo)
 func (w watcher) maybeStageArtifact(
 	rootPath string,
 	pattern string,

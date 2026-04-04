@@ -25,7 +25,8 @@ import (
 )
 
 // ParseConstraint parses a constraint in the format of Constraint.String, e.g:
-//   "/1/2/3: [/1 - /2]".
+//
+//	"/1/2/3: [/1 - /2]".
 func ParseConstraint(evalCtx *tree.EvalContext, str string) Constraint {
 	s := strings.SplitN(str, ": ", 2)
 	if len(s) != 2 {
@@ -42,7 +43,8 @@ func ParseConstraint(evalCtx *tree.EvalContext, str string) Constraint {
 }
 
 // parseSpans parses a list of spans with integer values like:
-//   "[/1 - /2] [/5 - /6]".
+//
+//	"[/1 - /2] [/5 - /6]".
 func parseSpans(evalCtx *tree.EvalContext, str string) Spans {
 	if str == "" || str == "contradiction" {
 		return Spans{}

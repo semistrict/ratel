@@ -45,17 +45,18 @@ import (
 // CockroachDB uses that as a sentinel for key metadata anyway.
 //
 // Expected usage:
-//    iter := NewMVCCIncrementalIterator(e, IterOptions{
-//        StartTime:  startTime,
-//        EndTime:    endTime,
-//        UpperBound: endKey,
-//    })
-//    defer iter.Close()
-//    for iter.SeekGE(startKey); ; iter.Next() {
-//        ok, err := iter.Valid()
-//        if !ok { ... }
-//        [code using iter.Key() and iter.Value()]
-//    }
+//
+//	iter := NewMVCCIncrementalIterator(e, IterOptions{
+//	    StartTime:  startTime,
+//	    EndTime:    endTime,
+//	    UpperBound: endKey,
+//	})
+//	defer iter.Close()
+//	for iter.SeekGE(startKey); ; iter.Next() {
+//	    ok, err := iter.Valid()
+//	    if !ok { ... }
+//	    [code using iter.Key() and iter.Value()]
+//	}
 //
 // Note regarding the correctness of the time-bound iterator optimization:
 //
@@ -403,10 +404,12 @@ func (i *MVCCIncrementalIterator) initMetaAndCheckForIntentOrInlineError() error
 // It populates i.err with an error if either of the following was encountered:
 //
 // a) an inline value when the inline policy is
-//    MVCCIncrementalIterInlinePolicyError; or
+//
+//	MVCCIncrementalIterInlinePolicyError; or
 //
 // b) an intent with a timestamp within the incremental iterator's bounds when
-//    the intent policy is MVCCIncrementalIterIntentPolicyError.
+//
+//	the intent policy is MVCCIncrementalIterIntentPolicyError.
 func (i *MVCCIncrementalIterator) advance() {
 	for {
 		i.maybeSkipKeys()

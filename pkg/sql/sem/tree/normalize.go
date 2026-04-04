@@ -496,11 +496,11 @@ func (expr *Tuple) normalize(v *NormalizeVisitor) TypedExpr {
 // unchanged and that resulting expression tree is still well-typed.
 // Example normalizations:
 //
-//   (a)                   -> a
-//   a = 1 + 1             -> a = 2
-//   a + 1 = 2             -> a = 1
-//   a BETWEEN b AND c     -> (a >= b) AND (a <= c)
-//   a NOT BETWEEN b AND c -> (a < b) OR (a > c)
+//	(a)                   -> a
+//	a = 1 + 1             -> a = 2
+//	a + 1 = 2             -> a = 1
+//	a BETWEEN b AND c     -> (a >= b) AND (a <= c)
+//	a NOT BETWEEN b AND c -> (a < b) OR (a > c)
 func (ctx *EvalContext) NormalizeExpr(typedExpr TypedExpr) (TypedExpr, error) {
 	v := MakeNormalizeVisitor(ctx)
 	expr, _ := WalkExpr(&v, typedExpr)

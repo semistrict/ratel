@@ -91,13 +91,12 @@ func (g *exprsGen) genExprDef(define *lang.DefineExpr) {
 // genExprGroupDef generates the group struct definition for a relational
 // expression, plus its methods:
 //
-//   type selectGroup struct {
-//     mem   *Memo
-//     rel   props.Relational
-//     first SelectExpr
-//     best  bestProps
-//   }
-//
+//	type selectGroup struct {
+//	  mem   *Memo
+//	  rel   props.Relational
+//	  first SelectExpr
+//	  best  bestProps
+//	}
 func (g *exprsGen) genExprGroupDef(define *lang.DefineExpr) {
 	if !define.Tags.Contains("Relational") {
 		return
@@ -138,13 +137,12 @@ func (g *exprsGen) genExprGroupDef(define *lang.DefineExpr) {
 
 // genPrivateStruct generates the struct for a define tagged as Private:
 //
-//   type FunctionPrivate struct {
-//     Name       string
-//     Typ        *types.T
-//     Properties *tree.FunctionProperties
-//     Overload   *tree.Overload
-//   }
-//
+//	type FunctionPrivate struct {
+//	  Name       string
+//	  Typ        *types.T
+//	  Properties *tree.FunctionProperties
+//	  Overload   *tree.Overload
+//	}
 func (g *exprsGen) genPrivateStruct(define *lang.DefineExpr) {
 	privTyp := g.md.typeOf(define)
 
@@ -170,14 +168,13 @@ func (g *exprsGen) genPrivateStruct(define *lang.DefineExpr) {
 
 // genExprStruct generates the struct type definition for an expression:
 //
-//   type SelectExpr struct {
-//     Input   RelExpr
-//     Filters FiltersExpr
+//	type SelectExpr struct {
+//	  Input   RelExpr
+//	  Filters FiltersExpr
 //
-//     grp  exprGroup
-//     next RelExpr
-//   }
-//
+//	  grp  exprGroup
+//	  next RelExpr
+//	}
 func (g *exprsGen) genExprStruct(define *lang.DefineExpr) {
 	opTyp := g.md.typeOf(define)
 

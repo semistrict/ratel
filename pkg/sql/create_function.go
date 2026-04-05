@@ -229,7 +229,7 @@ func registerUDFFunDef(
 		Fn:               fn,
 		Volatility:       volatility,
 		Info:             fmt.Sprintf("User-defined function %s", funcName),
-		DistsqlBlocklist: true,
+		DistsqlBlocklist: false,
 	}
 
 	def := tree.NewFunctionDefinition(

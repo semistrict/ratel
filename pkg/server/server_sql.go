@@ -727,6 +727,7 @@ func newSQLServer(ctx context.Context, cfg sqlServerArgs) (*SQLServer, error) {
 	cfg.stopper.AddCloser(stop.CloserFn(func() {
 		udfRegistry.Close()
 	}))
+	distSQLCfg.UDFRegistry = udfRegistry
 
 	*execCfg = sql.ExecutorConfig{
 		Settings:                cfg.Settings,

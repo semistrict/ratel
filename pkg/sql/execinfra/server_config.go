@@ -192,6 +192,10 @@ type ServerConfig struct {
 	// ExternalIORecorder is used to record reads and writes from
 	// external services (such as external storage)
 	ExternalIORecorder multitenant.TenantSideExternalIORecorder
+
+	// UDFRegistry holds the V8-backed UDF runtime registry for
+	// distributed execution of user-defined functions.
+	UDFRegistry interface{}
 }
 
 // RuntimeStats is an interface through which the rowexec layer can get

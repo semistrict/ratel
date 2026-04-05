@@ -15,6 +15,7 @@
 package udfruntime
 
 import (
+	"bytes"
 	"context"
 	"testing"
 
@@ -155,6 +156,50 @@ func BenchmarkBatchAsyncSQL1(b *testing.B) {
 	for range b.N {
 		if _, err := reg.Call(tc, "count", batch); err != nil {
 			b.Fatal(err)
+		}
+	}
+}
+
+// --- Marshaling benchmarks ---
+
+func BenchmarkMarshalDatumToJS(b *testing.B) {
+	args := tree.Datums{
+		tree.NewDString("Alice"),
+		tree.NewDFloat(11.49),
+		tree.NewDInt(2),
+		tree.NewDString(`["electronics","sale"]`),
+	}
+	types := []ValType{ValString, ValF64, ValI64, ValString}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for j, arg := range args {
+			s, err := MarshalDatumToJS(arg, types[j], false)
+			if err != nil {
+				b.Fatal(err)
+			}
+			_ = s
+		}
+	}
+}
+
+func BenchmarkWriteDatumJSON(b *testing.B) {
+	args := tree.Datums{
+		tree.NewDString("Alice"),
+		tree.NewDFloat(11.49),
+		tree.NewDInt(2),
+		tree.NewDString(`["electronics","sale"]`),
+	}
+	types := []ValType{ValString, ValF64, ValI64, ValString}
+	var buf bytes.Buffer
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		buf.Reset()
+		for j, arg := range args {
+			if err := WriteDatumJSON(&buf, arg, types[j]); err != nil {
+				b.Fatal(err)
+			}
 		}
 	}
 }

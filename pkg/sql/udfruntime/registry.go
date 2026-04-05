@@ -286,8 +286,6 @@ func (r *Registry) Call(
 		return r.callSequential(tc, cf, name, argsBatch)
 	}
 
-	forWasm := cf.language == LangWasm
-
 	// Lazily install the __batch helper that takes a parsed array of args,
 	// calls invoke for each row, and returns the results array.
 	batchKey := "__batch_" + name
@@ -309,6 +307,8 @@ func (r *Registry) Call(
 	}
 
 	// Build JSON array of args in Go: [[arg0_0,arg0_1],[arg1_0,arg1_1],...]
+	// WriteDatumJSON writes directly to the buffer with zero intermediate
+	// string allocations.
 	buf := r.getBuf()
 	buf.Grow(len(argsBatch)*20 + 32)
 	buf.WriteByte('[')
@@ -321,12 +321,10 @@ func (r *Registry) Call(
 			if j > 0 {
 				buf.WriteByte(',')
 			}
-			s, err := MarshalDatumToJS(arg, cf.paramTypes[j], forWasm)
-			if err != nil {
+			if err := WriteDatumJSON(buf, arg, cf.paramTypes[j]); err != nil {
 				r.putBuf(buf)
 				return nil, fmt.Errorf("row %d arg %d: %w", i, j, err)
 			}
-			buf.WriteString(s)
 		}
 		buf.WriteByte(']')
 	}

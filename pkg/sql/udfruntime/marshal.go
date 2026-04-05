@@ -15,7 +15,9 @@
 package udfruntime
 
 import (
+	"bytes"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
@@ -132,6 +134,109 @@ func MarshalDatumToJS(d tree.Datum, vt ValType, forWasm bool) (string, error) {
 	default:
 		return "", fmt.Errorf("unsupported value type: 0x%02x", byte(vt))
 	}
+}
+
+// WriteDatumJSON writes a datum as JSON directly to buf with zero
+// intermediate string allocations. This is the fast path used by
+// the batch call to build the args JSON array.
+func WriteDatumJSON(buf *bytes.Buffer, d tree.Datum, vt ValType) error {
+	if d == tree.DNull {
+		buf.WriteString("null")
+		return nil
+	}
+	switch vt {
+	case ValI64:
+		v, ok := d.(*tree.DInt)
+		if !ok {
+			return fmt.Errorf("expected INT datum, got %T", d)
+		}
+		buf.Write(strconv.AppendInt(buf.AvailableBuffer(), int64(*v), 10))
+	case ValF64:
+		v, ok := d.(*tree.DFloat)
+		if !ok {
+			return fmt.Errorf("expected FLOAT datum, got %T", d)
+		}
+		buf.Write(strconv.AppendFloat(buf.AvailableBuffer(), float64(*v), 'g', -1, 64))
+	case ValI32:
+		v, ok := d.(*tree.DBool)
+		if !ok {
+			return fmt.Errorf("expected BOOL datum, got %T", d)
+		}
+		if bool(*v) {
+			buf.WriteByte('1')
+		} else {
+			buf.WriteByte('0')
+		}
+	case ValString:
+		v, ok := d.(*tree.DString)
+		if !ok {
+			return fmt.Errorf("expected STRING datum, got %T", d)
+		}
+		writeJSONString(buf, string(*v))
+	case ValBytes:
+		v, ok := d.(*tree.DBytes)
+		if !ok {
+			return fmt.Errorf("expected BYTES datum, got %T", d)
+		}
+		// Bytes as JSON array of numbers: [1,2,3]
+		buf.WriteByte('[')
+		for i, b := range []byte(*v) {
+			if i > 0 {
+				buf.WriteByte(',')
+			}
+			buf.Write(strconv.AppendInt(buf.AvailableBuffer(), int64(b), 10))
+		}
+		buf.WriteByte(']')
+	case ValTimestamp:
+		var ms int64
+		switch v := d.(type) {
+		case *tree.DTimestamp:
+			ms = v.Time.UnixMilli()
+		case *tree.DTimestampTZ:
+			ms = v.Time.UnixMilli()
+		default:
+			return fmt.Errorf("expected TIMESTAMP datum, got %T", d)
+		}
+		buf.Write(strconv.AppendInt(buf.AvailableBuffer(), ms, 10))
+	case ValJSON:
+		v, ok := d.(*tree.DJSON)
+		if !ok {
+			return fmt.Errorf("expected JSONB datum, got %T", d)
+		}
+		buf.WriteString(v.JSON.String())
+	default:
+		return fmt.Errorf("unsupported value type: 0x%02x", byte(vt))
+	}
+	return nil
+}
+
+// writeJSONString writes a JSON-encoded string directly to buf.
+func writeJSONString(buf *bytes.Buffer, s string) {
+	buf.WriteByte('"')
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		switch c {
+		case '"':
+			buf.WriteString(`\"`)
+		case '\\':
+			buf.WriteString(`\\`)
+		case '\n':
+			buf.WriteString(`\n`)
+		case '\r':
+			buf.WriteString(`\r`)
+		case '\t':
+			buf.WriteString(`\t`)
+		default:
+			if c < 0x20 {
+				buf.WriteString(`\u00`)
+				buf.WriteByte("0123456789abcdef"[c>>4])
+				buf.WriteByte("0123456789abcdef"[c&0xf])
+			} else {
+				buf.WriteByte(c)
+			}
+		}
+	}
+	buf.WriteByte('"')
 }
 
 // quoteJSString produces a JSON-style quoted string safe for JS embedding.

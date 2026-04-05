@@ -89,16 +89,37 @@ func BenchmarkUDF(b *testing.B) {
 	})
 
 	b.Run("BaselineScan/10000rows", func(b *testing.B) {
-		// Scan 100 rows with no UDF.
+		// Scan 10k rows returning one INT column. Same shape as UDFScan.
 		for i := 0; i < b.N; i++ {
-			rows, err := db.QueryContext(ctx, `SELECT id, label_id FROM bench_items`)
+			rows, err := db.QueryContext(ctx, `SELECT label_id FROM bench_items`)
 			if err != nil {
 				b.Fatal(err)
 			}
 			n := 0
 			for rows.Next() {
-				var id, labelID int
-				if err := rows.Scan(&id, &labelID); err != nil {
+				if err := rows.Scan(&intResult); err != nil {
+					b.Fatal(err)
+				}
+				n++
+			}
+			rows.Close()
+			if n != 10000 {
+				b.Fatalf("expected 10000 rows, got %d", n)
+			}
+		}
+	})
+
+	b.Run("BaselineExpr/10000rows", func(b *testing.B) {
+		// Scan 10k rows with a Go-side expression (label_id * 2).
+		// Same work as UDFScan but done by the SQL engine, not V8.
+		for i := 0; i < b.N; i++ {
+			rows, err := db.QueryContext(ctx, `SELECT label_id * 2 FROM bench_items`)
+			if err != nil {
+				b.Fatal(err)
+			}
+			n := 0
+			for rows.Next() {
+				if err := rows.Scan(&intResult); err != nil {
 					b.Fatal(err)
 				}
 				n++
@@ -111,7 +132,7 @@ func BenchmarkUDF(b *testing.B) {
 	})
 
 	b.Run("UDFScan/10000rows", func(b *testing.B) {
-		// Scan 100 rows with pure-computation UDF (no sql`` callback).
+		// Scan 10k rows with pure-computation UDF (no sql`` callback).
 		for i := 0; i < b.N; i++ {
 			rows, err := db.QueryContext(ctx, `SELECT bench_double(label_id) FROM bench_items`)
 			if err != nil {

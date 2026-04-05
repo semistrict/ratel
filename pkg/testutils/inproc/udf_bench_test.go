@@ -36,8 +36,17 @@ func BenchmarkUDF(b *testing.B) {
 
 	_, err = db.ExecContext(ctx, `CREATE TABLE bench_items (id INT PRIMARY KEY, label_id INT)`)
 	require.NoError(b, err)
-	for i := 1; i <= 100; i++ {
-		_, err = db.ExecContext(ctx, fmt.Sprintf(`INSERT INTO bench_items VALUES (%d, %d)`, i, (i%3)+1))
+	// Bulk insert 10k rows.
+	for batch := 0; batch < 100; batch++ {
+		vals := ""
+		for i := 0; i < 100; i++ {
+			id := batch*100 + i + 1
+			if i > 0 {
+				vals += ","
+			}
+			vals += fmt.Sprintf("(%d,%d)", id, (id%3)+1)
+		}
+		_, err = db.ExecContext(ctx, "INSERT INTO bench_items VALUES "+vals)
 		require.NoError(b, err)
 	}
 
@@ -79,7 +88,7 @@ func BenchmarkUDF(b *testing.B) {
 		}
 	})
 
-	b.Run("BaselineScan/100rows", func(b *testing.B) {
+	b.Run("BaselineScan/10000rows", func(b *testing.B) {
 		// Scan 100 rows with no UDF.
 		for i := 0; i < b.N; i++ {
 			rows, err := db.QueryContext(ctx, `SELECT id, label_id FROM bench_items`)
@@ -95,13 +104,13 @@ func BenchmarkUDF(b *testing.B) {
 				n++
 			}
 			rows.Close()
-			if n != 100 {
-				b.Fatalf("expected 100 rows, got %d", n)
+			if n != 10000 {
+				b.Fatalf("expected 10000 rows, got %d", n)
 			}
 		}
 	})
 
-	b.Run("UDFScan/100rows", func(b *testing.B) {
+	b.Run("UDFScan/10000rows", func(b *testing.B) {
 		// Scan 100 rows with pure-computation UDF (no sql`` callback).
 		for i := 0; i < b.N; i++ {
 			rows, err := db.QueryContext(ctx, `SELECT bench_double(label_id) FROM bench_items`)
@@ -116,13 +125,13 @@ func BenchmarkUDF(b *testing.B) {
 				n++
 			}
 			rows.Close()
-			if n != 100 {
-				b.Fatalf("expected 100 rows, got %d", n)
+			if n != 10000 {
+				b.Fatalf("expected 10000 rows, got %d", n)
 			}
 		}
 	})
 
-	b.Run("BaselineJoin/100rows", func(b *testing.B) {
+	b.Run("BaselineJoin/10000rows", func(b *testing.B) {
 		// Join 100 rows (no UDF). Comparison for sql`` callback pattern.
 		for i := 0; i < b.N; i++ {
 			rows, err := db.QueryContext(ctx,
@@ -138,8 +147,8 @@ func BenchmarkUDF(b *testing.B) {
 				n++
 			}
 			rows.Close()
-			if n != 100 {
-				b.Fatalf("expected 100 rows, got %d", n)
+			if n != 10000 {
+				b.Fatalf("expected 10000 rows, got %d", n)
 			}
 		}
 	})

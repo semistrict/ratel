@@ -26,6 +26,24 @@ jobs:
         run: make -j$(nproc) c-deps
       - name: Synctest
         run: |
-          make test PKG=./pkg/testutils/inproc \
-            TESTS='TestSync|TestInproc|TestAutoReplication|TestAddVoters|TestDecommission' \
-            TESTFLAGS="-v -count=1 -timeout 60s"
+          # Run each test individually to avoid goroutine leaks between
+          # non-synctest and synctest tests within the same test binary.
+          tests=(
+            TestInprocSmoke
+            TestSyncTestSmoke
+            TestSyncRestart
+            TestSyncNetworkPartition
+            TestSyncFakeTime
+            TestSyncClockJump
+            TestAddVoters
+            TestSyncAddVoters
+            TestAutoReplication
+            TestSyncAutoReplication
+            TestSyncRaftRestartWithReplication
+            TestSyncLeaseTransfer
+            TestDecommission
+          )
+          for t in "${tests[@]}"; do
+            echo "=== Running $t ==="
+            make test PKG=./pkg/testutils/inproc TESTS="$t" TESTFLAGS="-v -count=1 -timeout 30s"
+          done

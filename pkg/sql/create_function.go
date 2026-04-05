@@ -169,10 +169,18 @@ func (n *createWasmFunctionNode) startExec(params runParams) error {
 					paramNames[i] = fmt.Sprintf("$%d", i+1)
 				}
 			}
-			// Always wrap as async -- works for both sync and async bodies.
-			// The Call() method handles both Promise and non-Promise returns.
-			jsBody = fmt.Sprintf("async function invoke(%s) {\n%s\n}",
-				strings.Join(paramNames, ", "), jsBody)
+			// Only wrap as async if the body uses await or sql``.
+			// Sync functions use the fast batched JSON.stringify path (one
+			// CGO call per batch). Async functions must use the sequential
+			// path (one CGO call per row) for Promise pumping.
+			needsAsync := strings.Contains(n.n.Body, "await") || strings.Contains(n.n.Body, "sql`")
+			if needsAsync {
+				jsBody = fmt.Sprintf("async function invoke(%s) {\n%s\n}",
+					strings.Join(paramNames, ", "), jsBody)
+			} else {
+				jsBody = fmt.Sprintf("function invoke(%s) {\n%s\n}",
+					strings.Join(paramNames, ", "), jsBody)
+			}
 		}
 
 		err = registry.CompileAndRegisterJS(funcName, jsBody,

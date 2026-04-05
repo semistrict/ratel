@@ -54,10 +54,10 @@ jobs:
           )
           for t in "${tests[@]}"; do
             echo "=== Running $t ==="
-            make testrace PKG=./pkg/testutils/inproc TESTS="$t" TESTFLAGS="-v -count=1 -timeout 60s"
+            make testrace PKG=./pkg/testutils/inproc TESTS="^${t}\$" TESTFLAGS="-v -count=1 -timeout 60s"
           done
 
           # TestSyncFakeTime sleeps for 1 fake hour; with race overhead
           # this takes ~2 minutes.
           echo "=== Running TestSyncFakeTime ==="
-          make testrace PKG=./pkg/testutils/inproc TESTS="TestSyncFakeTime" TESTFLAGS="-v -count=1 -timeout 180s"
+          make testrace PKG=./pkg/testutils/inproc TESTS="^TestSyncFakeTime\$" TESTFLAGS="-v -count=1 -timeout 180s"

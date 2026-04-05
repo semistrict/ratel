@@ -196,22 +196,33 @@ func (r *Registry) MakeFn(name string) (func(*tree.EvalContext, tree.Datums) (tr
 		return nil, fmt.Errorf("UDF %q not registered", name)
 	}
 
+	// Cache a TxnContext across calls to avoid the ~60µs cost of
+	// v8go.NewContext on every invocation. The cached context is
+	// invalidated when the evalCtx changes (new transaction/query).
+	var cachedTC *TxnContext
+	var cachedEvalCtx *tree.EvalContext
+
 	return func(evalCtx *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
-		var executor SQLExecutor
-		var txn interface{}
-		goCtx := context.Background()
-		if evalCtx != nil {
-			if ie, ok := evalCtx.UDFSQLExecutor.(SQLExecutor); ok {
-				executor = ie
+		if cachedTC == nil || evalCtx != cachedEvalCtx {
+			if cachedTC != nil {
+				cachedTC.Close()
 			}
-			if evalCtx.Txn != nil {
-				txn = evalCtx.Txn
+			var executor SQLExecutor
+			var txn interface{}
+			goCtx := context.Background()
+			if evalCtx != nil {
+				if ie, ok := evalCtx.UDFSQLExecutor.(SQLExecutor); ok {
+					executor = ie
+				}
+				if evalCtx.Txn != nil {
+					txn = evalCtx.Txn
+				}
+				goCtx = evalCtx.Context
 			}
-			goCtx = evalCtx.Context
+			cachedTC = r.NewTxnContext(executor, goCtx, txn, nil)
+			cachedEvalCtx = evalCtx
 		}
-		tc := r.NewTxnContext(executor, goCtx, txn, nil)
-		defer tc.Close()
-		results, err := r.Call(tc, name, []tree.Datums{args})
+		results, err := r.Call(cachedTC, name, []tree.Datums{args})
 		if err != nil {
 			return nil, err
 		}

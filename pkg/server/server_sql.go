@@ -69,6 +69,7 @@ import (
 	"github.com/semistrict/ratel/pkg/sql/catalog/systemschema"
 	"github.com/semistrict/ratel/pkg/sql/colexec"
 	"github.com/semistrict/ratel/pkg/sql/contention"
+	"github.com/semistrict/ratel/pkg/sql/wasmruntime"
 	"github.com/semistrict/ratel/pkg/sql/descmetadata"
 	"github.com/semistrict/ratel/pkg/sql/distsql"
 	"github.com/semistrict/ratel/pkg/sql/execinfra"
@@ -722,6 +723,14 @@ func newSQLServer(ctx context.Context, cfg sqlServerArgs) (*SQLServer, error) {
 	)
 	contentionRegistry.Start(ctx, cfg.stopper)
 
+	wasmRegistry, err := wasmruntime.NewRegistry(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating WASM registry")
+	}
+	cfg.stopper.AddCloser(stop.CloserFn(func() {
+		wasmRegistry.Close(ctx)
+	}))
+
 	*execCfg = sql.ExecutorConfig{
 		Settings:                cfg.Settings,
 		NodeInfo:                nodeInfo,
@@ -745,6 +754,7 @@ func newSQLServer(ctx context.Context, cfg sqlServerArgs) (*SQLServer, error) {
 		RegionsServer:           cfg.regionsServer,
 		SessionRegistry:         cfg.sessionRegistry,
 		ContentionRegistry:      contentionRegistry,
+		WasmRegistry:            wasmRegistry,
 		SQLLiveness:             cfg.sqlLivenessProvider,
 		JobRegistry:             jobRegistry,
 		VirtualSchemas:          virtualSchemas,
@@ -816,6 +826,10 @@ func newSQLServer(ctx context.Context, cfg sqlServerArgs) (*SQLServer, error) {
 	}
 	execCfg.SchemaChangerMetrics = sql.NewSchemaChangerMetrics()
 	cfg.registry.AddMetricStruct(execCfg.SchemaChangerMetrics)
+
+	// Initialize the WASM UDF resolver for lazy-loading functions from
+	// system.wasm_functions on cache miss.
+	sql.InitWasmFunctionResolver(execCfg)
 
 	execCfg.FeatureFlagMetrics = featureflag.NewFeatureFlagMetrics()
 	cfg.registry.AddMetricStruct(execCfg.FeatureFlagMetrics)

@@ -95,6 +95,7 @@ import (
 	"github.com/semistrict/ratel/pkg/sql/stats"
 	"github.com/semistrict/ratel/pkg/sql/stmtdiagnostics"
 	"github.com/semistrict/ratel/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/sql/wasmruntime"
 	"github.com/semistrict/ratel/pkg/testutils/serverutils"
 	"github.com/semistrict/ratel/pkg/util/bitarray"
 	"github.com/semistrict/ratel/pkg/util/duration"
@@ -1326,6 +1327,9 @@ type ExecutorConfig struct {
 	// SessionData and other ExtraTxnState.
 	// This is currently only for builtin functions where we need to execute sql.
 	InternalExecutorFactory sqlutil.SessionBoundInternalExecutorFactory
+
+	// WasmRegistry holds compiled WASM modules for user-defined functions.
+	WasmRegistry *wasmruntime.Registry
 }
 
 // UpdateVersionSystemSettingHook provides a callback that allows us

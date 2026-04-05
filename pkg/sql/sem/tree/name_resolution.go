@@ -148,6 +148,10 @@ type QualifiedNameResolver interface {
 func (n *UnresolvedName) ResolveFunction(
 	searchPath sessiondata.SearchPath,
 ) (*FunctionDefinition, error) {
+	// Protect against concurrent writes from RegisterFunction/UnregisterFunction.
+	funDefsMu.RLock()
+	defer funDefsMu.RUnlock()
+
 	if n.NumParts > 3 || len(n.Parts[0]) == 0 || n.Star {
 		// The Star part of the condition is really an assertion. The
 		// parser should not have let this star propagate to a point where
@@ -201,6 +205,18 @@ func (n *UnresolvedName) ResolveFunction(
 			}
 		}
 		if !found {
+			// Try resolving as a user-defined function from the system table.
+			if resolver := UDFResolver; resolver != nil {
+				// Must release the read lock before calling the resolver,
+				// which may call RegisterFunction (taking a write lock).
+				funDefsMu.RUnlock()
+				udfDef := resolver(function)
+				funDefsMu.RLock()
+				if udfDef != nil {
+					return udfDef, nil
+				}
+			}
+
 			extraMsg := ""
 			// Try a little harder.
 			if rdef, ok := FunDefs[strings.ToLower(function)]; ok {

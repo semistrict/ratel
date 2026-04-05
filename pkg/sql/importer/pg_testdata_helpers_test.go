@@ -27,10 +27,10 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
-	"github.com/cockroachdb/cockroach/pkg/testutils/sqlutils"
-	"github.com/cockroachdb/cockroach/pkg/util/envutil"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/testutils/sqlutils"
+	"github.com/semistrict/ratel/pkg/util/envutil"
 	_ "github.com/lib/pq"
 )
 

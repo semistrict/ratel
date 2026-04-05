@@ -18,11 +18,11 @@ import (
 	"context"
 	"math/bits"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo"
-	"github.com/cockroachdb/cockroach/pkg/sql/memsize"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/cockroach/pkg/util/mon"
+	"github.com/semistrict/ratel/pkg/sql/catalog/colinfo"
+	"github.com/semistrict/ratel/pkg/sql/memsize"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/util"
+	"github.com/semistrict/ratel/pkg/util/mon"
 	"github.com/cockroachdb/errors"
 )
 

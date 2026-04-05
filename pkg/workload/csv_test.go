@@ -24,13 +24,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/col/coldata"
-	"github.com/cockroachdb/cockroach/pkg/util/bufalloc"
-	"github.com/cockroachdb/cockroach/pkg/util/httputil"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/workload"
-	"github.com/cockroachdb/cockroach/pkg/workload/bank"
-	"github.com/cockroachdb/cockroach/pkg/workload/tpcc"
+	"github.com/semistrict/ratel/pkg/col/coldata"
+	"github.com/semistrict/ratel/pkg/util/bufalloc"
+	"github.com/semistrict/ratel/pkg/util/httputil"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/workload"
+	"github.com/semistrict/ratel/pkg/workload/bank"
+	"github.com/semistrict/ratel/pkg/workload/tpcc"
 	"github.com/stretchr/testify/require"
 )
 

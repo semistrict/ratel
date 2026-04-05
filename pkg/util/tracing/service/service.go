@@ -27,8 +27,8 @@ package service
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/util/tracing"
-	"github.com/cockroachdb/cockroach/pkg/util/tracing/tracingservicepb"
+	"github.com/semistrict/ratel/pkg/util/tracing"
+	"github.com/semistrict/ratel/pkg/util/tracing/tracingservicepb"
 )
 
 // Service implements the gRPC TraceServer that exchanges inflight span

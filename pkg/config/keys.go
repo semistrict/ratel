@@ -15,9 +15,9 @@
 package config
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
 )
 
 // MakeZoneKeyPrefix returns the key prefix for id's row in the system.zones

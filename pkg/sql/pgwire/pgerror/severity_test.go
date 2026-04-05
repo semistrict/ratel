@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
 	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/require"
 )

@@ -22,8 +22,8 @@ import (
 	"unsafe"
 
 	"github.com/cockroachdb/apd/v3"
-	"github.com/cockroachdb/cockroach/pkg/sql/inverted"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/sql/inverted"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 	"github.com/cockroachdb/errors"
 )
 

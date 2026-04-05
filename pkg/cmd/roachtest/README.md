@@ -6,7 +6,7 @@ separate) library `roachprod`.
 
 # Setup
 
-- [Set up `roachprod`](https://github.com/cockroachdb/cockroach/blob/master/pkg/cmd/roachprod/README.md), if you haven't already.
+- [Set up `roachprod`](https://github.com/semistrict/ratel/blob/master/pkg/cmd/roachprod/README.md), if you haven't already.
 - If you want to run tests that require an Enterprise license, add `COCKROACH_DEV_LICENSE=<key>` to your path. Cockroach Labs employees can find one in [Slack](https://cockroachlabs.slack.com/archives/CJX8V9SJ2/p1597348203368800?thread_ts=1597348076.367800&cid=CJX8V9SJ2).
 - For Cockroach Labs employees, if your local username does not match your
   gcloud/`@cockroachlabs.com` username, add
@@ -201,7 +201,7 @@ through to `roachtest` can be provided. For example:
 TEST=mytest COUNT=10 LOCAL=n SHORT=n ./pkg/cmd/roachtest/roachstress.sh --cpu-quota 1000 --debug
 ```
 
-[roachstress.sh]: https://github.com/cockroachdb/cockroach/blob/master/pkg/cmd/roachtest/roachstress.sh
+[roachstress.sh]: https://github.com/semistrict/ratel/blob/master/pkg/cmd/roachtest/roachstress.sh
 
 It's important to make sure that the machine running this invocation does not
 suspend or lose network connectivity. Using a tmux session on a `./scripts/gceworker.sh`

@@ -17,10 +17,10 @@ package execinfrapb
 import (
 	"strconv"
 
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/sessiondata"
-	"github.com/cockroachdb/cockroach/pkg/util/uuid"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/sessiondata"
+	"github.com/semistrict/ratel/pkg/util/uuid"
 )
 
 // ProcessorID identifies a processor in the context of a specific flow.

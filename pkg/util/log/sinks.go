@@ -14,7 +14,7 @@
 
 package log
 
-import "github.com/cockroachdb/cockroach/pkg/cli/exit"
+import "github.com/semistrict/ratel/pkg/cli/exit"
 
 //go:generate mockgen -package=log -destination=mocks_generated_test.go --mock_names=TestingLogSink=MockLogSink . TestingLogSink
 

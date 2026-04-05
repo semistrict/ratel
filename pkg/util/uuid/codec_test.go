@@ -29,7 +29,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
+	"github.com/semistrict/ratel/pkg/testutils/skip"
 )
 
 // codecTestData holds []byte data for a UUID we commonly use for testing.

@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/build/bazel"
-	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/cockroach/pkg/util/buildutil"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/build/bazel"
+	"github.com/semistrict/ratel/pkg/util"
+	"github.com/semistrict/ratel/pkg/util/buildutil"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 )
 
 // SkippableTest is a testing.TB with Skip methods.
@@ -36,7 +36,7 @@ type SkippableTest interface {
 func WithIssue(t SkippableTest, githubIssueID int, args ...interface{}) {
 	t.Helper()
 	t.Skip(append([]interface{}{
-		fmt.Sprintf("https://github.com/cockroachdb/cockroach/issues/%d", githubIssueID)},
+		fmt.Sprintf("https://github.com/semistrict/ratel/issues/%d", githubIssueID)},
 		args...))
 }
 
@@ -68,7 +68,7 @@ func UnderDeadlockWithIssue(t SkippableTest, githubIssueID int, args ...interfac
 	t.Helper()
 	if syncutil.DeadlockEnabled {
 		t.Skip(append([]interface{}{fmt.Sprintf(
-			"disabled under deadlock detector. issue: https://github.com/cockroachdb/cockroach/issue/%d",
+			"disabled under deadlock detector. issue: https://github.com/semistrict/ratel/issue/%d",
 			githubIssueID,
 		)}, args...))
 	}
@@ -88,7 +88,7 @@ func UnderRaceWithIssue(t SkippableTest, githubIssueID int, args ...interface{})
 	t.Helper()
 	if util.RaceEnabled {
 		t.Skip(append([]interface{}{fmt.Sprintf(
-			"disabled under race. issue: https://github.com/cockroachdb/cockroach/issue/%d", githubIssueID,
+			"disabled under race. issue: https://github.com/semistrict/ratel/issue/%d", githubIssueID,
 		)}, args...))
 	}
 }
@@ -99,7 +99,7 @@ func UnderBazelWithIssue(t SkippableTest, githubIssueID int, args ...interface{}
 	t.Helper()
 	if bazel.BuiltWithBazel() {
 		t.Skip(append([]interface{}{fmt.Sprintf(
-			"disabled under bazel. issue: https://github.com/cockroachdb/cockroach/issue/%d", githubIssueID,
+			"disabled under bazel. issue: https://github.com/semistrict/ratel/issue/%d", githubIssueID,
 		)}, args...))
 	}
 }

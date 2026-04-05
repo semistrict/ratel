@@ -14,7 +14,7 @@
 
 package a
 
-import "github.com/cockroachdb/cockroach/pkg/util"
+import "github.com/semistrict/ratel/pkg/util"
 
 type onlyField struct {
 	_ util.NoCopy

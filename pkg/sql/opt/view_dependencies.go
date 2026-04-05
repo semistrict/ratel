@@ -17,8 +17,8 @@ package opt
 import (
 	"sort"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/cat"
-	"github.com/cockroachdb/cockroach/pkg/util"
+	"github.com/semistrict/ratel/pkg/sql/opt/cat"
+	"github.com/semistrict/ratel/pkg/util"
 )
 
 // ViewDeps contains information about the dependencies of a view.

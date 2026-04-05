@@ -38,7 +38,7 @@ serviced from a nearby replica. "Nearby" is defined to be the closest available
 replica - it does not have to be local to the region.
 
 The approach discussed in this RFC has a prototype in
-https://github.com/cockroachdb/cockroach/pull/62239 which, while not identical
+https://github.com/semistrict/ratel/pull/62239 which, while not identical
 to what is proposed here, is similar and demonstrates the high-level changes
 that are needed to support bounded staleness reads.
 
@@ -273,7 +273,7 @@ intents/locks. This is because intents can currently be interleaved in a range's
 data, so scanning for the resolved timestamp of a range is an O(num_keys_in_range)
 operation. In the near future, we expect to write a migration to eliminate
 interleaved intents and pull all intents into the lock-table as part of
-addressing [#41720](https://github.com/cockroachdb/cockroach/issues/41720). When
+addressing [#41720](https://github.com/semistrict/ratel/issues/41720). When
 we do that, it will be possible to make `QueryResolvedTimestamp` more efficient,
 reducing it to an O(num_locks_in_range) operation.
 
@@ -287,7 +287,7 @@ If even an O(num_locks_in_range) operation is too expensive, even with the
 [client-side caching](#implementation-of-boundedstalenessnegotiator) in the
 `BoundedStalenessNegotiator`, we will need to explore methods for efficiently
 tracking a range's resolved timestamp. We currently do this in a rangefeed's
-[`resolvedTimestamp`](https://github.com/cockroachdb/cockroach/blob/6b10baca35f4afa88469044f28e8ebc81e46c15a/pkg/kv/kvserver/rangefeed/resolved_timestamp.go)
+[`resolvedTimestamp`](https://github.com/semistrict/ratel/blob/6b10baca35f4afa88469044f28e8ebc81e46c15a/pkg/kv/kvserver/rangefeed/resolved_timestamp.go)
 tracker, but this is not currently available on replicas without an active
 rangefeed (which comes with other costs).
 
@@ -655,7 +655,7 @@ timeout is reached.
 There are a few competing proposals that detail lifting asynchronous replication
 up to the level of SQL triggers or changefeeds. The proposals then suggest creating
 per-region "derived tables" that are updated asynchronously in response to changes
-to a parent table. https://github.com/cockroachdb/cockroach/pull/62120 is one such
+to a parent table. https://github.com/semistrict/ratel/pull/62120 is one such
 alternative.
 
 The compelling part about these proposals is that they avoid the need to serve
@@ -691,7 +691,7 @@ it also wouldn't allow us to skip any of this design, so we do not consider
 the resolution of this alternative to be a design blocker.
 
 Maintaining this resolved timestamp state would also come in handy in various
-other projects, such as [recovery from insufficient quorum](https://github.com/cockroachdb/cockroach/issues/17186).
+other projects, such as [recovery from insufficient quorum](https://github.com/semistrict/ratel/issues/17186).
 
 To this point, we have never bottomed out on a single design for how to
 introduce such tracking in a manner that is cheap enough to tolerate.

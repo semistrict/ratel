@@ -26,13 +26,13 @@ import (
 	"unicode/utf8"
 
 	"github.com/cockroachdb/apd/v3"
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/bitarray"
-	"github.com/cockroachdb/cockroach/pkg/util/duration"
-	"github.com/cockroachdb/cockroach/pkg/util/encoding"
-	"github.com/cockroachdb/cockroach/pkg/util/keysutil"
-	"github.com/cockroachdb/cockroach/pkg/util/uuid"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/bitarray"
+	"github.com/semistrict/ratel/pkg/util/duration"
+	"github.com/semistrict/ratel/pkg/util/encoding"
+	"github.com/semistrict/ratel/pkg/util/keysutil"
+	"github.com/semistrict/ratel/pkg/util/uuid"
 	"github.com/cockroachdb/errors"
 )
 

@@ -829,7 +829,7 @@ ALTER DATABASE atest OWNER TO u;
 
 # TODO(knz): ALTER VIEW OWNER is not supported yet
 # TODO(knz): ALTER SEQUENCE OWNER is not supported yet
-# See: https://github.com/cockroachdb/cockroach/issues/57965
+# See: https://github.com/semistrict/ratel/issues/57965
 
 # Observe/verify the ownership change.
 query TTTTTT

@@ -17,7 +17,7 @@ package uuid_test
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/util/uuid"
+	"github.com/semistrict/ratel/pkg/util/uuid"
 )
 
 func BenchmarkFastMakeV4(b *testing.B) {

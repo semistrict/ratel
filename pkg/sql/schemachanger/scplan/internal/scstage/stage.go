@@ -17,10 +17,10 @@ package scstage
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scop"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scplan/internal/scgraph"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/screl"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scop"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scpb"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scplan/internal/scgraph"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/screl"
 	"github.com/cockroachdb/errors"
 )
 

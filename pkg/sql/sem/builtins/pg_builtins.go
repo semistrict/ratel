@@ -19,21 +19,21 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catconstants"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/parser"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/privilege"
-	"github.com/cockroachdb/cockroach/pkg/sql/rowenc/valueside"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/sessiondata"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlerrors"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/util/ipaddr"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/sql/catalog"
+	"github.com/semistrict/ratel/pkg/sql/catalog/catconstants"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	"github.com/semistrict/ratel/pkg/sql/parser"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
+	"github.com/semistrict/ratel/pkg/sql/privilege"
+	"github.com/semistrict/ratel/pkg/sql/rowenc/valueside"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/sessiondata"
+	"github.com/semistrict/ratel/pkg/sql/sqlerrors"
+	"github.com/semistrict/ratel/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/util/ipaddr"
 	"github.com/cockroachdb/errors"
 	"github.com/lib/pq/oid"
 )
@@ -2346,7 +2346,7 @@ func pgTrueTypImpl(attrField, typField string, retType *types.T) builtinDefiniti
 // However, because we don't currently support NOINHERIT, a user being a
 // member of a role is equivalent to a user having the privileges of that
 // role, so this is currently equivalent to isMemberOfRole.
-// See https://github.com/cockroachdb/cockroach/issues/69583.
+// See https://github.com/semistrict/ratel/issues/69583.
 func hasPrivsOfRole(
 	ctx *tree.EvalContext, user, role security.SQLUsername,
 ) (tree.HasAnyPrivilegeResult, error) {

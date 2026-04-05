@@ -23,12 +23,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
-	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/randutil"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/testutils/skip"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/randutil"
 	"github.com/cockroachdb/errors/oserror"
 	"github.com/cockroachdb/pebble/vfs"
 )

@@ -15,9 +15,9 @@
 package valueside
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/util/encoding"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/util/encoding"
 )
 
 // encodeTuple produces the value encoding for a tuple.

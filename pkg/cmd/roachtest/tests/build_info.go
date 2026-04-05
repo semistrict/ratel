@@ -19,12 +19,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/cluster"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/option"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/test"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/install"
-	"github.com/cockroachdb/cockroach/pkg/server/serverpb"
-	"github.com/cockroachdb/cockroach/pkg/util/httputil"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/cluster"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/option"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/test"
+	"github.com/semistrict/ratel/pkg/roachprod/install"
+	"github.com/semistrict/ratel/pkg/server/serverpb"
+	"github.com/semistrict/ratel/pkg/util/httputil"
 )
 
 // RunBuildInfo is a test that sanity checks the build info.
@@ -81,7 +81,7 @@ func RunBuildAnalyze(ctx context.Context, t test.Test, c cluster.Cluster) {
 	// References:
 	// https://www.airs.com/blog/archives/518
 	// https://wiki.ubuntu.com/SecurityTeam/Roadmap/ExecutableStacks
-	// https://github.com/cockroachdb/cockroach/issues/37885
+	// https://github.com/semistrict/ratel/issues/37885
 
 	// There are several ways to do this analysis: `readelf -lW`,
 	// `scanelf -qe`, and `execstack -q`. `readelf` is part of binutils,

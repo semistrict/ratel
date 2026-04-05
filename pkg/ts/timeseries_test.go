@@ -19,11 +19,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/storage"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
-	"github.com/cockroachdb/cockroach/pkg/ts/tspb"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/storage"
+	"github.com/semistrict/ratel/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/ts/tspb"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 )
 
 func tsd(name, source string, dps ...tspb.TimeSeriesDatapoint) tspb.TimeSeriesData {

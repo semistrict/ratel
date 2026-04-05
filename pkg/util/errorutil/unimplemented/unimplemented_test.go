@@ -19,7 +19,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/build"
+	"github.com/semistrict/ratel/pkg/build"
 	"github.com/cockroachdb/errors"
 )
 

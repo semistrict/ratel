@@ -18,8 +18,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/cockroachdb/cockroach/pkg/util/mon"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/util/mon"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 	"github.com/cockroachdb/errors"
 )
 

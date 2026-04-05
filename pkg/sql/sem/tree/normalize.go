@@ -15,10 +15,10 @@
 package tree
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree/treebin"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree/treecmp"
-	"github.com/cockroachdb/cockroach/pkg/sql/sessiondata"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree/treebin"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree/treecmp"
+	"github.com/semistrict/ratel/pkg/sql/sessiondata"
+	"github.com/semistrict/ratel/pkg/sql/types"
 	"github.com/cockroachdb/errors"
 )
 

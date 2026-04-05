@@ -17,10 +17,10 @@ package sql
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/settings"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgnotice"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/settings"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgnotice"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 // NoticesEnabled is the cluster setting that allows users

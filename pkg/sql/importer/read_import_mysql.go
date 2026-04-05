@@ -23,26 +23,26 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/cloud"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/sql"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/schemadesc"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/tabledesc"
-	"github.com/cockroachdb/cockroach/pkg/sql/execinfrapb"
-	"github.com/cockroachdb/cockroach/pkg/sql/lexbase"
-	"github.com/cockroachdb/cockroach/pkg/sql/parser"
-	"github.com/cockroachdb/cockroach/pkg/sql/row"
-	"github.com/cockroachdb/cockroach/pkg/sql/rowenc"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/util/ctxgroup"
-	"github.com/cockroachdb/cockroach/pkg/util/errorutil/unimplemented"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/cloud"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/sql"
+	"github.com/semistrict/ratel/pkg/sql/catalog"
+	"github.com/semistrict/ratel/pkg/sql/catalog/catpb"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	"github.com/semistrict/ratel/pkg/sql/catalog/schemadesc"
+	"github.com/semistrict/ratel/pkg/sql/catalog/tabledesc"
+	"github.com/semistrict/ratel/pkg/sql/execinfrapb"
+	"github.com/semistrict/ratel/pkg/sql/lexbase"
+	"github.com/semistrict/ratel/pkg/sql/parser"
+	"github.com/semistrict/ratel/pkg/sql/row"
+	"github.com/semistrict/ratel/pkg/sql/rowenc"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/util/ctxgroup"
+	"github.com/semistrict/ratel/pkg/util/errorutil/unimplemented"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/log"
 	"github.com/cockroachdb/errors"
 	mysqltypes "vitess.io/vitess/go/sqltypes"
 	mysql "vitess.io/vitess/go/vt/sqlparser"
@@ -225,7 +225,7 @@ func mysqlValueToDatum(
 		switch v.Type {
 		case mysql.StrVal:
 			s := string(v.Val)
-			// https://github.com/cockroachdb/cockroach/issues/29298
+			// https://github.com/semistrict/ratel/issues/29298
 
 			if strings.HasPrefix(s, zeroYear) {
 				switch desired.Family() {

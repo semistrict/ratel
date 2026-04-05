@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/build"
-	"github.com/cockroachdb/cockroach/pkg/docs"
+	"github.com/semistrict/ratel/pkg/build"
+	"github.com/semistrict/ratel/pkg/docs"
 	"github.com/kr/text"
 )
 

@@ -98,7 +98,7 @@ message RequestHeader {
   bytes end_key = 4 [(gogoproto.casttype) = "Key"];
   // A zero-indexed transactional sequence number.
   int32 sequence = 5 [
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/storage/enginepb.TxnSeq"];
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/storage/enginepb.TxnSeq"];
 }
 
 // ResponseHeader is returned with every storage node response. Note that this is
@@ -1052,7 +1052,7 @@ message QueryTxnRequest {
   // transaction status or priority -OR- to the set of dependent transactions.
   bool wait_for_update = 3;
   // Set of known dependent transactions.
-  repeated bytes known_waiting_txns = 4 [(gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.UUID"];
+  repeated bytes known_waiting_txns = 4 [(gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/uuid.UUID"];
 }
 
 // A QueryTxnResponse is the return value from the QueryTxn() method.
@@ -1067,7 +1067,7 @@ message QueryTxnResponse {
   // The field only started being populated in 20.2, so 20.1 nodes never set it.
   bool txn_record_exists = 4;
   // Specifies a list of transaction IDs which are waiting on the txn.
-  repeated bytes waiting_txns = 3 [(gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.UUID"];
+  repeated bytes waiting_txns = 3 [(gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/uuid.UUID"];
 }
 
 // A QueryIntentRequest is arguments to the QueryIntent() method. It visits
@@ -1258,7 +1258,7 @@ message RequestLeaseRequest {
   // issued after a node restart receive a new sequence number (instead of
   // counting as a lease extension). See #23204.
   util.hlc.Timestamp min_proposed_ts = 4 [(gogoproto.customname) = "MinProposedTS",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/util/hlc.ClockTimestamp"];
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/util/hlc.ClockTimestamp"];
 }
 
 // A TransferLeaseRequest represents the arguments to the TransferLease()
@@ -1352,7 +1352,7 @@ message ComputeChecksumResponse {
   // checksum in a future storage.CollectChecksumRequest.
   bytes checksum_id = 2 [(gogoproto.nullable) = false,
       (gogoproto.customname) = "ChecksumID",
-      (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.UUID"];
+      (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/uuid.UUID"];
 }
 
 enum ExternalStorageProvider {
@@ -1611,7 +1611,7 @@ message AdminVerifyProtectedTimestampRequest {
 
   // RecordID is the ID of the protected timestamp Record being verified.
   bytes record_id = 4 [
-      (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.UUID",
+      (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/uuid.UUID",
       (gogoproto.nullable) = false,
       (gogoproto.customname) = "RecordID"
   ];
@@ -1727,7 +1727,7 @@ message AddSSTableRequest {
   //
   // TODO(erikgrinaker): It might be possible to avoid this parameter if we
   // could pick an MVCC timestamp that's guaranteed to not collide with
-  // existing keys, see: https://github.com/cockroachdb/cockroach/issues/73047.
+  // existing keys, see: https://github.com/semistrict/ratel/issues/73047.
   // However, this would always lead to inaccurate MVCC stats.
   bool disallow_conflicts = 7;
 
@@ -1771,7 +1771,7 @@ message AddSSTableRequest {
   // costs of adding an extra file (file IO, triggering a flush, compactions)
   // would be higher than the marginal costs of the amount of data going though
   // the usual write pipeline (on-disk raft log, WAL, etc).
-  // TODO(dt): https://github.com/cockroachdb/cockroach/issues/34579#issuecomment-544627193
+  // TODO(dt): https://github.com/semistrict/ratel/issues/34579#issuecomment-544627193
   bool ingest_as_writes = 5;
 
   // ReturnFollowingLikelyNonEmptySpanStart controls whether the request should
@@ -1896,7 +1896,7 @@ message SubsumeResponse {
   // mark for the keys previously owned by the subsumed range though this role
   // is largely being... subsumed by the RightReadSummary.
   util.hlc.Timestamp freeze_start = 5 [(gogoproto.nullable) = false,
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/util/hlc.ClockTimestamp"];
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/util/hlc.ClockTimestamp"];
 
   // closed_timestamp is the range's closed timestamp at the moment of the
   // subsumption. Because the SubsumeRequest synchronizes with all other
@@ -2223,7 +2223,7 @@ message Header {
   // reference to the initial timestamp, we ensure that a non-transactional
   // request's uncertainty interval remains fixed across retries.
   util.hlc.Timestamp timestamp_from_server_clock = 27 [
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/util/hlc.ClockTimestamp"];
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/util/hlc.ClockTimestamp"];
   // replica specifies the destination of the request.
   ReplicaDescriptor replica = 2 [(gogoproto.nullable) = false];
   // range_id specifies the ID of the Raft consensus group which the key
@@ -2610,7 +2610,7 @@ message BatchResponse {
     // now is the highest current time from any node contacted during the request.
     // It can be used by the receiver to update its local HLC.
     util.hlc.Timestamp now = 5 [(gogoproto.nullable) = false,
-      (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/util/hlc.ClockTimestamp"];
+      (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/util/hlc.ClockTimestamp"];
     // collected_spans stores trace spans recorded during the execution of this
     // request.
     repeated util.tracing.tracingpb.RecordedSpan collected_spans = 6 [(gogoproto.nullable) = false];

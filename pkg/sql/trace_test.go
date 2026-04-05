@@ -24,16 +24,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/sql"
-	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
-	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
-	"github.com/cockroachdb/cockroach/pkg/testutils/sqlutils"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/tracing"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/sql"
+	"github.com/semistrict/ratel/pkg/testutils/serverutils"
+	"github.com/semistrict/ratel/pkg/testutils/skip"
+	"github.com/semistrict/ratel/pkg/testutils/sqlutils"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/tracing"
 	"github.com/cockroachdb/logtags"
 	"github.com/stretchr/testify/require"
 )
@@ -41,7 +41,7 @@ import (
 func TestTrace(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	skip.UnderRace(t, "does too much work under race, see: "+
-		"https://github.com/cockroachdb/cockroach/pull/56343#issuecomment-733577377")
+		"https://github.com/semistrict/ratel/pull/56343#issuecomment-733577377")
 
 	defer log.Scope(t).Close(t)
 

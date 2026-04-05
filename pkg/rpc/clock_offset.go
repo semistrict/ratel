@@ -20,10 +20,10 @@ import (
 	"time"
 
 	"github.com/VividCortex/ewma"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/metric"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 	"github.com/cockroachdb/errors"
 	"github.com/montanaflynn/stats"
 )

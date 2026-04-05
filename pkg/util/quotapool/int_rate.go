@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 )
 
 // Limit defines a rate in terms of quota per second.

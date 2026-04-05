@@ -18,14 +18,14 @@ import (
 	"context"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/clusterversion"
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/batcheval/result"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverpb"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/spanset"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/storage"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/clusterversion"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/batcheval/result"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverpb"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/spanset"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/storage"
+	"github.com/semistrict/ratel/pkg/util/log"
 	"github.com/cockroachdb/errors"
 )
 
@@ -108,8 +108,8 @@ func TruncateLog(
 	// when the readWriter was created up to where we create an MVCCIterator
 	// below.
 	// TODO(sumeer): we can eliminate this error as part of addressing
-	// https://github.com/cockroachdb/cockroach/issues/55461 and
-	// https://github.com/cockroachdb/cockroach/issues/70974 that discuss taking
+	// https://github.com/semistrict/ratel/issues/55461 and
+	// https://github.com/semistrict/ratel/issues/70974 that discuss taking
 	// a consistent snapshot of some Replica state and the engine.
 	if args.ExpectedFirstIndex > firstIndex {
 		firstIndex = args.ExpectedFirstIndex

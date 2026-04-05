@@ -552,7 +552,7 @@ WHERE
 ----
 
 # Regression test for SHOW session_id in a subquery.
-# See https://github.com/cockroachdb/cockroach/issues/93739
+# See https://github.com/semistrict/ratel/issues/93739
 let $session_id
 SHOW session_id
 

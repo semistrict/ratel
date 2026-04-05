@@ -21,11 +21,11 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo"
-	"github.com/cockroachdb/cockroach/pkg/sql/lexbase"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgwirebase"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/sql/catalog/colinfo"
+	"github.com/semistrict/ratel/pkg/sql/lexbase"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgwirebase"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/types"
 	"github.com/cockroachdb/errors"
 	"github.com/lib/pq"
 )

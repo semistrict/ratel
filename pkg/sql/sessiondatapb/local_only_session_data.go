@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/util/admission"
+	"github.com/semistrict/ratel/pkg/util/admission"
 	"github.com/cockroachdb/errors"
 )
 

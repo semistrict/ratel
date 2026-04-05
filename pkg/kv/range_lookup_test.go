@@ -19,11 +19,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 // TestRangeLookupRace tests that a RangeLookup will retry its scanning process
@@ -74,7 +74,7 @@ func TestRangeLookupRaceSplits(t *testing.T) {
 	// RangeDescriptor is found.
 	//
 	// The scenario is modeled after:
-	// https://github.com/cockroachdb/cockroach/issues/19147#issuecomment-336741791
+	// https://github.com/semistrict/ratel/issues/19147#issuecomment-336741791
 	// See that comment for a description of why a non-transactional scan starting
 	// at /meta2/k may only see desc2AfterSplit when racing with a split, assuming
 	// there is a range boundary at /meta2/n.

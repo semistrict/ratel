@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/roachprod/install"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/logger"
+	"github.com/semistrict/ratel/pkg/roachprod/install"
+	"github.com/semistrict/ratel/pkg/roachprod/logger"
 	"github.com/cockroachdb/errors"
 )
 

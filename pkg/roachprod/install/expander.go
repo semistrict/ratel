@@ -20,7 +20,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/roachprod/logger"
+	"github.com/semistrict/ratel/pkg/roachprod/logger"
 	"github.com/cockroachdb/errors"
 )
 

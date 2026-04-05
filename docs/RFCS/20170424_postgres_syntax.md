@@ -2,8 +2,8 @@
 - Status: completed
 - Start Date: 2017-04-16
 - Authors: Matt Jibson, knz
-- RFC PR: [#14968](https://github.com/cockroachdb/cockroach/pull/14968)
-- Cockroach Issue: [#15064](https://github.com/cockroachdb/cockroach/pull/15064)
+- RFC PR: [#14968](https://github.com/semistrict/ratel/pull/14968)
+- Cockroach Issue: [#15064](https://github.com/semistrict/ratel/pull/15064)
 
 # Summary
 
@@ -35,7 +35,7 @@ As time went by, CockroachDB came to implement more semantic features
 that are specific to Postgres' SQL dialect, but beyond that we even
 implemented some that are specific to CockroachDB.  For example we have
 already made some choices to differ from Postgres ([integer division
-returning decimals](https://github.com/cockroachdb/cockroach/pull/3308),
+returning decimals](https://github.com/semistrict/ratel/pull/3308),
 for example) because we thought the Postgres semantics could be improved.
 As these CockroachDB-specific improvements didn't seem to break compatibility
 with PostgreSQL clients, the work continued without conscious reflection on
@@ -47,9 +47,9 @@ With our recent goal of supporting various ORMs, these previous decisions
 as an implementer of the Postgres protocol and syntax, and we mostly
 do. There are some syntax or features we do not yet support, and we rightly
 return errors for that. However we now have various features ([integer
-division](https://github.com/cockroachdb/cockroach/pull/3308), [bitwise xor
-(~) operator](https://github.com/cockroachdb/cockroach/pull/14908), [shift
-argument modulo](https://github.com/cockroachdb/cockroach/issues/14874))
+division](https://github.com/semistrict/ratel/pull/3308), [bitwise xor
+(~) operator](https://github.com/semistrict/ratel/pull/14908), [shift
+argument modulo](https://github.com/semistrict/ratel/issues/14874))
 that are known to behave differently (performance-wise or in resource usage)
 or return different results that Postgres.
 
@@ -79,8 +79,8 @@ Our current implementation does not allow us to *parse* differently
 is exponent in Postgres and xor in Spanner). Some syntax we
 had was inspired from Spanner, but because it differed too much
 from Postgres we had to remove or change it ([precedence of |, #,
-&](https://github.com/cockroachdb/cockroach/pull/14944), [^ is power instead
-of xor](https://github.com/cockroachdb/cockroach/pull/14882)).
+&](https://github.com/semistrict/ratel/pull/14944), [^ is power instead
+of xor](https://github.com/semistrict/ratel/pull/14882)).
 
 No effort was ever made to actually test compatibility between CockroachDB
 and Spanner for clients. Given the lack of demand for such compatibility,

@@ -18,8 +18,8 @@ import (
 	"os"
 	"time"
 
-	democlusterapi "github.com/cockroachdb/cockroach/pkg/cli/democluster/api"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	democlusterapi "github.com/semistrict/ratel/pkg/cli/democluster/api"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 )
 
 // Context represents the external configuration of the interactive

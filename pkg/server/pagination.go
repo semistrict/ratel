@@ -28,10 +28,10 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/contextutil"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/contextutil"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 	"github.com/cockroachdb/errors"
 )
 

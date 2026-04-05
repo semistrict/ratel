@@ -5,9 +5,9 @@ package config
 
 import (
 	fmt "fmt"
-	roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	roachpb "github.com/semistrict/ratel/pkg/roachpb"
 	io "io"
 	math "math"
 	math_bits "math/bits"

@@ -18,11 +18,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 )
 
 // quarantinePool provides a way of repeatedly probing ranges that

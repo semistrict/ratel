@@ -25,7 +25,7 @@ import (
 	"strings"
 	"time"
 
-	bazelutil "github.com/cockroachdb/cockroach/pkg/build/util"
+	bazelutil "github.com/semistrict/ratel/pkg/build/util"
 	"github.com/cockroachdb/errors"
 )
 

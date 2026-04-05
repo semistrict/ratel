@@ -2,8 +2,8 @@
 - Status: in-progress
 - Start Date: 2017-11-01
 - Authors: Marc Berhault
-- RFC PR: [#19785](https://github.com/cockroachdb/cockroach/pull/19785)
-- Cockroach Issue: [#19783](https://github.com/cockroachdb/cockroach/issues/19783)
+- RFC PR: [#19785](https://github.com/semistrict/ratel/pull/19785)
+- Cockroach Issue: [#19783](https://github.com/semistrict/ratel/issues/19783)
 
 
 Table of Contents
@@ -377,7 +377,7 @@ There are three main categories:
 
 ### Store version
 
-We introduce a new [store version](https://github.com/cockroachdb/cockroach/blob/master/pkg/storage/engine/version.go#L27) to mark switching to stores supporting encryption.
+We introduce a new [store version](https://github.com/semistrict/ratel/blob/master/pkg/storage/engine/version.go#L27) to mark switching to stores supporting encryption.
 
 Stores are currently using `versionBeta20160331`. If no encryption flags are specified, we remain at this
 version until a "reasonable" time (one or two minor stable releases) has passed.

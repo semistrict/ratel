@@ -17,7 +17,7 @@ package sslocal
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlstats/ssmemstorage"
+	"github.com/semistrict/ratel/pkg/sql/sqlstats/ssmemstorage"
 )
 
 // Sink provides clients with interfaces to send statistics data into the sink.

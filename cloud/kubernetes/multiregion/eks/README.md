@@ -12,7 +12,7 @@ Each of the 3 configuration files must be applied separately to each Kubernetes 
 
 ### Create StatefulSets
 
-[`cockroachdb-statefulset-secure-eks.yaml`](https://github.com/cockroachdb/cockroach/cloud/kubernetes/multiregion/eks/cockroachdb-statefulset-secure-eks.yaml) creates a StatefulSet that runs 3 CockroachDB pods in a single region.
+[`cockroachdb-statefulset-secure-eks.yaml`](https://github.com/semistrict/ratel/cloud/kubernetes/multiregion/eks/cockroachdb-statefulset-secure-eks.yaml) creates a StatefulSet that runs 3 CockroachDB pods in a single region.
 
 Because the multi-region deployment requires deploying CockroachDB to a separate Kubernetes cluster in each region, you need to customize and apply a separate version of this file to each region.
 
@@ -52,7 +52,7 @@ Before initializing the cluster, however, you must enable CockroachDB pods to co
 
 ### Set up load balancing
 
-[`dns-lb-eks.yaml`](https://github.com/cockroachdb/cockroach/cloud/kubernetes/multiregion/eks/dns-lb-eks.yaml) creates a [Network Load Balancer](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html) pointed at the CoreDNS service that routes DNS traffic to the appropriate pods. 
+[`dns-lb-eks.yaml`](https://github.com/semistrict/ratel/cloud/kubernetes/multiregion/eks/dns-lb-eks.yaml) creates a [Network Load Balancer](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html) pointed at the CoreDNS service that routes DNS traffic to the appropriate pods. 
 
 Upload the load balancer manifest to each region:
 
@@ -62,7 +62,7 @@ kubectl create -f https://raw.githubusercontent.com/cockroachdb/cockroach/master
 
 ### Configure CoreDNS
 
-[`configmap.yaml`](https://github.com/cockroachdb/cockroach/cloud/kubernetes/multiregion/eks/configmap.yaml) is a template for [modifying the ConfigMap](https://kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/#coredns-configmap-options) for the CoreDNS Corefile in each region.
+[`configmap.yaml`](https://github.com/semistrict/ratel/cloud/kubernetes/multiregion/eks/configmap.yaml) is a template for [modifying the ConfigMap](https://kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/#coredns-configmap-options) for the CoreDNS Corefile in each region.
 
 You must define a separate ConfigMap for each region. Each unique ConfigMap lists the forwarding addresses for the pods in the 2 other regions. 
 

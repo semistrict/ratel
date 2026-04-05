@@ -27,7 +27,7 @@ import (
 	"sort"
 	"text/template"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/exit"
+	"github.com/semistrict/ratel/pkg/cli/exit"
 )
 
 var (

@@ -17,9 +17,9 @@ package indexrec
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/cat"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/testcat"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/sql/opt/cat"
+	"github.com/semistrict/ratel/pkg/sql/opt/testutils/testcat"
+	"github.com/semistrict/ratel/pkg/sql/types"
 )
 
 func TestCopyIndexes(t *testing.T) {

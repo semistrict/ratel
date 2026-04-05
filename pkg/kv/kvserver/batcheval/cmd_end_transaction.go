@@ -22,23 +22,23 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/clusterversion"
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/abortspan"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/batcheval/result"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/gc"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverbase"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverpb"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/rditer"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/readsummary"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/spanset"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/stateloader"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/storage"
-	"github.com/cockroachdb/cockroach/pkg/storage/enginepb"
-	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/clusterversion"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/abortspan"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/batcheval/result"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/gc"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverbase"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverpb"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/rditer"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/readsummary"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/spanset"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/stateloader"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/storage"
+	"github.com/semistrict/ratel/pkg/storage/enginepb"
+	"github.com/semistrict/ratel/pkg/util"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/log"
 	"github.com/cockroachdb/errors"
 )
 
@@ -114,7 +114,7 @@ func declareKeysEndTxn(
 				// declare non-MVCC write access across the entire RHS to block
 				// all concurrent reads and writes to the RHS because they will
 				// fail if applied after the split. (see
-				// https://github.com/cockroachdb/cockroach/issues/14881)
+				// https://github.com/semistrict/ratel/issues/14881)
 				latchSpans.AddNonMVCC(spanset.SpanReadOnly, roachpb.Span{
 					Key:    st.LeftDesc.StartKey.AsRawKey(),
 					EndKey: st.LeftDesc.EndKey.AsRawKey(),
@@ -535,7 +535,7 @@ func resolveLocalLocks(
 				// can create the iterator with Prefix:true which is much faster
 				// than seeking -- especially for intents that are missing, e.g.
 				// due to async intent resolution. See:
-				// https://github.com/cockroachdb/cockroach/issues/64092
+				// https://github.com/semistrict/ratel/issues/64092
 				//
 				// Note that the underlying pebbleIterator will still be reused
 				// since readWriter is a pebbleBatch in the typical case.

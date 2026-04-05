@@ -22,7 +22,7 @@ import (
 )
 
 func main() {
-	targetPkg := "github.com/cockroachdb/cockroach/pkg/roachpb"
+	targetPkg := "github.com/semistrict/ratel/pkg/roachpb"
 	targetTypeName := "Error"
 	if err := returncheck.Run(gotool.ImportPaths(os.Args[1:]), targetPkg, targetTypeName); err != nil {
 		os.Exit(1)

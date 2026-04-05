@@ -18,10 +18,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/memo"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/opttester"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/testcat"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/sql/opt/memo"
+	"github.com/semistrict/ratel/pkg/sql/opt/testutils/opttester"
+	"github.com/semistrict/ratel/pkg/sql/opt/testutils/testcat"
+	"github.com/semistrict/ratel/pkg/testutils"
 	"github.com/cockroachdb/datadriven"
 )
 

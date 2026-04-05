@@ -17,8 +17,8 @@ package sqltelemetry
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/server/telemetry"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/server/telemetry"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
 )
 
 // CancelRequestCounter is to be incremented every time a pgwire-level

@@ -19,8 +19,8 @@ import (
 	"strings"
 
 	"github.com/cockroachdb/apd/v3"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/util/duration"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/util/duration"
 	"github.com/cockroachdb/errors"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -115,7 +115,7 @@ var (
 
 					// Postgres only shows the minutes offset of a timezone if it is
 					// non-zero.
-					// See https://github.com/cockroachdb/cockroach/issues/41563
+					// See https://github.com/semistrict/ratel/issues/41563
 					v = strings.Replace(t, ":00+00:00", ":00+00", 1)
 				case pgtype.Numeric:
 					if t.Status == pgtype.Present {

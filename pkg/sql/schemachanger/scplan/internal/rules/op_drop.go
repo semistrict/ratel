@@ -15,9 +15,9 @@
 package rules
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/rel"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/screl"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/rel"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scpb"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/screl"
 )
 
 // When dropping a table or a view, skip all removal ops for column elements

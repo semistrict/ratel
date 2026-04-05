@@ -33,8 +33,8 @@ import (
 	"context"
 	"io"
 
-	"github.com/cockroachdb/cockroach/pkg/blobs/blobspb"
-	"github.com/cockroachdb/cockroach/pkg/util/ioctx"
+	"github.com/semistrict/ratel/pkg/blobs/blobspb"
+	"github.com/semistrict/ratel/pkg/util/ioctx"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/errors/oserror"
 	"google.golang.org/grpc/codes"

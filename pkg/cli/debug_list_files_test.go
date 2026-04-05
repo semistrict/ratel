@@ -17,7 +17,7 @@ package cli
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 )
 
 func TestExtractTimestamp(t *testing.T) {

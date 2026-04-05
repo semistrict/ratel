@@ -15,8 +15,8 @@
 package jobs
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/sql/catalog/colinfo"
+	"github.com/semistrict/ratel/pkg/sql/types"
 )
 
 // BulkJobExecutionResultHeader is the header for various job commands

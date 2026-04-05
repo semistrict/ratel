@@ -2,8 +2,8 @@
 - Status: in-progress
 - Start Date: 2021-06-15
 - Authors: Marcus Gartner
-- RFC PR: [#65756](https://github.com/cockroachdb/cockroach/pull/65756)
-- Cockroach Issue: [#9682](https://github.com/cockroachdb/cockroach/issues/9682)
+- RFC PR: [#65756](https://github.com/semistrict/ratel/pull/65756)
+- Cockroach Issue: [#9682](https://github.com/semistrict/ratel/issues/9682)
 
 # Summary
 

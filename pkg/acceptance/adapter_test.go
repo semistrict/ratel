@@ -19,8 +19,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/testutils/skip"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 func TestDockerC(t *testing.T) {

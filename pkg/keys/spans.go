@@ -14,7 +14,7 @@
 
 package keys
 
-import "github.com/cockroachdb/cockroach/pkg/roachpb"
+import "github.com/semistrict/ratel/pkg/roachpb"
 
 var (
 	// EverythingSpan is a span that covers everything.

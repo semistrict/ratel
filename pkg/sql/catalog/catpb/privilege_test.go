@@ -18,14 +18,14 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/bootstrap"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/privilege"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/catid"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/sql/catalog/bootstrap"
+	"github.com/semistrict/ratel/pkg/sql/catalog/catpb"
+	"github.com/semistrict/ratel/pkg/sql/privilege"
+	"github.com/semistrict/ratel/pkg/sql/sem/catid"
+	"github.com/semistrict/ratel/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 )
 
 func TestPrivilege(t *testing.T) {

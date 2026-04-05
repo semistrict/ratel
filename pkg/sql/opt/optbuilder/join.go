@@ -15,17 +15,17 @@
 package optbuilder
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/server/telemetry"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/memo"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqltelemetry"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/util"
+	"github.com/semistrict/ratel/pkg/server/telemetry"
+	"github.com/semistrict/ratel/pkg/sql/catalog/colinfo"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	"github.com/semistrict/ratel/pkg/sql/opt"
+	"github.com/semistrict/ratel/pkg/sql/opt/memo"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/sqltelemetry"
+	"github.com/semistrict/ratel/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/util"
 	"github.com/cockroachdb/errors"
 )
 

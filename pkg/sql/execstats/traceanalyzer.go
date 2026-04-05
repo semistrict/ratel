@@ -17,10 +17,10 @@ package execstats
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/sql/execinfrapb"
-	"github.com/cockroachdb/cockroach/pkg/util/buildutil"
-	"github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/sql/execinfrapb"
+	"github.com/semistrict/ratel/pkg/util/buildutil"
+	"github.com/semistrict/ratel/pkg/util/tracing/tracingpb"
 	"github.com/cockroachdb/errors"
 )
 

@@ -79,7 +79,7 @@ message BackfillerSpec {
   // IndexesToBackfill is the set of indexes to backfill. This is populated only
   // starting in 21.1, prior to that the implied index set are those containing
   // the mutation ID of the first mutation on the table descriptor.
-  repeated uint32 indexes_to_backfill = 8 [(gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.IndexID"];
+  repeated uint32 indexes_to_backfill = 8 [(gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.IndexID"];
 
   reserved 6;
 
@@ -101,7 +101,7 @@ message BackfillerSpec {
 // happens outside this package.
 message JobProgress {
   optional int64 job_id = 1 [(gogoproto.nullable) = false, (gogoproto.customname) = "JobID",
-                            (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/jobs/jobspb.JobID"];
+                            (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/jobs/jobspb.JobID"];
   // contribution is the percent of work of the total this processor will
   // process.
   optional float contribution = 2 [(gogoproto.nullable) = false];
@@ -165,7 +165,7 @@ message ReadImportDataSpec {
 
   // User who initiated the import. This is used to check access privileges
   // when using FileTable ExternalStorage.
-  optional string user_proto = 15 [(gogoproto.nullable) = false, (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/security.SQLUsernameProto"];
+  optional string user_proto = 15 [(gogoproto.nullable) = false, (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/security.SQLUsernameProto"];
 
   repeated sqlbase.TypeDescriptor types = 16;
 
@@ -173,7 +173,7 @@ message ReadImportDataSpec {
   // field stores the databases' primary region.
   optional string database_primary_region = 17 [
     (gogoproto.nullable) = false,
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb.RegionName"
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/catpb.RegionName"
   ];
 
   optional int32 initial_splits = 18 [(gogoproto.nullable) = false];
@@ -242,7 +242,7 @@ message BackupDataSpec {
 
   // User who initiated the backup. This is used to check access privileges
   // when using FileTable ExternalStorage.
-  optional string user_proto = 10 [(gogoproto.nullable) = false, (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/security.SQLUsernameProto"];
+  optional string user_proto = 10 [(gogoproto.nullable) = false, (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/security.SQLUsernameProto"];
 
   // NEXTID: 12.
 }
@@ -323,7 +323,7 @@ message ExportSpec {
 
   // User who initiated the export. This is used to check access privileges
   // when using FileTable ExternalStorage.
-  optional string user_proto = 6 [(gogoproto.nullable) = false, (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/security.SQLUsernameProto"];
+  optional string user_proto = 6 [(gogoproto.nullable) = false, (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/security.SQLUsernameProto"];
 
   // col_names specifies the logical column names for the exported parquet file.
   repeated string col_names = 7 ;
@@ -338,8 +338,8 @@ message BulkRowWriterSpec {
 message IndexBackfillMergerSpec {
   optional sqlbase.TableDescriptor table = 1 [(gogoproto.nullable) = false];
 
-  repeated uint32 temporary_indexes = 2 [(gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.IndexID"];
-  repeated uint32 added_indexes = 3 [(gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.IndexID"];
+  repeated uint32 temporary_indexes = 2 [(gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.IndexID"];
+  repeated uint32 added_indexes = 3 [(gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.IndexID"];
 
   repeated roachpb.Span spans = 4 [(gogoproto.nullable) = false];
   repeated int32 span_idx = 5;

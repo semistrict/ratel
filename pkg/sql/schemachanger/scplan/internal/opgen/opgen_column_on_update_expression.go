@@ -15,9 +15,9 @@
 package opgen
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scop"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scpb"
-	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scop"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scpb"
+	"github.com/semistrict/ratel/pkg/util/protoutil"
 )
 
 func init() {

@@ -40,58 +40,58 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/build"
-	"github.com/cockroachdb/cockroach/pkg/clusterversion"
-	"github.com/cockroachdb/cockroach/pkg/config/zonepb"
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/kv"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverbase"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/server/telemetry"
-	"github.com/cockroachdb/cockroach/pkg/settings"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catalogkeys"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descs"
-	"github.com/cockroachdb/cockroach/pkg/sql/colexecerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/lex"
-	"github.com/cockroachdb/cockroach/pkg/sql/lexbase"
-	"github.com/cockroachdb/cockroach/pkg/sql/parser"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgnotice"
-	"github.com/cockroachdb/cockroach/pkg/sql/protoreflect"
-	"github.com/cockroachdb/cockroach/pkg/sql/roleoption"
-	"github.com/cockroachdb/cockroach/pkg/sql/rowenc"
-	"github.com/cockroachdb/cockroach/pkg/sql/rowenc/keyside"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/sessiondata"
-	"github.com/cockroachdb/cockroach/pkg/sql/sessiondatapb"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlliveness"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlstats/persistedsqlstats/sqlstatsutil"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqltelemetry"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/cockroach/pkg/util/duration"
-	"github.com/cockroachdb/cockroach/pkg/util/encoding"
-	"github.com/cockroachdb/cockroach/pkg/util/errorutil/unimplemented"
-	"github.com/cockroachdb/cockroach/pkg/util/fuzzystrmatch"
-	"github.com/cockroachdb/cockroach/pkg/util/humanizeutil"
-	"github.com/cockroachdb/cockroach/pkg/util/ipaddr"
-	"github.com/cockroachdb/cockroach/pkg/util/json"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/timeofday"
-	"github.com/cockroachdb/cockroach/pkg/util/timetz"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil/pgdate"
-	"github.com/cockroachdb/cockroach/pkg/util/tracing"
-	"github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb"
-	"github.com/cockroachdb/cockroach/pkg/util/ulid"
-	"github.com/cockroachdb/cockroach/pkg/util/unaccent"
-	"github.com/cockroachdb/cockroach/pkg/util/uuid"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/build"
+	"github.com/semistrict/ratel/pkg/clusterversion"
+	"github.com/semistrict/ratel/pkg/config/zonepb"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/kv"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverbase"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/server/telemetry"
+	"github.com/semistrict/ratel/pkg/settings"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/sql/catalog"
+	"github.com/semistrict/ratel/pkg/sql/catalog/catalogkeys"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descs"
+	"github.com/semistrict/ratel/pkg/sql/colexecerror"
+	"github.com/semistrict/ratel/pkg/sql/lex"
+	"github.com/semistrict/ratel/pkg/sql/lexbase"
+	"github.com/semistrict/ratel/pkg/sql/parser"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgnotice"
+	"github.com/semistrict/ratel/pkg/sql/protoreflect"
+	"github.com/semistrict/ratel/pkg/sql/roleoption"
+	"github.com/semistrict/ratel/pkg/sql/rowenc"
+	"github.com/semistrict/ratel/pkg/sql/rowenc/keyside"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/sessiondata"
+	"github.com/semistrict/ratel/pkg/sql/sessiondatapb"
+	"github.com/semistrict/ratel/pkg/sql/sqlliveness"
+	"github.com/semistrict/ratel/pkg/sql/sqlstats/persistedsqlstats/sqlstatsutil"
+	"github.com/semistrict/ratel/pkg/sql/sqltelemetry"
+	"github.com/semistrict/ratel/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/util"
+	"github.com/semistrict/ratel/pkg/util/duration"
+	"github.com/semistrict/ratel/pkg/util/encoding"
+	"github.com/semistrict/ratel/pkg/util/errorutil/unimplemented"
+	"github.com/semistrict/ratel/pkg/util/fuzzystrmatch"
+	"github.com/semistrict/ratel/pkg/util/humanizeutil"
+	"github.com/semistrict/ratel/pkg/util/ipaddr"
+	"github.com/semistrict/ratel/pkg/util/json"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/timeofday"
+	"github.com/semistrict/ratel/pkg/util/timetz"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/util/timeutil/pgdate"
+	"github.com/semistrict/ratel/pkg/util/tracing"
+	"github.com/semistrict/ratel/pkg/util/tracing/tracingpb"
+	"github.com/semistrict/ratel/pkg/util/ulid"
+	"github.com/semistrict/ratel/pkg/util/unaccent"
+	"github.com/semistrict/ratel/pkg/util/uuid"
 	"github.com/cockroachdb/errors"
 	"github.com/knz/strtime"
 )
@@ -2277,7 +2277,7 @@ var builtins = map[string]builtinDefinition{
 	),
 
 	// Note: behavior is slightly different than Postgres for performance reasons.
-	// See https://github.com/cockroachdb/cockroach/issues/21564
+	// See https://github.com/semistrict/ratel/issues/21564
 	"setval": makeBuiltin(
 		tree.FunctionProperties{
 			Category:             categorySequences,
@@ -3134,7 +3134,7 @@ value if you rely on the HLC for accuracy.`,
 			Info:       "Treat given time without time zone as located in the specified time zone.",
 			Volatility: tree.VolatilityStable,
 			// This overload's volatility does not match Postgres. See
-			// https://github.com/cockroachdb/cockroach/pull/51037 for details.
+			// https://github.com/semistrict/ratel/pull/51037 for details.
 			IgnoreVolatilityCheck: true,
 		},
 		tree.Overload{
@@ -3160,7 +3160,7 @@ value if you rely on the HLC for accuracy.`,
 			Info:       "Convert given time with time zone to the new time zone.",
 			Volatility: tree.VolatilityStable,
 			// This overload's volatility does not match Postgres. See
-			// https://github.com/cockroachdb/cockroach/pull/51037 for details.
+			// https://github.com/semistrict/ratel/pull/51037 for details.
 			IgnoreVolatilityCheck: true,
 		},
 	),

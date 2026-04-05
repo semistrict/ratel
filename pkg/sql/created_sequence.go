@@ -15,7 +15,7 @@
 package sql
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
 	"github.com/cockroachdb/errors"
 )
 

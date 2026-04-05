@@ -18,12 +18,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/exec"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/util/encoding"
-	"github.com/cockroachdb/cockroach/pkg/util/treeprinter"
+	"github.com/semistrict/ratel/pkg/sql/catalog/colinfo"
+	"github.com/semistrict/ratel/pkg/sql/opt/exec"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/util/encoding"
+	"github.com/semistrict/ratel/pkg/util/treeprinter"
 	"github.com/stretchr/testify/require"
 )
 

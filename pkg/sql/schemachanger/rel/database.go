@@ -17,7 +17,7 @@ package rel
 import (
 	"reflect"
 
-	"github.com/cockroachdb/cockroach/pkg/util/iterutil"
+	"github.com/semistrict/ratel/pkg/util/iterutil"
 	"github.com/cockroachdb/errors"
 	"github.com/google/btree"
 )

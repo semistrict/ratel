@@ -14,7 +14,7 @@
 
 package registry
 
-import "github.com/cockroachdb/cockroach/pkg/cmd/roachtest/spec"
+import "github.com/semistrict/ratel/pkg/cmd/roachtest/spec"
 
 // Registry is the interface again which tests are registered with the roachtest
 // test runner.

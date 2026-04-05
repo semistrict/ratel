@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/jobs"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/jobs"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 	"github.com/cockroachdb/errors"
 )
 

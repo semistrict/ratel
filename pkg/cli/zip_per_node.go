@@ -23,15 +23,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/clisqlclient"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/liveness/livenesspb"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/server/serverpb"
-	"github.com/cockroachdb/cockroach/pkg/server/status/statuspb"
-	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/cockroach/pkg/util/contextutil"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/cli/clisqlclient"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/liveness/livenesspb"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/server/serverpb"
+	"github.com/semistrict/ratel/pkg/server/status/statuspb"
+	"github.com/semistrict/ratel/pkg/util"
+	"github.com/semistrict/ratel/pkg/util/contextutil"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 	"github.com/cockroachdb/errors"
 )
 
@@ -243,7 +243,7 @@ func (zc *debugZipContext) collectPerNodeData(
 
 	var stacksDataWithLabels []byte
 	s = nodePrinter.start("requesting stacks with labels")
-	// This condition is added to workaround https://github.com/cockroachdb/cockroach/issues/74133.
+	// This condition is added to workaround https://github.com/semistrict/ratel/issues/74133.
 	// Please make the call to retrieve stacks unconditional after the issue is fixed.
 	if util.RaceEnabled {
 		stacksDataWithLabels = []byte("disabled in race mode, see 74133")

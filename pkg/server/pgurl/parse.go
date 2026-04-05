@@ -18,7 +18,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/util/netutil/addr"
+	"github.com/semistrict/ratel/pkg/util/netutil/addr"
 	"github.com/cockroachdb/errors"
 )
 

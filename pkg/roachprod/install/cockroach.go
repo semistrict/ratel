@@ -27,10 +27,10 @@ import (
 	"text/template"
 
 	"github.com/alessio/shellescape"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/config"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/logger"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/ssh"
-	"github.com/cockroachdb/cockroach/pkg/util/version"
+	"github.com/semistrict/ratel/pkg/roachprod/config"
+	"github.com/semistrict/ratel/pkg/roachprod/logger"
+	"github.com/semistrict/ratel/pkg/roachprod/ssh"
+	"github.com/semistrict/ratel/pkg/util/version"
 	"github.com/cockroachdb/errors"
 )
 
@@ -63,7 +63,7 @@ func cockroachNodeBinary(c *SyncedCluster, node Node) string {
 		if gopath == "" {
 			return c.Binary
 		}
-		path = gopath + "/src/github.com/cockroachdb/cockroach/" + c.Binary
+		path = gopath + "/src/github.com/semistrict/ratel/" + c.Binary
 		var err2 error
 		path, err2 = exec.LookPath(path)
 		if err2 != nil {

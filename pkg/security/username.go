@@ -20,7 +20,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/lexbase"
+	"github.com/semistrict/ratel/pkg/sql/lexbase"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
 )

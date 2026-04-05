@@ -15,10 +15,10 @@
 package schemaexpr_test
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/tabledesc"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/sql/catalog"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	"github.com/semistrict/ratel/pkg/sql/catalog/tabledesc"
+	"github.com/semistrict/ratel/pkg/sql/types"
 )
 
 // testCol includes the information needed to create a column descriptor for

@@ -17,9 +17,9 @@ package cli
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/build"
-	"github.com/cockroachdb/cockroach/pkg/cli/exit"
-	"github.com/cockroachdb/cockroach/pkg/workload"
+	"github.com/semistrict/ratel/pkg/build"
+	"github.com/semistrict/ratel/pkg/cli/exit"
+	"github.com/semistrict/ratel/pkg/workload"
 	"github.com/cockroachdb/errors"
 	"github.com/spf13/cobra"
 )

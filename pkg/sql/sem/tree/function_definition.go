@@ -15,7 +15,7 @@
 package tree
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/sqltelemetry"
+	"github.com/semistrict/ratel/pkg/sql/sqltelemetry"
 	"github.com/lib/pq/oid"
 )
 

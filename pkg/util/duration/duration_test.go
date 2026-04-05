@@ -21,8 +21,8 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	_ "github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 	"github.com/stretchr/testify/require"
 )
 

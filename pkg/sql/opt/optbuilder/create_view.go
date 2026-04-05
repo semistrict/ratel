@@ -15,10 +15,10 @@
 package optbuilder
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/memo"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlerrors"
-	"github.com/cockroachdb/cockroach/pkg/util"
+	"github.com/semistrict/ratel/pkg/sql/opt/memo"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/sqlerrors"
+	"github.com/semistrict/ratel/pkg/util"
 )
 
 func (b *Builder) buildCreateView(cv *tree.CreateView, inScope *scope) (outScope *scope) {

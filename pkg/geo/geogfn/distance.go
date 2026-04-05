@@ -17,11 +17,11 @@ package geogfn
 import (
 	"math"
 
-	"github.com/cockroachdb/cockroach/pkg/geo"
-	"github.com/cockroachdb/cockroach/pkg/geo/geodist"
-	"github.com/cockroachdb/cockroach/pkg/geo/geographiclib"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
+	"github.com/semistrict/ratel/pkg/geo"
+	"github.com/semistrict/ratel/pkg/geo/geodist"
+	"github.com/semistrict/ratel/pkg/geo/geographiclib"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
 	"github.com/golang/geo/s1"
 	"github.com/golang/geo/s2"
 )

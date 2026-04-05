@@ -14,7 +14,7 @@
 
 package tree
 
-import "github.com/cockroachdb/cockroach/pkg/sql/lexbase"
+import "github.com/semistrict/ratel/pkg/sql/lexbase"
 
 // CommentOnIndex represents a COMMENT ON INDEX statement.
 type CommentOnIndex struct {

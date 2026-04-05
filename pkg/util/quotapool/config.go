@@ -18,8 +18,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 	"github.com/cockroachdb/redact"
 )
 

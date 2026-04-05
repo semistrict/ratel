@@ -52,5 +52,5 @@ To avoid hogging resources on your machine. The postgres database is on your
 local file system, so it will remain. If you want to nuke everything, use
 `down` instead of `stop` and then `git clean -f .`.
 
-[#50432]: https://github.com/cockroachdb/cockroach/pull/50432
+[#50432]: https://github.com/semistrict/ratel/pull/50432
 [Grafana blog]: https://grafana.com/blog/2018/10/15/make-time-series-exploration-easier-with-the-postgresql/timescaledb-query-editor/

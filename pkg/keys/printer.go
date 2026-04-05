@@ -21,9 +21,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/encoding"
-	"github.com/cockroachdb/cockroach/pkg/util/uuid"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/encoding"
+	"github.com/semistrict/ratel/pkg/util/uuid"
 	"github.com/cockroachdb/errors"
 )
 

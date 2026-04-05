@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo/colinfotestutils"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/catalog/colinfo"
+	"github.com/semistrict/ratel/pkg/sql/catalog/colinfo/colinfotestutils"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 )
 
 var _ colinfotestutils.ColumnItemResolverTester = &scope{}

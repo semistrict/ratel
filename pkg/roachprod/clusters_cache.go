@@ -22,12 +22,12 @@ import (
 	"path"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/roachprod/cloud"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/config"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/vm"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/vm/local"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/roachprod/cloud"
+	"github.com/semistrict/ratel/pkg/roachprod/config"
+	"github.com/semistrict/ratel/pkg/roachprod/vm"
+	"github.com/semistrict/ratel/pkg/roachprod/vm/local"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/errors/oserror"
 )

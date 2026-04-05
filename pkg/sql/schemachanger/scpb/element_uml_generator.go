@@ -26,8 +26,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/exit"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scpb"
+	"github.com/semistrict/ratel/pkg/cli/exit"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scpb"
 )
 
 var (

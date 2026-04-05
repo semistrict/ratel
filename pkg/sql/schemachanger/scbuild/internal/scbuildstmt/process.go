@@ -17,9 +17,9 @@ package scbuildstmt
 import (
 	"reflect"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scerrors"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/sessiondatapb"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scerrors"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/sessiondatapb"
 	"github.com/cockroachdb/errors"
 )
 

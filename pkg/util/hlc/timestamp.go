@@ -22,7 +22,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 	"github.com/cockroachdb/errors"
 )
 

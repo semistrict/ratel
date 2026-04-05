@@ -22,8 +22,8 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/cockroachdb/cockroach/pkg/roachprod/config"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/logger"
+	"github.com/semistrict/ratel/pkg/roachprod/config"
+	"github.com/semistrict/ratel/pkg/roachprod/logger"
 	"github.com/cockroachdb/errors"
 	"github.com/spf13/pflag"
 	"golang.org/x/sync/errgroup"

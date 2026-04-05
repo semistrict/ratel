@@ -20,7 +20,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
+	"github.com/semistrict/ratel/pkg/util/protoutil"
 	"github.com/cockroachdb/errors"
 	"github.com/gogo/protobuf/jsonpb"
 )

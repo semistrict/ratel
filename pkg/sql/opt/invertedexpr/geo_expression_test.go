@@ -17,9 +17,9 @@ package invertedexpr
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/geo/geoindex"
-	"github.com/cockroachdb/cockroach/pkg/sql/inverted"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/geo/geoindex"
+	"github.com/semistrict/ratel/pkg/sql/inverted"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 	"github.com/stretchr/testify/require"
 )
 

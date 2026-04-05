@@ -20,8 +20,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/roachprod/logger"
-	"github.com/cockroachdb/cockroach/pkg/util/retry"
+	"github.com/semistrict/ratel/pkg/roachprod/logger"
+	"github.com/semistrict/ratel/pkg/util/retry"
 	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/require"
 )

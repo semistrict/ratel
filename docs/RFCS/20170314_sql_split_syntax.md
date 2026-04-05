@@ -2,8 +2,8 @@
 - Status: completed
 - Start Date: 2017-03-14
 - Authors: Radu Berinde
-- RFC PR: [#14146](https://github.com/cockroachdb/cockroach/pull/14146)
-- Cockroach Issue: [#13665](https://github.com/cockroachdb/cockroach/issues/13665)
+- RFC PR: [#14146](https://github.com/semistrict/ratel/pull/14146)
+- Cockroach Issue: [#13665](https://github.com/semistrict/ratel/issues/13665)
 
 # Summary
 
@@ -20,7 +20,7 @@ Specifically, we want to be able to:
 The main motivation is to allow setting up tests, benchmarks, and reproducible
 testbeds, especially for DistSQL. One set of some sample tests that we want to
 be able to set up directly from logic tests are in
-[TestDistSQLPlanner](https://github.com/cockroachdb/cockroach/blob/cc5ba57/pkg/sql/distsql_physical_planner_test.go#L75).
+[TestDistSQLPlanner](https://github.com/semistrict/ratel/blob/cc5ba57/pkg/sql/distsql_physical_planner_test.go#L75).
 These tests need to split tables in a specific way, and they need to reprogram
 the replicas and range leaders of each split.
 

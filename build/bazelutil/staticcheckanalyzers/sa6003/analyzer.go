@@ -6,7 +6,7 @@
 package sa6003
 
 import (
-	util "github.com/cockroachdb/cockroach/pkg/testutils/lint/passes/staticcheck"
+	util "github.com/semistrict/ratel/pkg/testutils/lint/passes/staticcheck"
 	"golang.org/x/tools/go/analysis"
 	"honnef.co/go/tools/staticcheck"
 )

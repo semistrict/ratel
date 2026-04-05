@@ -18,8 +18,8 @@ import (
 	"bytes"
 	"sort"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/inverted"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/sql/inverted"
 	"github.com/cockroachdb/errors"
 )
 

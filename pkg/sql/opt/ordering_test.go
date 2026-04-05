@@ -17,9 +17,9 @@ package opt_test
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/testcat"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/opt"
+	"github.com/semistrict/ratel/pkg/sql/opt/testutils/testcat"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 )
 
 func TestOrdering(t *testing.T) {

@@ -17,13 +17,13 @@ package catprivilege_test
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/bootstrap"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catprivilege"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/privilege"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/sql/catalog/bootstrap"
+	"github.com/semistrict/ratel/pkg/sql/catalog/catpb"
+	"github.com/semistrict/ratel/pkg/sql/catalog/catprivilege"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	"github.com/semistrict/ratel/pkg/sql/privilege"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 )
 
 func TestFixPrivileges(t *testing.T) {

@@ -28,18 +28,18 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/cli/clierror"
-	"github.com/cockroachdb/cockroach/pkg/cli/cliflags"
-	"github.com/cockroachdb/cockroach/pkg/cli/clisqlexec"
-	"github.com/cockroachdb/cockroach/pkg/cli/exit"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/security/securitytest"
-	"github.com/cockroachdb/cockroach/pkg/server"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlstats"
-	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/cli/clierror"
+	"github.com/semistrict/ratel/pkg/cli/cliflags"
+	"github.com/semistrict/ratel/pkg/cli/clisqlexec"
+	"github.com/semistrict/ratel/pkg/cli/exit"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/security/securitytest"
+	"github.com/semistrict/ratel/pkg/server"
+	"github.com/semistrict/ratel/pkg/sql/sqlstats"
+	"github.com/semistrict/ratel/pkg/testutils/serverutils"
+	"github.com/semistrict/ratel/pkg/util/log"
 	"github.com/cockroachdb/errors"
 	"github.com/kr/pretty"
 )
@@ -435,7 +435,7 @@ func (c TestCLI) RunWithCAArgs(origArgs []string) {
 func ElideInsecureDeprecationNotice(csvStr string) string {
 	// v20.1 introduces a deprecation notice for --insecure. Skip over it.
 	// TODO(knz): Remove this when --insecure is dropped.
-	// See: https://github.com/cockroachdb/cockroach/issues/53404
+	// See: https://github.com/semistrict/ratel/issues/53404
 	lines := strings.SplitN(csvStr, "\n", 3)
 	if len(lines) > 0 && strings.HasPrefix(lines[0], "Flag --insecure has been deprecated") {
 		csvStr = lines[2]

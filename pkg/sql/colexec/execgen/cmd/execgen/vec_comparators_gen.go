@@ -19,7 +19,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree/treecmp"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree/treecmp"
 )
 
 const vecCmpTmpl = "pkg/sql/colexec/vec_comparators_tmpl.go"

@@ -17,7 +17,7 @@ package timeutil
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 )
 
 // StopWatch is a utility stop watch that can be safely started and stopped

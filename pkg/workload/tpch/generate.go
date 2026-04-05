@@ -17,10 +17,10 @@ package tpch
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/col/coldata"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/util/bufalloc"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil/pgdate"
+	"github.com/semistrict/ratel/pkg/col/coldata"
+	"github.com/semistrict/ratel/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/util/bufalloc"
+	"github.com/semistrict/ratel/pkg/util/timeutil/pgdate"
 	"golang.org/x/exp/rand"
 )
 

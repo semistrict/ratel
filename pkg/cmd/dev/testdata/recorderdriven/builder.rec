@@ -34,12 +34,12 @@ run_bazel() {
     vols="${vols} --volume ${artifacts_dir}:/artifacts"
     cache=/home/agent/.bzlhome
     mkdir -p $cache
-    vols="${vols} --volume ${root}:/go/src/github.com/cockroachdb/cockroach"
+    vols="${vols} --volume ${root}:/go/src/github.com/semistrict/ratel"
     vols="${vols} --volume ${cache}:/home/roach"
 
     docker run -i ${tty-} --rm --init \
         -u "$(id -u):$(id -g)" \
-        --workdir="/go/src/github.com/cockroachdb/cockroach" \
+        --workdir="/go/src/github.com/semistrict/ratel" \
 	${BAZEL_SUPPORT_EXTRA_DOCKER_ARGS:+$BAZEL_SUPPORT_EXTRA_DOCKER_ARGS} \
         ${vols} \
         $BAZEL_IMAGE "$@"
@@ -176,12 +176,12 @@ run_bazel() {
     vols="${vols} --volume ${artifacts_dir}:/artifacts"
     cache=/home/agent/.bzlhome
     mkdir -p $cache
-    vols="${vols} --volume ${root}:/go/src/github.com/cockroachdb/cockroach"
+    vols="${vols} --volume ${root}:/go/src/github.com/semistrict/ratel"
     vols="${vols} --volume ${cache}:/home/roach"
 
     docker run -i ${tty-} --rm --init \
         -u "$(id -u):$(id -g)" \
-        --workdir="/go/src/github.com/cockroachdb/cockroach" \
+        --workdir="/go/src/github.com/semistrict/ratel" \
 	${BAZEL_SUPPORT_EXTRA_DOCKER_ARGS:+$BAZEL_SUPPORT_EXTRA_DOCKER_ARGS} \
         ${vols} \
         $BAZEL_IMAGE "$@"

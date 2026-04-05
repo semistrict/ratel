@@ -2,8 +2,8 @@
 - Status: in-progress
 - Start Date: 2021-07-19
 - Authors: Rima Deodhar
-- RFC PR: [68082](https://github.com/cockroachdb/cockroach/pull/68082)
-- Cockroach Issue: [67756](https://github.com/cockroachdb/cockroach/issues/67756)
+- RFC PR: [68082](https://github.com/semistrict/ratel/pull/68082)
+- Cockroach Issue: [67756](https://github.com/semistrict/ratel/issues/67756)
 
 # Summary
 This RFC describes the motivation and mechanism for upgrading the metrics framework

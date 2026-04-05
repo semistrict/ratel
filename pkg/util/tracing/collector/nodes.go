@@ -17,7 +17,7 @@ package collector
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // nodesFromNodeLiveness returns the IDs for all nodes that are currently part

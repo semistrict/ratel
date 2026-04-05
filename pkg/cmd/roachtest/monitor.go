@@ -21,11 +21,11 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/cluster"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/option"
-	"github.com/cockroachdb/cockroach/pkg/roachprod"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/install"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/logger"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/cluster"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/option"
+	"github.com/semistrict/ratel/pkg/roachprod"
+	"github.com/semistrict/ratel/pkg/roachprod/install"
+	"github.com/semistrict/ratel/pkg/roachprod/logger"
 	"github.com/cockroachdb/errors"
 	"golang.org/x/sync/errgroup"
 )
@@ -127,7 +127,7 @@ func (m *monitorImpl) Wait() {
 	if err := m.WaitE(); err != nil {
 		// Note that we used to avoid fataling again if we had already fatal'ed.
 		// However, this error here might be the one to actually report, see:
-		// https://github.com/cockroachdb/cockroach/issues/44436
+		// https://github.com/semistrict/ratel/issues/44436
 		m.t.Fatal(err)
 	}
 }

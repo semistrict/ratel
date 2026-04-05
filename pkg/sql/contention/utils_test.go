@@ -14,7 +14,7 @@
 
 package contention
 
-import "github.com/cockroachdb/cockroach/pkg/util/cache"
+import "github.com/semistrict/ratel/pkg/util/cache"
 
 // SetSizeConstants updates the constants for the sizes of caches of the
 // registries for tests. If any of the passed-in arguments is not positive, it

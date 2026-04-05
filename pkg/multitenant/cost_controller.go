@@ -17,10 +17,10 @@ package multitenant
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/multitenant/tenantcostmodel"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlliveness"
-	"github.com/cockroachdb/cockroach/pkg/util/stop"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/multitenant/tenantcostmodel"
+	"github.com/semistrict/ratel/pkg/sql/sqlliveness"
+	"github.com/semistrict/ratel/pkg/util/stop"
 )
 
 // TenantSideCostController is an interface through which tenant code reports

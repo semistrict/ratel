@@ -21,11 +21,11 @@ import (
 	"sync"
 
 	"github.com/cockroachdb/cmux"
-	"github.com/cockroachdb/cockroach/pkg/rpc"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/netutil"
-	"github.com/cockroachdb/cockroach/pkg/util/stop"
+	"github.com/semistrict/ratel/pkg/rpc"
+	"github.com/semistrict/ratel/pkg/sql/pgwire"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/netutil"
+	"github.com/semistrict/ratel/pkg/util/stop"
 )
 
 // startListenRPCAndSQL starts the RPC and SQL listeners.

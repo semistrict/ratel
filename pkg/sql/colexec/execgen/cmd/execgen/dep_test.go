@@ -17,17 +17,17 @@ package main
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils/buildutil"
+	"github.com/semistrict/ratel/pkg/testutils/buildutil"
 )
 
 func TestNoLinkForbidden(t *testing.T) {
 	buildutil.VerifyNoImports(t,
-		"github.com/cockroachdb/cockroach/pkg/sql/colexec/execgen/cmd/execgen", true,
+		"github.com/semistrict/ratel/pkg/sql/colexec/execgen/cmd/execgen", true,
 		[]string{
-			"github.com/cockroachdb/cockroach/pkg/roachpb",
-			"github.com/cockroachdb/cockroach/pkg/sql/catalog",
-			"github.com/cockroachdb/cockroach/pkg/sql/execinfrapb",
-			"github.com/cockroachdb/cockroach/pkg/sql/tree",
+			"github.com/semistrict/ratel/pkg/roachpb",
+			"github.com/semistrict/ratel/pkg/sql/catalog",
+			"github.com/semistrict/ratel/pkg/sql/execinfrapb",
+			"github.com/semistrict/ratel/pkg/sql/tree",
 		}, nil,
 	)
 }

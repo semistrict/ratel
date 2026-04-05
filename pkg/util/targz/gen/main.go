@@ -29,7 +29,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/exit"
+	"github.com/semistrict/ratel/pkg/cli/exit"
 	"github.com/cockroachdb/errors"
 )
 

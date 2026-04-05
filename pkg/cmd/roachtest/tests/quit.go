@@ -21,14 +21,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/cluster"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/option"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/registry"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/test"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/install"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
-	"github.com/cockroachdb/cockroach/pkg/util/contextutil"
-	"github.com/cockroachdb/cockroach/pkg/util/retry"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/cluster"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/option"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/registry"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/test"
+	"github.com/semistrict/ratel/pkg/roachprod/install"
+	"github.com/semistrict/ratel/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/util/contextutil"
+	"github.com/semistrict/ratel/pkg/util/retry"
 	"github.com/cockroachdb/errors"
 	"github.com/kr/pretty"
 )
@@ -218,7 +218,7 @@ func (q *quitTest) checkNoLeases(ctx context.Context, nodeID int) {
 	//    nodeID, even though _another_ replica has become leaseholder
 	//    already. That's because followers can lag behind and
 	//    drain does not wait for followers to catch up.
-	//    https://github.com/cockroachdb/cockroach/issues/47100
+	//    https://github.com/semistrict/ratel/issues/47100
 	//
 	// 2) *eventually* that every other node than nodeID has no range
 	//    replica whose lease refers to nodeID, i.e. the followers
@@ -494,7 +494,7 @@ func registerQuitAllNodes(r registry.Registry) {
 			// the graceful shutdown succeed. It may succeed if every
 			// range has enough quorum on the last 2 nodes (shut down later below).
 			// It may fail if some ranges have a quorum composed of n3, n4, n5.
-			// See: https://github.com/cockroachdb/cockroach/issues/48339
+			// See: https://github.com/semistrict/ratel/issues/48339
 			q.runWithTimeout(ctx, func(ctx context.Context) { _ = runQuit(ctx, q.t, q.c, 4, "--drain-wait=4s") })
 			q.runWithTimeout(ctx, func(ctx context.Context) { _ = runQuit(ctx, q.t, q.c, 3, "--drain-wait=4s") })
 

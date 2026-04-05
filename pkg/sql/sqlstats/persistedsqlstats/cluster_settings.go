@@ -17,7 +17,7 @@ package persistedsqlstats
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/settings"
+	"github.com/semistrict/ratel/pkg/settings"
 	"github.com/cockroachdb/errors"
 	"github.com/robfig/cron/v3"
 )

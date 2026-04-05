@@ -2,8 +2,8 @@
 - Status: draft
 - Start Date: 2020-06-15
 - Authors: Andrew Werner, Spas Bojanov
-- RFC PR: [#50377](https://github.com/cockroachdb/cockroach/pull/50377)
-- Cockroach Issue: [#47892](https://github.com/cockroachdb/cockroach/issues/47892)
+- RFC PR: [#50377](https://github.com/semistrict/ratel/pull/50377)
+- Cockroach Issue: [#47892](https://github.com/semistrict/ratel/issues/47892)
 
 # Summary
 
@@ -278,7 +278,7 @@ func (s *Storage) fetchSession(
 
 ## Use in `jobs`
 
-See [#47892](https://github.com/cockroachdb/cockroach/issues/47892).
+See [#47892](https://github.com/semistrict/ratel/issues/47892).
 
 ### Some background on what's there today
 
@@ -349,7 +349,7 @@ types of leases. In particular, we should filter out the set of nodes we know
 to be live right now. This conditions is a bit annoying today because we cannot
 evaluate the predicate over the lease field of the payload in the execution
 engine (see this proposal for a protobuf type
-[#47534](https://github.com/cockroachdb/cockroach/issues/47534)).
+[#47534](https://github.com/semistrict/ratel/issues/47534)).
 
 ## Future use cases
 
@@ -376,7 +376,7 @@ protocol buffer types as a first-class type in the SQL type system. We could
 imagine hosting protocol buffer definitions for a set of packages where each
 message type is stored as a type. We could imagine allowing these types to
 import each other such that there was a relatively large graph of type
-references. See [#47534](https://github.com/cockroachdb/cockroach/issues/47534)
+references. See [#47534](https://github.com/semistrict/ratel/issues/47534)
 for some discussion though it's worth noting that the above issue is far less,
 ambitious in its current thinking.
 
@@ -385,7 +385,7 @@ ambitious in its current thinking.
 This is likely controversial. Long-running transactions have a relatively
 substantial write load on the system; they write to their transaction record
 once per second in order to keep the transaction alive. There is a good bit of
-discussion in [#45013](https://github.com/cockroachdb/cockroach/issues/45013).
+discussion in [#45013](https://github.com/semistrict/ratel/issues/45013).
 
 That issue ends up recommending that we coalesce heartbeats from nodes to
 ranges. In our traditional deployment topology that approach is likely to

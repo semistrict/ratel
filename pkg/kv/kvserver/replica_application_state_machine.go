@@ -19,18 +19,18 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/apply"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/closedts/ctpb"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverbase"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverpb"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/stateloader"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/storage"
-	"github.com/cockroachdb/cockroach/pkg/storage/enginepb"
-	"github.com/cockroachdb/cockroach/pkg/util/envutil"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/apply"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/closedts/ctpb"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverbase"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverpb"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/stateloader"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/storage"
+	"github.com/semistrict/ratel/pkg/storage/enginepb"
+	"github.com/semistrict/ratel/pkg/util/envutil"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/protoutil"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
 	"github.com/kr/pretty"
@@ -678,7 +678,7 @@ func (b *replicaAppBatch) runPreApplyTriggersAfterStagingWriteBatch(
 		// cannot be constructed at evaluation time because it differs
 		// on each replica (votes may have already been cast on the
 		// uninitialized replica). Write this new hardstate to the batch too.
-		// See https://github.com/cockroachdb/cockroach/issues/20629.
+		// See https://github.com/semistrict/ratel/issues/20629.
 		//
 		// Alternatively if we discover that the RHS has already been removed
 		// from this store, clean up its data.

@@ -15,8 +15,8 @@
 package concurrency
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/spanlatch"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/spanlatch"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // LatchMetrics holds information about the state of a latchManager.

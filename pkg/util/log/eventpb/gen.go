@@ -28,8 +28,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/exit"
-	"github.com/cockroachdb/cockroach/pkg/util/log/logpb"
+	"github.com/semistrict/ratel/pkg/cli/exit"
+	"github.com/semistrict/ratel/pkg/util/log/logpb"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/gostdlib/go/format"
 )
@@ -495,7 +495,7 @@ import (
   "regexp"
 
   "github.com/cockroachdb/redact"
-  "github.com/cockroachdb/cockroach/pkg/util/jsonbytes"
+  "github.com/semistrict/ratel/pkg/util/jsonbytes"
 )
 
 {{range .AllRegexps}}
@@ -615,7 +615,7 @@ func (m *{{.GoType}}) AppendJSONFields(printComma bool, b redact.RedactableBytes
 
 package eventpb
 
-import "github.com/cockroachdb/cockroach/pkg/util/log/logpb"
+import "github.com/semistrict/ratel/pkg/util/log/logpb"
 
 {{range .Events}}
 // LoggingChannel implements the EventPayload interface.

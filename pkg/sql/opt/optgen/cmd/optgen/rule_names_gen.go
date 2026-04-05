@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/optgen/lang"
+	"github.com/semistrict/ratel/pkg/sql/opt/optgen/lang"
 )
 
 // ruleNamesGen generates an enumeration containing the names of all the rules.

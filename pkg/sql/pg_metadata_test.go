@@ -128,15 +128,15 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/build/bazel"
-	"github.com/cockroachdb/cockroach/pkg/sql/parser"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
-	"github.com/cockroachdb/cockroach/pkg/testutils/sqlutils"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/build/bazel"
+	"github.com/semistrict/ratel/pkg/sql/parser"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/testutils/serverutils"
+	"github.com/semistrict/ratel/pkg/testutils/sqlutils"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/log"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/errors/oserror"
 	"github.com/lib/pq/oid"
@@ -1660,7 +1660,7 @@ func validateVirtualSchemaTable(t *testing.T) {
 // the constants that looks for these names.
 func validateFunctionNames(t *testing.T) {
 	name := runtime.FuncForPC(reflect.ValueOf(makeAllRelationsVirtualTableWithDescriptorIDIndex).Pointer()).Name()
-	// removing 'github.com/cockroachdb/cockroach/pkg/sql.' from the name.
+	// removing 'github.com/semistrict/ratel/pkg/sql.' from the name.
 	lastDotIndex := strings.LastIndex(name, ".")
 	name = name[lastDotIndex+1:]
 	if name != makeAllRelationsVirtualTableWithDescriptorIDIndexFunc {

@@ -17,7 +17,7 @@ package raftentry
 import (
 	"math/bits"
 
-	"github.com/cockroachdb/cockroach/pkg/util"
+	"github.com/semistrict/ratel/pkg/util"
 	"github.com/cockroachdb/errors"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 )

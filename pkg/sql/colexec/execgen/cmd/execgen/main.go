@@ -24,8 +24,8 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/colexec/execgen"
-	"github.com/cockroachdb/cockroach/pkg/sql/colexecerror"
+	"github.com/semistrict/ratel/pkg/sql/colexec/execgen"
+	"github.com/semistrict/ratel/pkg/sql/colexecerror"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/gostdlib/x/tools/imports"
 )

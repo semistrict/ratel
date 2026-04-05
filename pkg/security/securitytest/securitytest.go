@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/security"
+	"github.com/semistrict/ratel/pkg/security"
 	"github.com/cockroachdb/errors"
 )
 

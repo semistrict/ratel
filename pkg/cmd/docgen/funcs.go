@@ -24,8 +24,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/builtins"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/sem/builtins"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 	"github.com/cockroachdb/errors"
 	"github.com/golang-commonmark/markdown"
 	"github.com/spf13/cobra"

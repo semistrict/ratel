@@ -23,8 +23,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/cr2pg/sqlstream"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/cmd/cr2pg/sqlstream"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 	"github.com/cockroachdb/errors"
 	"golang.org/x/sync/errgroup"
 )

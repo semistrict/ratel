@@ -21,24 +21,24 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/cockroachdb/cockroach/pkg/clusterversion"
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/batcheval/result"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/concurrency"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverbase"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverpb"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/readsummary/rspb"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/uncertainty"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/storage"
-	"github.com/cockroachdb/cockroach/pkg/storage/enginepb"
-	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/cockroach/pkg/util/humanizeutil"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/quotapool"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
-	"github.com/cockroachdb/cockroach/pkg/util/tracing"
+	"github.com/semistrict/ratel/pkg/clusterversion"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/batcheval/result"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/concurrency"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverbase"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverpb"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/readsummary/rspb"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/uncertainty"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/storage"
+	"github.com/semistrict/ratel/pkg/storage/enginepb"
+	"github.com/semistrict/ratel/pkg/util"
+	"github.com/semistrict/ratel/pkg/util/humanizeutil"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/quotapool"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/util/tracing"
 	"github.com/cockroachdb/redact"
 	"github.com/kr/pretty"
 	"golang.org/x/time/rate"
@@ -168,7 +168,7 @@ func (proposal *ProposalData) signalProposalResult(pr proposalResult) {
 		// we'll try to make a ChildSpan off `proposal.ctx` and this will
 		// trigger the Span use-after-finish assertions.
 		//
-		// See: https://github.com/cockroachdb/cockroach/pull/76858#issuecomment-1048179588
+		// See: https://github.com/semistrict/ratel/pull/76858#issuecomment-1048179588
 		//
 		// NB: `proposal.ec.repl` might already have been cleared if we arrive here
 		// through finishApplication.
@@ -351,7 +351,7 @@ func (r *Replica) leasePostApplyLocked(
 
 	// NB: ProposedTS is non-nil in practice, but we never fully migrated it
 	// in so we need to assume that it can be nil.
-	const slowLeaseWarningEnabled = false // see https://github.com/cockroachdb/cockroach/issues/97209
+	const slowLeaseWarningEnabled = false // see https://github.com/semistrict/ratel/issues/97209
 	if slowLeaseWarningEnabled && iAmTheLeaseHolder && leaseChangingHands && newLease.ProposedTS != nil {
 		maybeLogSlowLeaseApplyWarning(ctx, time.Duration(now.WallTime-newLease.ProposedTS.WallTime), prevLease, newLease)
 	}
@@ -460,7 +460,7 @@ func maybeLogSlowLeaseApplyWarning(
 		// different clocks, so there could be skew. We just pretend this is not the
 		// case, which is good enough here.
 		//
-		// [^1]: https://github.com/cockroachdb/cockroach/pull/82758
+		// [^1]: https://github.com/semistrict/ratel/pull/82758
 		log.Warningf(ctx,
 			"lease %v active after replication lag of ~%.2fs; foreground traffic may have been impacted [prev=%v]",
 			newLease, newLeaseAppDelay.Seconds(), prevLease,

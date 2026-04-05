@@ -18,7 +18,7 @@ import (
 	"path"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 )
 

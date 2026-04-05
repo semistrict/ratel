@@ -15,7 +15,7 @@
 package kvserver
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/cockroachdb/errors"
 )
 

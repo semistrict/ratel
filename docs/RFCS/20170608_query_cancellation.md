@@ -2,8 +2,8 @@
 - Status: completed
 - Start Date: 2017-06-05
 - Authors: Bilal Akhtar
-- RFC PR: [#16417](https://github.com/cockroachdb/cockroach/pull/16417)
-- Cockroach Issue: [#15593](https://github.com/cockroachdb/cockroach/issues/15593)
+- RFC PR: [#16417](https://github.com/semistrict/ratel/pull/16417)
+- Cockroach Issue: [#15593](https://github.com/semistrict/ratel/issues/15593)
 
 # Summary
 
@@ -81,7 +81,7 @@ those changes will be out of scope for this project.
 
 Query identifiers will be stored as 128-bit unsigned integers (two `uint64`s) - composed of the
 96-bit HLC timestamp plus 32 bits of node ID. [There already is a uint128 type in the code
-base](https://github.com/cockroachdb/cockroach/tree/master/pkg/util/uint128) that can be leveraged.
+base](https://github.com/semistrict/ratel/tree/master/pkg/util/uint128) that can be leveraged.
 Using the full HLC timestamp along with the node ID makes this ID unique across the cluster.
 
 Query IDs will be presented in the output of `SHOW QUERIES` as 32-character hex strings.
@@ -103,7 +103,7 @@ root@:26257/> SELECT node_id, id, query FROM [SHOW CLUSTER QUERIES];
 
 We will reuse the transaction's context at the query level; all query cancellations will close the entire transaction's
 context. Forking a query-specific context would be technically challenging due to [context scoping assumptions made in
-the TxnCoordSender](https://github.com/cockroachdb/cockroach/blob/8ff5ff97df139fa5958e15a2fd5ffa65e09b49ff/pkg/kv/txn_coord_sender.go#L619). The
+the TxnCoordSender](https://github.com/semistrict/ratel/blob/8ff5ff97df139fa5958e15a2fd5ffa65e09b49ff/pkg/kv/txn_coord_sender.go#L619). The
 `queryMeta` will store a reference to the txn context. PlanNodes that do in-memory
 processing such as insertNode's insert batching, and sortNode's sorting, will periodically check
 that context for cancellation (such as once every some tens of thousands of rows).
@@ -120,7 +120,7 @@ the "Context canceled" one.
 ## New CANCEL QUERY statement
 
 The syntax of the actual `CANCEL` statement has already been approved in
-[this RFC](https://github.com/cockroachdb/cockroach/pull/16273), and will be of the form
+[this RFC](https://github.com/semistrict/ratel/pull/16273), and will be of the form
 `CANCEL [QUERY|JOB] <query_id>`.
 
 A non-root database user can only issue `CANCEL QUERY` statements to queries run by that same

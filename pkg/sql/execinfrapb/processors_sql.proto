@@ -253,7 +253,7 @@ message JoinReaderSpec {
   // allowed. It is recommended to use span.MakeSplitter() followed by
   // splitter.FamilyIDs() to populate this field.
   repeated uint32 split_family_ids = 20 [(gogoproto.customname) = "SplitFamilyIDs",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.FamilyID"];
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.FamilyID"];
 
   reserved 1, 2;
 

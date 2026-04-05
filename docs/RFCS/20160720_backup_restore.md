@@ -2,8 +2,8 @@
 - Status: completed
 - Start Date: 2016-07-13
 - Authors: Daniel Harrison
-- RFC PR: [#8966](https://github.com/cockroachdb/cockroach/pull/8966)
-- Cockroach Issue: [#551](https://github.com/cockroachdb/cockroach/issues/551)
+- RFC PR: [#8966](https://github.com/semistrict/ratel/pull/8966)
+- Cockroach Issue: [#551](https://github.com/semistrict/ratel/issues/551)
 
 
 # Summary
@@ -230,7 +230,7 @@ message JobLease {
   optional uint32 node_id = 1 [
     (gogoproto.nullable) = false,
     (gogoproto.customname) = "NodeID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.NodeID"
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.NodeID"
   ];
   // The epoch of the lease holder's node liveness entry.
   optional int64 epoch = 2 [(gogoproto.nullable) = false];

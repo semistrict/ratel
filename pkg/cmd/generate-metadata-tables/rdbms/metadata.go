@@ -22,7 +22,7 @@ import (
 	"context"
 	"regexp"
 
-	"github.com/cockroachdb/cockroach/pkg/sql"
+	"github.com/semistrict/ratel/pkg/sql"
 )
 
 // ConnectFns will be used to determine which kind of database will be used

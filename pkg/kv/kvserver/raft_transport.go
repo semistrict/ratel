@@ -24,19 +24,19 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverpb"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/rpc"
-	"github.com/cockroachdb/cockroach/pkg/rpc/nodedialer"
-	"github.com/cockroachdb/cockroach/pkg/settings"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/storage"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
-	"github.com/cockroachdb/cockroach/pkg/util/stop"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
-	"github.com/cockroachdb/cockroach/pkg/util/tracing"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverpb"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/rpc"
+	"github.com/semistrict/ratel/pkg/rpc/nodedialer"
+	"github.com/semistrict/ratel/pkg/settings"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/storage"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/metric"
+	"github.com/semistrict/ratel/pkg/util/stop"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/util/tracing"
 	"github.com/cockroachdb/errors"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"google.golang.org/grpc"
@@ -657,7 +657,7 @@ func (t *RaftTransport) startProcessNewQueue(
 		defer t.queues[class].Delete(int64(toNodeID))
 		// NB: we dial without a breaker here because the caller has already
 		// checked the breaker. Checking it again can cause livelock, see:
-		// https://github.com/cockroachdb/cockroach/issues/68419
+		// https://github.com/semistrict/ratel/issues/68419
 		conn, err := t.dialer.DialNoBreaker(ctx, toNodeID, class)
 		if err != nil {
 			// DialNode already logs sufficiently, so just return.

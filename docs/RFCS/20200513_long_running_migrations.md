@@ -2,16 +2,16 @@
 - Status: completed
 - Start Date: 2020-05-13
 - Authors: Irfan Sharif, Tobias Grieger, Dan Harrison
-- RFC PR: [#48843](https://github.com/cockroachdb/cockroach/issues/48843)
-- Cockroach Issue: [#39182](https://github.com/cockroachdb/cockroach/issues/39182)
+- RFC PR: [#48843](https://github.com/semistrict/ratel/issues/48843)
+- Cockroach Issue: [#39182](https://github.com/semistrict/ratel/issues/39182)
 
 ___**EDIT**: The work described in this RFC was implemented in parallel with the
 RFC going through the review process (see PRs referring back to
-[#48843](https://github.com/cockroachdb/cockroach/issues/48843)). As a result,
+[#48843](https://github.com/semistrict/ratel/issues/48843)). As a result,
 not all of the comments/discussions from the review process made its way back
 to this document, which is being merged "as-is" for documentation purposes.
 Look towards
-[`pkg/migration`](https://github.com/cockroachdb/cockroach/tree/89781b1cd41e7913a08ba459fe63b237a90a4d6e/pkg/migration)
+[`pkg/migration`](https://github.com/semistrict/ratel/tree/89781b1cd41e7913a08ba459fe63b237a90a4d6e/pkg/migration)
 and the comments there for an up-to-date understanding of what's being
 described here. We've annotated the text below with the relevant PRs
 implementing them.___
@@ -107,8 +107,8 @@ migration infrastructure has allowed us to phase in new functionality, but has
 not been able to phase out old functionality. Consider the following examples:
 
 ___**EDIT**: (i) and (ii) below aren't applicable to the long-running migrations
-infrastructure. See [#48436](https://github.com/cockroachdb/cockroach/issues/48436),
-which is more relevant in our new multi-tenant world. (iii) was implemented in [#58088](https://github.com/cockroachdb/cockroach/pull/58088)___
+infrastructure. See [#48436](https://github.com/semistrict/ratel/issues/48436),
+which is more relevant in our new multi-tenant world. (iii) was implemented in [#58088](https://github.com/semistrict/ratel/pull/58088)___
 
 (i) There's a new FK representation (as of 19.2) and we want to make sure all the
   table descriptors use it in some future version. In 19.2, when introducing
@@ -123,7 +123,7 @@ which is more relevant in our new multi-tenant world. (iii) was implemented in [
 
 (ii) Jobs in 2.0 did not support resumability. Currently (as of 20.1), we
   maintain code like the
-  [following](https://github.com/cockroachdb/cockroach/blob/34da566/pkg/jobs/registry.go#L1074-L1085),
+  [following](https://github.com/semistrict/ratel/blob/34da566/pkg/jobs/registry.go#L1074-L1085),
   to deal with the fact that we may be handling jobs with the old
   representation.
 
@@ -180,9 +180,9 @@ running migrations). The `SET CLUSTER SETTING` statement will blocks on the
 completion of the migration.
 
 ___**EDIT**: The callback kick-starting the migration process was introduced in
-[#56368](https://github.com/cockroachdb/cockroach/pull/56368). We're also
+[#56368](https://github.com/semistrict/ratel/pull/56368). We're also
 walking back on not using `system.jobs`, see
-[#58183](https://github.com/cockroachdb/cockroach/issues/58183).___
+[#58183](https://github.com/semistrict/ratel/issues/58183).___
 
 (As an implementation goal, there shouldn't be anything in pkg/sql other than
 the hook described above. The code for all the remaining work should be
@@ -223,7 +223,7 @@ then bump it's local version gate, and only then return to the orchestrator.
 We're thus no longer reliant on gossip to propagate version bumps.
 
 ___**EDIT**: We stripped out our use of gossip from cluster versions as of
-[#56480](https://github.com/cockroachdb/cockroach/pull/56480). Like mentioned
+[#56480](https://github.com/semistrict/ratel/pull/56480). Like mentioned
 above, look towards pkg/migration for the most up-to-date view of the APIs
 proposed here.___
 
@@ -298,12 +298,12 @@ previously decommissioned nodes. This is somewhat of a challenge as things
 stand today, and to understand why we take a brief tangent through how CRDB
 tracks node status through the decommissioning cycle. Consider the liveness
 record proto at the [time of
-writing](https://github.com/cockroachdb/cockroach/blob/b119486a6c3e8/pkg/kv/kvserver/storagepb/liveness.proto#L18-L44):
+writing](https://github.com/semistrict/ratel/blob/b119486a6c3e8/pkg/kv/kvserver/storagepb/liveness.proto#L18-L44):
 
 ```go
 message Liveness {
   int32 node_id = 1 [(gogoproto.customname) = "NodeID",
-      (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.NodeID"];
+      (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.NodeID"];
   // ...
 
   // The timestamp at which this liveness record expires.
@@ -321,20 +321,20 @@ for good. We simply don't represent this state anywhere authoritatively, and
 instead rely on some combination of timer thresholds looking at the record
 `expiration` and the `decommissioning` boolean to report a fully
 "decommissioned" state. See
-[this](https://github.com/cockroachdb/cockroach/blob/b119486a6c3/pkg/kv/kvserver/store_pool.go#L114-L153)
+[this](https://github.com/semistrict/ratel/blob/b119486a6c3/pkg/kv/kvserver/store_pool.go#L114-L153)
 and
-[this](https://github.com/cockroachdb/cockroach/blob/b119486a6c3/pkg/server/admin.go#L1691-L1699)
+[this](https://github.com/semistrict/ratel/blob/b119486a6c3/pkg/server/admin.go#L1691-L1699)
 for examples of this kind of work around. This awkwardness aside, there's also
 nothing preventing a node that was "fully decommissioned" away to then rejoin
 the cluster and remain in this perpetual "decommissioning" state. All this
 makes for confusing UX for our users, and added fragility around systems
 looking for stronger guarantees around the decommissioning lifecycle (long
 running migrations for one!). We've run into this ambiguity before in
-[#45123](https://github.com/cockroachdb/cockroach/issues/45123) (see the linked
+[#45123](https://github.com/semistrict/ratel/issues/45123) (see the linked
 discussions).
 
 ___**EDIT**: We introduced a fully decommissioned bit in
-[#50329](https://github.com/cockroachdb/cockroach/pull/50329).___
+[#50329](https://github.com/semistrict/ratel/pull/50329).___
 
 
 We need re-think a few things here. We want a running CRDB cluster to
@@ -345,10 +345,10 @@ this record to prevent previously decommissioned nodes from rejoining when
 they're not allowed to.
 
 ___**EDIT**: We introduced the "join rpc" in
-[#52526](https://github.com/cockroachdb/cockroach/pull/52526).___
+[#52526](https://github.com/semistrict/ratel/pull/52526).___
 
 This is where the "Connect RPC" comes in.
-[#32574](https://github.com/cockroachdb/cockroach/issues/32574) looks to flesh
+[#32574](https://github.com/semistrict/ratel/issues/32574) looks to flesh
 out the protocol for when a node looks to join a cluster (either an existing
 one, or a fresh one that's yet to be bootstrapped). Specifically it outlines
 the work required for CRDB to be able to allocate NodeIDs by means of a
@@ -366,8 +366,8 @@ binary versions from joining the cluster.
 
 ___**EDIT**: We introduced machinery to prevent decommissioned nodes from
 interacting with the cluster in
-[#54936](https://github.com/cockroachdb/cockroach/pull/54936) and
-[#55286](https://github.com/cockroachdb/cockroach/pull/55286).___
+[#54936](https://github.com/semistrict/ratel/pull/54936) and
+[#55286](https://github.com/semistrict/ratel/pull/55286).___
 
 # Node Additions During Migrations
 
@@ -385,8 +385,8 @@ nodes. (Still, it's uncomfortable that the orchestrator doesn't know about this
 new node.)
 
 ___**EDIT**: We strengthened our invariants around always persisting liveness
-records in [#53842](https://github.com/cockroachdb/cockroach/pull/53842) and
-[#54544](https://github.com/cockroachdb/cockroach/pull/54544).___
+records in [#53842](https://github.com/semistrict/ratel/pull/53842) and
+[#54544](https://github.com/semistrict/ratel/pull/54544).___
 
 If the version the new node starts off with is _not_ the version the
 orchestrator is currently pushing out (the new node happened to connect to a
@@ -408,7 +408,7 @@ migration hook.
 
 ___**EDIT**: We introduced the concept of "fence versions" to reason about safely
 stepping through cluster versions while nodes were being added to the cluster.
-See [#57186](https://github.com/cockroachdb/cockroach/pull/57186).___
+See [#57186](https://github.com/semistrict/ratel/pull/57186).___
 
 ---
 
@@ -440,7 +440,7 @@ through a release. This finally lets us remove all fallback code dealing with
 pre-migration representations of things from the CRDB codebase.
 
 ___**EDIT**: The KV `Migrate` command was introduced in
-[#58088](https://github.com/cockroachdb/cockroach/pull/58088).___
+[#58088](https://github.com/semistrict/ratel/pull/58088).___
 
 Taking the example of (iii), migrating out of the replicated truncated state,
 the code corresponding to the `AdminMigrate` command would effectively retain
@@ -463,20 +463,20 @@ replicas on disk that satisfy some criteria through a specific queue), the
 infrastructure described here lets us build those pieces in as needed.
 
 ___**EDIT**: `EveryNode` was introduced in
-[#57650](https://github.com/cockroachdb/cockroach/pull/57650), andwas
+[#57650](https://github.com/semistrict/ratel/pull/57650), andwas
 eventually changed out to be
-[`UntilClusterStable`](https://github.com/cockroachdb/cockroach/blob/75ad154f19b1abd1bc0ecb7dfd58047bd70a873a/pkg/migration/helper.go#L114-L155).
+[`UntilClusterStable`](https://github.com/semistrict/ratel/blob/75ad154f19b1abd1bc0ecb7dfd58047bd70a873a/pkg/migration/helper.go#L114-L155).
 As for some useful primitives available to authors of migrations, that can be
 used in conjunction with `UntilClusterStable`, look towards [`service
-Migration`](https://github.com/cockroachdb/cockroach/blob/75ad154f19b1abd1bc0ecb7dfd58047bd70a873a/pkg/server/serverpb/migration.proto#L55-L79),
-originally introduced in [#56476](https://github.com/cockroachdb/cockroach/pull/56476).___
+Migration`](https://github.com/semistrict/ratel/blob/75ad154f19b1abd1bc0ecb7dfd58047bd70a873a/pkg/server/serverpb/migration.proto#L55-L79),
+originally introduced in [#56476](https://github.com/semistrict/ratel/pull/56476).___
 
 ---
 
 ## Multi-tenancy
 
 ___**EDIT**: Look towards
-[#48436](https://github.com/cockroachdb/cockroach/issues/48436) for the latest
+[#48436](https://github.com/semistrict/ratel/issues/48436) for the latest
 discussion on this matter. We have yet to do any work here.___
 
 With multi-tenancy being a thing going forward, we need to pay attention to how
@@ -508,7 +508,7 @@ table in the system config span, and establishing a rangefeed over it to
 capture updates.
 
 We can then make use the upgrade pattern outlined in
-[#47919](https://github.com/cockroachdb/cockroach/issues/47919):
+[#47919](https://github.com/semistrict/ratel/issues/47919):
 
 ```
 - Roll KV layer into new binary (Don't finalize)

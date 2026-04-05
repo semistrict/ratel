@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/reduce/reduce"
+	"github.com/semistrict/ratel/pkg/cmd/reduce/reduce"
 )
 
 func TestReduceGo(t *testing.T) {

@@ -27,7 +27,7 @@ package colexechash
 import (
 	"unsafe"
 
-	"github.com/cockroachdb/cockroach/pkg/util/randutil"
+	"github.com/semistrict/ratel/pkg/util/randutil"
 )
 
 const (

@@ -20,9 +20,9 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/colexec/execgen"
-	"github.com/cockroachdb/cockroach/pkg/sql/colexecerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree/treecmp"
+	"github.com/semistrict/ratel/pkg/sql/colexec/execgen"
+	"github.com/semistrict/ratel/pkg/sql/colexecerror"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree/treecmp"
 	"github.com/cockroachdb/errors"
 )
 

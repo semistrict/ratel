@@ -11,7 +11,7 @@ tc_start_block "Variable Setup"
 # Matching the version name regex from within the cockroach code except
 # for the `metadata` part at the end because Docker tags don't support
 # `+` in the tag name.
-# https://github.com/cockroachdb/cockroach/blob/4c6864b44b9044874488cfedee3a31e6b23a6790/pkg/util/version/version.go#L75
+# https://github.com/semistrict/ratel/blob/4c6864b44b9044874488cfedee3a31e6b23a6790/pkg/util/version/version.go#L75
 build_name="$(echo "${NAME}" | grep -E -o '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[-.0-9A-Za-z]+)?$')"
 #                                         ^major           ^minor           ^patch         ^preRelease
 version=$(echo ${build_name} | sed -e 's/^v//' | cut -d- -f 1)
@@ -138,7 +138,7 @@ tc_end_block "Publish binaries and archive as latest-RELEASE_BRANCH"
 
 tc_start_block "Publish binaries and archive as latest"
 # Only push the "latest" for our most recent release branch.
-# https://github.com/cockroachdb/cockroach/issues/41067
+# https://github.com/semistrict/ratel/issues/41067
 if [[ -n "${PUBLISH_LATEST}" && -z "${PRE_RELEASE}" ]]; then
     BAZEL_SUPPORT_EXTRA_DOCKER_ARGS="-e TC_BUILDTYPE_ID -e TC_BUILD_BRANCH=$build_name -e gcs_credentials -e gcs_bucket=$gcs_bucket" run_bazel << 'EOF'
 bazel build --config ci //pkg/cmd/publish-provisional-artifacts
@@ -168,8 +168,8 @@ tc_end_block "Tag docker image as latest-RELEASE_BRANCH"
 tc_start_block "Tag docker image as latest"
 # Only push the "latest" tag for our most recent release branch and for the
 # latest unstable release
-# https://github.com/cockroachdb/cockroach/issues/41067
-# https://github.com/cockroachdb/cockroach/issues/48309
+# https://github.com/semistrict/ratel/issues/41067
+# https://github.com/semistrict/ratel/issues/48309
 if [[ -n "${PUBLISH_LATEST}" ]]; then
   docker push "${dockerhub_repository}:latest"
 else

@@ -18,9 +18,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
-	"github.com/cockroachdb/cockroach/pkg/util/uuid"
+	"github.com/semistrict/ratel/pkg/util"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/util/uuid"
 	"github.com/stretchr/testify/require"
 )
 

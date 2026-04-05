@@ -17,21 +17,21 @@ package fmtsafe
 import (
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils/lint/passes/errwrap"
-	"github.com/cockroachdb/cockroach/pkg/util/log/logpb"
+	"github.com/semistrict/ratel/pkg/testutils/lint/passes/errwrap"
+	"github.com/semistrict/ratel/pkg/util/log/logpb"
 )
 
 // requireConstMsg records functions for which the last string
 // argument must be a constant string.
 var requireConstMsg = map[string]bool{
-	"github.com/cockroachdb/cockroach/pkg/util/log.Shout":     true,
-	"github.com/cockroachdb/cockroach/pkg/util/log.Event":     true,
-	"github.com/cockroachdb/cockroach/pkg/util/log.VEvent":    true,
-	"github.com/cockroachdb/cockroach/pkg/util/log.VErrEvent": true,
+	"github.com/semistrict/ratel/pkg/util/log.Shout":     true,
+	"github.com/semistrict/ratel/pkg/util/log.Event":     true,
+	"github.com/semistrict/ratel/pkg/util/log.VEvent":    true,
+	"github.com/semistrict/ratel/pkg/util/log.VErrEvent": true,
 
-	"(*github.com/cockroachdb/cockroach/pkg/util/tracing/Span).Record": true,
+	"(*github.com/semistrict/ratel/pkg/util/tracing/Span).Record": true,
 
-	"(*github.com/cockroachdb/cockroach/pkg/sql.optPlanningCtx).log": true,
+	"(*github.com/semistrict/ratel/pkg/sql.optPlanningCtx).log": true,
 }
 
 /*
@@ -51,71 +51,71 @@ var requireConstFmt = map[string]bool{
 	"(*log.Logger).Panicf": true,
 	"(*log.Logger).Printf": true,
 
-	"github.com/cockroachdb/cockroach/pkg/util/log.Shoutf":          true,
-	"github.com/cockroachdb/cockroach/pkg/util/log.Eventf":          true,
-	"github.com/cockroachdb/cockroach/pkg/util/log.vEventf":         true,
-	"github.com/cockroachdb/cockroach/pkg/util/log.VEventf":         true,
-	"github.com/cockroachdb/cockroach/pkg/util/log.VErrEventf":      true,
-	"github.com/cockroachdb/cockroach/pkg/util/log.VEventfDepth":    true,
-	"github.com/cockroachdb/cockroach/pkg/util/log.VErrEventfDepth": true,
+	"github.com/semistrict/ratel/pkg/util/log.Shoutf":          true,
+	"github.com/semistrict/ratel/pkg/util/log.Eventf":          true,
+	"github.com/semistrict/ratel/pkg/util/log.vEventf":         true,
+	"github.com/semistrict/ratel/pkg/util/log.VEventf":         true,
+	"github.com/semistrict/ratel/pkg/util/log.VErrEventf":      true,
+	"github.com/semistrict/ratel/pkg/util/log.VEventfDepth":    true,
+	"github.com/semistrict/ratel/pkg/util/log.VErrEventfDepth": true,
 
 	// Note: More of the logging functions are populated here via the
 	// init() function below.
 
-	"github.com/cockroachdb/cockroach/pkg/util/log.MakeLegacyEntry":        true,
-	"github.com/cockroachdb/cockroach/pkg/util/log.makeUnstructuredEntry":  true,
-	"github.com/cockroachdb/cockroach/pkg/util/log.FormatWithContextTags":  true,
-	"github.com/cockroachdb/cockroach/pkg/util/log.formatOnlyArgs":         true,
-	"github.com/cockroachdb/cockroach/pkg/util/log.renderArgsAsRedactable": true,
-	"github.com/cockroachdb/cockroach/pkg/util/log.formatArgs":             true,
-	"github.com/cockroachdb/cockroach/pkg/util/log.logfDepth":              true,
-	"github.com/cockroachdb/cockroach/pkg/util/log.shoutfDepth":            true,
-	"github.com/cockroachdb/cockroach/pkg/util/log.logfDepthInternal":      true,
-	"github.com/cockroachdb/cockroach/pkg/util/log.makeStartLine":          true,
+	"github.com/semistrict/ratel/pkg/util/log.MakeLegacyEntry":        true,
+	"github.com/semistrict/ratel/pkg/util/log.makeUnstructuredEntry":  true,
+	"github.com/semistrict/ratel/pkg/util/log.FormatWithContextTags":  true,
+	"github.com/semistrict/ratel/pkg/util/log.formatOnlyArgs":         true,
+	"github.com/semistrict/ratel/pkg/util/log.renderArgsAsRedactable": true,
+	"github.com/semistrict/ratel/pkg/util/log.formatArgs":             true,
+	"github.com/semistrict/ratel/pkg/util/log.logfDepth":              true,
+	"github.com/semistrict/ratel/pkg/util/log.shoutfDepth":            true,
+	"github.com/semistrict/ratel/pkg/util/log.logfDepthInternal":      true,
+	"github.com/semistrict/ratel/pkg/util/log.makeStartLine":          true,
 
-	"github.com/cockroachdb/cockroach/pkg/util/log/logcrash.ReportOrPanic": true,
+	"github.com/semistrict/ratel/pkg/util/log/logcrash.ReportOrPanic": true,
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb.NewAmbiguousResultErrorf": true,
+	"github.com/semistrict/ratel/pkg/roachpb.NewAmbiguousResultErrorf": true,
 
-	"(*github.com/cockroachdb/cockroach/pkg/util/tracing.Span).Recordf":      true,
-	"(*github.com/cockroachdb/cockroach/pkg/util/tracing.spanInner).Recordf": true,
+	"(*github.com/semistrict/ratel/pkg/util/tracing.Span).Recordf":      true,
+	"(*github.com/semistrict/ratel/pkg/util/tracing.spanInner).Recordf": true,
 
-	"(github.com/cockroachdb/cockroach/pkg/rpc.breakerLogger).Debugf": true,
-	"(github.com/cockroachdb/cockroach/pkg/rpc.breakerLogger).Infof":  true,
+	"(github.com/semistrict/ratel/pkg/rpc.breakerLogger).Debugf": true,
+	"(github.com/semistrict/ratel/pkg/rpc.breakerLogger).Infof":  true,
 
-	"(*github.com/cockroachdb/cockroach/pkg/internal/rsg/yacc.Tree).errorf": true,
+	"(*github.com/semistrict/ratel/pkg/internal/rsg/yacc.Tree).errorf": true,
 
-	"(github.com/cockroachdb/cockroach/pkg/storage.pebbleLogger).Infof":  true,
-	"(github.com/cockroachdb/cockroach/pkg/storage.pebbleLogger).Fatalf": true,
+	"(github.com/semistrict/ratel/pkg/storage.pebbleLogger).Infof":  true,
+	"(github.com/semistrict/ratel/pkg/storage.pebbleLogger).Fatalf": true,
 
-	"(*github.com/cockroachdb/cockroach/pkg/util/grpcutil.grpcLogger).Infof":    true,
-	"(*github.com/cockroachdb/cockroach/pkg/util/grpcutil.grpcLogger).Warningf": true,
-	"(*github.com/cockroachdb/cockroach/pkg/util/grpcutil.grpcLogger).Errorf":   true,
-	"(*github.com/cockroachdb/cockroach/pkg/util/grpcutil.grpcLogger).Fatalf":   true,
+	"(*github.com/semistrict/ratel/pkg/util/grpcutil.grpcLogger).Infof":    true,
+	"(*github.com/semistrict/ratel/pkg/util/grpcutil.grpcLogger).Warningf": true,
+	"(*github.com/semistrict/ratel/pkg/util/grpcutil.grpcLogger).Errorf":   true,
+	"(*github.com/semistrict/ratel/pkg/util/grpcutil.grpcLogger).Fatalf":   true,
 
 	// Both of these signatures need to be included for the linter to not flag
 	// roachtest testImpl.addFailure since it is in the main package
-	"(*github.com/cockroachdb/cockroach/pkg/cmd/roachtest.testImpl).addFailure": true,
+	"(*github.com/semistrict/ratel/pkg/cmd/roachtest.testImpl).addFailure": true,
 	"(*main.testImpl).addFailure": true,
 
-	"(*github.com/cockroachdb/cockroach/pkg/cmd/roachtest.testImpl).addFailureAndCancel": true,
+	"(*github.com/semistrict/ratel/pkg/cmd/roachtest.testImpl).addFailureAndCancel": true,
 	"(*main.testImpl).addFailureAndCancel":                                               true,
 
 	"(*main.testImpl).Fatalf": true,
-	"(*github.com/cockroachdb/cockroach/pkg/cmd/roachtest.testImpl).Fatalf": true,
+	"(*github.com/semistrict/ratel/pkg/cmd/roachtest.testImpl).Fatalf": true,
 
 	"(*main.testImpl).Errorf": true,
-	"(*github.com/cockroachdb/cockroach/pkg/cmd/roachtest.testImpl).Errorf": true,
+	"(*github.com/semistrict/ratel/pkg/cmd/roachtest.testImpl).Errorf": true,
 
-	"(*github.com/cockroachdb/cockroach/pkg/kv/kvserver.raftLogger).Debugf":   true,
-	"(*github.com/cockroachdb/cockroach/pkg/kv/kvserver.raftLogger).Infof":    true,
-	"(*github.com/cockroachdb/cockroach/pkg/kv/kvserver.raftLogger).Warningf": true,
-	"(*github.com/cockroachdb/cockroach/pkg/kv/kvserver.raftLogger).Errorf":   true,
-	"(*github.com/cockroachdb/cockroach/pkg/kv/kvserver.raftLogger).Fatalf":   true,
-	"(*github.com/cockroachdb/cockroach/pkg/kv/kvserver.raftLogger).Panicf":   true,
+	"(*github.com/semistrict/ratel/pkg/kv/kvserver.raftLogger).Debugf":   true,
+	"(*github.com/semistrict/ratel/pkg/kv/kvserver.raftLogger).Infof":    true,
+	"(*github.com/semistrict/ratel/pkg/kv/kvserver.raftLogger).Warningf": true,
+	"(*github.com/semistrict/ratel/pkg/kv/kvserver.raftLogger).Errorf":   true,
+	"(*github.com/semistrict/ratel/pkg/kv/kvserver.raftLogger).Fatalf":   true,
+	"(*github.com/semistrict/ratel/pkg/kv/kvserver.raftLogger).Panicf":   true,
 
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver.makeNonDeterministicFailure":     true,
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver.wrapWithNonDeterministicFailure": true,
+	"github.com/semistrict/ratel/pkg/kv/kvserver.makeNonDeterministicFailure":     true,
+	"github.com/semistrict/ratel/pkg/kv/kvserver.wrapWithNonDeterministicFailure": true,
 
 	"(go.etcd.io/etcd/raft/v3.Logger).Debugf":   true,
 	"(go.etcd.io/etcd/raft/v3.Logger).Infof":    true,
@@ -134,19 +134,19 @@ var requireConstFmt = map[string]bool{
 	"(github.com/cockroachdb/circuitbreaker.Logger).Infof":  true,
 	"(github.com/cockroachdb/circuitbreaker.Logger).Debugf": true,
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/optgen/exprgen.errorf": true,
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/optgen/exprgen.wrapf":  true,
+	"github.com/semistrict/ratel/pkg/sql/opt/optgen/exprgen.errorf": true,
+	"github.com/semistrict/ratel/pkg/sql/opt/optgen/exprgen.wrapf":  true,
 
-	"(*github.com/cockroachdb/cockroach/pkg/sql.connExecutor).sessionEventf": true,
+	"(*github.com/semistrict/ratel/pkg/sql.connExecutor).sessionEventf": true,
 
-	"(*github.com/cockroachdb/cockroach/pkg/sql/logictest.logicTest).outf":   true,
-	"(*github.com/cockroachdb/cockroach/pkg/sql/logictest.logicTest).Errorf": true,
-	"(*github.com/cockroachdb/cockroach/pkg/sql/logictest.logicTest).Fatalf": true,
+	"(*github.com/semistrict/ratel/pkg/sql/logictest.logicTest).outf":   true,
+	"(*github.com/semistrict/ratel/pkg/sql/logictest.logicTest).Errorf": true,
+	"(*github.com/semistrict/ratel/pkg/sql/logictest.logicTest).Fatalf": true,
 
-	"github.com/cockroachdb/cockroach/pkg/server.serverErrorf":        true,
-	"github.com/cockroachdb/cockroach/pkg/server.guaranteedExitFatal": true,
+	"github.com/semistrict/ratel/pkg/server.serverErrorf":        true,
+	"github.com/semistrict/ratel/pkg/server.guaranteedExitFatal": true,
 
-	"(*github.com/cockroachdb/cockroach/pkg/ccl/changefeedccl.kafkaLogAdapter).Printf": true,
+	"(*github.com/semistrict/ratel/pkg/ccl/changefeedccl.kafkaLogAdapter).Printf": true,
 
 	"github.com/cockroachdb/redact.Sprintf":              true,
 	"github.com/cockroachdb/redact.Fprintf":              true,
@@ -154,7 +154,7 @@ var requireConstFmt = map[string]bool{
 	"(github.com/cockroachdb/redact.SafeWriter).Printf":  true,
 	"(*github.com/cockroachdb/redact.printer).Printf":    true,
 
-	"(*github.com/cockroachdb/cockroach/pkg/sql/pgwire.authPipe).Logf": true,
+	"(*github.com/semistrict/ratel/pkg/sql/pgwire.authPipe).Logf": true,
 
 	// Error things are populated in the init() message.
 }
@@ -163,32 +163,32 @@ func init() {
 	for _, sev := range logpb.Severity_name {
 		capsev := strings.Title(strings.ToLower(sev))
 		// log.Infof, log.Warningf etc.
-		requireConstFmt["github.com/cockroachdb/cockroach/pkg/util/log."+capsev+"f"] = true
+		requireConstFmt["github.com/semistrict/ratel/pkg/util/log."+capsev+"f"] = true
 		// log.VInfof, log.VWarningf etc.
-		requireConstFmt["github.com/cockroachdb/cockroach/pkg/util/log.V"+capsev+"f"] = true
+		requireConstFmt["github.com/semistrict/ratel/pkg/util/log.V"+capsev+"f"] = true
 		// log.InfofDepth, log.WarningfDepth, etc.
-		requireConstFmt["github.com/cockroachdb/cockroach/pkg/util/log."+capsev+"fDepth"] = true
+		requireConstFmt["github.com/semistrict/ratel/pkg/util/log."+capsev+"fDepth"] = true
 		// log.Info, log.Warning, etc.
-		requireConstMsg["github.com/cockroachdb/cockroach/pkg/util/log."+capsev] = true
+		requireConstMsg["github.com/semistrict/ratel/pkg/util/log."+capsev] = true
 
 		for _, ch := range logpb.Channel_name {
 			capch := strings.ReplaceAll(strings.Title(strings.ReplaceAll(strings.ToLower(ch), "_", " ")), " ", "")
 			// log.Ops.Infof, log.Ops.Warningf, etc.
-			requireConstFmt["(github.com/cockroachdb/cockroach/pkg/util/log.logger"+capch+")."+capsev+"f"] = true
+			requireConstFmt["(github.com/semistrict/ratel/pkg/util/log.logger"+capch+")."+capsev+"f"] = true
 			// log.Ops.VInfof, log.Ops.VWarningf, etc.
-			requireConstFmt["(github.com/cockroachdb/cockroach/pkg/util/log.logger"+capch+").V"+capsev+"f"] = true
+			requireConstFmt["(github.com/semistrict/ratel/pkg/util/log.logger"+capch+").V"+capsev+"f"] = true
 			// log.Ops.InfofDepth, log.Ops.WarningfDepth, etc.
-			requireConstFmt["(github.com/cockroachdb/cockroach/pkg/util/log.logger"+capch+")."+capsev+"fDepth"] = true
+			requireConstFmt["(github.com/semistrict/ratel/pkg/util/log.logger"+capch+")."+capsev+"fDepth"] = true
 			// log.Ops.Info, logs.Ops.Warning, etc.
-			requireConstMsg["(github.com/cockroachdb/cockroach/pkg/util/log.logger"+capch+")."+capsev] = true
+			requireConstMsg["(github.com/semistrict/ratel/pkg/util/log.logger"+capch+")."+capsev] = true
 		}
 	}
 	for _, ch := range logpb.Channel_name {
 		capch := strings.ReplaceAll(strings.Title(strings.ReplaceAll(strings.ToLower(ch), "_", " ")), " ", "")
 		// log.Ops.Shoutf, log.Dev.Shoutf, etc.
-		requireConstFmt["(github.com/cockroachdb/cockroach/pkg/util/log.logger"+capch+").Shoutf"] = true
+		requireConstFmt["(github.com/semistrict/ratel/pkg/util/log.logger"+capch+").Shoutf"] = true
 		// log.Ops.Shout, log.Dev.Shout, etc.
-		requireConstMsg["(github.com/cockroachdb/cockroach/pkg/util/log.logger"+capch+").Shout"] = true
+		requireConstMsg["(github.com/semistrict/ratel/pkg/util/log.logger"+capch+").Shout"] = true
 	}
 
 	for errorFn, formatStringIndex := range errwrap.ErrorFnFormatStringIndex {

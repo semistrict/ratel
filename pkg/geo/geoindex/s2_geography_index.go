@@ -17,10 +17,10 @@ package geoindex
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/geo"
-	"github.com/cockroachdb/cockroach/pkg/geo/geogfn"
-	"github.com/cockroachdb/cockroach/pkg/geo/geopb"
-	"github.com/cockroachdb/cockroach/pkg/geo/geoprojbase"
+	"github.com/semistrict/ratel/pkg/geo"
+	"github.com/semistrict/ratel/pkg/geo/geogfn"
+	"github.com/semistrict/ratel/pkg/geo/geopb"
+	"github.com/semistrict/ratel/pkg/geo/geoprojbase"
 	"github.com/cockroachdb/errors"
 	"github.com/golang/geo/s1"
 	"github.com/golang/geo/s2"

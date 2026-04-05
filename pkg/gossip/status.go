@@ -17,7 +17,7 @@ package gossip
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
+	"github.com/semistrict/ratel/pkg/util/metric"
 	"github.com/cockroachdb/redact"
 )
 

@@ -22,11 +22,11 @@ package server
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/rpc"
-	"github.com/cockroachdb/cockroach/pkg/server/serverpb"
-	"github.com/cockroachdb/cockroach/pkg/server/telemetry"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/rpc"
+	"github.com/semistrict/ratel/pkg/server/serverpb"
+	"github.com/semistrict/ratel/pkg/server/telemetry"
+	"github.com/semistrict/ratel/pkg/util/log"
 	gwruntime "github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"

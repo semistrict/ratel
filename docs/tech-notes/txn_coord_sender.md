@@ -171,8 +171,8 @@ faster than letting the RootTxn discover this state later at the first
 next KV operation launched on its behalf.
 
 Related issues:
-https://github.com/cockroachdb/cockroach/issues/41222
-https://github.com/cockroachdb/cockroach/issues/41992
+https://github.com/semistrict/ratel/issues/41222
+https://github.com/semistrict/ratel/issues/41992
 
 ## client.Txn, meta and TxnCoordSender
 
@@ -180,12 +180,12 @@ The two sections above used a simplified picture using
 a single "transaction object".
 
 In truth, the [type
-`*client.Txn`](https://github.com/cockroachdb/cockroach/blob/a57647381a4714b48f6ec6dec0bf766eaa6746dd/pkg/internal/client/txn.go#L32)
+`*client.Txn`](https://github.com/semistrict/ratel/blob/a57647381a4714b48f6ec6dec0bf766eaa6746dd/pkg/internal/client/txn.go#L32)
 is merely a thin facade for the SQL client. It contains, between other things:
 
 - a type tag (RootTxn/LeafTxn)
 - a reference of [interface type
-  `TxnSender`](https://github.com/cockroachdb/cockroach/blob/a57647381a4714b48f6ec6dec0bf766eaa6746dd/pkg/internal/client/sender.go#L57),
+  `TxnSender`](https://github.com/semistrict/ratel/blob/a57647381a4714b48f6ec6dec0bf766eaa6746dd/pkg/internal/client/sender.go#L57),
   which abstracts the `Send()` operation to send batch requests to the
   rest of the cluster.
 
@@ -197,7 +197,7 @@ other in-flight txn properties stored?
 
 The object referenced by `*client.Txn` is an instance of a coordinator
 component called the "TxnCoordSender" of [type
-`kv.TxnCoordSender`](https://github.com/cockroachdb/cockroach/blob/a57647381a4714b48f6ec6dec0bf766eaa6746dd/pkg/kv/txn_coord_sender.go#L104).
+`kv.TxnCoordSender`](https://github.com/semistrict/ratel/blob/a57647381a4714b48f6ec6dec0bf766eaa6746dd/pkg/kv/txn_coord_sender.go#L104).
 
 The TxnCoordSender (hereafter abbreviated TCS), as its name implies,
 is in charge of maintaining the state of the txn at the top of the KV
@@ -209,11 +209,11 @@ The TCS is also, itself, a rather thin data structure.
 
 Its main payload is what the KV team actually calls the "txn object",
 of [type
-`roachpb.Transaction`](https://github.com/cockroachdb/cockroach/blob/a57647381a4714b48f6ec6dec0bf766eaa6746dd/pkg/roachpb/data.proto#L302),
+`roachpb.Transaction`](https://github.com/semistrict/ratel/blob/a57647381a4714b48f6ec6dec0bf766eaa6746dd/pkg/roachpb/data.proto#L302),
 which in turn also
-[contains](https://github.com/cockroachdb/cockroach/blob/a57647381a4714b48f6ec6dec0bf766eaa6746dd/pkg/roachpb/data.proto#L310)
+[contains](https://github.com/semistrict/ratel/blob/a57647381a4714b48f6ec6dec0bf766eaa6746dd/pkg/roachpb/data.proto#L310)
 a copy of the "txn meta" object, of [type
-`enginepb.TxnMeta`](https://github.com/cockroachdb/cockroach/blob/a57647381a4714b48f6ec6dec0bf766eaa6746dd/pkg/storage/engine/enginepb/mvcc3.proto#L18).
+`enginepb.TxnMeta`](https://github.com/semistrict/ratel/blob/a57647381a4714b48f6ec6dec0bf766eaa6746dd/pkg/storage/engine/enginepb/mvcc3.proto#L18).
 
 The separation of purpose between `roachpb.Transaction` and
 `enginepb.TxnMeta` is not further relevant in this RFC, and we will just
@@ -246,7 +246,7 @@ BatchRequests to "the cluster".
 In truth, "the cluster" is the entry point of the distribution layer,
 the overall architectural layer immediately under the transaction
 layer in CockroachDb.  Its entry point is an object called
-[`DistSender`](https://github.com/cockroachdb/cockroach/blob/a57647381a4714b48f6ec6dec0bf766eaa6746dd/pkg/kv/dist_sender.go),
+[`DistSender`](https://github.com/semistrict/ratel/blob/a57647381a4714b48f6ec6dec0bf766eaa6746dd/pkg/kv/dist_sender.go),
 of which there is one instance per node.
 
 The interface between TCS and DistSender is an interface
@@ -272,11 +272,11 @@ coordination. Each also contains additional local state.
 Two example interceptors that happen to be relevant to this RFC are:
 
 - the
-  [`txnSpanRefresher`](https://github.com/cockroachdb/cockroach/blob/a57647381a4714b48f6ec6dec0bf766eaa6746dd/pkg/kv/txn_interceptor_span_refresher.go#L103),
+  [`txnSpanRefresher`](https://github.com/semistrict/ratel/blob/a57647381a4714b48f6ec6dec0bf766eaa6746dd/pkg/kv/txn_interceptor_span_refresher.go#L103),
   which contains and manages the read and write refresh spans already
   mentioned above.
 - the
-  [`txnSeqNumAllocator`](https://github.com/cockroachdb/cockroach/blob/a57647381a4714b48f6ec6dec0bf766eaa6746dd/pkg/kv/txn_interceptor_seq_num_allocator.go#L58),
+  [`txnSeqNumAllocator`](https://github.com/semistrict/ratel/blob/a57647381a4714b48f6ec6dec0bf766eaa6746dd/pkg/kv/txn_interceptor_seq_num_allocator.go#L58),
   which assigns [sequence numbers](#KV-sequence-numbers) to individual KV
   operations in batches.
 
@@ -286,9 +286,9 @@ Thus, in reality, the call stack looks more like this:
 
 TCSs allocated for RootTxns use [the full pipeline of
 interceptors (6 of them as of this
-writing)](https://github.com/cockroachdb/cockroach/blob/a57647381a4714b48f6ec6dec0bf766eaa6746dd/pkg/kv/txn_coord_sender.go#L529),
+writing)](https://github.com/semistrict/ratel/blob/a57647381a4714b48f6ec6dec0bf766eaa6746dd/pkg/kv/txn_coord_sender.go#L529),
 whereas LeafTxns, which only handle read requests, use [only a
-subset](https://github.com/cockroachdb/cockroach/blob/a57647381a4714b48f6ec6dec0bf766eaa6746dd/pkg/kv/txn_coord_sender.go#L556).
+subset](https://github.com/semistrict/ratel/blob/a57647381a4714b48f6ec6dec0bf766eaa6746dd/pkg/kv/txn_coord_sender.go#L556).
 
 ## TxnCoordSender state
 
@@ -571,7 +571,7 @@ This restriction exists for 3 reasons, one of them actually invalid
   write. So there is no requirement of read-the-writes inside a single
   SQL statement. The current crdb behavior actually is a bug, our
   [current halloween
-  problem](https://github.com/cockroachdb/cockroach/issues/28842).
+  problem](https://github.com/semistrict/ratel/issues/28842).
   Since LeafTxns are re-generated across SQL statements, it's trivial
   to get the right semantics without a restriction on LeafTxn/RootTxn
   concurrency.)
@@ -676,5 +676,5 @@ Here it would also work, as follows:
 By ensuring that the read path only sees the writes prior to the
 seqnum at the start of execution, it will be unaffected by subsequent
 writes. This solves crdb's [current halloween
-problem](https://github.com/cockroachdb/cockroach/issues/28842).
+problem](https://github.com/semistrict/ratel/issues/28842).
 

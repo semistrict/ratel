@@ -252,7 +252,7 @@ rename_col  CREATE TABLE public.rename_col (
               FAMILY fam_1_c (e)
             )
 
-# Regression tests for https://github.com/cockroachdb/cockroach/issues/41007.
+# Regression tests for https://github.com/semistrict/ratel/issues/41007.
 statement ok
 CREATE TABLE xyz (x INT PRIMARY KEY, y INT, z INT, FAMILY (x, y), FAMILY (z), INDEX (y))
 

@@ -46,12 +46,12 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/server/serverpb"
-	"github.com/cockroachdb/cockroach/pkg/server/telemetry"
-	"github.com/cockroachdb/cockroach/pkg/sql/roleoption"
-	"github.com/cockroachdb/cockroach/pkg/util/httputil"
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/server/serverpb"
+	"github.com/semistrict/ratel/pkg/server/telemetry"
+	"github.com/semistrict/ratel/pkg/sql/roleoption"
+	"github.com/semistrict/ratel/pkg/util/httputil"
+	"github.com/semistrict/ratel/pkg/util/metric"
 	"github.com/gorilla/mux"
 )
 

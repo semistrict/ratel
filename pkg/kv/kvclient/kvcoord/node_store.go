@@ -14,7 +14,7 @@
 
 package kvcoord
 
-import "github.com/cockroachdb/cockroach/pkg/roachpb"
+import "github.com/semistrict/ratel/pkg/roachpb"
 
 // NodeDescStore stores a collection of NodeDescriptors.
 //

@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"testing"
 
-	_ "github.com/cockroachdb/cockroach/pkg/util/log" // for flags
+	_ "github.com/semistrict/ratel/pkg/util/log" // for flags
 	"github.com/cockroachdb/errors"
 )
 

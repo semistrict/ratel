@@ -18,22 +18,22 @@ import (
 	"context"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/kv"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/desctestutils"
-	"github.com/cockroachdb/cockroach/pkg/sql/execinfra"
-	"github.com/cockroachdb/cockroach/pkg/sql/execinfrapb"
-	"github.com/cockroachdb/cockroach/pkg/sql/rowenc"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/testutils/distsqlutils"
-	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
-	"github.com/cockroachdb/cockroach/pkg/testutils/sqlutils"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/tracing"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/kv"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	"github.com/semistrict/ratel/pkg/sql/catalog/desctestutils"
+	"github.com/semistrict/ratel/pkg/sql/execinfra"
+	"github.com/semistrict/ratel/pkg/sql/execinfrapb"
+	"github.com/semistrict/ratel/pkg/sql/rowenc"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/testutils/distsqlutils"
+	"github.com/semistrict/ratel/pkg/testutils/serverutils"
+	"github.com/semistrict/ratel/pkg/testutils/sqlutils"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/tracing"
 	"github.com/stretchr/testify/require"
 )
 
@@ -103,12 +103,12 @@ func TestZigzagJoiner(t *testing.T) {
 		true, /* shouldPrint */
 	)
 
-	// Drop a column to test https://github.com/cockroachdb/cockroach/issues/37196
+	// Drop a column to test https://github.com/semistrict/ratel/issues/37196
 	_, err := sqlDB.Exec("ALTER TABLE test.empty DROP COLUMN x")
 	require.NoError(t, err)
 
 	// Drop and add an index to test
-	// https://github.com/cockroachdb/cockroach/issues/42164.
+	// https://github.com/semistrict/ratel/issues/42164.
 	_, err = sqlDB.Exec("DROP INDEX test.empty@d")
 	require.NoError(t, err)
 	_, err = sqlDB.Exec("CREATE INDEX d ON test.empty(d)")

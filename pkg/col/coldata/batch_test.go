@@ -19,10 +19,10 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/cockroachdb/cockroach/pkg/col/coldata"
-	"github.com/cockroachdb/cockroach/pkg/sql/colconv"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/col/coldata"
+	"github.com/semistrict/ratel/pkg/sql/colconv"
+	"github.com/semistrict/ratel/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 	"github.com/stretchr/testify/assert"
 )
 

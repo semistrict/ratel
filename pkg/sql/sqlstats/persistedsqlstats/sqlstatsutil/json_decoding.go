@@ -15,8 +15,8 @@
 package sqlstatsutil
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/json"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/json"
 	"github.com/cockroachdb/errors"
 )
 

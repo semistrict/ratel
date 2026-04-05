@@ -17,10 +17,10 @@ package physicalplan
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/execinfrapb"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree/treebin"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/sql/execinfrapb"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree/treebin"
+	"github.com/semistrict/ratel/pkg/sql/types"
 )
 
 // FinalStageInfo is a wrapper around an aggregation function performed

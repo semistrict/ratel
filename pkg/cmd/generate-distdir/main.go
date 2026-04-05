@@ -20,8 +20,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/build/bazel"
-	"github.com/cockroachdb/cockroach/pkg/build/starlarkutil"
+	"github.com/semistrict/ratel/pkg/build/bazel"
+	"github.com/semistrict/ratel/pkg/build/starlarkutil"
 	"github.com/google/skylark/syntax"
 )
 

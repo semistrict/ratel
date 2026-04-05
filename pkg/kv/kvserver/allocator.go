@@ -23,14 +23,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/clusterversion"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/constraint"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/settings"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/clusterversion"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/constraint"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/settings"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/metric"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 	"github.com/cockroachdb/errors"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/tracker"
@@ -1771,7 +1771,7 @@ func (a *Allocator) TransferLeaseTarget(
 		// leaseholder's load to the replica that receives the lease. This will not
 		// be true in all cases (some percentage of the leaseholder's traffic could
 		// be follower read traffic). See
-		// https://github.com/cockroachdb/cockroach/issues/75630.
+		// https://github.com/semistrict/ratel/issues/75630.
 		bestStore, noRebalanceReason := bestStoreToMinimizeQPSDelta(
 			leaseReplQPS,
 			qpsRebalanceThreshold.Get(&a.storePool.st.SV),

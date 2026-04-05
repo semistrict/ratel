@@ -15,8 +15,8 @@
 package tpcc
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/util/bufalloc"
-	"github.com/cockroachdb/cockroach/pkg/workload/workloadimpl"
+	"github.com/semistrict/ratel/pkg/util/bufalloc"
+	"github.com/semistrict/ratel/pkg/workload/workloadimpl"
 	"golang.org/x/exp/rand"
 )
 

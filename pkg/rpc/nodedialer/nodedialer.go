@@ -22,14 +22,14 @@ import (
 	"unsafe"
 
 	circuit "github.com/cockroachdb/circuitbreaker"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvbase"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/rpc"
-	"github.com/cockroachdb/cockroach/pkg/util/grpcutil"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/stop"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
-	"github.com/cockroachdb/cockroach/pkg/util/tracing"
+	"github.com/semistrict/ratel/pkg/kv/kvbase"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/rpc"
+	"github.com/semistrict/ratel/pkg/util/grpcutil"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/stop"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/util/tracing"
 	"github.com/cockroachdb/errors"
 	"google.golang.org/grpc"
 )
@@ -268,7 +268,7 @@ func (n *Dialer) ConnHealth(nodeID roachpb.NodeID, class rpc.ConnectionClass) er
 // latency if the remote node is unresponsive (e.g. if the server/VM is shut
 // down), and should be avoided in latency-sensitive code paths. Preferably,
 // this should be replaced by some other mechanism to maintain RPC connections.
-// See also: https://github.com/cockroachdb/cockroach/issues/70111
+// See also: https://github.com/semistrict/ratel/issues/70111
 func (n *Dialer) ConnHealthTryDial(nodeID roachpb.NodeID, class rpc.ConnectionClass) error {
 	err := n.ConnHealth(nodeID, class)
 	if err == nil || !n.getBreaker(nodeID, class).Ready() {

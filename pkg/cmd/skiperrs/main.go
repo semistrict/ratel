@@ -24,7 +24,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/cr2pg/sqlstream"
+	"github.com/semistrict/ratel/pkg/cmd/cr2pg/sqlstream"
 	"github.com/lib/pq"
 )
 

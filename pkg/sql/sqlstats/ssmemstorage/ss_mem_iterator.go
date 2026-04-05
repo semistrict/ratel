@@ -17,8 +17,8 @@ package ssmemstorage
 import (
 	"sort"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlstats"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/sql/sqlstats"
 )
 
 type baseIterator struct {

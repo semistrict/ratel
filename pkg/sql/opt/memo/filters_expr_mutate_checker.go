@@ -15,7 +15,7 @@
 package memo
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/util/buildutil"
+	"github.com/semistrict/ratel/pkg/util/buildutil"
 	"github.com/cockroachdb/errors"
 )
 

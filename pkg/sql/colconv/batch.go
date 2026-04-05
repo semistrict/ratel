@@ -17,7 +17,7 @@ package colconv
 import (
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/col/coldata"
+	"github.com/semistrict/ratel/pkg/col/coldata"
 )
 
 func init() {

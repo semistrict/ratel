@@ -20,10 +20,10 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/util/caller"
-	"github.com/cockroachdb/cockroach/pkg/util/ctxgroup"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/util/caller"
+	"github.com/semistrict/ratel/pkg/util/ctxgroup"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 	"github.com/stretchr/testify/require"
 )
 

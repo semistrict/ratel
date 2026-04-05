@@ -28,7 +28,7 @@ package migration
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/clusterversion"
+	"github.com/semistrict/ratel/pkg/clusterversion"
 )
 
 // Migration defines a program to be executed once every node in the cluster is

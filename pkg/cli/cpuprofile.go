@@ -23,14 +23,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/server/debug"
-	"github.com/cockroachdb/cockroach/pkg/server/dumpstore"
-	"github.com/cockroachdb/cockroach/pkg/settings"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/util/envutil"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/log/logcrash"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/server/debug"
+	"github.com/semistrict/ratel/pkg/server/dumpstore"
+	"github.com/semistrict/ratel/pkg/settings"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/util/envutil"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/log/logcrash"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 )
 
 var maxCombinedCPUProfFileSize = settings.RegisterByteSizeSetting(

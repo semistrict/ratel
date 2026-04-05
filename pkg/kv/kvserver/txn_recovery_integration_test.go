@@ -21,13 +21,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/kv"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/stop"
+	"github.com/semistrict/ratel/pkg/kv"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/stop"
 	"github.com/stretchr/testify/require"
 )
 
@@ -339,7 +339,7 @@ func TestTxnRecoveryFromStagingWithHighPriority(t *testing.T) {
 // Because the fix for this relies on separated intents, the bug will continue
 // to be present until the planned migration in 21.2. Since tests currently
 // enable separated intents at random, we assert the buggy behavior when these
-// are disabled. See also: https://github.com/cockroachdb/cockroach/issues/46764
+// are disabled. See also: https://github.com/semistrict/ratel/issues/46764
 func TestTxnClearRangeIntents(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)

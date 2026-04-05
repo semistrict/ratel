@@ -17,9 +17,9 @@ package types_test
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/typedesc"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	"github.com/semistrict/ratel/pkg/sql/catalog/typedesc"
+	"github.com/semistrict/ratel/pkg/sql/types"
 	"github.com/stretchr/testify/require"
 )
 

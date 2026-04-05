@@ -2,8 +2,8 @@
 - Status: in-progress
 - Start Date: 2021-05-20
 - Authors: Richard Cai
-- RFC PR: [65794](https://github.com/cockroachdb/cockroach/pull/65794)
-- Cockroach Issue: [64613](https://github.com/cockroachdb/cockroach/issues/64613), [65604](https://github.com/cockroachdb/cockroach/issues/65604)
+- RFC PR: [65794](https://github.com/semistrict/ratel/pull/65794)
+- Cockroach Issue: [64613](https://github.com/semistrict/ratel/issues/64613), [65604](https://github.com/semistrict/ratel/issues/65604)
 
 # Summary
 
@@ -78,7 +78,7 @@ To store default privileges, we can continue to use PrivilegeDescriptors (either
 - Default privileges can get arbitrarily large
   - This is not any more problematic than how we currently store privileges on descriptors, default privileges in almost all cases should be smaller than the privilege descriptor itself.
   
-Note: the public schema currently does not have a SchemaDescriptor. It may be be a good idea to wait until the work to migrate away from descriptor-less public schemas to be complete before working on supporting default privileges for schemas. Relevant issue: [#55793](https://github.com/cockroachdb/cockroach/issues/55793). 
+Note: the public schema currently does not have a SchemaDescriptor. It may be be a good idea to wait until the work to migrate away from descriptor-less public schemas to be complete before working on supporting default privileges for schemas. Relevant issue: [#55793](https://github.com/semistrict/ratel/issues/55793). 
 
 #### Alternative: Store default privileges in a table (like `pg_default_acl`)
 

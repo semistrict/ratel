@@ -18,7 +18,7 @@ import (
 	"database/sql/driver"
 	"io"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/clisqlclient"
+	"github.com/semistrict/ratel/pkg/cli/clisqlclient"
 )
 
 func getAllRowStrings(

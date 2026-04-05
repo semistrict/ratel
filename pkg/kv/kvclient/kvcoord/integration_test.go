@@ -20,17 +20,17 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/kv"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverbase"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/txnwait"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
-	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/uuid"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/kv"
+	"github.com/semistrict/ratel/pkg/kv/kvserver"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverbase"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/txnwait"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/testutils/serverutils"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/uuid"
 )
 
 // This file contains contains integration tests that don't fit anywhere else.
@@ -52,7 +52,7 @@ import (
 // true) and that its external intent (i.e. the one on the right range) could
 // be resolved (not true). Verify that neither occurs.
 //
-// [1]: https://github.com/cockroachdb/cockroach/issues/34025#issuecomment-460934278
+// [1]: https://github.com/semistrict/ratel/issues/34025#issuecomment-460934278
 func TestWaiterOnRejectedCommit(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)

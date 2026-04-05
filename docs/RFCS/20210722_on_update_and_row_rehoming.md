@@ -2,8 +2,8 @@
 - Status: in-progress
 - Start Date: 2021-07-22
 - Authors: Peyton Walters
-- RFC PR: [#67969](https://github.com/cockroachdb/cockroach/pull/67969)
-- Cockroach Issue: [#28281](https://github.com/cockroachdb/cockroach/issues/28281), [#65532](https://github.com/cockroachdb/cockroach/issues/65532)
+- RFC PR: [#67969](https://github.com/semistrict/ratel/pull/67969)
+- Cockroach Issue: [#28281](https://github.com/semistrict/ratel/issues/28281), [#65532](https://github.com/semistrict/ratel/issues/65532)
 
 # Summary
 
@@ -323,7 +323,7 @@ Unfortunately, it requires custom logic in the optimizer which is undesirable as
 the optimizer is designed to be as general as possible. See notes on the
 prototype for this approach:
 
-https://github.com/cockroachdb/cockroach/pull/66604#pullrequestreview-688564136
+https://github.com/semistrict/ratel/pull/66604#pullrequestreview-688564136
 
 #### Alternative 2: Wait for triggers
 

@@ -17,8 +17,8 @@ package addr_test
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils"
-	"github.com/cockroachdb/cockroach/pkg/util/netutil/addr"
+	"github.com/semistrict/ratel/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/util/netutil/addr"
 )
 
 func TestSplitHostPort(t *testing.T) {

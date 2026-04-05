@@ -22,17 +22,17 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/kv"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/util/ctxgroup"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/retry"
-	"github.com/cockroachdb/cockroach/pkg/util/span"
-	"github.com/cockroachdb/cockroach/pkg/util/stop"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/kv"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/util/ctxgroup"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/retry"
+	"github.com/semistrict/ratel/pkg/util/span"
+	"github.com/semistrict/ratel/pkg/util/stop"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/logtags"
 	"github.com/cockroachdb/redact"
@@ -45,7 +45,7 @@ import (
 // TODO(ajwerner): Expose better control over how the exponential backoff gets
 // reset when the feed has been running successfully for a while.
 // TODO(yevgeniy): Instead of rolling our own logic to parallelize scans, we should
-// use streamer API instead (https://github.com/cockroachdb/cockroach/pull/68430)
+// use streamer API instead (https://github.com/semistrict/ratel/pull/68430)
 
 // DB is an adapter to the underlying KV store.
 type DB interface {

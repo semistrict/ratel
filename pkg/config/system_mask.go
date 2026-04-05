@@ -17,7 +17,7 @@ package config
 import (
 	"sort"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // SystemConfigMask is a mask that can be applied to a set of system config

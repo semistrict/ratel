@@ -15,8 +15,8 @@
 package colexec
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/col/coldata"
-	"github.com/cockroachdb/cockroach/pkg/sql/colexecop"
+	"github.com/semistrict/ratel/pkg/col/coldata"
+	"github.com/semistrict/ratel/pkg/sql/colexecop"
 )
 
 // bufferOp is an operator that buffers a single batch at a time from an input,

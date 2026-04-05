@@ -25,11 +25,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
-	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
-	"github.com/cockroachdb/cockroach/pkg/testutils/sqlutils"
-	"github.com/cockroachdb/cockroach/pkg/testutils/testcluster"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/testutils/serverutils"
+	"github.com/semistrict/ratel/pkg/testutils/skip"
+	"github.com/semistrict/ratel/pkg/testutils/sqlutils"
+	"github.com/semistrict/ratel/pkg/testutils/testcluster"
 	_ "github.com/go-sql-driver/mysql" // registers the MySQL driver to gosql
 	_ "github.com/lib/pq"              // registers the pg driver to gosql
 )
@@ -82,11 +82,11 @@ func benchmarkPostgres(b *testing.B, f BenchmarkFn) {
 	// ```
 	// $ grep ^ssl /usr/local/var/postgres/postgresql.conf
 	// ssl = on # (change requires restart)
-	// ssl_cert_file = '$GOPATH/src/github.com/cockroachdb/cockroach/pkg/security/securitytest/test_certs/node.crt' # (change requires restart)
-	// ssl_key_file = '$GOPATH/src/github.com/cockroachdb/cockroach/pkg/security/securitytest/test_certs/node.key' # (change requires restart)
-	// ssl_ca_file = '$GOPATH/src/github.com/cockroachdb/cockroach/pkg/security/securitytest/test_certs/ca.crt' # (change requires restart)
+	// ssl_cert_file = '$GOPATH/src/github.com/semistrict/ratel/pkg/security/securitytest/test_certs/node.crt' # (change requires restart)
+	// ssl_key_file = '$GOPATH/src/github.com/semistrict/ratel/pkg/security/securitytest/test_certs/node.key' # (change requires restart)
+	// ssl_ca_file = '$GOPATH/src/github.com/semistrict/ratel/pkg/security/securitytest/test_certs/ca.crt' # (change requires restart)
 	// ```
-	// Where `$GOPATH/src/github.com/cockroachdb/cockroach`
+	// Where `$GOPATH/src/github.com/semistrict/ratel`
 	// is replaced with your local Cockroach source directory.
 	// Be sure to restart Postgres for this to take effect.
 
@@ -142,7 +142,7 @@ func ForEachDB(b *testing.B, fn BenchmarkFn) {
 		benchmarkMySQL,
 	} {
 		dbName := runtime.FuncForPC(reflect.ValueOf(dbFn).Pointer()).Name()
-		dbName = strings.TrimPrefix(dbName, "github.com/cockroachdb/cockroach/pkg/bench.benchmark")
+		dbName = strings.TrimPrefix(dbName, "github.com/semistrict/ratel/pkg/bench.benchmark")
 		b.Run(dbName, func(b *testing.B) {
 			dbFn(b, fn)
 		})

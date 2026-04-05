@@ -2,8 +2,8 @@
 - Status: In-progress
 - Start Date: 2017-06-15
 - Authors: Tristan Ohlson
-- RFC PR: [#16626](https://github.com/cockroachdb/cockroach/pull/16626)
-- Cockroach Issue: [#7775](https://github.com/cockroachdb/cockroach/issues/7775)
+- RFC PR: [#16626](https://github.com/semistrict/ratel/pull/16626)
+- Cockroach Issue: [#7775](https://github.com/semistrict/ratel/issues/7775)
 
 # Summary
 

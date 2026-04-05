@@ -17,8 +17,8 @@ package colexecbase
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/col/coldata"
-	"github.com/cockroachdb/cockroach/pkg/sql/colexecop"
+	"github.com/semistrict/ratel/pkg/col/coldata"
+	"github.com/semistrict/ratel/pkg/sql/colexecop"
 )
 
 // fnOp is an operator that executes an arbitrary function for its side-effects,

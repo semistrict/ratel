@@ -14,7 +14,7 @@
 
 package testcat
 
-import "github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+import "github.com/semistrict/ratel/pkg/sql/sem/tree"
 
 // CreateSequence creates a test sequence from a parsed DDL statement and adds it
 // the catalog. This is intended for testing, and is not a complete (and

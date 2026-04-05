@@ -17,13 +17,13 @@ package invertedidx_test
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/invertedidx"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/norm"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/testutils"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/testcat"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/sql/opt"
+	"github.com/semistrict/ratel/pkg/sql/opt/invertedidx"
+	"github.com/semistrict/ratel/pkg/sql/opt/norm"
+	"github.com/semistrict/ratel/pkg/sql/opt/testutils"
+	"github.com/semistrict/ratel/pkg/sql/opt/testutils/testcat"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 )
 
 func TestTryJoinJsonOrArrayIndex(t *testing.T) {

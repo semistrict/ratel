@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 )
 
 // limitNode represents a node that limits the number of rows

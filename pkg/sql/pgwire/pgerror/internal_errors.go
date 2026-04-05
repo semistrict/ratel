@@ -31,6 +31,6 @@ func NewInternalTrackingError(issue int, detail string) error {
 	key := fmt.Sprintf("#%d.%s", issue, detail)
 	err := errors.AssertionFailedWithDepthf(1, "%s", errors.Safe(key))
 	err = errors.WithTelemetry(err, key)
-	err = errors.WithIssueLink(err, errors.IssueLink{IssueURL: fmt.Sprintf("https://github.com/cockroachdb/cockroach/issues/%d", issue)})
+	err = errors.WithIssueLink(err, errors.IssueLink{IssueURL: fmt.Sprintf("https://github.com/semistrict/ratel/issues/%d", issue)})
 	return err
 }

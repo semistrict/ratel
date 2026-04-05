@@ -18,10 +18,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/screl"
-	"github.com/cockroachdb/cockroach/pkg/util/iterutil"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scpb"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/screl"
+	"github.com/semistrict/ratel/pkg/util/iterutil"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 	"github.com/stretchr/testify/require"
 )
 

@@ -21,15 +21,15 @@ import (
 	"net"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/sql"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/hba"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/identmap"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgwirebase"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/log/eventpb"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/sql"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/hba"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/identmap"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgwirebase"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/log/eventpb"
 	"github.com/cockroachdb/errors"
 )
 
@@ -308,7 +308,7 @@ func (c *conn) lookupAuthenticationMethodUsingRules(
 		if err != nil {
 			// TODO(knz): Determine if an error should be reported
 			// upon unknown address formats.
-			// See: https://github.com/cockroachdb/cockroach/issues/43716
+			// See: https://github.com/semistrict/ratel/issues/43716
 			return
 		}
 		if !connMatch {

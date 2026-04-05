@@ -18,11 +18,11 @@ import (
 	"context"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/col/coldata"
-	"github.com/cockroachdb/cockroach/pkg/sql/colexecerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/colexecop"
-	"github.com/cockroachdb/cockroach/pkg/sql/execinfra"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlerrors"
+	"github.com/semistrict/ratel/pkg/col/coldata"
+	"github.com/semistrict/ratel/pkg/sql/colexecerror"
+	"github.com/semistrict/ratel/pkg/sql/colexecop"
+	"github.com/semistrict/ratel/pkg/sql/execinfra"
+	"github.com/semistrict/ratel/pkg/sql/sqlerrors"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
 )

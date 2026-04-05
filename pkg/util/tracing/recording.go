@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb"
+	"github.com/semistrict/ratel/pkg/util/tracing/tracingpb"
 	"github.com/cockroachdb/redact"
 	"github.com/gogo/protobuf/types"
 	jaegerjson "github.com/jaegertracing/jaeger/model/json"

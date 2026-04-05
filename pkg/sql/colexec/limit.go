@@ -15,8 +15,8 @@
 package colexec
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/col/coldata"
-	"github.com/cockroachdb/cockroach/pkg/sql/colexecop"
+	"github.com/semistrict/ratel/pkg/col/coldata"
+	"github.com/semistrict/ratel/pkg/sql/colexecop"
 )
 
 // limitOp is an operator that implements limit, returning only the first n

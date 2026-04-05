@@ -2,8 +2,8 @@
 - Status: completed
 - Start Date: 2017-03-18
 - Authors: @mberhault
-- RFC PR: [14254](https://github.com/cockroachdb/cockroach/pull/14254)
-- Cockroach Issue: [1674](https://github.com/cockroachdb/cockroach/issues/1674)
+- RFC PR: [14254](https://github.com/semistrict/ratel/pull/14254)
+- Cockroach Issue: [1674](https://github.com/semistrict/ratel/issues/1674)
 
 # Summary
 

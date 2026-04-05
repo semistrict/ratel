@@ -17,10 +17,10 @@ package contention
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/server/serverpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/contentionpb"
-	"github.com/cockroachdb/cockroach/pkg/util/uuid"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/server/serverpb"
+	"github.com/semistrict/ratel/pkg/sql/contentionpb"
+	"github.com/semistrict/ratel/pkg/util/uuid"
 )
 
 type fakeStatusServer struct {

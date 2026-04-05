@@ -2,11 +2,11 @@
 - Status: in-progress
 - Start Date: 2017-06-02
 - Authors: Alex Robinson
-- RFC PR: [#16296](https://github.com/cockroachdb/cockroach/pull/16296)
+- RFC PR: [#16296](https://github.com/semistrict/ratel/pull/16296)
 - Cockroach Issue:
-  - [#12996](https://github.com/cockroachdb/cockroach/issues/12996)
-  - [#15988](https://github.com/cockroachdb/cockroach/issues/15988)
-  - [#17979](https://github.com/cockroachdb/cockroach/issues/17979)
+  - [#12996](https://github.com/semistrict/ratel/issues/12996)
+  - [#15988](https://github.com/semistrict/ratel/issues/15988)
+  - [#17979](https://github.com/semistrict/ratel/issues/17979)
 
 # Summary
 
@@ -200,7 +200,7 @@ high enough QPS to justify splitting. Thus, our approach will look something
 like:
 
 1. Track the QPS to each leaseholder (which we’re already doing as of
-   [#13426](https://github.com/cockroachdb/cockroach/pull/13426)).
+   [#13426](https://github.com/semistrict/ratel/pull/13426)).
 
 2. If a given range’s QPS is abnormally high (by virtue of comparing to the
    other ranges), start recording the approximate top-k key spans.
@@ -268,4 +268,4 @@ get split based on load but then remain small forever even though they don't
 receive much traffic anymore.
 
 This won't cripple the cluster, but is less than ideal. Merge support is being
-tracked in [#2433](https://github.com/cockroachdb/cockroach/issues/2433).
+tracked in [#2433](https://github.com/semistrict/ratel/issues/2433).

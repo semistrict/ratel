@@ -18,7 +18,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/util/randutil"
+	"github.com/semistrict/ratel/pkg/util/randutil"
 )
 
 func TestMain(m *testing.M) {

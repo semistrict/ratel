@@ -16,12 +16,12 @@
 package sqlerrors
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/types"
 	"github.com/cockroachdb/errors"
 )
 
@@ -75,7 +75,7 @@ func NewInvalidAssignmentCastError(
 // syntax.
 // TODO(janexing): Should add a HINT with "Use OVERRIDING SYSTEM VALUE
 // to override." once issue #68201 is resolved.
-// Check also: https://github.com/cockroachdb/cockroach/issues/68201.
+// Check also: https://github.com/semistrict/ratel/issues/68201.
 func NewGeneratedAlwaysAsIdentityColumnOverrideError(columnName string) error {
 	return errors.WithDetailf(
 		pgerror.Newf(pgcode.GeneratedAlways, "cannot insert into column %q", columnName),
@@ -264,7 +264,7 @@ func NewColumnReferencedByPartialIndex(droppingColumn, partialIndex string) erro
 			droppingColumn, partialIndex,
 		),
 		"drop the partial index first, then drop the column",
-	), errors.IssueLink{IssueURL: "https://github.com/cockroachdb/cockroach/pull/97372"})
+	), errors.IssueLink{IssueURL: "https://github.com/semistrict/ratel/pull/97372"})
 }
 
 // NewColumnReferencedByPartialUniqueWithoutIndexConstraint is almost the same as
@@ -280,7 +280,7 @@ func NewColumnReferencedByPartialUniqueWithoutIndexConstraint(
 			droppingColumn, partialUWIConstraint,
 		),
 		"drop the unique constraint first, then drop the column",
-	), errors.IssueLink{IssueURL: "https://github.com/cockroachdb/cockroach/pull/97372"})
+	), errors.IssueLink{IssueURL: "https://github.com/semistrict/ratel/pull/97372"})
 }
 
 // QueryTimeoutError is an error representing a query timeout.

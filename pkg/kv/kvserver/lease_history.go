@@ -15,9 +15,9 @@
 package kvserver
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/envutil"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/envutil"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 )
 
 // leaseHistoryMaxEntries controls if replica lease histories are enabled and

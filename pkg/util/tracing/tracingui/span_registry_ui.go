@@ -18,8 +18,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/tracing"
-	"github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb"
+	"github.com/semistrict/ratel/pkg/util/tracing"
+	"github.com/semistrict/ratel/pkg/util/tracing/tracingpb"
 )
 
 // This file has helpers for the RPCs done by the #/debug/tracez page, which

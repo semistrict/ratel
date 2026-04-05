@@ -14,7 +14,7 @@
 
 package raftentry
 
-import "github.com/cockroachdb/cockroach/pkg/util/metric"
+import "github.com/semistrict/ratel/pkg/util/metric"
 
 var (
 	metaEntryCacheSize = metric.Metadata{

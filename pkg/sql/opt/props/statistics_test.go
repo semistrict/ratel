@@ -19,7 +19,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt"
+	"github.com/semistrict/ratel/pkg/sql/opt"
 )
 
 func TestColumnStatisticsSort(t *testing.T) {

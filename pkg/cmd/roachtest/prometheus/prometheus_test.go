@@ -19,8 +19,8 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/option"
-	logger "github.com/cockroachdb/cockroach/pkg/roachprod/logger"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/option"
+	logger "github.com/semistrict/ratel/pkg/roachprod/logger"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )

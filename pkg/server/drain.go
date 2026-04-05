@@ -20,14 +20,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/liveness"
-	"github.com/cockroachdb/cockroach/pkg/server/serverpb"
-	"github.com/cockroachdb/cockroach/pkg/settings"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlstats/persistedsqlstats"
-	"github.com/cockroachdb/cockroach/pkg/util/grpcutil"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/stop"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/liveness"
+	"github.com/semistrict/ratel/pkg/server/serverpb"
+	"github.com/semistrict/ratel/pkg/settings"
+	"github.com/semistrict/ratel/pkg/sql/sqlstats/persistedsqlstats"
+	"github.com/semistrict/ratel/pkg/util/grpcutil"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/stop"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
 	"google.golang.org/grpc/codes"
@@ -189,7 +189,7 @@ func (s *drainServer) maybeShutdownAfterDrain(
 		return ctx.Err()
 	case <-time.After(10 * time.Second):
 		// This is a hack to work around the problem in
-		// https://github.com/cockroachdb/cockroach/issues/37425#issuecomment-494336131
+		// https://github.com/semistrict/ratel/issues/37425#issuecomment-494336131
 		//
 		// There appear to be deadlock scenarios in which we don't manage to
 		// fully stop the grpc server (which implies closing the listener, i.e.
@@ -197,7 +197,7 @@ func (s *drainServer) maybeShutdownAfterDrain(
 		// stopper (the evidence in #37425 is inconclusive which one it is).
 		//
 		// Other problems in this area are known, such as
-		// https://github.com/cockroachdb/cockroach/pull/31692
+		// https://github.com/semistrict/ratel/pull/31692
 		//
 		// The signal-based shutdown path uses a similar time-based escape hatch.
 		// Until we spend (potentially lots of time to) understand and fix this

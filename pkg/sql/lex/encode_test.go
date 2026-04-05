@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/lex"
+	"github.com/semistrict/ratel/pkg/sql/lex"
 )
 
 func TestByteArrayDecoding(t *testing.T) {

@@ -17,12 +17,12 @@ package sql
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/colflow"
-	"github.com/cockroachdb/cockroach/pkg/sql/execinfra"
-	"github.com/cockroachdb/cockroach/pkg/sql/physicalplan"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/sessiondatapb"
-	"github.com/cockroachdb/cockroach/pkg/util/mon"
+	"github.com/semistrict/ratel/pkg/sql/colflow"
+	"github.com/semistrict/ratel/pkg/sql/execinfra"
+	"github.com/semistrict/ratel/pkg/sql/physicalplan"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/sessiondatapb"
+	"github.com/semistrict/ratel/pkg/util/mon"
 	"github.com/cockroachdb/errors"
 )
 

@@ -17,7 +17,7 @@ package keys
 import (
 	"math"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // For a high-level overview of the keyspace layout, see the package comment in
@@ -270,7 +270,7 @@ var (
 	// keyspace in order to limit the number of ranges which must use
 	// expiration-based range leases instead of the more efficient
 	// node-liveness epoch-based range leases (see
-	// https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20160210_range_leases.md)
+	// https://github.com/semistrict/ratel/blob/master/docs/RFCS/20160210_range_leases.md)
 	NodeLivenessPrefix = roachpb.Key(makeKey(SystemPrefix, roachpb.RKey("\x00liveness-")))
 	// NodeLivenessKeyMax is the maximum value for any node liveness key.
 	NodeLivenessKeyMax = NodeLivenessPrefix.PrefixEnd()

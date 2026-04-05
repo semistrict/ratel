@@ -17,8 +17,8 @@ package gcjob
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/jobs/jobspb"
-	"github.com/cockroachdb/cockroach/pkg/sql"
+	"github.com/semistrict/ratel/pkg/jobs/jobspb"
+	"github.com/semistrict/ratel/pkg/sql"
 )
 
 // TestingGCTenant is a wrapper around the internal function that gc-s a tenant

@@ -17,7 +17,7 @@ package roachpb
 import (
 	"math"
 
-	"github.com/cockroachdb/cockroach/pkg/util"
+	"github.com/semistrict/ratel/pkg/util"
 )
 
 // StmtFingerprintID is the type of a Statement's fingerprint ID.
@@ -108,7 +108,7 @@ func (si SensitiveInfo) GetScrubbedCopy() SensitiveInfo {
 	output := SensitiveInfo{}
 	// TODO(knz): This should really use si.LastErrorRedacted, however
 	// this does not exist yet.
-	// See: https://github.com/cockroachdb/cockroach/issues/53191
+	// See: https://github.com/semistrict/ratel/issues/53191
 	output.LastErr = "<redacted>"
 	// Not copying over MostRecentPlanDescription until we have an algorithm to scrub plan nodes.
 	return output

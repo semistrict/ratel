@@ -17,8 +17,8 @@ package cli
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 	"github.com/cockroachdb/datadriven"
 )
 

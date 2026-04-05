@@ -27,10 +27,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/netutil/addr"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/netutil/addr"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/errors/oserror"
 	"github.com/cockroachdb/logtags"
@@ -287,7 +287,7 @@ func writeKeyFile(keyFilePath string, keyPEM *pem.Block, overwrite bool) error {
 // InitializeFromConfig is called by the node creating certificates for the
 // cluster. It uses or generates an InterNode CA to produce any missing
 // unmanaged certificates. It does this base on the logic in:
-// https://github.com/cockroachdb/cockroach/pull/51991
+// https://github.com/semistrict/ratel/pull/51991
 // N.B.: This function fast fails if an inter-node cert/key pair are present
 // as this should _never_ happen.
 func (b *CertificateBundle) InitializeFromConfig(ctx context.Context, c base.Config) error {

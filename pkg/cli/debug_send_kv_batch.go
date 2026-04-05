@@ -21,16 +21,16 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/server/serverpb"
-	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
-	"github.com/cockroachdb/cockroach/pkg/util/tracing"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/server/serverpb"
+	"github.com/semistrict/ratel/pkg/util/protoutil"
+	"github.com/semistrict/ratel/pkg/util/tracing"
 	"github.com/cockroachdb/errors"
 	"github.com/spf13/cobra"
 )
 
 // TODO(knz): this struct belongs elsewhere.
-// See: https://github.com/cockroachdb/cockroach/issues/49509
+// See: https://github.com/semistrict/ratel/issues/49509
 var debugSendKVBatchContext = struct {
 	// Whether to request verbose tracing and which
 	// format to use to emit the trace.

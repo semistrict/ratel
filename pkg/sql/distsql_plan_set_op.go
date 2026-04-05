@@ -15,7 +15,7 @@
 package sql
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/sql/types"
 	"github.com/cockroachdb/errors"
 )
 

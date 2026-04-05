@@ -136,7 +136,7 @@ var UnitTestFormatter = IssueFormatter{
 			)
 			r.Escaped(" | ")
 			r.A("Improve this report!",
-				"https://github.com/cockroachdb/cockroach/tree/master/pkg/cmd/internal/issues",
+				"https://github.com/semistrict/ratel/tree/master/pkg/cmd/internal/issues",
 			)
 			r.Escaped("\n")
 		})

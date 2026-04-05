@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/apply"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/apply"
 )
 
 func ExampleTask() {

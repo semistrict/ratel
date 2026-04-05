@@ -29,8 +29,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/docgen/extract"
-	"github.com/cockroachdb/cockroach/pkg/util/envutil"
+	"github.com/semistrict/ratel/pkg/cmd/docgen/extract"
+	"github.com/semistrict/ratel/pkg/util/envutil"
 	"github.com/cockroachdb/errors"
 	"github.com/spf13/cobra"
 )

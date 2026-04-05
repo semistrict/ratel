@@ -15,12 +15,12 @@
 package xform
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/opt"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/cat"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/memo"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/ordering"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/props"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/sql/opt"
+	"github.com/semistrict/ratel/pkg/sql/opt/cat"
+	"github.com/semistrict/ratel/pkg/sql/opt/memo"
+	"github.com/semistrict/ratel/pkg/sql/opt/ordering"
+	"github.com/semistrict/ratel/pkg/sql/opt/props"
+	"github.com/semistrict/ratel/pkg/sql/types"
 	"github.com/cockroachdb/errors"
 )
 

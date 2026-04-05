@@ -207,7 +207,7 @@ change the version to be `21.2.2`. The version change should accompany the pull-
 Once a pull-request has been merged into respective branch, a git tag should be made against the commit that contains
 the changes to cluster-ui and the version change. The form of the tag should be `@cockroachlabs/cluster@[version]`
 where `[version]` is the version found in the `package.json`. After creating a tag, push the tag to a remote referencing
-`git@github.com/cockroachdb/cockroach.git`.
+`git@github.com/semistrict/ratel.git`.
 
 ```shell
 $ git tag [tag name] [SHA] # SHA can be omitted if desired commit is HEAD

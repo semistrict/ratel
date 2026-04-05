@@ -18,7 +18,7 @@ import (
 	"archive/zip"
 	"bytes"
 
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 )
 
 // Zipper builds a zip file into an in-memory buffer.

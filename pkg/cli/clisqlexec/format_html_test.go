@@ -20,8 +20,8 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 func TestRenderHTML(t *testing.T) {

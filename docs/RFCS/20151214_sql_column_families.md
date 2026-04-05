@@ -2,7 +2,7 @@
 - Status: completed
 - Start Date: 2015-12-14
 - Authors: Daniel Harrison, Peter Mattis
-- RFC PR: [#6712](https://github.com/cockroachdb/cockroach/pull/6712)
+- RFC PR: [#6712](https://github.com/semistrict/ratel/pull/6712)
 - Cockroach Issue:
 
 # Summary

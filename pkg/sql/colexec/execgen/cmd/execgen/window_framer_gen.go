@@ -19,7 +19,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree/treewindow"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree/treewindow"
 )
 
 const windowFramerTmpl = "pkg/sql/colexec/colexecwindow/window_framer_tmpl.go"

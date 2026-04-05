@@ -18,8 +18,8 @@ import (
 	"context"
 	"sync/atomic"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
 )
 
 // CancelChecker is a helper object for repeatedly checking whether the associated context

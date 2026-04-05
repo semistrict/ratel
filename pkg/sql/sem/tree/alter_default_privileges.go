@@ -15,7 +15,7 @@
 package tree
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/privilege"
+	"github.com/semistrict/ratel/pkg/sql/privilege"
 	"github.com/cockroachdb/errors"
 )
 

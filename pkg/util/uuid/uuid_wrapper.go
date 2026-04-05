@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/util/uint128"
+	"github.com/semistrict/ratel/pkg/util/uint128"
 	"github.com/cockroachdb/errors"
 )
 

@@ -6,9 +6,9 @@ package kvserver
 import (
 	context "context"
 	fmt "fmt"
-	kvserverpb "github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverpb"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	kvserverpb "github.com/semistrict/ratel/pkg/kv/kvserver/kvserverpb"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"

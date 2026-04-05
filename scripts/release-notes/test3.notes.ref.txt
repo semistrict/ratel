@@ -30,14 +30,14 @@ We would like to thank the following contributors from the CockroachDB community
   - 2018-04-22 [#1    ][#1    ] [ef634455e][ef634455e] (+   0 -   0 ~   0/ 0) PR title (4 commits)
 
 
-[#1]: https://github.com/cockroachdb/cockroach/pull/1
-[#100]: https://github.com/cockroachdb/cockroach/pull/100
-[#unknown]: https://github.com/cockroachdb/cockroach/pull/unknown
-[0ac9dc576]: https://github.com/cockroachdb/cockroach/commit/0ac9dc576
-[4f4329fdc]: https://github.com/cockroachdb/cockroach/commit/4f4329fdc
-[5fc640e17]: https://github.com/cockroachdb/cockroach/commit/5fc640e17
-[6a84145e9]: https://github.com/cockroachdb/cockroach/commit/6a84145e9
-[93ba1ab8f]: https://github.com/cockroachdb/cockroach/commit/93ba1ab8f
-[b719cfe9e]: https://github.com/cockroachdb/cockroach/commit/b719cfe9e
-[ef634455e]: https://github.com/cockroachdb/cockroach/commit/ef634455e
+[#1]: https://github.com/semistrict/ratel/pull/1
+[#100]: https://github.com/semistrict/ratel/pull/100
+[#unknown]: https://github.com/semistrict/ratel/pull/unknown
+[0ac9dc576]: https://github.com/semistrict/ratel/commit/0ac9dc576
+[4f4329fdc]: https://github.com/semistrict/ratel/commit/4f4329fdc
+[5fc640e17]: https://github.com/semistrict/ratel/commit/5fc640e17
+[6a84145e9]: https://github.com/semistrict/ratel/commit/6a84145e9
+[93ba1ab8f]: https://github.com/semistrict/ratel/commit/93ba1ab8f
+[b719cfe9e]: https://github.com/semistrict/ratel/commit/b719cfe9e
+[ef634455e]: https://github.com/semistrict/ratel/commit/ef634455e
 

@@ -17,9 +17,9 @@ package constraint
 import (
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/partition"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/opt"
+	"github.com/semistrict/ratel/pkg/sql/opt/partition"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 	"github.com/cockroachdb/errors"
 )
 

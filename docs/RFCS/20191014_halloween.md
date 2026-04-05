@@ -2,11 +2,11 @@
 - Status: in-progress
 - Start Date: 2019-10-14
 - Authors: andrei knz nathan
-- RFC PR: [#42864](https://github.com/cockroachdb/cockroach/pull/42864)
+- RFC PR: [#42864](https://github.com/semistrict/ratel/pull/42864)
 - Cockroach Issue:
-  [#28842](https://github.com/cockroachdb/cockroach/issues/28842)
-  [#33473](https://github.com/cockroachdb/cockroach/issues/33473)
-  [#33475](https://github.com/cockroachdb/cockroach/issues/33475)
+  [#28842](https://github.com/semistrict/ratel/issues/28842)
+  [#33473](https://github.com/semistrict/ratel/issues/33473)
+  [#33475](https://github.com/semistrict/ratel/issues/33475)
 
 # Summary
 
@@ -16,7 +16,7 @@ sequence point observe the data at the time the sequence point was
 established.
 
 This change intends to solve issue
-[#28842](https://github.com/cockroachdb/cockroach/issues/28842) which
+[#28842](https://github.com/semistrict/ratel/issues/28842) which
 is a serious—and classical—semantic error that can cause business
 problems in customer applications, see
 https://en.wikipedia.org/wiki/Halloween_Problem for details.
@@ -88,9 +88,9 @@ The following API is added to `TxnCoordSender` and `*client.Txn`:
 
 The design is prototyped here:
 
-https://github.com/cockroachdb/cockroach/pull/42854
+https://github.com/semistrict/ratel/pull/42854
 
-https://github.com/cockroachdb/cockroach/pull/42862
+https://github.com/semistrict/ratel/pull/42862
 
 Additional topics of interest:
 
@@ -174,7 +174,7 @@ the mutation.
 Note that today FK existence checks are "interleaved" with mutations
 on the common path, which is a useful optimization but incorrect in
 some cases. This will need to be adjusted. See the following issue for details:
-https://github.com/cockroachdb/cockroach/issues/33475
+https://github.com/semistrict/ratel/issues/33475
 
 In 19.2/20.1 there is a new notion of "post-queries" which the CBO is
 increasingly using to perform FK checks and cascading actions. These

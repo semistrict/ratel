@@ -383,5 +383,5 @@ comfortable introducing load-based splitting? I suspect the answer is no.
 * The specifics of the synchronization necessary to achieve the design.
 * Whatever else the implementation uncovers.
 
-[#2433]: https://github.com/cockroachdb/cockroach/issues/2433
-[#24394]: https://github.com/cockroachdb/cockroach/issues/24394
+[#2433]: https://github.com/semistrict/ratel/issues/2433
+[#24394]: https://github.com/semistrict/ratel/issues/24394

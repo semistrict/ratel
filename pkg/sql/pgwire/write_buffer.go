@@ -19,10 +19,10 @@ import (
 	"encoding/binary"
 	"io"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgwirebase"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgwirebase"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/util"
+	"github.com/semistrict/ratel/pkg/util/metric"
 )
 
 // writeBuffer is a wrapper around bytes.Buffer that provides a convenient interface

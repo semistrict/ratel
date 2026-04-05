@@ -1,4 +1,4 @@
-module github.com/cockroachdb/cockroach
+module github.com/semistrict/ratel
 
 go 1.26.1
 

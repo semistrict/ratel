@@ -44,9 +44,9 @@ message DescriptorChangeInfo {
 // Information includes range descriptor as well as parts of raft state.
 message ReplicaInfo {
   int32 node_id = 1 [(gogoproto.customname) = "NodeID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.NodeID"];
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.NodeID"];
   int32 store_id = 2 [(gogoproto.customname) = "StoreID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.StoreID"];
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.StoreID"];
   roachpb.RangeDescriptor desc = 3 [(gogoproto.nullable) = false];
   uint64 raft_applied_index = 4;
   uint64 raft_committed_index = 5;
@@ -66,18 +66,18 @@ message ReplicaUpdate {
   option (gogoproto.goproto_stringer) = false;
 
   int64 range_id = 1 [(gogoproto.customname) = "RangeID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.RangeID",
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.RangeID",
     (gogoproto.moretags) = 'yaml:"RangeID"'];
   bytes start_key = 2 [
     (gogoproto.casttype) = "RecoveryKey",
     (gogoproto.moretags) = 'yaml:"StartKey"'];
   int32 old_replica_id = 3 [(gogoproto.customname) = "OldReplicaID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.ReplicaID",
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.ReplicaID",
     (gogoproto.moretags) = 'yaml:"OldReplicaID"'];
   roachpb.ReplicaDescriptor new_replica = 4 [(gogoproto.nullable) = false,
     (gogoproto.moretags) = 'yaml:"NewReplica"'];
   int32 next_replica_id = 5 [(gogoproto.customname) = "NextReplicaID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.ReplicaID",
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.ReplicaID",
     (gogoproto.moretags) = 'yaml:"NextReplicaID"'];
 }
 
@@ -100,7 +100,7 @@ message ReplicaRecoveryRecord {
   // Expressed as nanoseconds since the Unix epoch.
   int64 timestamp = 1;
   int64 range_id = 2 [(gogoproto.customname) = "RangeID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.RangeID",
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.RangeID",
     (gogoproto.moretags) = 'yaml:"RangeID"'];
   bytes start_key = 3 [
     (gogoproto.casttype) = "RecoveryKey",
@@ -109,7 +109,7 @@ message ReplicaRecoveryRecord {
     (gogoproto.casttype) = "RecoveryKey",
     (gogoproto.moretags) = 'yaml:"StartKey"'];
   int32 old_replica_id = 5 [(gogoproto.customname) = "OldReplicaID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.ReplicaID",
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.ReplicaID",
     (gogoproto.moretags) = 'yaml:"OldReplicaID"'];
   roachpb.ReplicaDescriptor new_replica = 6 [(gogoproto.nullable) = false,
     (gogoproto.moretags) = 'yaml:"NewReplica"'];

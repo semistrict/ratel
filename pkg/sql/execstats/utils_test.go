@@ -15,8 +15,8 @@
 package execstats
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/sql/execinfrapb"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/sql/execinfrapb"
 )
 
 // AddComponentStats modifies TraceAnalyzer internal state to add stats for the

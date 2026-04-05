@@ -32,18 +32,18 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/build/bazel"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/builtins"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
-	_ "github.com/cockroachdb/cockroach/pkg/testutils/buildutil"
-	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
+	"github.com/semistrict/ratel/pkg/build/bazel"
+	"github.com/semistrict/ratel/pkg/sql/sem/builtins"
+	"github.com/semistrict/ratel/pkg/testutils"
+	_ "github.com/semistrict/ratel/pkg/testutils/buildutil"
+	"github.com/semistrict/ratel/pkg/testutils/skip"
 	"github.com/cockroachdb/errors"
 	"github.com/ghemawat/stream"
 	"github.com/jordanlewis/gcassert"
 	"golang.org/x/tools/go/packages"
 )
 
-const cockroachDB = "github.com/cockroachdb/cockroach"
+const cockroachDB = "github.com/semistrict/ratel"
 
 func dirCmd(
 	dir string, name string, args ...string,
@@ -1428,7 +1428,7 @@ func TestLint(t *testing.T) {
 			"log":                                         "util/log",
 			"github.com/golang/protobuf/proto":            "github.com/gogo/protobuf/proto",
 			"github.com/satori/go.uuid":                   "util/uuid",
-			"golang.org/x/sync/singleflight":              "github.com/cockroachdb/cockroach/pkg/util/syncutil/singleflight",
+			"golang.org/x/sync/singleflight":              "github.com/semistrict/ratel/pkg/util/syncutil/singleflight",
 			"syscall":                                     "sysutil",
 			"errors":                                      "github.com/cockroachdb/errors",
 			"oserror":                                     "github.com/cockroachdb/errors/oserror",
@@ -1481,7 +1481,7 @@ func TestLint(t *testing.T) {
 			}
 			return nil
 		})
-		settingsPkgPrefix := `github.com/cockroachdb/cockroach/pkg/settings`
+		settingsPkgPrefix := `github.com/semistrict/ratel/pkg/settings`
 		if err := stream.ForEach(stream.Sequence(
 			filter,
 			stream.Sort(),
@@ -1543,18 +1543,18 @@ func TestLint(t *testing.T) {
 		// forbiddenImportPkg
 		forbiddenImports := map[string]struct{}{
 			"github.com/cockroachdb/pebble":                     {},
-			"github.com/cockroachdb/cockroach/pkg/cli":          {},
-			"github.com/cockroachdb/cockroach/pkg/kv/kvserver":  {},
-			"github.com/cockroachdb/cockroach/pkg/roachpb":      {},
-			"github.com/cockroachdb/cockroach/pkg/server":       {},
-			"github.com/cockroachdb/cockroach/pkg/sql":          {},
-			"github.com/cockroachdb/cockroach/pkg/sql/catalog":  {},
-			"github.com/cockroachdb/cockroach/pkg/sql/parser":   {},
-			"github.com/cockroachdb/cockroach/pkg/sql/sem/tree": {},
-			"github.com/cockroachdb/cockroach/pkg/storage":      {},
-			"github.com/cockroachdb/cockroach/pkg/util/log":     {},
-			"github.com/cockroachdb/cockroach/pkg/util/stop":    {},
-			"github.com/cockroachdb/cockroach/pkg/util/tracing": {},
+			"github.com/semistrict/ratel/pkg/cli":          {},
+			"github.com/semistrict/ratel/pkg/kv/kvserver":  {},
+			"github.com/semistrict/ratel/pkg/roachpb":      {},
+			"github.com/semistrict/ratel/pkg/server":       {},
+			"github.com/semistrict/ratel/pkg/sql":          {},
+			"github.com/semistrict/ratel/pkg/sql/catalog":  {},
+			"github.com/semistrict/ratel/pkg/sql/parser":   {},
+			"github.com/semistrict/ratel/pkg/sql/sem/tree": {},
+			"github.com/semistrict/ratel/pkg/storage":      {},
+			"github.com/semistrict/ratel/pkg/util/log":     {},
+			"github.com/semistrict/ratel/pkg/util/stop":    {},
+			"github.com/semistrict/ratel/pkg/util/tracing": {},
 		}
 
 		if err := stream.ForEach(
@@ -2116,7 +2116,7 @@ func TestLint(t *testing.T) {
 			`pkg/workload/.*\.go`,
 		}, "|") + `)`
 		unkeyedLiteralExceptions := `pkg/.*_test\.go:.* (` + strings.Join([]string{
-			`github.com/cockroachdb/cockroach/pkg/testutils/sstutil\.KV`,
+			`github.com/semistrict/ratel/pkg/testutils/sstutil\.KV`,
 		}, "|") + `)`
 		filters := []stream.Filter{
 			// Ignore generated files.

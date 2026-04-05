@@ -20,8 +20,8 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/util"
+	"github.com/semistrict/ratel/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/util"
 	"github.com/cockroachdb/errors"
 )
 

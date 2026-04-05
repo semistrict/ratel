@@ -28,9 +28,9 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/cockroachdb/cockroach/pkg/internal/rsg/yacc"
-	"github.com/cockroachdb/cockroach/pkg/util/httputil"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/internal/rsg/yacc"
+	"github.com/semistrict/ratel/pkg/util/httputil"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 )
 
 const (

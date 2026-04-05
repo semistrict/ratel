@@ -14,7 +14,7 @@
 
 package tests
 
-import "github.com/cockroachdb/cockroach/pkg/cmd/roachtest/option"
+import "github.com/semistrict/ratel/pkg/cmd/roachtest/option"
 
 type loadGroup struct {
 	roachNodes option.NodeListOption

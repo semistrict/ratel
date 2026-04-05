@@ -18,7 +18,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
+	"github.com/semistrict/ratel/pkg/util/protoutil"
 	"github.com/cockroachdb/errors"
 )
 

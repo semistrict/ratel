@@ -17,9 +17,9 @@ package logtestutils
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/log/channel"
-	"github.com/cockroachdb/cockroach/pkg/util/log/logconfig"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/log/channel"
+	"github.com/semistrict/ratel/pkg/util/log/logconfig"
 )
 
 // InstallTelemetryLogFileSink installs a file sink for telemetry logging tests.

@@ -3442,7 +3442,7 @@ target node(s) selected in a HotRangesRequest.
 
 | Field | Type | Label | Description | Support status |
 | ----- | ---- | ----- | ----------- | -------------- |
-| desc | [cockroach.roachpb.RangeDescriptor](#cockroach.server.serverpb.HotRangesResponse-cockroach.roachpb.RangeDescriptor) |  | Desc is the descriptor of the range for which the report was produced.<br><br>TODO(knz): This field should be removed. See: https://github.com/cockroachdb/cockroach/issues/53212 | [reserved](#support-status) |
+| desc | [cockroach.roachpb.RangeDescriptor](#cockroach.server.serverpb.HotRangesResponse-cockroach.roachpb.RangeDescriptor) |  | Desc is the descriptor of the range for which the report was produced.<br><br>TODO(knz): This field should be removed. See: https://github.com/semistrict/ratel/issues/53212 | [reserved](#support-status) |
 | queries_per_second | [double](#cockroach.server.serverpb.HotRangesResponse-double) |  | QueriesPerSecond is the recent number of queries per second on this range. | [alpha](#support-status) |
 | leaseholder_node_id | [int32](#cockroach.server.serverpb.HotRangesResponse-int32) |  | LeaseholderNodeID indicates the Node ID that is the current leaseholder for the given range. | [reserved](#support-status) |
 

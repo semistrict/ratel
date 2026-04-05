@@ -18,12 +18,12 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/stateloader"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/storage"
-	"github.com/cockroachdb/cockroach/pkg/storage/enginepb"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/stateloader"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/storage"
+	"github.com/semistrict/ratel/pkg/storage/enginepb"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/log"
 	"github.com/cockroachdb/errors"
 	raft "go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
@@ -110,7 +110,7 @@ func splitPreApply(
 			// cannot apply a snapshot yet. But there could be a concurrent change
 			// to HardState.{Term,Vote} that we would accidentally undo here,
 			// because we are not actually holding the appropriate mutex. See
-			// https://github.com/cockroachdb/cockroach/issues/75918.
+			// https://github.com/semistrict/ratel/issues/75918.
 			if err := rightRepl.raftMu.stateLoader.SetHardState(ctx, readWriter, hs); err != nil {
 				log.Fatalf(ctx, "failed to set hard state with 0 commit index for removed rhs: %v", err)
 			}

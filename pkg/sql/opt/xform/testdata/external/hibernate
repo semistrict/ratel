@@ -1,6 +1,6 @@
 # These are queries that test correlated subqueries, and are taken from the
 # Hibernate test suite. See this issue:
-#   https://github.com/cockroachdb/cockroach/issues/26658
+#   https://github.com/semistrict/ratel/issues/26658
 
 # ------------------------------------------------------------------------------
 # Query #1

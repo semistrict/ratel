@@ -20,7 +20,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb"
+	"github.com/semistrict/ratel/pkg/util/tracing/tracingpb"
 	"github.com/cockroachdb/errors"
 	"github.com/pmezard/go-difflib/difflib"
 )

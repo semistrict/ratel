@@ -35,7 +35,7 @@ import "util/log/eventpb/events.proto";
 
 // TODO(knz): explore whether we should have separate notable event
 // types for table-level and cluster-level zone config changes.
-// See: https://github.com/cockroachdb/cockroach/issues/57897
+// See: https://github.com/semistrict/ratel/issues/57897
 
 // Notes to CockroachDB maintainers: refer to doc.go at the package
 // level for more details. Beware that JSON compatibility rules apply

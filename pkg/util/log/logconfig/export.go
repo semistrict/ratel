@@ -21,7 +21,7 @@ import (
 	"io"
 	"sort"
 
-	"github.com/cockroachdb/cockroach/pkg/util/log/logpb"
+	"github.com/semistrict/ratel/pkg/util/log/logpb"
 )
 
 // Export exports the configuration in the PlantUML synax.

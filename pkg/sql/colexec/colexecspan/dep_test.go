@@ -17,19 +17,19 @@ package colexecspan
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils/buildutil"
+	"github.com/semistrict/ratel/pkg/testutils/buildutil"
 )
 
 func TestNoLinkForbidden(t *testing.T) {
 	buildutil.VerifyNoImports(t,
-		"github.com/cockroachdb/cockroach/pkg/sql/colexec/colexecspan", true,
+		"github.com/semistrict/ratel/pkg/sql/colexec/colexecspan", true,
 		[]string{
-			"github.com/cockroachdb/cockroach/pkg/sql/colexec",
-			"github.com/cockroachdb/cockroach/pkg/sql/colexec/colexecagg",
-			"github.com/cockroachdb/cockroach/pkg/sql/colexec/colexechash",
-			"github.com/cockroachdb/cockroach/pkg/sql/colexec/colexecjoin",
-			"github.com/cockroachdb/cockroach/pkg/sql/colexec/colexecproj",
-			"github.com/cockroachdb/cockroach/pkg/sql/colexec/colexecsel",
+			"github.com/semistrict/ratel/pkg/sql/colexec",
+			"github.com/semistrict/ratel/pkg/sql/colexec/colexecagg",
+			"github.com/semistrict/ratel/pkg/sql/colexec/colexechash",
+			"github.com/semistrict/ratel/pkg/sql/colexec/colexecjoin",
+			"github.com/semistrict/ratel/pkg/sql/colexec/colexecproj",
+			"github.com/semistrict/ratel/pkg/sql/colexec/colexecsel",
 		}, nil,
 	)
 }

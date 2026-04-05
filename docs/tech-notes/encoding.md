@@ -544,18 +544,18 @@ Index ID 2 is the secondary index `i2`.
                 ^------------------------------------------------------------                                        ^-^---------
                 Indexed column: Collation key for 'Ted'                                                          BYTES 'Ted'
 
-  [pkg/util/encoding/encoding.go]: https://github.com/cockroachdb/cockroach/blob/master/pkg/util/encoding/encoding.go
+  [pkg/util/encoding/encoding.go]: https://github.com/semistrict/ratel/blob/master/pkg/util/encoding/encoding.go
   [SQL in CockroachDB: Mapping Table Data to Key-Value Storage]: https://www.cockroachlabs.com/blog/sql-in-cockroachdb-mapping-table-data-to-key-value-storage/
   [Implementing Column Families in CockroachDB]: https://www.cockroachlabs.com/blog/sql-cockroachdb-column-families/
-  [column families RFC]: https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20151214_sql_column_families.md
-  [interleaving RFC]: https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20160624_sql_interleaved_tables.md
-  [pkg/sql/catalog/descpb/structured.proto]: https://github.com/cockroachdb/cockroach/blob/master/pkg/sql/catalog/descpb/structured.proto
-  [pkg/sql/row/writer.go]: https://github.com/cockroachdb/cockroach/blob/master/pkg/sql/row/writer.go
-  [pkg/sql/row/fetcher.go]: https://github.com/cockroachdb/cockroach/blob/master/pkg/sql/row/fetcher.go
+  [column families RFC]: https://github.com/semistrict/ratel/blob/master/docs/RFCS/20151214_sql_column_families.md
+  [interleaving RFC]: https://github.com/semistrict/ratel/blob/master/docs/RFCS/20160624_sql_interleaved_tables.md
+  [pkg/sql/catalog/descpb/structured.proto]: https://github.com/semistrict/ratel/blob/master/pkg/sql/catalog/descpb/structured.proto
+  [pkg/sql/row/writer.go]: https://github.com/semistrict/ratel/blob/master/pkg/sql/row/writer.go
+  [pkg/sql/row/fetcher.go]: https://github.com/semistrict/ratel/blob/master/pkg/sql/row/fetcher.go
   [prefix-free]: https://en.wikipedia.org/wiki/Prefix_code
-  [new `DECIMAL` encoding]: https://github.com/cockroachdb/cockroach/issues/13384#issuecomment-277120394
-  [pkg/sql/rowenc/column\_type\_encoding.go]: https://github.com/cockroachdb/cockroach/blob/master/pkg/sql/rowenc/column_type_encoding.go
-  [pkg/sql/rowenc/encoded\_datum.go]: https://github.com/cockroachdb/cockroach/blob/master/pkg/sql/rowenc/encoded_datum.go
-  [pkg/roachpb/data.proto]: https://github.com/cockroachdb/cockroach/blob/master/pkg/roachpb/data.proto
+  [new `DECIMAL` encoding]: https://github.com/semistrict/ratel/issues/13384#issuecomment-277120394
+  [pkg/sql/rowenc/column\_type\_encoding.go]: https://github.com/semistrict/ratel/blob/master/pkg/sql/rowenc/column_type_encoding.go
+  [pkg/sql/rowenc/encoded\_datum.go]: https://github.com/semistrict/ratel/blob/master/pkg/sql/rowenc/encoded_datum.go
+  [pkg/roachpb/data.proto]: https://github.com/semistrict/ratel/blob/master/pkg/roachpb/data.proto
   [Unicode Collation Algorithm]: http://unicode.org/reports/tr10/
   [an efficient partial inverse]: http://stackoverflow.com/q/23609457/2144669

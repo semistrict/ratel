@@ -28,14 +28,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/server/telemetry"
-	"github.com/cockroachdb/cockroach/pkg/sql/lexbase"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/roleoption"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqltelemetry"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/util/pretty"
+	"github.com/semistrict/ratel/pkg/server/telemetry"
+	"github.com/semistrict/ratel/pkg/sql/lexbase"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
+	"github.com/semistrict/ratel/pkg/sql/roleoption"
+	"github.com/semistrict/ratel/pkg/sql/sqltelemetry"
+	"github.com/semistrict/ratel/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/util/pretty"
 	"github.com/cockroachdb/errors"
 	"golang.org/x/text/language"
 )
@@ -1121,7 +1121,7 @@ func (node *ReferenceActions) Format(ctx *FmtCtx) {
 }
 
 // CompositeKeyMatchMethod is the algorithm use when matching composite keys.
-// See https://github.com/cockroachdb/cockroach/issues/20305 or
+// See https://github.com/semistrict/ratel/issues/20305 or
 // https://www.postgresql.org/docs/11/sql-createtable.html for details on the
 // different composite foreign key matching methods.
 type CompositeKeyMatchMethod int

@@ -17,10 +17,10 @@ package schemaexpr
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
-	"github.com/cockroachdb/cockroach/pkg/sql/parser"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/transform"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/catalog"
+	"github.com/semistrict/ratel/pkg/sql/parser"
+	"github.com/semistrict/ratel/pkg/sql/sem/transform"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 )
 
 // MakeDefaultExprs returns a slice of the default expressions for the slice

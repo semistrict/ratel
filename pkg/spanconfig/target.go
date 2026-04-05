@@ -17,8 +17,8 @@ package spanconfig
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/require"
 )

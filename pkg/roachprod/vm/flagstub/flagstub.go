@@ -17,8 +17,8 @@ package flagstub
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/roachprod/logger"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/vm"
+	"github.com/semistrict/ratel/pkg/roachprod/logger"
+	"github.com/semistrict/ratel/pkg/roachprod/vm"
 	"github.com/cockroachdb/errors"
 )
 

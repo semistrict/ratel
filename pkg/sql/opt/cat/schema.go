@@ -17,7 +17,7 @@ package cat
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
 )
 
 // Schema is an interface to a database schema, which is a namespace that

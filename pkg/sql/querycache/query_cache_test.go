@@ -20,8 +20,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/memo"
-	"github.com/cockroachdb/cockroach/pkg/util/randutil"
+	"github.com/semistrict/ratel/pkg/sql/opt/memo"
+	"github.com/semistrict/ratel/pkg/util/randutil"
 	"github.com/cockroachdb/errors"
 )
 

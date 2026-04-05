@@ -18,11 +18,11 @@ import (
 	"context"
 	"sort"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scexec/scmutationexec"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scop"
-	"github.com/cockroachdb/cockroach/pkg/util/ctxgroup"
+	"github.com/semistrict/ratel/pkg/sql/catalog"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scexec/scmutationexec"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scop"
+	"github.com/semistrict/ratel/pkg/util/ctxgroup"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
 )

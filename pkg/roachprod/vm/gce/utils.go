@@ -25,8 +25,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/cockroachdb/cockroach/pkg/roachprod/logger"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/vm"
+	"github.com/semistrict/ratel/pkg/roachprod/logger"
+	"github.com/semistrict/ratel/pkg/roachprod/vm"
 	"github.com/cockroachdb/errors"
 )
 
@@ -140,7 +140,7 @@ systemctl mask sshguard
 # starts randomly dropping connections.
 sudo sh -c 'echo "MaxStartups 64:30:128" >> /etc/ssh/sshd_config'
 # Crank up the logging for issues such as:
-# https://github.com/cockroachdb/cockroach/issues/36929
+# https://github.com/semistrict/ratel/issues/36929
 sudo sed -i'' 's/LogLevel.*$/LogLevel DEBUG3/' /etc/ssh/sshd_config
 sudo service sshd restart
 # increase the default maximum number of open file descriptors for

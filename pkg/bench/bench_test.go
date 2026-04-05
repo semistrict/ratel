@@ -26,15 +26,15 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
-	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
-	"github.com/cockroachdb/cockroach/pkg/testutils/sqlutils"
-	"github.com/cockroachdb/cockroach/pkg/testutils/testcluster"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/randutil"
-	"github.com/cockroachdb/cockroach/pkg/util/stop"
-	"github.com/cockroachdb/cockroach/pkg/util/tracing"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/testutils/serverutils"
+	"github.com/semistrict/ratel/pkg/testutils/skip"
+	"github.com/semistrict/ratel/pkg/testutils/sqlutils"
+	"github.com/semistrict/ratel/pkg/testutils/testcluster"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/randutil"
+	"github.com/semistrict/ratel/pkg/util/stop"
+	"github.com/semistrict/ratel/pkg/util/tracing"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 )
@@ -425,7 +425,7 @@ func BenchmarkSQL(b *testing.B) {
 			runBenchmarkUpsert,
 		} {
 			fnName := runtime.FuncForPC(reflect.ValueOf(runFn).Pointer()).Name()
-			fnName = strings.TrimPrefix(fnName, "github.com/cockroachdb/cockroach/pkg/bench.runBenchmark")
+			fnName = strings.TrimPrefix(fnName, "github.com/semistrict/ratel/pkg/bench.runBenchmark")
 			b.Run(fnName, func(b *testing.B) {
 				for _, count := range []int{1, 10, 100, 1000} {
 					b.Run(fmt.Sprintf("count=%d", count), func(b *testing.B) {

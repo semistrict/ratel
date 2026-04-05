@@ -18,7 +18,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/server/telemetry"
+	"github.com/semistrict/ratel/pkg/server/telemetry"
 )
 
 // StatementDiagnosticsCollectedCounter is to be incremented whenever a query is

@@ -18,11 +18,11 @@ import (
 	"context"
 	"regexp"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/cluster"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/option"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/registry"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/test"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/install"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/cluster"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/option"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/registry"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/test"
+	"github.com/semistrict/ratel/pkg/roachprod/install"
 )
 
 var flowableReleaseTagRegex = regexp.MustCompile(`^flowable-(?P<major>\d+)\.(?P<minor>\d+)\.(?P<point>\d+)$`)

@@ -57,7 +57,7 @@ import (
 	"fmt"
 	"unsafe"
 
-	"github.com/cockroachdb/cockroach/pkg/server/heapprofiler"
+	"github.com/semistrict/ratel/pkg/server/heapprofiler"
 )
 
 func init() {

@@ -22,8 +22,8 @@ package colexec
 import (
 	"container/heap"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/colexecerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/execinfrapb"
+	"github.com/semistrict/ratel/pkg/sql/colexecerror"
+	"github.com/semistrict/ratel/pkg/sql/execinfrapb"
 	"github.com/cockroachdb/errors"
 )
 

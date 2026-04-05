@@ -15,15 +15,15 @@
 package descs
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/dbdesc"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/lease"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/nstree"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/systemschema"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/typedesc"
-	"github.com/cockroachdb/cockroach/pkg/util/iterutil"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/sql/catalog"
+	"github.com/semistrict/ratel/pkg/sql/catalog/dbdesc"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	"github.com/semistrict/ratel/pkg/sql/catalog/lease"
+	"github.com/semistrict/ratel/pkg/sql/catalog/nstree"
+	"github.com/semistrict/ratel/pkg/sql/catalog/systemschema"
+	"github.com/semistrict/ratel/pkg/sql/catalog/typedesc"
+	"github.com/semistrict/ratel/pkg/util/iterutil"
 	"github.com/cockroachdb/errors"
 )
 

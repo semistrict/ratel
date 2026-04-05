@@ -25,29 +25,29 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catconstants"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catformat"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catprivilege"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descs"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/schemaexpr"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/tabledesc"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/typedesc"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/privilege"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/builtins"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree/treecmp"
-	"github.com/cockroachdb/cockroach/pkg/sql/sessiondata"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlerrors"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/sql/vtable"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/sql/catalog"
+	"github.com/semistrict/ratel/pkg/sql/catalog/catconstants"
+	"github.com/semistrict/ratel/pkg/sql/catalog/catformat"
+	"github.com/semistrict/ratel/pkg/sql/catalog/catpb"
+	"github.com/semistrict/ratel/pkg/sql/catalog/catprivilege"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descs"
+	"github.com/semistrict/ratel/pkg/sql/catalog/schemaexpr"
+	"github.com/semistrict/ratel/pkg/sql/catalog/tabledesc"
+	"github.com/semistrict/ratel/pkg/sql/catalog/typedesc"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
+	"github.com/semistrict/ratel/pkg/sql/privilege"
+	"github.com/semistrict/ratel/pkg/sql/sem/builtins"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree/treecmp"
+	"github.com/semistrict/ratel/pkg/sql/sessiondata"
+	"github.com/semistrict/ratel/pkg/sql/sqlerrors"
+	"github.com/semistrict/ratel/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/sql/vtable"
+	"github.com/semistrict/ratel/pkg/util/log"
 	"github.com/cockroachdb/errors"
 	"github.com/lib/pq/oid"
 	"golang.org/x/text/collate"
@@ -526,7 +526,7 @@ https://www.postgresql.org/docs/9.5/catalog-pg-authid.html`,
 		return forEachRole(ctx, p, func(username security.SQLUsername, isRole bool, options roleOptions, _ tree.Datum) error {
 			isRoot := tree.DBool(username.IsRootUser() || username.IsAdminRole())
 			// Currently, all users and roles inherit the privileges of roles they are
-			// members of. See https://github.com/cockroachdb/cockroach/issues/69583.
+			// members of. See https://github.com/semistrict/ratel/issues/69583.
 			roleInherits := tree.DBool(true)
 			noLogin, err := options.noLogin()
 			if err != nil {
@@ -1334,7 +1334,7 @@ https://www.postgresql.org/docs/13/catalog-pg-default-acl.html`,
 
 				// TODO(richardjcai): Update this logic once default privileges on
 				//    schemas are supported.
-				//    See: https://github.com/cockroachdb/cockroach/issues/67376.
+				//    See: https://github.com/semistrict/ratel/issues/67376.
 				schemaName := ""
 				// If ForAllRoles is specified, we use an empty string as the normalized
 				// role name to create the row hash.
@@ -1378,7 +1378,7 @@ func createDefACLItem(
 			privilegeObjectType,
 		),
 		// TODO(richardjcai): CockroachDB currently does not track grantors
-		//    See: https://github.com/cockroachdb/cockroach/issues/67442.
+		//    See: https://github.com/semistrict/ratel/issues/67442.
 		"", /* grantor */
 	)
 }
@@ -2463,7 +2463,7 @@ https://www.postgresql.org/docs/9.5/view-pg-roles.html`,
 			func(username security.SQLUsername, isRole bool, options roleOptions, settings tree.Datum) error {
 				isRoot := tree.DBool(username.IsRootUser() || username.IsAdminRole())
 				// Currently, all users and roles inherit the privileges of roles they are
-				// members of. See https://github.com/cockroachdb/cockroach/issues/69583.
+				// members of. See https://github.com/semistrict/ratel/issues/69583.
 				roleInherits := tree.DBool(true)
 				noLogin, err := options.noLogin()
 				if err != nil {

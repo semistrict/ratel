@@ -20,11 +20,11 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/cluster"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/option"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/registry"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/test"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/install"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/cluster"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/option"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/registry"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/test"
+	"github.com/semistrict/ratel/pkg/roachprod/install"
 	"github.com/stretchr/testify/require"
 )
 

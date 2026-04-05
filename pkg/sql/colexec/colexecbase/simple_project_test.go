@@ -18,14 +18,14 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/colexec"
-	"github.com/cockroachdb/cockroach/pkg/sql/colexec/colexecargs"
-	"github.com/cockroachdb/cockroach/pkg/sql/colexec/colexecbase"
-	"github.com/cockroachdb/cockroach/pkg/sql/colexec/colexectestutils"
-	"github.com/cockroachdb/cockroach/pkg/sql/colexecop"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/sql/colexec"
+	"github.com/semistrict/ratel/pkg/sql/colexec/colexecargs"
+	"github.com/semistrict/ratel/pkg/sql/colexec/colexecbase"
+	"github.com/semistrict/ratel/pkg/sql/colexec/colexectestutils"
+	"github.com/semistrict/ratel/pkg/sql/colexecop"
+	"github.com/semistrict/ratel/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/log"
 	"github.com/stretchr/testify/require"
 )
 

@@ -17,7 +17,7 @@ package democluster
 import (
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // DemoLocalityList represents a list of localities for the cockroach

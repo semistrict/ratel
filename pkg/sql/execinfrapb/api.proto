@@ -74,7 +74,7 @@ message FlowSpec {
     (gogoproto.customtype) = "FlowID"];
   // The SQLInstanceID of the gateway that planned this Flow. Used for debugging.
   optional int32 gateway = 3 [(gogoproto.nullable) = false,
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/base.SQLInstanceID"];
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/base.SQLInstanceID"];
 
   repeated ProcessorSpec processors = 2 [(gogoproto.nullable) = false];
 }

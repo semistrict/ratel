@@ -20,12 +20,12 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
-	"github.com/cockroachdb/cockroach/pkg/util/stop"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/metric"
+	"github.com/semistrict/ratel/pkg/util/stop"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 )
 
 const rangeIDChunkSize = 1000
@@ -127,7 +127,7 @@ func (q *rangeIDQueue) Len() int {
 func (q *rangeIDQueue) SetPriorityID(id roachpb.RangeID) {
 	if q.priorityID != 0 && q.priorityID != id &&
 		// This assertion is temporarily disabled, see:
-		// https://github.com/cockroachdb/cockroach/issues/75939
+		// https://github.com/semistrict/ratel/issues/75939
 		false {
 		panic(fmt.Sprintf(
 			"priority range ID already set: old=%d, new=%d",

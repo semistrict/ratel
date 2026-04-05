@@ -20,7 +20,7 @@ import (
 	"sync"
 
 	"github.com/cockroachdb/cmux"
-	"github.com/cockroachdb/cockroach/pkg/util/stop"
+	"github.com/semistrict/ratel/pkg/util/stop"
 	"github.com/cockroachdb/errors"
 )
 

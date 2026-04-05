@@ -14,7 +14,7 @@
 
 package tree
 
-import "github.com/cockroachdb/cockroach/pkg/sql/sem/catid"
+import "github.com/semistrict/ratel/pkg/sql/sem/catid"
 
 // ID is a custom type for {Database,Table}Descriptor IDs.
 type ID = catid.ColumnID

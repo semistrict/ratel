@@ -17,9 +17,9 @@ package colexecjoin
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/colexecerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/colexecop"
-	"github.com/cockroachdb/cockroach/pkg/sql/execinfra"
+	"github.com/semistrict/ratel/pkg/sql/colexecerror"
+	"github.com/semistrict/ratel/pkg/sql/colexecop"
+	"github.com/semistrict/ratel/pkg/sql/execinfra"
 	"github.com/cockroachdb/errors"
 )
 

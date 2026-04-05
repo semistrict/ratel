@@ -32,7 +32,7 @@ The protobuf is serialized and base64 encoded.
 message License {
     repeated bytes cluster_id = 1 [(gogoproto.nullable) = false,
         (gogoproto.customname) = "ClusterID",
-        (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.UUID"];
+        (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/uuid.UUID"];
     int64 valid_until_unix_sec = 2;
 
     enum Type {
@@ -49,7 +49,7 @@ message License {
 ```
 
 The latest license will be stored as a gossiped [cluster
-setting](https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20170317_settings_table.md).
+setting](https://github.com/semistrict/ratel/blob/master/docs/RFCS/20170317_settings_table.md).
 Once viewing historical settings is supported, it can be used to show historical
 licensing information. When nodes observe the setting change, the value is
 decoded to update an in-memory copy of the `License` struct.
@@ -136,6 +136,6 @@ to where we report candidate updates for the binary), periodically in the logs,
 and/or in an email to the cluster administrator (address provided when they
 register for the license).
 
-[#14114]: https://github.com/cockroachdb/cockroach/pull/14114
+[#14114]: https://github.com/semistrict/ratel/pull/14114
 [business model]: https://www.cockroachlabs.com/blog/how-were-building-a-business-to-last/
-[settings table]: https://github.com/cockroachdb/cockroach/pull/14230
+[settings table]: https://github.com/semistrict/ratel/pull/14230

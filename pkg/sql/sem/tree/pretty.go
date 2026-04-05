@@ -20,11 +20,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree/treecmp"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree/treewindow"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/util/json"
-	"github.com/cockroachdb/cockroach/pkg/util/pretty"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree/treecmp"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree/treewindow"
+	"github.com/semistrict/ratel/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/util/json"
+	"github.com/semistrict/ratel/pkg/util/pretty"
 	"github.com/cockroachdb/errors"
 )
 

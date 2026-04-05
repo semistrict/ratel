@@ -14,7 +14,7 @@
 
 package kvcoord
 
-import "github.com/cockroachdb/cockroach/pkg/base"
+import "github.com/semistrict/ratel/pkg/base"
 
 // ClientTestingKnobs contains testing options that dictate the behavior
 // of the key-value client.

@@ -17,17 +17,17 @@ package flowinfra
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils/buildutil"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/testutils/buildutil"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 )
 
 func TestNoLinkForbidden(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 
 	buildutil.VerifyNoImports(t,
-		"github.com/cockroachdb/cockroach/pkg/sql/flowinfra", true,
+		"github.com/semistrict/ratel/pkg/sql/flowinfra", true,
 		[]string{
-			"github.com/cockroachdb/cockroach/pkg/sql/distsql",
+			"github.com/semistrict/ratel/pkg/sql/distsql",
 		}, nil,
 	)
 }

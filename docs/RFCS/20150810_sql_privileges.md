@@ -1,8 +1,8 @@
 - Feature Name: SQL privileges
 - Status: completed
 - Start Date: 2015-08-10
-- RFC PR: [#2054](https://github.com/cockroachdb/cockroach/pull/2054)
-- Cockroach Issue: [#2005](https://github.com/cockroachdb/cockroach/issues/2005)
+- RFC PR: [#2054](https://github.com/semistrict/ratel/pull/2054)
+- Cockroach Issue: [#2005](https://github.com/semistrict/ratel/issues/2005)
 
 # Summary
 
@@ -173,7 +173,7 @@ Privileges are stored in the `DatabaseDescriptor` and `TableDescriptor` using
 a list sorted by user.
 This gives the planner access to privileges after a descriptor lookup.
 
-Future improvements include gossiping descriptors [#1743](https://github.com/cockroachdb/cockroach/pull/1743)
+Future improvements include gossiping descriptors [#1743](https://github.com/semistrict/ratel/pull/1743)
 and potentially using a real table.
 
 # Drawbacks

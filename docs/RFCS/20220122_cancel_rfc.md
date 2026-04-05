@@ -2,8 +2,8 @@
 - Status: rejected
 - Start Date: 2022-01-20
 - Authors: knz
-- RFC PR: [#75307](https://github.com/cockroachdb/cockroach/pull/75307)
-- Cockroach Issue: [#75203](https://github.com/cockroachdb/cockroach/issues/75203) [#41335](https://github.com/cockroachdb/cockroach/issues/41335) [#67501](https://github.com/cockroachdb/cockroach/pull/67501)
+- RFC PR: [#75307](https://github.com/semistrict/ratel/pull/75307)
+- Cockroach Issue: [#75203](https://github.com/semistrict/ratel/issues/75203) [#41335](https://github.com/semistrict/ratel/issues/41335) [#67501](https://github.com/semistrict/ratel/pull/67501)
 
 # Dedication
 
@@ -31,7 +31,7 @@ client apps with very limited effort, even before CRL starts
 delivering crdb-specific SDKs that would encapsulate this logic.
 
 A [draft
-implementation](https://github.com/cockroachdb/cockroach/pull/75211)
+implementation](https://github.com/semistrict/ratel/pull/75211)
 is already available.
 
 <!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
@@ -491,7 +491,7 @@ error payload and retries as necessary.
 
 ## Implementation outline
 
-The following PR contains a MVP of the above proposal: https://github.com/cockroachdb/cockroach/pull/75211
+The following PR contains a MVP of the above proposal: https://github.com/semistrict/ratel/pull/75211
 
 The outline of the implementation is thus:
 
@@ -745,14 +745,14 @@ described here: https://www.postgresql.org/docs/13/protocol-flow.html#id-1.10.5.
 
 This has a long history at Cockroach Labs:
 
-- GH [sql: support pgwire query cancellation #41335](https://github.com/cockroachdb/cockroach/issues/41335),
+- GH [sql: support pgwire query cancellation #41335](https://github.com/semistrict/ratel/issues/41335),
 
   This GH issue ID is incidentally reported to telemetry every time a
   pg-native cancel message is received by CockroachDB. This has helped
   us recognize that many folk attempt to use this via non-CockroachDB
   SQL shells and probably experience frustration when they see it is ineffective.
 
-- Rafi's previous work at [sql/pgwire: implement pgwire query cancellation #67501](https://github.com/cockroachdb/cockroach/pull/67501)
+- Rafi's previous work at [sql/pgwire: implement pgwire query cancellation #67501](https://github.com/semistrict/ratel/pull/67501)
   and the subsequent discussion.
 
 This alternative is largely explored and discussed already in the

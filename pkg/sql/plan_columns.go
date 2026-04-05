@@ -15,8 +15,8 @@
 package sql
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/sql/catalog/colinfo"
+	"github.com/semistrict/ratel/pkg/sql/types"
 )
 
 var noColumns = make(colinfo.ResultColumns, 0)

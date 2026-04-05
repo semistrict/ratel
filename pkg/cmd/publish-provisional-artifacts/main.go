@@ -23,8 +23,8 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/cockroachdb/cockroach/pkg/release"
-	"github.com/cockroachdb/cockroach/pkg/util/version"
+	"github.com/semistrict/ratel/pkg/release"
+	"github.com/semistrict/ratel/pkg/util/version"
 	"github.com/kr/pretty"
 )
 

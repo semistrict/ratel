@@ -17,8 +17,8 @@ package reports
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/config"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/config"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // computeConstraintConformanceReport iterates through all the ranges and

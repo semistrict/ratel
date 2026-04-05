@@ -8,7 +8,7 @@ To build CockroachDB from this source archive:
 
      $ make build
 
-See src/github.com/cockroachdb/cockroach/CONTRIBUTING.md for a complete list of
+See src/github.com/semistrict/ratel/CONTRIBUTING.md for a complete list of
 build requirements.
 
 To install CockroachDB as /usr/local/bin/cockroach:
@@ -24,4 +24,4 @@ To interact with a one-node SQL cluster:
 Next steps:
 
     * Read the docs: https://cockroachlabs.com/docs/stable/
-    * Check out the GitHub repository: https://github.com/cockroachdb/cockroach
+    * Check out the GitHub repository: https://github.com/semistrict/ratel

@@ -23,7 +23,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/protoreflect"
+	"github.com/semistrict/ratel/pkg/sql/protoreflect"
 	"github.com/cockroachdb/errors"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"

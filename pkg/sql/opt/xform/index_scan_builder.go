@@ -15,11 +15,11 @@
 package xform
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/inverted"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/invertedexpr"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/memo"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/norm"
+	"github.com/semistrict/ratel/pkg/sql/inverted"
+	"github.com/semistrict/ratel/pkg/sql/opt"
+	"github.com/semistrict/ratel/pkg/sql/opt/invertedexpr"
+	"github.com/semistrict/ratel/pkg/sql/opt/memo"
+	"github.com/semistrict/ratel/pkg/sql/opt/norm"
 	"github.com/cockroachdb/errors"
 )
 

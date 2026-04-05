@@ -17,8 +17,8 @@ package geotransform
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/geo/geopb"
-	"github.com/cockroachdb/cockroach/pkg/geo/geoprojbase"
+	"github.com/semistrict/ratel/pkg/geo/geopb"
+	"github.com/semistrict/ratel/pkg/geo/geoprojbase"
 	"github.com/stretchr/testify/require"
 	"github.com/twpayne/go-geom"
 )

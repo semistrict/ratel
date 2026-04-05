@@ -19,14 +19,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/cluster"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/option"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/registry"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/spec"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/test"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/install"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
-	"github.com/cockroachdb/cockroach/pkg/util/version"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/cluster"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/option"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/registry"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/spec"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/test"
+	"github.com/semistrict/ratel/pkg/roachprod/install"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/util/version"
 )
 
 func registerClearRange(r registry.Registry) {
@@ -104,7 +104,7 @@ func runClearRange(ctx context.Context, t test.Test, c cluster.Cluster, aggressi
 
 	// Use a 120s connect timeout to work around the fact that the server will
 	// declare itself ready before it's actually 100% ready. See:
-	// https://github.com/cockroachdb/cockroach/issues/34897#issuecomment-465089057
+	// https://github.com/semistrict/ratel/issues/34897#issuecomment-465089057
 	c.Run(ctx, c.Node(1), `COCKROACH_CONNECT_TIMEOUT=120 ./cockroach sql --insecure -e "DROP DATABASE IF EXISTS tinybank"`)
 	c.Run(ctx, c.Node(1), "./cockroach", "workload", "fixtures", "import", "bank", "--db=tinybank",
 		"--payload-bytes=100", "--ranges=10", "--rows=800", "--seed=1")
@@ -204,7 +204,7 @@ func runClearRange(ctx context.Context, t test.Test, c cluster.Cluster, aggressi
 			}
 		}
 		// TODO(tschottdorf): verify that disk space usage drops below to <some small amount>, but that
-		// may not actually happen (see https://github.com/cockroachdb/cockroach/issues/29290).
+		// may not actually happen (see https://github.com/semistrict/ratel/issues/29290).
 		return nil
 	})
 	m.Wait()

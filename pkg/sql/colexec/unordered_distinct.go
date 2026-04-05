@@ -17,12 +17,12 @@ package colexec
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/col/coldata"
-	"github.com/cockroachdb/cockroach/pkg/sql/colexec/colexecbase"
-	"github.com/cockroachdb/cockroach/pkg/sql/colexec/colexechash"
-	"github.com/cockroachdb/cockroach/pkg/sql/colexecop"
-	"github.com/cockroachdb/cockroach/pkg/sql/colmem"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/col/coldata"
+	"github.com/semistrict/ratel/pkg/sql/colexec/colexecbase"
+	"github.com/semistrict/ratel/pkg/sql/colexec/colexechash"
+	"github.com/semistrict/ratel/pkg/sql/colexecop"
+	"github.com/semistrict/ratel/pkg/sql/colmem"
+	"github.com/semistrict/ratel/pkg/sql/types"
 )
 
 // NewUnorderedDistinct creates an unordered distinct on the given distinct
@@ -175,7 +175,7 @@ func (f *unorderedDistinctFilterer) Next() coldata.Batch {
 			// might need to repair the hash table in case the OOM error
 			// occurred when tuples were being appended to f.ht.Vals.
 			//
-			// See https://github.com/cockroachdb/cockroach/pull/58006#pullrequestreview-565859919
+			// See https://github.com/semistrict/ratel/pull/58006#pullrequestreview-565859919
 			// for all the gory details.
 			f.ud.ht.RepairAfterDistinctBuild()
 			f.ud.MaybeEmitErrorOnDup(f.ud.lastInputBatchOrigLen, batch.Length())

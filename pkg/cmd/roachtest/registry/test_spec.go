@@ -19,9 +19,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/cluster"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/spec"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/test"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/cluster"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/spec"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/test"
 )
 
 // TestSpec is a spec for a roachtest.

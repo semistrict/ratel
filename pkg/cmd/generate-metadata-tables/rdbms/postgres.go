@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/cockroachdb/cockroach/pkg/sql"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/sql"
+	"github.com/semistrict/ratel/pkg/sql/types"
 	"github.com/jackc/pgx/v4"
 	"github.com/lib/pq/oid"
 )

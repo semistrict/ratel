@@ -19,8 +19,8 @@ package nodelivenesstest
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/liveness/livenesspb"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/liveness/livenesspb"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // NodeLiveness is a testing-only implementation of the NodeLiveness. It

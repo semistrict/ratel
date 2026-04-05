@@ -15,8 +15,8 @@
 package catalog
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	"github.com/cockroachdb/cockroach/pkg/util"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	"github.com/semistrict/ratel/pkg/util"
 )
 
 // DescriptorIDSet efficiently stores an unordered set of descriptor ids.

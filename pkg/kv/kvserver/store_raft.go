@@ -19,15 +19,15 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverpb"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/liveness"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/liveness/livenesspb"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/rpc"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/stop"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverpb"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/liveness"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/liveness/livenesspb"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/rpc"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/stop"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 	"github.com/cockroachdb/errors"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 )
@@ -490,7 +490,7 @@ func (s *Store) processRequestQueue(ctx context.Context, rangeID roachpb.RangeID
 		// tolerates the occasional dropped message, but our unit tests are less
 		// forgiving.
 		//
-		// See https://github.com/cockroachdb/cockroach/issues/30951#issuecomment-428010411.
+		// See https://github.com/semistrict/ratel/issues/30951#issuecomment-428010411.
 		if _, exists := s.mu.replicasByRangeID.Load(rangeID); !exists {
 			q.Lock()
 			if len(q.infos) == 0 {

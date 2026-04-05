@@ -2,13 +2,13 @@
 - Status: completed
 - Start Date: 2020-07-28
 - Authors: knz
-- RFC PR: [#51990](https://github.com/cockroachdb/cockroach/pull/51990)
+- RFC PR: [#51990](https://github.com/semistrict/ratel/pull/51990)
 - Cockroach Issue:
-  [#51007](https://github.com/cockroachdb/cockroach/issues/51007)
-  [#44755](https://github.com/cockroachdb/cockroach/issues/44755)
-  [#50905](https://github.com/cockroachdb/cockroach/issues/50905)
-  [#40306](https://github.com/cockroachdb/cockroach/issues/40306)
-  [#32102](https://github.com/cockroachdb/cockroach/issues/32102)
+  [#51007](https://github.com/semistrict/ratel/issues/51007)
+  [#44755](https://github.com/semistrict/ratel/issues/44755)
+  [#50905](https://github.com/semistrict/ratel/issues/50905)
+  [#40306](https://github.com/semistrict/ratel/issues/40306)
+  [#32102](https://github.com/semistrict/ratel/issues/32102)
 
 # Summary
 
@@ -356,7 +356,7 @@ Here is a summary of all supported channels:
     including each time: command-line parameters, current version being run.
   - actions that impact the topology of a cluster: node additions,
     removals, decommissions, etc.
-  - restores and imports (see [this issue](https://github.com/cockroachdb/cockroach/issues/57575))
+  - restores and imports (see [this issue](https://github.com/semistrict/ratel/issues/57575))
   - cluster setting changes.
   - zone configuration changes.
 
@@ -701,7 +701,7 @@ To achieve all 3 goals at acceptable cost, we propose the following architecture
     stored to a different file.
 
     (Note that we need to care that CC-sensitive data does not
-	get copied to user logs, see [this issue](https://github.com/cockroachdb/cockroach/issues/57902))
+	get copied to user logs, see [this issue](https://github.com/semistrict/ratel/issues/57902))
 
   - a copy of the OPS and HEALTH channel to be sent to the CC
     monitoring platform to detect correlated cluster outages.
@@ -710,7 +710,7 @@ To achieve all 3 goals at acceptable cost, we propose the following architecture
   of every CC node to copy their logging events to a file stored
   locally. This is needed for backward-compatibility with `cockroach
   debug zip` until this issue is addressed:
-  https://github.com/cockroachdb/cockroach/issues/57710
+  https://github.com/semistrict/ratel/issues/57710
 
   However, we need to be careful that the SESSIONS channel is only
   logged to the network and not to disk, because it produces a lot of
@@ -761,15 +761,15 @@ logging output.
 The prototype implementation has been produced as follows:
 
 - Major refactors:
-  - [util/log: various simplifications towards logging channels #56336](https://github.com/cockroachdb/cockroach/pull//56336)
-  - [util/log: misc fixes #56897](https://github.com/cockroachdb/cockroach/pull/56897)
-  - [util/log: more misc cleanups #57000](https://github.com/cockroachdb/cockroach/pull/57000)
+  - [util/log: various simplifications towards logging channels #56336](https://github.com/semistrict/ratel/pull//56336)
+  - [util/log: misc fixes #56897](https://github.com/semistrict/ratel/pull/56897)
+  - [util/log: more misc cleanups #57000](https://github.com/semistrict/ratel/pull/57000)
 - New configuration system:
-  - [util/log,cli: channel abstraction; new configuration system #57134](https://github.com/cockroachdb/cockroach/pull/57134)
-  - [util/log: new experimental integration with Fluentd #57170](https://github.com/cockroachdb/cockroach/pull/57170)
+  - [util/log,cli: channel abstraction; new configuration system #57134](https://github.com/semistrict/ratel/pull/57134)
+  - [util/log: new experimental integration with Fluentd #57170](https://github.com/semistrict/ratel/pull/57170)
 - Usage of logging channels:
-  - [*: new logging channels OPS and HEALTH #57171](https://github.com/cockroachdb/cockroach/pull/57171)
-  - [util/log: new logging channels USER_ADMIN and PRIVILEGES #51987](https://github.com/cockroachdb/cockroach/pull/51987)
+  - [*: new logging channels OPS and HEALTH #57171](https://github.com/semistrict/ratel/pull/57171)
+  - [util/log: new logging channels USER_ADMIN and PRIVILEGES #51987](https://github.com/semistrict/ratel/pull/51987)
 
 ## Detailed design
 

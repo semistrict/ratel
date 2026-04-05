@@ -14,7 +14,7 @@
 
 package sqltelemetry
 
-import "github.com/cockroachdb/cockroach/pkg/server/telemetry"
+import "github.com/semistrict/ratel/pkg/server/telemetry"
 
 var (
 	// RowLevelTTLCreated is incremented when a row level TTL table is created.

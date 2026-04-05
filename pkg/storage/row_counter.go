@@ -17,8 +17,8 @@ package storage
 import (
 	"bytes"
 
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // RowCounter is a helper that counts how many distinct rows appear in the KVs

@@ -17,7 +17,7 @@ package migrationcluster
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
 )

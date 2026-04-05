@@ -17,7 +17,7 @@ package tpcc
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/workload/histogram"
+	"github.com/semistrict/ratel/pkg/workload/histogram"
 	"github.com/cockroachdb/errors"
 	"github.com/codahale/hdrhistogram"
 )

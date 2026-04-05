@@ -17,7 +17,7 @@
 // At present, the only excluded component is the web UI.
 package main
 
-import "github.com/cockroachdb/cockroach/pkg/cli"
+import "github.com/semistrict/ratel/pkg/cli"
 
 func main() {
 	cli.Main()

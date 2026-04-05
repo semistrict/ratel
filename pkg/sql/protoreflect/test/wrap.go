@@ -17,7 +17,7 @@ package protoreflecttest
 import (
 	"encoding/json"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/protoreflect"
+	"github.com/semistrict/ratel/pkg/sql/protoreflect"
 	"github.com/gogo/protobuf/jsonpb"
 )
 

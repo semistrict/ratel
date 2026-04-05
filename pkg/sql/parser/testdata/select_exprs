@@ -549,7 +549,7 @@ SELECT _ ?& _ -- identifiers removed
 
 ## The following JSON expressions
 ## do not anonymize properly, see
-## issue https://github.com/cockroachdb/cockroach/issues/60673
+## issue https://github.com/semistrict/ratel/issues/60673
 
 parse
 SELECT a->'x'

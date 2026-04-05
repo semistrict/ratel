@@ -17,8 +17,8 @@ package server
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/server/serverpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/roleoption"
+	"github.com/semistrict/ratel/pkg/server/serverpb"
+	"github.com/semistrict/ratel/pkg/sql/roleoption"
 )
 
 // UserSQLRoles return a list of the logged in SQL user roles.

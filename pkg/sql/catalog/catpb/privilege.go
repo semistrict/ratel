@@ -19,11 +19,11 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catconstants"
-	"github.com/cockroachdb/cockroach/pkg/sql/privilege"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/catid"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/sql/catalog/catconstants"
+	"github.com/semistrict/ratel/pkg/sql/privilege"
+	"github.com/semistrict/ratel/pkg/sql/sem/catid"
 	"github.com/cockroachdb/errors"
 )
 
@@ -208,7 +208,7 @@ func NewPublicSchemaPrivilegeDescriptor() *PrivilegeDescriptor {
 	// user.
 	p := NewBasePrivilegeDescriptor(security.AdminRoleName())
 	// By default, everyone has USAGE and CREATE on the public schema.
-	// Once https://github.com/cockroachdb/cockroach/issues/70266 is resolved,
+	// Once https://github.com/semistrict/ratel/issues/70266 is resolved,
 	// the public role will no longer have CREATE privileges.
 	p.Grant(security.PublicRoleName(), privilege.List{privilege.CREATE, privilege.USAGE}, false)
 	return p

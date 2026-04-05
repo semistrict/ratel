@@ -20,9 +20,9 @@ import (
 	"math"
 	"sort"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/log"
 	"github.com/cockroachdb/redact"
 	"go.etcd.io/etcd/raft/v3"
 )
@@ -221,7 +221,7 @@ func (sr *StoreRebalancer) deprecatedChooseRangeToRebalance(
 			// If the StoreRebalancer is allowed past this point, it may accidentally
 			// downreplicate and this can cause unavailable ranges.
 			//
-			// See: https://github.com/cockroachdb/cockroach/issues/54444#issuecomment-707706553
+			// See: https://github.com/semistrict/ratel/issues/54444#issuecomment-707706553
 			log.VEventf(ctx, 3, "range needs up/downreplication; not considering rebalance")
 			continue
 		}

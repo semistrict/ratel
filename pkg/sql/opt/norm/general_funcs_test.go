@@ -17,8 +17,8 @@ package norm
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/memo"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/sql/opt/memo"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 )
 
 func TestCommuteJoinFlags(t *testing.T) {

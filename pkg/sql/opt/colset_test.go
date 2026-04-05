@@ -17,7 +17,7 @@ package opt
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/util"
+	"github.com/semistrict/ratel/pkg/util"
 )
 
 func BenchmarkColSet(b *testing.B) {

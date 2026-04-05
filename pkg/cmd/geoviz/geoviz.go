@@ -22,8 +22,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/geo"
-	"github.com/cockroachdb/cockroach/pkg/geo/geoindex"
+	"github.com/semistrict/ratel/pkg/geo"
+	"github.com/semistrict/ratel/pkg/geo/geoindex"
 	"github.com/golang/geo/s2"
 )
 

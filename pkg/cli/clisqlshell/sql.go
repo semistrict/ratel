@@ -31,19 +31,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/clicfg"
-	"github.com/cockroachdb/cockroach/pkg/cli/clierror"
-	"github.com/cockroachdb/cockroach/pkg/cli/clisqlclient"
-	"github.com/cockroachdb/cockroach/pkg/cli/clisqlexec"
-	"github.com/cockroachdb/cockroach/pkg/docs"
-	"github.com/cockroachdb/cockroach/pkg/server/pgurl"
-	"github.com/cockroachdb/cockroach/pkg/sql/lexbase"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/scanner"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlfsm"
-	"github.com/cockroachdb/cockroach/pkg/util/envutil"
-	"github.com/cockroachdb/cockroach/pkg/util/errorutil/unimplemented"
+	"github.com/semistrict/ratel/pkg/cli/clicfg"
+	"github.com/semistrict/ratel/pkg/cli/clierror"
+	"github.com/semistrict/ratel/pkg/cli/clisqlclient"
+	"github.com/semistrict/ratel/pkg/cli/clisqlexec"
+	"github.com/semistrict/ratel/pkg/docs"
+	"github.com/semistrict/ratel/pkg/server/pgurl"
+	"github.com/semistrict/ratel/pkg/sql/lexbase"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
+	"github.com/semistrict/ratel/pkg/sql/scanner"
+	"github.com/semistrict/ratel/pkg/sql/sqlfsm"
+	"github.com/semistrict/ratel/pkg/util/envutil"
+	"github.com/semistrict/ratel/pkg/util/errorutil/unimplemented"
 	"github.com/cockroachdb/errors"
 	readline "github.com/knz/go-libedit"
 )
@@ -2132,7 +2132,7 @@ func (c *cliState) serverSideParse(sql string) (helpText string, err error) {
 // user UX. Instead of suffering the UX drawback, we choose to disable
 // query cancellation for a little while more until we switch the shell
 // to use pgx instead.
-// See: https://github.com/cockroachdb/cockroach/issues/76483
+// See: https://github.com/semistrict/ratel/issues/76483
 const queryCancelEnabled = false
 
 func (c *cliState) maybeHandleInterrupt() func() {

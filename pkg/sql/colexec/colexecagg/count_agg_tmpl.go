@@ -28,8 +28,8 @@ package colexecagg
 import (
 	"unsafe"
 
-	"github.com/cockroachdb/cockroach/pkg/col/coldata"
-	"github.com/cockroachdb/cockroach/pkg/sql/colmem"
+	"github.com/semistrict/ratel/pkg/col/coldata"
+	"github.com/semistrict/ratel/pkg/sql/colmem"
 )
 
 // {{range .}}

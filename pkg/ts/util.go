@@ -18,7 +18,7 @@ import (
 	"encoding/gob"
 	"io"
 
-	"github.com/cockroachdb/cockroach/pkg/ts/tspb"
+	"github.com/semistrict/ratel/pkg/ts/tspb"
 )
 
 // DumpRawTo is a helper that gob-encodes all messages received from the

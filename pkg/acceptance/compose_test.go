@@ -24,8 +24,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/acceptance/cluster"
-	"github.com/cockroachdb/cockroach/pkg/build/bazel"
+	"github.com/semistrict/ratel/pkg/acceptance/cluster"
+	"github.com/semistrict/ratel/pkg/build/bazel"
 )
 
 const composeDir = "compose"

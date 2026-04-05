@@ -24,17 +24,17 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/parser"
-	"github.com/cockroachdb/cockroach/pkg/sql/row"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/sql/catalog"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	"github.com/semistrict/ratel/pkg/sql/parser"
+	"github.com/semistrict/ratel/pkg/sql/row"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/log"
 	"github.com/linkedin/goavro/v2"
 	"github.com/stretchr/testify/require"
 )
@@ -518,7 +518,7 @@ var _ importRowProducer = &limitAvroStream{}
 
 // goos: darwin
 // goarch: amd64
-// pkg: github.com/cockroachdb/cockroach/pkg/sql/importer
+// pkg: github.com/semistrict/ratel/pkg/sql/importer
 // BenchmarkOCFImport-16    	  500000	      2612 ns/op	  45.93 MB/s
 // BenchmarkOCFImport-16    	  500000	      2607 ns/op	  46.03 MB/s
 // BenchmarkOCFImport-16    	  500000	      2719 ns/op	  44.13 MB/s
@@ -537,7 +537,7 @@ func BenchmarkOCFImport(b *testing.B) {
 
 // goos: darwin
 // goarch: amd64
-// pkg: github.com/cockroachdb/cockroach/pkg/sql/importer
+// pkg: github.com/semistrict/ratel/pkg/sql/importer
 // BenchmarkBinaryJSONImport-16    	  500000	      3021 ns/op	  39.71 MB/s
 // BenchmarkBinaryJSONImport-16    	  500000	      2991 ns/op	  40.11 MB/s
 // BenchmarkBinaryJSONImport-16    	  500000	      3056 ns/op	  39.26 MB/s

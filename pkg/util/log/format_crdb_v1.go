@@ -22,9 +22,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/log/logpb"
-	"github.com/cockroachdb/cockroach/pkg/util/log/severity"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/util/log/logpb"
+	"github.com/semistrict/ratel/pkg/util/log/severity"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 	"github.com/cockroachdb/redact"
 	"github.com/cockroachdb/ttycolor"
 )

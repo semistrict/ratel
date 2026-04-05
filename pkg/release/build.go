@@ -26,7 +26,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/build/util"
+	"github.com/semistrict/ratel/pkg/build/util"
 	"github.com/cockroachdb/errors"
 )
 

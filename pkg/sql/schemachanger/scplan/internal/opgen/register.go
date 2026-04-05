@@ -17,8 +17,8 @@ package opgen
 import (
 	"reflect"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scop"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scpb"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scop"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scpb"
 	"github.com/cockroachdb/errors"
 )
 

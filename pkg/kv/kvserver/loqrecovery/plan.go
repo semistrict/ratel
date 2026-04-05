@@ -18,9 +18,9 @@ import (
 	"context"
 	"sort"
 
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/loqrecovery/loqrecoverypb"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/loqrecovery/loqrecoverypb"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/log"
 	"github.com/cockroachdb/errors"
 )
 
@@ -317,7 +317,7 @@ func rankReplicasBySurvivability(replicas []loqrecoverypb.ReplicaInfo) rankedRep
 		// independently be fixed by the below issue, so staying with largest store
 		// is likely the right choice. See:
 		//
-		// https://github.com/cockroachdb/cockroach/issues/33007
+		// https://github.com/semistrict/ratel/issues/33007
 		voterI := isVoter(replicas[i])
 		voterJ := isVoter(replicas[j])
 		if voterI > voterJ {

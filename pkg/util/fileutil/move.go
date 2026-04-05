@@ -17,7 +17,7 @@ package fileutil
 import (
 	"os"
 
-	"github.com/cockroachdb/cockroach/pkg/util/sysutil"
+	"github.com/semistrict/ratel/pkg/util/sysutil"
 	"github.com/cockroachdb/errors"
 )
 

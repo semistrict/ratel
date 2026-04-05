@@ -26,7 +26,7 @@ import (
 	"context"
 	"os"
 
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/log"
 	"github.com/cockroachdb/errors"
 )
 

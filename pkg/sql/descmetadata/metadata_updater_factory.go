@@ -17,14 +17,14 @@ package descmetadata
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/kv"
-	"github.com/cockroachdb/cockroach/pkg/settings"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descs"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scexec"
-	"github.com/cockroachdb/cockroach/pkg/sql/sessiondata"
-	"github.com/cockroachdb/cockroach/pkg/sql/sessiondatapb"
-	"github.com/cockroachdb/cockroach/pkg/sql/sessioninit"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlutil"
+	"github.com/semistrict/ratel/pkg/kv"
+	"github.com/semistrict/ratel/pkg/settings"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descs"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scexec"
+	"github.com/semistrict/ratel/pkg/sql/sessiondata"
+	"github.com/semistrict/ratel/pkg/sql/sessiondatapb"
+	"github.com/semistrict/ratel/pkg/sql/sessioninit"
+	"github.com/semistrict/ratel/pkg/sql/sqlutil"
 )
 
 // MetadataUpdaterFactory used to construct a commenter.DescriptorMetadataUpdater, which

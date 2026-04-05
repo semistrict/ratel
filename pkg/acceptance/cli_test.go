@@ -21,11 +21,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/acceptance/cluster"
-	"github.com/cockroachdb/cockroach/pkg/build/bazel"
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/acceptance/cluster"
+	"github.com/semistrict/ratel/pkg/build/bazel"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/testutils/skip"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 var cmdBase = []string{
@@ -57,7 +57,7 @@ func TestDockerCLI(t *testing.T) {
 		t.Fatalf("no testfiles found (%v)", testGlob)
 	}
 
-	containerPath := "/go/src/github.com/cockroachdb/cockroach/cli/interactive_tests"
+	containerPath := "/go/src/github.com/semistrict/ratel/cli/interactive_tests"
 	if bazel.BuiltWithBazel() {
 		containerPath = "/mnt/interactive_tests"
 	}

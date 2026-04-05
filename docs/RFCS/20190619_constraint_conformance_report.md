@@ -2,12 +2,12 @@
 - Status: completed
 - Start Date: 2019-06-19
 - Authors: Andrei Matei
-- RFC PR: [#38309](https://github.com/cockroachdb/cockroach/issues/14113)
-- Cockroach Issue: [#14113](https://github.com/cockroachdb/cockroach/issues/14113)
-                   [#19644](https://github.com/cockroachdb/cockroach/issues/19644)
-                   [#31597](https://github.com/cockroachdb/cockroach/issues/31597)
-                   [#26757](https://github.com/cockroachdb/cockroach/issues/26757)
-                   [#31551](https://github.com/cockroachdb/cockroach/issues/31551)
+- RFC PR: [#38309](https://github.com/semistrict/ratel/issues/14113)
+- Cockroach Issue: [#14113](https://github.com/semistrict/ratel/issues/14113)
+                   [#19644](https://github.com/semistrict/ratel/issues/19644)
+                   [#31597](https://github.com/semistrict/ratel/issues/31597)
+                   [#26757](https://github.com/semistrict/ratel/issues/26757)
+                   [#31551](https://github.com/semistrict/ratel/issues/31551)
 
 # Summary
 
@@ -68,7 +68,7 @@ once we get atomic group membership changes. Also, the way in which these
 counters are computed is defective: the counters are incoherent and, for
 example, if all the nodes holding a partition go away, the ranges in that
 partition are not counted (see
-https://github.com/cockroachdb/cockroach/issues/19644).
+https://github.com/semistrict/ratel/issues/19644).
 
 Besides the general need for an administrator to know that everything is
 copacetic, there are some specific cases where the lack of information is

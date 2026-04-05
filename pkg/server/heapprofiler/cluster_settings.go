@@ -14,7 +14,7 @@
 
 package heapprofiler
 
-import "github.com/cockroachdb/cockroach/pkg/settings"
+import "github.com/semistrict/ratel/pkg/settings"
 
 // ActiveQueryDumpsEnabled wraps "diagnostics.active_query_dumps.enabled"
 //

@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/acceptance/cluster"
+	"github.com/semistrict/ratel/pkg/acceptance/cluster"
 	"github.com/cockroachdb/errors"
 )
 

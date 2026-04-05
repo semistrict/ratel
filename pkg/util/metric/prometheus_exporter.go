@@ -17,7 +17,7 @@ package metric
 import (
 	"io"
 
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 	"github.com/gogo/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"
 	prometheusgo "github.com/prometheus/client_model/go"
@@ -32,7 +32,7 @@ import (
 // MakePrometheusExporterForSelectedMetrics. The default is to export all metrics.
 // TODO(marc): we should really keep our metric objects here so we can avoid creating
 // new prometheus.Metric every time we are scraped.
-// see: https://github.com/cockroachdb/cockroach/issues/9326
+// see: https://github.com/semistrict/ratel/issues/9326
 //
 //	pe := MakePrometheusExporter()
 //	pe.AddMetricsFromRegistry(nodeRegistry)

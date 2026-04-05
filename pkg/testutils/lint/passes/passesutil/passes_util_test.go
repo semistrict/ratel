@@ -18,10 +18,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/build/bazel"
-	"github.com/cockroachdb/cockroach/pkg/testutils/lint/passes/forbiddenmethod"
-	"github.com/cockroachdb/cockroach/pkg/testutils/lint/passes/unconvert"
-	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
+	"github.com/semistrict/ratel/pkg/build/bazel"
+	"github.com/semistrict/ratel/pkg/testutils/lint/passes/forbiddenmethod"
+	"github.com/semistrict/ratel/pkg/testutils/lint/passes/unconvert"
+	"github.com/semistrict/ratel/pkg/testutils/skip"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/tools/go/analysis/analysistest"
 )

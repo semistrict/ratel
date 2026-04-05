@@ -17,11 +17,11 @@ package screl
 import (
 	"reflect"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/catid"
-	types "github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/util/iterutil"
+	"github.com/semistrict/ratel/pkg/sql/catalog/catpb"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scpb"
+	"github.com/semistrict/ratel/pkg/sql/sem/catid"
+	types "github.com/semistrict/ratel/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/util/iterutil"
 	"github.com/cockroachdb/errors"
 )
 

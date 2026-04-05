@@ -2,8 +2,8 @@
 - Status: draft
 - Start Date: 2019-10-02
 - Authors: Arul Ajmani, knz
-- RFC PR: [#30916](https://github.com/cockroachdb/cockroach/pull/30916)
-- Cockroach Issue: [#5807](https://github.com/cockroachdb/cockroach/issues/5807)
+- RFC PR: [#30916](https://github.com/semistrict/ratel/pull/30916)
+- Cockroach Issue: [#5807](https://github.com/semistrict/ratel/issues/5807)
 
 # Summary
 
@@ -41,7 +41,7 @@ The differences between TTs and non-temporary (persistent) tables (PTs) are:
 - TTs can depend on other TTs using foreign keys, and PTs can depend on other PTs, but it's not
  possible to refer to a PT from a TT or vice-versa.
 - The name of a newly created PT can specify the `public` schema. 
-If/when CRDB supports user-defined schemas ([#26443](https://github.com/cockroachdb/cockroach/issues/26443)), a PT can specify any user-defined physical schema as well; 
+If/when CRDB supports user-defined schemas ([#26443](https://github.com/semistrict/ratel/issues/26443)), a PT can specify any user-defined physical schema as well; 
 in comparison CREATE TEMP TABLE must always specify a temporary schema as target and TTs always get 
 created in a special session-specific temporary schema.
 - A TT/PT can not be converted to a PT/TT after creation.
@@ -234,7 +234,7 @@ to ensuring the underlying table is correctly populated.
 
 ### Name resolution rules (reference guide)
 CockroachDB already supports name resolution like PostgreSQL, as outlined in the name resolution 
-[RFC](https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20180219_pg_virtual_namespacing.md):
+[RFC](https://github.com/semistrict/ratel/blob/master/docs/RFCS/20180219_pg_virtual_namespacing.md):
 - Qualified object names get looked up in the namespace they specify
 - Non-qualified names get looked up in the order specified by `search_path`, with the same special 
 case as PostgreSQL:
@@ -337,7 +337,7 @@ one of those tables, the delete will have no effect, which is safe.
 - We can not stop deleting from the old `system.namespace` table after the cluster version has been bumped,
  because of the fallback lookup logic above.
  
- An implementation of these semantics can be found [here.](https://github.com/cockroachdb/cockroach/blob/5be25e2ece88f9f6f56f42169a29da85cc410363/pkg/sql/sqlbase/namespace.go)
+ An implementation of these semantics can be found [here.](https://github.com/semistrict/ratel/blob/5be25e2ece88f9f6f56f42169a29da85cc410363/pkg/sql/sqlbase/namespace.go)
 
 ##### Namespace entries that may not be migrated over
 As described above, there is a window where objects may be added to the old `system.namespace` after

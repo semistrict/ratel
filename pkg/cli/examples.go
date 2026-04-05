@@ -19,10 +19,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/workload"
+	"github.com/semistrict/ratel/pkg/workload"
 	// Register the relevant examples
-	_ "github.com/cockroachdb/cockroach/pkg/workload/examples"
-	"github.com/cockroachdb/cockroach/pkg/workload/workloadsql"
+	_ "github.com/semistrict/ratel/pkg/workload/examples"
+	"github.com/semistrict/ratel/pkg/workload/workloadsql"
 	"github.com/spf13/cobra"
 )
 

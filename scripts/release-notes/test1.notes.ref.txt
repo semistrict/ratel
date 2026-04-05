@@ -27,11 +27,11 @@ We would like to thank the following contributors from the CockroachDB community
   - 2018-04-22 [#1    ][#1    ] [c95ebe826][c95ebe826] (+   0 -   0 ~   0/ 0) PR title
 
 
-[#1]: https://github.com/cockroachdb/cockroach/pull/1
-[#100]: https://github.com/cockroachdb/cockroach/pull/100
-[#unknown]: https://github.com/cockroachdb/cockroach/pull/unknown
-[20a33aaf1]: https://github.com/cockroachdb/cockroach/commit/20a33aaf1
-[884025a61]: https://github.com/cockroachdb/cockroach/commit/884025a61
-[c95ebe826]: https://github.com/cockroachdb/cockroach/commit/c95ebe826
-[e3a1f2c94]: https://github.com/cockroachdb/cockroach/commit/e3a1f2c94
+[#1]: https://github.com/semistrict/ratel/pull/1
+[#100]: https://github.com/semistrict/ratel/pull/100
+[#unknown]: https://github.com/semistrict/ratel/pull/unknown
+[20a33aaf1]: https://github.com/semistrict/ratel/commit/20a33aaf1
+[884025a61]: https://github.com/semistrict/ratel/commit/884025a61
+[c95ebe826]: https://github.com/semistrict/ratel/commit/c95ebe826
+[e3a1f2c94]: https://github.com/semistrict/ratel/commit/e3a1f2c94
 

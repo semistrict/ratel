@@ -12,7 +12,7 @@
 
 package colexecjoin
 
-import "github.com/cockroachdb/cockroach/pkg/col/coldata"
+import "github.com/semistrict/ratel/pkg/col/coldata"
 
 const _ = "template_collectProbeOuter"
 

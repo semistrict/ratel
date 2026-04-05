@@ -17,9 +17,9 @@ package spanconfigstore
 import (
 	"sort"
 
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/spanconfig"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/spanconfig"
 	"github.com/cockroachdb/errors"
 )
 

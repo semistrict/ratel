@@ -17,7 +17,7 @@ package protectedts
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/settings"
+	"github.com/semistrict/ratel/pkg/settings"
 )
 
 // Records and their spans are stored in memory on every host so it's best

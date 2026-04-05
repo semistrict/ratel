@@ -24,24 +24,24 @@ import (
 	"os/signal"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/build"
-	"github.com/cockroachdb/cockroach/pkg/cli/clierror"
-	"github.com/cockroachdb/cockroach/pkg/cli/exit"
-	_ "github.com/cockroachdb/cockroach/pkg/cloud/impl" // register cloud storage providers
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/log/logcrash"
-	"github.com/cockroachdb/cockroach/pkg/util/log/severity"
+	"github.com/semistrict/ratel/pkg/build"
+	"github.com/semistrict/ratel/pkg/cli/clierror"
+	"github.com/semistrict/ratel/pkg/cli/exit"
+	_ "github.com/semistrict/ratel/pkg/cloud/impl" // register cloud storage providers
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/log/logcrash"
+	"github.com/semistrict/ratel/pkg/util/log/severity"
 	// intentionally not all the workloads in pkg/ccl/workloadccl/allccl
-	_ "github.com/cockroachdb/cockroach/pkg/workload/bank"       // registers workloads
-	_ "github.com/cockroachdb/cockroach/pkg/workload/bulkingest" // registers workloads
-	workloadcli "github.com/cockroachdb/cockroach/pkg/workload/cli"
-	_ "github.com/cockroachdb/cockroach/pkg/workload/examples"  // registers workloads
-	_ "github.com/cockroachdb/cockroach/pkg/workload/kv"        // registers workloads
-	_ "github.com/cockroachdb/cockroach/pkg/workload/movr"      // registers workloads
-	_ "github.com/cockroachdb/cockroach/pkg/workload/tpcc"      // registers workloads
-	_ "github.com/cockroachdb/cockroach/pkg/workload/tpch"      // registers workloads
-	_ "github.com/cockroachdb/cockroach/pkg/workload/ttllogger" // registers workloads
-	_ "github.com/cockroachdb/cockroach/pkg/workload/ycsb"      // registers workloads
+	_ "github.com/semistrict/ratel/pkg/workload/bank"       // registers workloads
+	_ "github.com/semistrict/ratel/pkg/workload/bulkingest" // registers workloads
+	workloadcli "github.com/semistrict/ratel/pkg/workload/cli"
+	_ "github.com/semistrict/ratel/pkg/workload/examples"  // registers workloads
+	_ "github.com/semistrict/ratel/pkg/workload/kv"        // registers workloads
+	_ "github.com/semistrict/ratel/pkg/workload/movr"      // registers workloads
+	_ "github.com/semistrict/ratel/pkg/workload/tpcc"      // registers workloads
+	_ "github.com/semistrict/ratel/pkg/workload/tpch"      // registers workloads
+	_ "github.com/semistrict/ratel/pkg/workload/ttllogger" // registers workloads
+	_ "github.com/semistrict/ratel/pkg/workload/ycsb"      // registers workloads
 	"github.com/cockroachdb/errors"
 	"github.com/spf13/cobra"
 )

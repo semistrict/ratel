@@ -21,18 +21,18 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/cockroachdb/cockroach/pkg/clusterversion"
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/security/sessionrevival"
-	"github.com/cockroachdb/cockroach/pkg/settings"
-	"github.com/cockroachdb/cockroach/pkg/sql"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/hba"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/identmap"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgwirebase"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqltelemetry"
-	"github.com/cockroachdb/cockroach/pkg/util/errorutil/unimplemented"
-	"github.com/cockroachdb/cockroach/pkg/util/log/eventpb"
+	"github.com/semistrict/ratel/pkg/clusterversion"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/security/sessionrevival"
+	"github.com/semistrict/ratel/pkg/settings"
+	"github.com/semistrict/ratel/pkg/sql"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/hba"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/identmap"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgwirebase"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/sqltelemetry"
+	"github.com/semistrict/ratel/pkg/util/errorutil/unimplemented"
+	"github.com/semistrict/ratel/pkg/util/log/eventpb"
 	"github.com/cockroachdb/errors"
 	"github.com/xdg-go/scram"
 )
@@ -267,7 +267,7 @@ func scramAuthenticator(
 	// and a payload containing the list of supported SCRAM methods.
 	//
 	// NB: SCRAM-SHA-256-PLUS is not supported, see
-	// https://github.com/cockroachdb/cockroach/issues/74300
+	// https://github.com/semistrict/ratel/issues/74300
 	// There is one nul byte to terminate the first string,
 	// then another nul byte to terminate the list.
 	const supportedMethods = "SCRAM-SHA-256\x00\x00"

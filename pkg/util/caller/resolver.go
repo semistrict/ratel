@@ -23,7 +23,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 )
 
 type cachedLookup struct {
@@ -51,7 +51,7 @@ var reStripNothing = regexp.MustCompile(`^$`)
 //
 // For example:
 //
-//	/home/kena/src/go/src/github.com/cockroachdb/cockroach/pkg/util/caller
+//	/home/kena/src/go/src/github.com/semistrict/ratel/pkg/util/caller
 //	^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ package root
 //
 // The first return value is false if the paths could not be determined.
@@ -65,22 +65,22 @@ func findPackageRoot() (ok bool, pkgRoot string) {
 	// frame.Function is the name of the function prefixed by its
 	// *symbolic* package path.
 	// For example:
-	//     github.com/cockroachdb/cockroach/pkg/util/caller.findFileAndPackageRoot
+	//     github.com/semistrict/ratel/pkg/util/caller.findFileAndPackageRoot
 	funcName := frame.Function
 
 	modulePath := strings.TrimSuffix(funcName, ".findPackageRoot")
-	innerPath := strings.TrimPrefix(modulePath, "github.com/cockroachdb/cockroach")
+	innerPath := strings.TrimPrefix(modulePath, "github.com/semistrict/ratel")
 	if innerPath == modulePath {
-		// `modulePath` does not start with "github.com/cockroachdb/cockroach".
+		// `modulePath` does not start with "github.com/semistrict/ratel".
 		return false, ""
 	}
 
 	// frame.File is the name of the file on the filesystem.
 	// For example:
-	//   /home/kena/src/go/src/github.com/cockroachdb/cockroach/pkg/util/caller/resolver.go
+	//   /home/kena/src/go/src/github.com/semistrict/ratel/pkg/util/caller/resolver.go
 	//
 	// (or, in a Bazel sandbox)
-	//   github.com/cockroachdb/cockroach/pkg/util/caller/resolver.go
+	//   github.com/semistrict/ratel/pkg/util/caller/resolver.go
 	//
 	// srcRoot is its immediate parent directory.
 	srcRoot := path.Dir(frame.File)

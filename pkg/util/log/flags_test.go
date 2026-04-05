@@ -18,8 +18,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/log/logconfig"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/log/logconfig"
 	"github.com/cockroachdb/datadriven"
 	"github.com/pmezard/go-difflib/difflib"
 )

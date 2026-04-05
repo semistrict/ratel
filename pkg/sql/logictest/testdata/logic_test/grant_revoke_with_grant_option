@@ -4,7 +4,7 @@
 # Currently, this file has been rewritten to accommodate giving grant options to
 # all a user's privileges when granted the GRANT privilege and removing all of them
 # when GRANT is revoked as part of the backwards compatibility plan for GRANT in
-# 22.1 (https://github.com/cockroachdb/cockroach/issues/73065)
+# 22.1 (https://github.com/semistrict/ratel/issues/73065)
 
 statement ok
 CREATE TABLE t(row INT)

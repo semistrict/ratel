@@ -15,8 +15,8 @@
 package opt
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/cockroach/pkg/util/buildutil"
+	"github.com/semistrict/ratel/pkg/util"
+	"github.com/semistrict/ratel/pkg/util/buildutil"
 	"github.com/cockroachdb/errors"
 )
 

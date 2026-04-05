@@ -20,13 +20,13 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
-	"github.com/cockroachdb/cockroach/pkg/testutils/sqlutils"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/uuid"
-	"github.com/cockroachdb/cockroach/pkg/workload"
-	"github.com/cockroachdb/cockroach/pkg/workload/bank"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/testutils/serverutils"
+	"github.com/semistrict/ratel/pkg/testutils/sqlutils"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/uuid"
+	"github.com/semistrict/ratel/pkg/workload"
+	"github.com/semistrict/ratel/pkg/workload/bank"
 )
 
 func TestSetup(t *testing.T) {

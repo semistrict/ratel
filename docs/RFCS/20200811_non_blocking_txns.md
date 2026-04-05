@@ -42,7 +42,7 @@ closed timestamps, learner replicas) and compose with CockroachDB's standard
 transaction protocol intuitively and effectively.
 
 This proposal serves as an alternative to the [Consistent Read Replicas
-proposal](https://github.com/cockroachdb/cockroach/pull/39758). Whereas the
+proposal](https://github.com/semistrict/ratel/pull/39758). Whereas the
 Consistent Read Replicas proposal enforces consistency through communication,
 this proposal enforces consistency through semi-synchronized clocks with bounded
 uncertainty.
@@ -121,7 +121,7 @@ which itself is a must-have for many, if not most, global deployments.
 ## What's wrong with follower reads?
 
 Closed timestamps and [follower
-reads](https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20180603_follower_reads.md)
+reads](https://github.com/semistrict/ratel/blob/master/docs/RFCS/20180603_follower_reads.md)
 provide a mechanism to serve *consistent stale reads* from follower replicas of
 a Range without needing to interact with the leaseholder of that Range. There
 are two primary reasons why a user of CockroachDB may want to use follower
@@ -141,7 +141,7 @@ reads:
 However, this capability comes with a large asterisk. Follower reads are only
 suitable for serving _**historical**_ reads from followers. They have no ability
 to serve consistent reads at the current time from followers. Even with
-[attempts](https://github.com/cockroachdb/cockroach/pull/39643) to reduce the
+[attempts](https://github.com/semistrict/ratel/pull/39643) to reduce the
 staleness of follower reads, their historical nature will always necessarily
 come with large UX hurdles that limit the situations in which they can be used.
 
@@ -152,12 +152,12 @@ look for other solutions to this problem, such as [duplicated indexes](https://w
 to avoid WAN hops on foreign key checks.
 
 Another hurdle is that the staleness they permit requires buy-in, so accessing
-them from SQL [requires application-level changes](https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20181227_follower_reads_implementation.md).
+them from SQL [requires application-level changes](https://github.com/semistrict/ratel/blob/master/docs/RFCS/20181227_follower_reads_implementation.md).
 Users need to specify an `AS OF SYSTEM TIME` clause on either their statements
 or on their transaction declarations. This can be awkward to get right and
 imposes a large cost on the use of follower reads. Furthermore, because a
 statement is the smallest granularity that a user can buy-in to follower reads
-at, there is a strong desire to support [mixed timestamp statements](https://github.com/cockroachdb/cockroach/issues/35712),
+at, there is a strong desire to support [mixed timestamp statements](https://github.com/semistrict/ratel/issues/35712),
 which CockroachDB does not currently support.
 
 Because of all of these reasons, follower reads in its current form remains a
@@ -555,7 +555,7 @@ Writing in the future is new for CockroachDB. In fact, talking about time in the
 future in any capacity has been traditionally frowned upon. Instead, we try to
 only ever pass around HLC timestamps that were pulled from a real HLC clock.
 This ensures that if the timestamp is ever used to
-[Update](https://github.com/cockroachdb/cockroach/blob/bbbfdbd1919c6de411742c8442cfc3903d33ee86/pkg/util/hlc/hlc.go#L326-L332)
+[Update](https://github.com/semistrict/ratel/blob/bbbfdbd1919c6de411742c8442cfc3903d33ee86/pkg/util/hlc/hlc.go#L326-L332)
 an HLC clock, the resulting clock is guaranteed to still be within the
 `max_offset` of all other nodes.
 
@@ -873,7 +873,7 @@ to other conflicting read-write transactions is undesirable, it is no more
 undesirable in practice than read-write transactions that touch global data and
 hold locks for long periods of time. This is what we would expect to see with
 alternative proposals such as the [Consistent Read Replicas
-proposal](https://github.com/cockroachdb/cockroach/pull/39758). Under the same
+proposal](https://github.com/semistrict/ratel/pull/39758). Under the same
 workloads that would cause an "infection" of synthetic timestamps due to a
 non-blocking transaction that also touches contended data on standard Ranges, we
 would expect any proposal that uses locks to exhibit buildups of dependent
@@ -899,7 +899,7 @@ anti-pattern under either proposal.
 * Route present-time reads to followers in non-blocking Ranges
   * Similar to existing follower read logic, but Range specific
     * Add bit on RangeDescriptor? Or to Lease? Both are cached in client
-* Introduce [long-lived learner replicas](https://github.com/cockroachdb/cockroach/issues/51943)
+* Introduce [long-lived learner replicas](https://github.com/semistrict/ratel/issues/51943)
   * Biggest work item, but...
   * Already being worked on and generally useful outside of this proposal
   * Also, not a hard requirement for the rest of this proposal
@@ -963,7 +963,7 @@ Only effective if we can reduce the clock uncertainty interval dramatically.
 
 ### Consistent Read Replicas
 
-See the [Consistent Read Replicas proposal](https://github.com/cockroachdb/cockroach/pull/39758).
+See the [Consistent Read Replicas proposal](https://github.com/semistrict/ratel/pull/39758).
 
 Consistent Read Replicas provide non-stale reads from followers, which is one of
 the two major wins of this proposal. However, they do not provide the

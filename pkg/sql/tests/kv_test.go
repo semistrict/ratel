@@ -25,10 +25,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	kv2 "github.com/cockroachdb/cockroach/pkg/kv"
-	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/base"
+	kv2 "github.com/semistrict/ratel/pkg/kv"
+	"github.com/semistrict/ratel/pkg/testutils/serverutils"
+	"github.com/semistrict/ratel/pkg/util/log"
 	"github.com/cockroachdb/errors"
 )
 
@@ -297,14 +297,14 @@ func BenchmarkKV(b *testing.B) {
 		kvInterface.Scan,
 	} {
 		opName := runtime.FuncForPC(reflect.ValueOf(opFn).Pointer()).Name()
-		opName = strings.TrimPrefix(opName, "github.com/cockroachdb/cockroach/pkg/sql/tests_test.kvInterface.")
+		opName = strings.TrimPrefix(opName, "github.com/semistrict/ratel/pkg/sql/tests_test.kvInterface.")
 		b.Run(opName, func(b *testing.B) {
 			for _, kvFn := range []func(*testing.B) kvInterface{
 				newKVNative,
 				newKVSQL,
 			} {
 				kvTyp := runtime.FuncForPC(reflect.ValueOf(kvFn).Pointer()).Name()
-				kvTyp = strings.TrimPrefix(kvTyp, "github.com/cockroachdb/cockroach/pkg/sql/tests_test.newKV")
+				kvTyp = strings.TrimPrefix(kvTyp, "github.com/semistrict/ratel/pkg/sql/tests_test.newKV")
 				b.Run(kvTyp, func(b *testing.B) {
 					for _, rows := range []int{1, 10, 100, 1000, 10000} {
 						b.Run(fmt.Sprintf("rows=%d", rows), func(b *testing.B) {
@@ -355,7 +355,7 @@ func BenchmarkKV(b *testing.B) {
 // and do two significant pieces of work in storage:
 //   - A read-only batch with 100 ScanRequests (this should eventually be
 //     optimized by SQL to 100 GetRequests
-//     https://github.com/cockroachdb/cockroach/issues/46758). The spans in the
+//     https://github.com/semistrict/ratel/issues/46758). The spans in the
 //     batch are in sorted order. At the storage layer, the same iterator is
 //     reused across the requests in a batch, and results in the following
 //     sequence of calls repeated a 100 times: SetBounds, SeekGE, <iterate>.

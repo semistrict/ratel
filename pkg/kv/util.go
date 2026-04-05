@@ -20,9 +20,9 @@ import (
 	"time"
 
 	"github.com/cockroachdb/apd/v3"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/duration"
-	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/duration"
+	"github.com/semistrict/ratel/pkg/util/protoutil"
 )
 
 // TODO(pmattis): The methods in this file needs tests.

@@ -26,7 +26,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/exit"
+	"github.com/semistrict/ratel/pkg/cli/exit"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/gostdlib/go/format"
 )

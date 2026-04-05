@@ -1,8 +1,8 @@
 - Feature Name: segmented_storage
 - Status: rejected
 - Start Date: 2015-07-29
-- RFC PR: [#1866](https://github.com/cockroachdb/cockroach/pull/1866)
-- Cockroach Issue: [#1644](https://github.com/cockroachdb/cockroach/issues/1644)
+- RFC PR: [#1866](https://github.com/semistrict/ratel/pull/1866)
+- Cockroach Issue: [#1644](https://github.com/semistrict/ratel/issues/1644)
 
 # Rejection notes
 
@@ -30,7 +30,7 @@ may be owned by different ranges at different times.
 
 For a concrete example of the problems this can cause (discussed more
 fully in
-[#1644](https://github.com/cockroachdb/cockroach/issues/1644)),
+[#1644](https://github.com/semistrict/ratel/issues/1644)),
 consider a node `N3` which is temporarily down while a range `R1` is
 split (creating `R2`). When the range comes back up, the leaders of
 both `R1` and `R2` (`N1` and `N2` respectively) will try to bring it

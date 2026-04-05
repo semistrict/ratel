@@ -684,31 +684,31 @@ an alias if we build support for CockroachDB to CockroachDB replication.
 
 
 
-[#2656]: https://github.com/cockroachdb/cockroach/issues/2656
-[#6130]: https://github.com/cockroachdb/cockroach/issues/6130
+[#2656]: https://github.com/semistrict/ratel/issues/2656
+[#6130]: https://github.com/semistrict/ratel/issues/6130
 [amazon redshift]: https://aws.amazon.com/redshift/
 [avro]: #appendix-avro-background
-[rangefeed]: https://github.com/cockroachdb/cockroach/blob/381e4dafa596c5f3621a48fcb5fce1f62b18c186/docs/RFCS/20170613_change_feeds_storage_primitive.md
+[rangefeed]: https://github.com/semistrict/ratel/blob/381e4dafa596c5f3621a48fcb5fce1f62b18c186/docs/RFCS/20170613_change_feeds_storage_primitive.md
 [column family]: https://www.cockroachlabs.com/docs/stable/column-families.html
 [confluent schema registry]: https://docs.confluent.io/current/schema-registry/docs/index.html
 [cross-row and cross-table ordering]: #cross-row-and-cross-table-ordering
 [data warehouse example: amazon redshift]: #data-warehouse-example-amazon-redshift
 [debezium]: http://debezium.io
-[distsql]: https://github.com/cockroachdb/cockroach/blob/381e4dafa596c5f3621a48fcb5fce1f62b18c186/docs/RFCS/20160421_distributed_sql.md
+[distsql]: https://github.com/semistrict/ratel/blob/381e4dafa596c5f3621a48fcb5fce1f62b18c186/docs/RFCS/20160421_distributed_sql.md
 [elasticsearch]: https://www.elastic.co/products/elasticsearch
 [elasticsearch-example]: #fulltext-index-example-elasticsearch
 [elasticsearchsinkconnector]: https://docs.confluent.io/current/connect/connect-elasticsearch/docs/elasticsearch_connector.html
 [exactly-once delivery]: #exactly-once-delivery
-[follower reads]: https://github.com/cockroachdb/cockroach/pull/26362
+[follower reads]: https://github.com/semistrict/ratel/pull/26362
 [full-text index example: elasticsearch]: #full-text-index-example-elasticsearch
 [garbage collection]: https://www.cockroachlabs.com/docs/stable/architecture/storage-layer.html#garbage-collection
 [incremental backups]: https://www.cockroachlabs.com/docs/stable/backup.html
 [jdbc source connector]: https://docs.confluent.io/current/connect/connect-jdbc/docs/source_connector.html
 [kafka]: https://kafka.apache.org/intro
 [other cdc syntaxes]: #appendix-other-cdc-syntaxes
-[proposed and sent through raft]: https://github.com/cockroachdb/cockroach/blob/381e4dafa596c5f3621a48fcb5fce1f62b18c186/docs/RFCS/20160420_proposer_evaluated_kv.md
+[proposed and sent through raft]: https://github.com/semistrict/ratel/blob/381e4dafa596c5f3621a48fcb5fce1f62b18c186/docs/RFCS/20160420_proposer_evaluated_kv.md
 [schema resolution]: http://avro.apache.org/docs/current/spec.html#Schema+Resolution
 [sql table sink]: #sql-table-sink
-[system jobs]: https://github.com/cockroachdb/cockroach/blob/381e4dafa596c5f3621a48fcb5fce1f62b18c186/docs/RFCS/20170215_system_jobs.md
+[system jobs]: https://github.com/semistrict/ratel/blob/381e4dafa596c5f3621a48fcb5fce1f62b18c186/docs/RFCS/20170215_system_jobs.md
 [transaction grouped changes]: #no-transaction-grouped-changes
-[follower read]: https://github.com/cockroachdb/cockroach/pull/19222
+[follower read]: https://github.com/semistrict/ratel/pull/19222

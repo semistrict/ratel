@@ -28,8 +28,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/lexbase"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/sql/lexbase"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 	"github.com/lib/pq"
 )
 

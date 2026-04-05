@@ -23,9 +23,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/uuid"
-	"github.com/cockroachdb/cockroach/pkg/workload"
-	"github.com/cockroachdb/cockroach/pkg/workload/faker"
+	"github.com/semistrict/ratel/pkg/util/uuid"
+	"github.com/semistrict/ratel/pkg/workload"
+	"github.com/semistrict/ratel/pkg/workload/faker"
 	"github.com/cockroachdb/errors"
 	"github.com/spf13/pflag"
 	"golang.org/x/exp/rand"

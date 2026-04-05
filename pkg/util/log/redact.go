@@ -19,7 +19,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/encoding/encodingtype"
+	"github.com/semistrict/ratel/pkg/util/encoding/encodingtype"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
 )

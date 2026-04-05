@@ -18,7 +18,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/util/tracing"
+	"github.com/semistrict/ratel/pkg/util/tracing"
 	"github.com/cockroachdb/logtags"
 	"github.com/stretchr/testify/require"
 )

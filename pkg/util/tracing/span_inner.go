@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
-	"github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/util/tracing/tracingpb"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
 	"go.opentelemetry.io/otel/attribute"
@@ -229,7 +229,7 @@ func (s *spanInner) Recordf(format string, args ...interface{}) {
 		// TODO(obs-inf): depending on the situation it may be more appropriate to
 		// redact the string here.
 		// See:
-		// https://github.com/cockroachdb/cockroach/issues/58610#issuecomment-926093901
+		// https://github.com/semistrict/ratel/issues/58610#issuecomment-926093901
 		s.otelSpan.AddEvent(str.StripMarkers(), oteltrace.WithTimestamp(timeutil.Now()))
 	}
 	if s.netTr != nil {

@@ -19,7 +19,7 @@ import (
 	"io"
 	"text/template"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/sql/types"
 )
 
 // likeTemplate depends either on the selConstOp template from selection_ops_gen
@@ -52,7 +52,7 @@ import (
 	"context"
 	"regexp"
 
-	"github.com/cockroachdb/cockroach/pkg/col/coldata"
+	"github.com/semistrict/ratel/pkg/col/coldata"
 )
 
 {{range .}}

@@ -21,7 +21,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 )
 
 type keyFile struct {

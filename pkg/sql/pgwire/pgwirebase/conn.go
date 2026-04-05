@@ -17,7 +17,7 @@ package pgwirebase
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo"
+	"github.com/semistrict/ratel/pkg/sql/catalog/colinfo"
 )
 
 // Conn exposes some functionality of a pgwire network connection to be

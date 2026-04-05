@@ -26,7 +26,7 @@ package tree
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/lexbase"
+	"github.com/semistrict/ratel/pkg/sql/lexbase"
 )
 
 // ShowVar represents a SHOW statement.

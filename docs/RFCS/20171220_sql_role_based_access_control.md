@@ -2,8 +2,8 @@
 - Status: in-progress
 - Start Date: 2017-11-18
 - Authors: Marc Berhault
-- RFC PR: [#20149](https://github.com/cockroachdb/cockroach/pull/20149)
-- Cockroach Issue: [#20371](https://github.com/cockroachdb/cockroach/issues/20371)
+- RFC PR: [#20149](https://github.com/semistrict/ratel/pull/20149)
+- Cockroach Issue: [#20371](https://github.com/semistrict/ratel/issues/20371)
 
 Table of Contents
 =================
@@ -494,7 +494,7 @@ in the path of data-access SQL queries.
 This makes the enterprise license check relatively painless.
 
 It is currently possible to manipulate the system tables directly, bypassing role manipulation statements.
-Closing this loop-hole is out of scope for this document. See [tracking issue #19277](https://github.com/cockroachdb/cockroach/issues/19277).
+Closing this loop-hole is out of scope for this document. See [tracking issue #19277](https://github.com/semistrict/ratel/issues/19277).
 
 ### Virtual tables
 
@@ -622,7 +622,7 @@ Dual tables: one for direct role membership information, one for expanded member
 Privileges are currently stored in database/table descriptors. To properly integrate with the
 role change control, they need to be moved to their own table.
 
-[Existing issue](https://github.com/cockroachdb/cockroach/issues/2939).
+[Existing issue](https://github.com/semistrict/ratel/issues/2939).
 
 ### Role attributes
 

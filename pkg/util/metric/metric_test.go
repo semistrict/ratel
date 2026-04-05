@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/cockroachdb/cockroach/pkg/util/log" // for flags
+	_ "github.com/semistrict/ratel/pkg/util/log" // for flags
 )
 
 func testMarshal(t *testing.T, m json.Marshaler, exp string) {

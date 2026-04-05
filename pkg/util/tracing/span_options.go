@@ -17,7 +17,7 @@ package tracing
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb"
+	"github.com/semistrict/ratel/pkg/util/tracing/tracingpb"
 	"github.com/cockroachdb/logtags"
 	"go.opentelemetry.io/otel/attribute"
 	oteltrace "go.opentelemetry.io/otel/trace"

@@ -19,11 +19,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/cliflags"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/rpc"
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/server/pgurl"
+	"github.com/semistrict/ratel/pkg/cli/cliflags"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/rpc"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/server/pgurl"
 	"github.com/cockroachdb/errors"
 	"github.com/spf13/cobra"
 )
@@ -177,7 +177,7 @@ func (u urlParser) setInternal(v string, warn bool) error {
 	if !tlsUsed {
 		if u.sslStrict {
 			// For "strict" mode (RPC client commands) we don't support non-TLS
-			// yet. See https://github.com/cockroachdb/cockroach/issues/54007
+			// yet. See https://github.com/semistrict/ratel/issues/54007
 			// Instead, we see a request for no TLS to imply insecure mode.
 			if err := flInsecure.Value.Set("true"); err != nil {
 				return errors.Wrapf(err, "setting secure connection based on --url")

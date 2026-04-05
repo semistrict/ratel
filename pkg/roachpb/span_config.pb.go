@@ -5,10 +5,10 @@ package roachpb
 
 import (
 	fmt "fmt"
-	hlc "github.com/cockroachdb/cockroach/pkg/util/hlc"
 	errorspb "github.com/cockroachdb/errors/errorspb"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	hlc "github.com/semistrict/ratel/pkg/util/hlc"
 	io "io"
 	math "math"
 	math_bits "math/bits"

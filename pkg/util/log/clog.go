@@ -24,10 +24,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/exit"
-	"github.com/cockroachdb/cockroach/pkg/util/log/logpb"
-	"github.com/cockroachdb/cockroach/pkg/util/log/severity"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/cli/exit"
+	"github.com/semistrict/ratel/pkg/util/log/logpb"
+	"github.com/semistrict/ratel/pkg/util/log/severity"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
 )
@@ -261,7 +261,7 @@ func (l *loggerT) outputLogEntry(entry logEntry) {
 		// file system do not support deadlines but can block
 		// indefinitely).
 		//
-		// https://github.com/cockroachdb/cockroach/issues/23119
+		// https://github.com/semistrict/ratel/issues/23119
 		fatalTrigger = make(chan struct{})
 		exitFunc := func(x exit.Code, _ error) { exit.WithCode(x) }
 		logging.mu.Lock()
@@ -413,7 +413,7 @@ improve CockroachDB based on your report.
 
 Please submit a crash report by following the instructions here:
 
-    https://github.com/cockroachdb/cockroach/issues/new/choose
+    https://github.com/semistrict/ratel/issues/new/choose
 
 If you would rather not post publicly, please contact us directly at:
 

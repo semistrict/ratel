@@ -15,9 +15,9 @@
 package ordering
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/opt"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/memo"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/props"
+	"github.com/semistrict/ratel/pkg/sql/opt"
+	"github.com/semistrict/ratel/pkg/sql/opt/memo"
+	"github.com/semistrict/ratel/pkg/sql/opt/props"
 )
 
 func distributeCanProvideOrdering(expr memo.RelExpr, required *props.OrderingChoice) bool {

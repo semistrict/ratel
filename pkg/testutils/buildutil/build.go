@@ -20,12 +20,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
+	"github.com/semistrict/ratel/pkg/testutils/skip"
 	"github.com/cockroachdb/errors"
 )
 
 func short(in string) string {
-	return strings.Replace(in, "github.com/cockroachdb/cockroach/pkg/", "./pkg/", -1)
+	return strings.Replace(in, "github.com/semistrict/ratel/pkg/", "./pkg/", -1)
 }
 
 // VerifyNoImports verifies that a package doesn't depend (directly or
@@ -75,8 +75,8 @@ func VerifyNoImports(
 				}
 				if forbidden == "c-deps" &&
 					imp == "C" &&
-					strings.HasPrefix(path, "github.com/cockroachdb/cockroach/pkg") &&
-					path != "github.com/cockroachdb/cockroach/pkg/geo/geoproj" {
+					strings.HasPrefix(path, "github.com/semistrict/ratel/pkg") &&
+					path != "github.com/semistrict/ratel/pkg/geo/geoproj" {
 					for _, name := range pkg.CgoFiles {
 						if strings.Contains(name, "zcgo_flags") {
 							return errors.Errorf("%s imports %s (%s), which is forbidden", short(path), short(imp), name)

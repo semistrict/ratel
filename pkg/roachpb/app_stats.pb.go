@@ -193,7 +193,7 @@ var xxx_messageInfo_TransactionStatistics proto.InternalMessageInfo
 type SensitiveInfo struct {
 	// LastErr collects the last error encountered.
 	// It is only reported once it's been redacted.
-	// See also: https://github.com/cockroachdb/cockroach/issues/53191
+	// See also: https://github.com/semistrict/ratel/issues/53191
 	LastErr string `protobuf:"bytes,1,opt,name=last_err,json=lastErr" json:"last_err"`
 	// MostRecentPlanDescription is a serialized representation of the logical plan most recently captured for this query.
 	MostRecentPlanDescription ExplainTreePlanNode `protobuf:"bytes,2,opt,name=most_recent_plan_description,json=mostRecentPlanDescription" json:"most_recent_plan_description"`

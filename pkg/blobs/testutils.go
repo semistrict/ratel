@@ -17,7 +17,7 @@ package blobs
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // TestBlobServiceClient can be used as a mock BlobClient

@@ -109,7 +109,7 @@ func main() {
 	}
 
 	// Do a fresh checkout of master.
-	if err := spawn("git", "fetch", "https://github.com/cockroachdb/cockroach.git", "master"); err != nil {
+	if err := spawn("git", "fetch", "https://github.com/semistrict/ratel.git", "master"); err != nil {
 		log.Fatal(errors.Wrap(err, "failed to get CockroachDB master"))
 	}
 
@@ -203,7 +203,7 @@ Release note: None
 		"python",
 		"-c",
 		"import sys, webbrowser; sys.exit(not webbrowser.open(sys.argv[1]))",
-		fmt.Sprintf("https://github.com/cockroachdb/cockroach/compare/master...%s:%s?expand=1", remote, skipBranch),
+		fmt.Sprintf("https://github.com/semistrict/ratel/compare/master...%s:%s?expand=1", remote, skipBranch),
 	); err != nil {
 		log.Fatal(errors.Wrapf(err, "failed to open web browser"))
 	}

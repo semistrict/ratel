@@ -14,7 +14,7 @@
 
 package tree
 
-import "github.com/cockroachdb/cockroach/pkg/sql/lexbase"
+import "github.com/semistrict/ratel/pkg/sql/lexbase"
 
 // CommentOnColumn represents an COMMENT ON COLUMN statement.
 type CommentOnColumn struct {

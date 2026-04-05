@@ -17,8 +17,8 @@ package kvserverbase
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/errorutil"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/errorutil"
 )
 
 // StoresIterator is able to iterate over all stores on a given node.

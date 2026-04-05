@@ -31,16 +31,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/cli/cliflags"
-	"github.com/cockroachdb/cockroach/pkg/security/securitytest"
-	"github.com/cockroachdb/cockroach/pkg/server/status"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
-	"github.com/cockroachdb/cockroach/pkg/testutils/buildutil"
-	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
-	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/cli/cliflags"
+	"github.com/semistrict/ratel/pkg/security/securitytest"
+	"github.com/semistrict/ratel/pkg/server/status"
+	"github.com/semistrict/ratel/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/testutils/buildutil"
+	"github.com/semistrict/ratel/pkg/testutils/skip"
+	"github.com/semistrict/ratel/pkg/util"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/log"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -67,20 +67,20 @@ func TestNoLinkForbidden(t *testing.T) {
 
 	// Verify that the cockroach binary doesn't depend on certain packages.
 	buildutil.VerifyNoImports(t,
-		"github.com/cockroachdb/cockroach/pkg/cmd/cockroach-oss", true,
+		"github.com/semistrict/ratel/pkg/cmd/cockroach-oss", true,
 		[]string{
 			"testing",  // defines flags
 			"go/build", // probably not something we want in the main binary
-			"github.com/cockroachdb/cockroach/pkg/security/securitytest", // contains certificates
-			"github.com/cockroachdb/cockroach/pkg/sql/randgen",           // meant for testing code only
+			"github.com/semistrict/ratel/pkg/security/securitytest", // contains certificates
+			"github.com/semistrict/ratel/pkg/sql/randgen",           // meant for testing code only
 		},
 		[]string{
-			"github.com/cockroachdb/cockroach/pkg/testutils", // meant for testing code only
+			"github.com/semistrict/ratel/pkg/testutils", // meant for testing code only
 		},
 		// The errors library uses go/build to determine
 		// the list of source directories (used to strip the source prefix
 		// in stack trace reports).
-		"github.com/cockroachdb/cockroach/vendor/github.com/cockroachdb/errors/withstack",
+		"github.com/semistrict/ratel/vendor/github.com/cockroachdb/errors/withstack",
 	)
 }
 

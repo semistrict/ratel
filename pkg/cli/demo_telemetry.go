@@ -17,7 +17,7 @@ package cli
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/server/telemetry"
+	"github.com/semistrict/ratel/pkg/server/telemetry"
 )
 
 // demoTelemetry corresponds to different sources of telemetry we are recording from cockroach demo.

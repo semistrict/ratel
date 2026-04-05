@@ -17,17 +17,17 @@ package rowexec
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/execinfra"
-	"github.com/cockroachdb/cockroach/pkg/sql/execinfrapb"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/rowenc"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/util/encoding"
-	"github.com/cockroachdb/cockroach/pkg/util/mon"
-	"github.com/cockroachdb/cockroach/pkg/util/optional"
-	"github.com/cockroachdb/cockroach/pkg/util/stringarena"
+	"github.com/semistrict/ratel/pkg/sql/execinfra"
+	"github.com/semistrict/ratel/pkg/sql/execinfrapb"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
+	"github.com/semistrict/ratel/pkg/sql/rowenc"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/util/encoding"
+	"github.com/semistrict/ratel/pkg/util/mon"
+	"github.com/semistrict/ratel/pkg/util/optional"
+	"github.com/semistrict/ratel/pkg/util/stringarena"
 	"github.com/cockroachdb/errors"
 )
 
@@ -277,7 +277,7 @@ func (d *distinct) Next() (rowenc.EncDatumRow, *execinfrapb.ProducerMetadata) {
 				// there was a guarantee that it does not contain PII. Or
 				// better yet, the caller would construct an `error` object to
 				// return here instead of a string.
-				// See: https://github.com/cockroachdb/cockroach/issues/48166
+				// See: https://github.com/semistrict/ratel/issues/48166
 				err = pgerror.Newf(pgcode.CardinalityViolation, "%s", d.errorOnDup)
 				d.MoveToDraining(err)
 				break

@@ -19,12 +19,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	_ "github.com/cockroachdb/cockroach/pkg/keys" // to init roachpb.PrettyPrintRange
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/concurrency/poison"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/testutils/echotest"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	_ "github.com/semistrict/ratel/pkg/keys" // to init roachpb.PrettyPrintRange
+	"github.com/semistrict/ratel/pkg/kv/kvserver/concurrency/poison"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/testutils/echotest"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
 	"github.com/stretchr/testify/require"

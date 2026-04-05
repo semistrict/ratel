@@ -19,12 +19,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/roachprod/vm"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/vm/aws"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/vm/azure"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/vm/gce"
-	"github.com/cockroachdb/cockroach/pkg/util/randutil"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/roachprod/vm"
+	"github.com/semistrict/ratel/pkg/roachprod/vm/aws"
+	"github.com/semistrict/ratel/pkg/roachprod/vm/azure"
+	"github.com/semistrict/ratel/pkg/roachprod/vm/gce"
+	"github.com/semistrict/ratel/pkg/util/randutil"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 	"github.com/cockroachdb/errors"
 )
 

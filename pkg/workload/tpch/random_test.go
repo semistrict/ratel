@@ -18,8 +18,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/util/bufalloc"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/util/bufalloc"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/exp/rand"
 )

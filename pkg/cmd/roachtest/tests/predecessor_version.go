@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/util/version"
+	"github.com/semistrict/ratel/pkg/util/version"
 	"github.com/cockroachdb/errors"
 )
 

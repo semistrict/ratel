@@ -15,8 +15,8 @@
 package colexectestutils
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/colexec/colexecargs"
-	"github.com/cockroachdb/cockroach/pkg/sql/colexecop"
+	"github.com/semistrict/ratel/pkg/sql/colexec/colexecargs"
+	"github.com/semistrict/ratel/pkg/sql/colexecop"
 )
 
 // MakeInputs is a utility function that populates a slice of

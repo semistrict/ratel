@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/util/log/channel"
-	"github.com/cockroachdb/cockroach/pkg/util/log/logconfig"
-	"github.com/cockroachdb/cockroach/pkg/util/log/severity"
+	"github.com/semistrict/ratel/pkg/util/log/channel"
+	"github.com/semistrict/ratel/pkg/util/log/logconfig"
+	"github.com/semistrict/ratel/pkg/util/log/severity"
 	"github.com/stretchr/testify/require"
 )
 

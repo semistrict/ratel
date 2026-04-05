@@ -307,7 +307,7 @@ CREATE TYPE typ AS ENUM ('a', 'b')
 ## fact that the root user has visibility into both of the tables. The 'a' that
 ## gets selected should be the 'a' that exists in the current database.
 ## The same exact reasoning applies to the type named 'typ'.
-## See https://github.com/cockroachdb/cockroach/issues/13695
+## See https://github.com/semistrict/ratel/issues/13695
 
 query OI
 SELECT relname, relnatts FROM pg_class WHERE oid='a'::regclass

@@ -17,8 +17,8 @@ package descpb
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	types "github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	types "github.com/semistrict/ratel/pkg/sql/types"
 	"github.com/cockroachdb/errors"
 )
 

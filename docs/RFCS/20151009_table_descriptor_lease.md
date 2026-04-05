@@ -1,8 +1,8 @@
 - Feature Name: table_descriptor_lease
 - Status: completed
 - Start Date: 2015-10-09
-- RFC PR: [#2810](https://github.com/cockroachdb/cockroach/pull/2036)
-- Cockroach Issue: [#2036](https://github.com/cockroachdb/cockroach/issues/2036)
+- RFC PR: [#2810](https://github.com/semistrict/ratel/pull/2036)
+- Cockroach Issue: [#2036](https://github.com/semistrict/ratel/issues/2036)
 
 # Summary
 
@@ -19,7 +19,7 @@ latency.
 
 Table descriptors are currently distributed to every node in the
 cluster via gossipping of the system config (see
-[schema_gossip](https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20150720_schema_gossip.md)). Unfortunately,
+[schema_gossip](https://github.com/semistrict/ratel/blob/master/docs/RFCS/20150720_schema_gossip.md)). Unfortunately,
 it is not safe to use these gossipped table descriptors in almost any
 circumstance. Consider the statements:
 

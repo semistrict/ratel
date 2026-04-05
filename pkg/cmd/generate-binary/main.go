@@ -39,9 +39,9 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/cmp-protocol/pgconnect"
-	"github.com/cockroachdb/cockroach/pkg/sql/oidext"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgwirebase"
+	"github.com/semistrict/ratel/pkg/cmd/cmp-protocol/pgconnect"
+	"github.com/semistrict/ratel/pkg/sql/oidext"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgwirebase"
 )
 
 var (

@@ -15,7 +15,7 @@
 package typedesc
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
+	"github.com/semistrict/ratel/pkg/sql/catalog"
 	"github.com/cockroachdb/redact"
 )
 

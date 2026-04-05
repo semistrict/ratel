@@ -680,7 +680,7 @@ def analyze_pr(merge, pr, parent_idx):
         # This happens to be true of the missing PR above as well
         # as for several other merge commits with more than two parents.
         tip = merge.parents[parent_idx]
-        print("check at https://github.com/cockroachdb/cockroach/pull/%s that the last commit is %s" % (pr[1:], tip.hexsha), file=sys.stderr)
+        print("check at https://github.com/semistrict/ratel/pull/%s that the last commit is %s" % (pr[1:], tip.hexsha), file=sys.stderr)
         # TODO(knz): If this method is reliable, this means we don't
         # need the pull tips at /refs/pull *at all* which could
         # streamline the whole experience.
@@ -858,7 +858,7 @@ if not hidedownloads:
     <a href="https://binaries.cockroachdb.com/cockroach-""" + current_version + """.linux-amd64.tgz"><button id="linux" class="filter-button" data-scope="linux" data-eventcategory="linux-binary-release-notes">Linux</button></a>
     <a href="https://binaries.cockroachdb.com/cockroach-""" + current_version + """.darwin-10.9-amd64.tgz"><button id="mac" class="filter-button" data-scope="mac" data-eventcategory="mac-binary-release-notes">Mac</button></a>
     <a href="https://binaries.cockroachdb.com/cockroach-""" + current_version + """.windows-6.2-amd64.zip"><button id="windows" class="filter-button" data-scope="windows" data-eventcategory="windows-binary-release-notes">Windows</button></a>
-    <a target="_blank" href="https://github.com/cockroachdb/cockroach/releases/tag/""" + current_version + '"' + """><button id="source" class="filter-button" data-scope="source" data-eventcategory="source-release-notes">Source</button></a>
+    <a target="_blank" href="https://github.com/semistrict/ratel/releases/tag/""" + current_version + '"' + """><button id="source" class="filter-button" data-scope="source" data-eventcategory="source-release-notes">Source</button></a>
 </div>
 
 <section class="filter-content" data-scope="windows">
@@ -991,7 +991,7 @@ if not hidepercontributor:
 
 # Link the PRs and SHAs
 for pr in sorted(seenprs):
-    print("[%s]: https://github.com/cockroachdb/cockroach/pull/%s" % (pr, pr[1:]))
+    print("[%s]: https://github.com/semistrict/ratel/pull/%s" % (pr, pr[1:]))
 for sha in sorted(seenshas):
-    print("[%s]: https://github.com/cockroachdb/cockroach/commit/%s" % (sha, sha))
+    print("[%s]: https://github.com/semistrict/ratel/commit/%s" % (sha, sha))
 print()

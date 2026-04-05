@@ -30,7 +30,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/util/envutil"
+	"github.com/semistrict/ratel/pkg/util/envutil"
 	"github.com/cockroachdb/errors"
 )
 

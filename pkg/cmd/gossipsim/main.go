@@ -27,7 +27,7 @@ simulation.
 
 To run:
 
-	go install github.com/cockroachdb/cockroach/cmd/gossipsim
+	go install github.com/semistrict/ratel/cmd/gossipsim
 	gossipsim -size=(small|medium|large|huge|ginormous)
 
 Log output includes instructions for displaying the graph output as a
@@ -67,14 +67,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/config/zonepb"
-	"github.com/cockroachdb/cockroach/pkg/gossip"
-	"github.com/cockroachdb/cockroach/pkg/gossip/simulation"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/encoding"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/randutil"
-	"github.com/cockroachdb/cockroach/pkg/util/stop"
+	"github.com/semistrict/ratel/pkg/config/zonepb"
+	"github.com/semistrict/ratel/pkg/gossip"
+	"github.com/semistrict/ratel/pkg/gossip/simulation"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/encoding"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/randutil"
+	"github.com/semistrict/ratel/pkg/util/stop"
 )
 
 const (

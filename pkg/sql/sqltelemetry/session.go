@@ -17,7 +17,7 @@ package sqltelemetry
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/server/telemetry"
+	"github.com/semistrict/ratel/pkg/server/telemetry"
 )
 
 // DefaultIntSize4Counter is to be incremented every time a client

@@ -20,9 +20,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/clierrorplus"
-	"github.com/cockroachdb/cockroach/pkg/cli/clisqlexec"
-	"github.com/cockroachdb/cockroach/pkg/security"
+	"github.com/semistrict/ratel/pkg/cli/clierrorplus"
+	"github.com/semistrict/ratel/pkg/cli/clisqlexec"
+	"github.com/semistrict/ratel/pkg/security"
 	"github.com/cockroachdb/errors"
 	"github.com/spf13/cobra"
 )

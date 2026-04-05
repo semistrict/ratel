@@ -20,9 +20,9 @@ import (
 
 	"github.com/apache/arrow/go/arrow/array"
 	"github.com/apache/arrow/go/arrow/memory"
-	"github.com/cockroachdb/cockroach/pkg/col/colserde/arrowserde"
-	"github.com/cockroachdb/cockroach/pkg/col/typeconv"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/col/colserde/arrowserde"
+	"github.com/semistrict/ratel/pkg/col/typeconv"
+	"github.com/semistrict/ratel/pkg/sql/types"
 	"github.com/cockroachdb/errors"
 	flatbuffers "github.com/google/flatbuffers/go"
 )

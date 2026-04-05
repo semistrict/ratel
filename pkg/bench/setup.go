@@ -22,7 +22,7 @@ import (
 	"net/url"
 	"os/exec"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils/sqlutils"
+	"github.com/semistrict/ratel/pkg/testutils/sqlutils"
 )
 
 const schema = `

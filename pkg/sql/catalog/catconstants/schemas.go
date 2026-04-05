@@ -14,7 +14,7 @@
 
 package catconstants
 
-import "github.com/cockroachdb/cockroach/pkg/keys"
+import "github.com/semistrict/ratel/pkg/keys"
 
 // StaticSchemaIDMapVirtualPublicSchema is a map of statically known schema IDs
 // on versions prior to PublicSchemasWithDescriptors.

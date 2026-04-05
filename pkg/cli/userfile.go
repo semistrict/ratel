@@ -26,17 +26,17 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/clierrorplus"
-	"github.com/cockroachdb/cockroach/pkg/cli/clisqlclient"
-	"github.com/cockroachdb/cockroach/pkg/cloud"
-	"github.com/cockroachdb/cockroach/pkg/cloud/userfile"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/server/telemetry"
-	"github.com/cockroachdb/cockroach/pkg/sql"
-	"github.com/cockroachdb/cockroach/pkg/sql/lexbase"
-	"github.com/cockroachdb/cockroach/pkg/util/humanizeutil"
-	"github.com/cockroachdb/cockroach/pkg/util/ioctx"
+	"github.com/semistrict/ratel/pkg/cli/clierrorplus"
+	"github.com/semistrict/ratel/pkg/cli/clisqlclient"
+	"github.com/semistrict/ratel/pkg/cloud"
+	"github.com/semistrict/ratel/pkg/cloud/userfile"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/server/telemetry"
+	"github.com/semistrict/ratel/pkg/sql"
+	"github.com/semistrict/ratel/pkg/sql/lexbase"
+	"github.com/semistrict/ratel/pkg/util/humanizeutil"
+	"github.com/semistrict/ratel/pkg/util/ioctx"
 	"github.com/cockroachdb/errors"
 	"github.com/spf13/cobra"
 )
@@ -617,7 +617,7 @@ func uploadUserFile(
 	// there is no guarantee that the username in the connection string
 	// is the same one on the remote machine, and it may contain special
 	// characters.
-	// See also: https://github.com/cockroachdb/cockroach/issues/55389
+	// See also: https://github.com/semistrict/ratel/issues/55389
 	username, err := security.MakeSQLUsernameFromUserInput(connURL.User.Username(), security.UsernameCreation)
 	if err != nil {
 		return "", err

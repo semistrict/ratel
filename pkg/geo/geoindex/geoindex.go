@@ -21,9 +21,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/geo"
-	"github.com/cockroachdb/cockroach/pkg/geo/geogfn"
-	"github.com/cockroachdb/cockroach/pkg/geo/geopb"
+	"github.com/semistrict/ratel/pkg/geo"
+	"github.com/semistrict/ratel/pkg/geo/geogfn"
+	"github.com/semistrict/ratel/pkg/geo/geopb"
 	"github.com/golang/geo/s2"
 	"github.com/twpayne/go-geom"
 )

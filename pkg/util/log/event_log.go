@@ -17,9 +17,9 @@ package log
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/util/log/eventpb"
-	"github.com/cockroachdb/cockroach/pkg/util/log/severity"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/util/log/eventpb"
+	"github.com/semistrict/ratel/pkg/util/log/severity"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 )
 
 // StructuredEvent emits a structured event to the debug log.

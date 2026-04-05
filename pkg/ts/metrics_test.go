@@ -18,8 +18,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/ts/tspb"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/ts/tspb"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 )
 
 func TestTimeSeriesWriteMetrics(t *testing.T) {

@@ -21,8 +21,8 @@ import (
 	"io"
 	"regexp"
 
-	"github.com/cockroachdb/cockroach/pkg/build"
-	"github.com/cockroachdb/cockroach/pkg/util/log/logpb"
+	"github.com/semistrict/ratel/pkg/build"
+	"github.com/semistrict/ratel/pkg/util/log/logpb"
 	"github.com/cockroachdb/errors"
 )
 

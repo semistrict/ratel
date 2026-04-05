@@ -22,7 +22,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/exit"
+	"github.com/semistrict/ratel/pkg/cli/exit"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/gostdlib/go/format"
 )
@@ -190,7 +190,7 @@ var templates = map[string]string{
 
 package severity
 
-import "github.com/cockroachdb/cockroach/pkg/util/log/logpb"
+import "github.com/semistrict/ratel/pkg/util/log/logpb"
 {{range .Severities}}
 
 {{ .RawComment -}}
@@ -202,7 +202,7 @@ const {{.NAME}} = logpb.Severity_{{.NAME}}
 
 package channel
 
-import "github.com/cockroachdb/cockroach/pkg/util/log/logpb"
+import "github.com/semistrict/ratel/pkg/util/log/logpb"
 
 {{range .Channels}}
 
@@ -218,8 +218,8 @@ package log
 import (
   "context"
 
-  "github.com/cockroachdb/cockroach/pkg/util/log/channel"
-  "github.com/cockroachdb/cockroach/pkg/util/log/severity"
+  "github.com/semistrict/ratel/pkg/util/log/channel"
+  "github.com/semistrict/ratel/pkg/util/log/severity"
 )
 
 // ChannelLogger is a helper interface to ease the run-time selection

@@ -20,9 +20,9 @@ import (
 	"strings"
 
 	"github.com/cockroachdb/apd/v3"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/util/duration"
-	"github.com/cockroachdb/cockroach/pkg/util/ring"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/util/duration"
+	"github.com/semistrict/ratel/pkg/util/ring"
 	"github.com/cockroachdb/errors"
 )
 

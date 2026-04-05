@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/security"
+	"github.com/semistrict/ratel/pkg/security"
 )
 
 // GetFloatPrec computes a precision suitable for a call to

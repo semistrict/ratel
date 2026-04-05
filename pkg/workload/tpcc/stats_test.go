@@ -19,7 +19,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/workload"
+	"github.com/semistrict/ratel/pkg/workload"
 )
 
 func TestTPCCStats(t *testing.T) {

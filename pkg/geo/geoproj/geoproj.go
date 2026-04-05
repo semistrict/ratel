@@ -27,10 +27,10 @@ import (
 	"math"
 	"unsafe"
 
-	"github.com/cockroachdb/cockroach/pkg/geo/geographiclib"
-	"github.com/cockroachdb/cockroach/pkg/geo/geoprojbase"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
+	"github.com/semistrict/ratel/pkg/geo/geographiclib"
+	"github.com/semistrict/ratel/pkg/geo/geoprojbase"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
 )
 
 // maxArrayLen is the maximum safe length for this architecture.

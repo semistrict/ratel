@@ -21,11 +21,11 @@ package impl
 
 import (
 	// Import all the cloud provider packages to register them.
-	_ "github.com/cockroachdb/cockroach/pkg/cloud/amazon"
-	_ "github.com/cockroachdb/cockroach/pkg/cloud/azure"
-	_ "github.com/cockroachdb/cockroach/pkg/cloud/gcp"
-	_ "github.com/cockroachdb/cockroach/pkg/cloud/httpsink"
-	_ "github.com/cockroachdb/cockroach/pkg/cloud/nodelocal"
-	_ "github.com/cockroachdb/cockroach/pkg/cloud/nullsink"
-	_ "github.com/cockroachdb/cockroach/pkg/cloud/userfile"
+	_ "github.com/semistrict/ratel/pkg/cloud/amazon"
+	_ "github.com/semistrict/ratel/pkg/cloud/azure"
+	_ "github.com/semistrict/ratel/pkg/cloud/gcp"
+	_ "github.com/semistrict/ratel/pkg/cloud/httpsink"
+	_ "github.com/semistrict/ratel/pkg/cloud/nodelocal"
+	_ "github.com/semistrict/ratel/pkg/cloud/nullsink"
+	_ "github.com/semistrict/ratel/pkg/cloud/userfile"
 )

@@ -25,8 +25,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/alessio/shellescape"
-	"github.com/cockroachdb/cockroach/pkg/release"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/release"
+	"github.com/semistrict/ratel/pkg/testutils"
 	"github.com/stretchr/testify/require"
 )
 

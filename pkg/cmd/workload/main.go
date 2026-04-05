@@ -17,7 +17,7 @@ package main
 import (
 	"os"
 
-	workloadcli "github.com/cockroachdb/cockroach/pkg/workload/cli"
+	workloadcli "github.com/semistrict/ratel/pkg/workload/cli"
 )
 
 func main() {

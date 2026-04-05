@@ -21,7 +21,7 @@ package sqlsmith
 import (
 	"math/rand"
 
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 )
 
 // statementWeight is the generic weight type.

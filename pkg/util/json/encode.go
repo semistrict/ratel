@@ -16,7 +16,7 @@ package json
 
 import (
 	"github.com/cockroachdb/apd/v3"
-	"github.com/cockroachdb/cockroach/pkg/util/encoding"
+	"github.com/semistrict/ratel/pkg/util/encoding"
 	"github.com/cockroachdb/errors"
 )
 

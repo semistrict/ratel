@@ -222,7 +222,7 @@ export CFLAGS CXXFLAGS LDFLAGS CGO_CFLAGS CGO_CXXFLAGS CGO_LDFLAGS TZ
 # We intentionally use LINKFLAGS instead of the more traditional LDFLAGS
 # because LDFLAGS has built-in semantics that don't make sense with the Go
 # toolchain.
-override LINKFLAGS = -X github.com/cockroachdb/cockroach/pkg/build.typ=$(BUILDTYPE) -extldflags "$(LDFLAGS)"
+override LINKFLAGS = -X github.com/semistrict/ratel/pkg/build.typ=$(BUILDTYPE) -extldflags "$(LDFLAGS)"
 
 GOMODVENDORFLAGS ?= -mod=vendor
 GOFLAGS ?=
@@ -857,17 +857,17 @@ BUILDINFO_TAG :=
 $(go-targets): bin/.bootstrap $(BUILDINFO) $(CGO_FLAGS_FILES) $(PROTOBUF_TARGETS) $(LIBPROJ) $(GENERATED_TARGETS)
 $(go-targets): $(LOG_TARGETS) $(SQLPARSER_TARGETS) $(OPTGEN_TARGETS)
 $(go-targets): override LINKFLAGS += \
-	-X "github.com/cockroachdb/cockroach/pkg/build.tag=$(if $(BUILDINFO_TAG),$(BUILDINFO_TAG),$(shell cat .buildinfo/tag))" \
-	-X "github.com/cockroachdb/cockroach/pkg/build.rev=$(shell cat .buildinfo/rev)" \
-	-X "github.com/cockroachdb/cockroach/pkg/build.cgoTargetTriple=$(TARGET_TRIPLE)" \
-	$(if $(BUILDCHANNEL),-X "github.com/cockroachdb/cockroach/pkg/build.channel=$(BUILDCHANNEL)") \
-	$(if $(BUILD_TAGGED_RELEASE),-X "github.com/cockroachdb/cockroach/pkg/util/log/logcrash.crashReportEnv=$(if $(BUILDINFO_TAG),$(BUILDINFO_TAG),$(shell cat .buildinfo/tag))")
+	-X "github.com/semistrict/ratel/pkg/build.tag=$(if $(BUILDINFO_TAG),$(BUILDINFO_TAG),$(shell cat .buildinfo/tag))" \
+	-X "github.com/semistrict/ratel/pkg/build.rev=$(shell cat .buildinfo/rev)" \
+	-X "github.com/semistrict/ratel/pkg/build.cgoTargetTriple=$(TARGET_TRIPLE)" \
+	$(if $(BUILDCHANNEL),-X "github.com/semistrict/ratel/pkg/build.channel=$(BUILDCHANNEL)") \
+	$(if $(BUILD_TAGGED_RELEASE),-X "github.com/semistrict/ratel/pkg/util/log/logcrash.crashReportEnv=$(if $(BUILDINFO_TAG),$(BUILDINFO_TAG),$(shell cat .buildinfo/tag))")
 
 # The build.utcTime format must remain in sync with TimeFormat in
 # pkg/build/info.go. It is not installed in tests or in `buildshort` to avoid
 # busting the cache on every rebuild.
 $(COCKROACHOSS) go-install: override LINKFLAGS += \
-	-X "github.com/cockroachdb/cockroach/pkg/build.utcTime=$(shell date -u '+%Y/%m/%d %H:%M:%S')"
+	-X "github.com/semistrict/ratel/pkg/build.utcTime=$(shell date -u '+%Y/%m/%d %H:%M:%S')"
 
 settings-doc-gen = $(if $(filter buildshort,$(MAKECMDGOALS)),$(COCKROACHSHORT),$(COCKROACHOSS))
 
@@ -995,7 +995,7 @@ roachprod-stress roachprod-stressrace: bin/roachprod-stress
 	fi
 	build/builder.sh make bin/.bootstrap
 	build/builder.sh mkrelease amd64-linux-gnu test GOFLAGS="$(GOFLAGS)" TESTFLAGS="-v -c -o $(notdir $(patsubst %/,%,$(PKG))).test" PKG=$(PKG) TAGS="$(TAGS)"
-	bin/roachprod-stress $(CLUSTER) $(patsubst github.com/cockroachdb/cockroach/%,./%,$(PKG)) $(STRESSFLAGS) -- \
+	bin/roachprod-stress $(CLUSTER) $(patsubst github.com/semistrict/ratel/%,./%,$(PKG)) $(STRESSFLAGS) -- \
 	  -test.run "$(TESTS)" $(filter-out -v,$(TESTFLAGS)) -test.v -test.timeout $(TESTTIMEOUT); \
 
 testlogic: testbaselogic testoptlogic
@@ -1097,7 +1097,7 @@ cockroach.tgz: $(COCKROACHOSS) $(COCKROACHSQL) $(LIBGEOS)
 # archive builds a source tarball out of this repository. Files in the special
 # directory build/archive/contents are inserted directly into $(ARCHIVE_BASE).
 # All other files in the repository are inserted into the archive with prefix
-# $(ARCHIVE_BASE)/src/github.com/cockroachdb/cockroach to allow the extracted
+# $(ARCHIVE_BASE)/src/github.com/semistrict/ratel to allow the extracted
 # archive to serve directly as a GOPATH root.
 .PHONY: archive
 archive: ## Build a source tarball from this repository.
@@ -1121,7 +1121,7 @@ ARCHIVE_EXTRAS = \
 $(ARCHIVE).tmp: ARCHIVE_BASE = cockroach-$(if $(BUILDINFO_TAG),$(BUILDINFO_TAG),$(shell cat .buildinfo/tag))
 $(ARCHIVE).tmp: $(ARCHIVE_EXTRAS)
 	echo "$(if $(BUILDINFO_TAG),$(BUILDINFO_TAG),$(shell cat .buildinfo/tag))" > .buildinfo/tag
-	scripts/ls-files.sh | $(TAR) -cf $@ -T - $(TAR_XFORM_FLAG),^,$(ARCHIVE_BASE)/src/github.com/cockroachdb/cockroach/, $^
+	scripts/ls-files.sh | $(TAR) -cf $@ -T - $(TAR_XFORM_FLAG),^,$(ARCHIVE_BASE)/src/github.com/semistrict/ratel/, $^
 	(cd build/archive/contents && $(TAR) -rf ../../../$@ $(TAR_XFORM_FLAG),^,$(ARCHIVE_BASE)/, *)
 
 .buildinfo:
@@ -1194,7 +1194,7 @@ $(ERRORS_PROTO): vendor/modules.txt
 bin/.go_protobuf_sources: $(GO_PROTOS) $(GOGOPROTO_PROTO) $(ERRORS_PROTO) bin/.bootstrap bin/protoc-gen-gogoroach c-deps/proto-rebuild
 	$(FIND_RELEVANT) -type f -name '*.pb.go' -exec rm {} +
 	set -e; for dir in $(sort $(dir $(GO_PROTOS))); do \
-	  buf protoc -Ipkg -I$(GOGO_PROTOBUF_PATH) -I$(COREOS_PATH) -I$(PROMETHEUS_PATH) -I$(GRPC_GATEWAY_GOOGLEAPIS_PATH) -I$(ERRORS_PATH) --gogoroach_out=$(PROTO_MAPPINGS)plugins=grpc,import_prefix=github.com/cockroachdb/cockroach/pkg/:./pkg $$dir/*.proto; \
+	  buf protoc -Ipkg -I$(GOGO_PROTOBUF_PATH) -I$(COREOS_PATH) -I$(PROMETHEUS_PATH) -I$(GRPC_GATEWAY_GOOGLEAPIS_PATH) -I$(ERRORS_PATH) --gogoroach_out=$(PROTO_MAPPINGS)plugins=grpc,import_prefix=github.com/semistrict/ratel/pkg/:./pkg $$dir/*.proto; \
 	done
 	gofmt -s -w $(GO_SOURCES)
 	touch $@
@@ -1565,7 +1565,7 @@ unsafe-clean-c-deps:
 cleanshort: ## Clean up go build artifacts and go proto-generated code.
 cleanshort:
 	rm -rf bin/.go_protobuf_sources bin/.gw_protobuf_sources
-	-$(GO) clean $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LINKFLAGS)' -i github.com/cockroachdb/cockroach...
+	-$(GO) clean $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LINKFLAGS)' -i github.com/semistrict/ratel...
 	$(FIND_RELEVANT) -type f -name '*.test' -exec rm {} +
 	for f in cockroach*; do if [ -f "$$f" ]; then rm "$$f"; fi; done
 	rm -rf $(ARCHIVE) pkg/sql/parser/gen
@@ -1574,7 +1574,7 @@ cleanshort:
 clean: ## Like cleanshort, but also includes C++ artifacts, Bazel artifacts, and the go build cache.
 clean: cleanshort clean-c-deps
 	rm -rf build/defs.mk*
-	-$(GO) clean $(GOFLAGS) $(GOMODVENDORFLAGS) -tags '$(TAGS)' -ldflags '$(LINKFLAGS)' -i -cache github.com/cockroachdb/cockroach...
+	-$(GO) clean $(GOFLAGS) $(GOMODVENDORFLAGS) -tags '$(TAGS)' -ldflags '$(LINKFLAGS)' -i -cache github.com/semistrict/ratel...
 	$(FIND_RELEVANT) -type f -name 'zcgo_flags*.go' -exec rm {} +
 	if command -v bazel &> /dev/null; then bazel clean --expunge; fi
 	rm -rf artifacts bin
@@ -1657,10 +1657,10 @@ has-build-info = \
   bin/workload
 
 $(has-build-info): override LINKFLAGS += \
-	-X "github.com/cockroachdb/cockroach/pkg/build.tag=$(if $(BUILDINFO_TAG),$(BUILDINFO_TAG),$(shell cat .buildinfo/tag))" \
-	-X "github.com/cockroachdb/cockroach/pkg/build.rev=$(shell cat .buildinfo/rev)" \
-	-X "github.com/cockroachdb/cockroach/pkg/build.cgoTargetTriple=$(TARGET_TRIPLE)" \
-	$(if $(BUILDCHANNEL),-X "github.com/cockroachdb/cockroach/pkg/build.channel=$(BUILDCHANNEL)")
+	-X "github.com/semistrict/ratel/pkg/build.tag=$(if $(BUILDINFO_TAG),$(BUILDINFO_TAG),$(shell cat .buildinfo/tag))" \
+	-X "github.com/semistrict/ratel/pkg/build.rev=$(shell cat .buildinfo/rev)" \
+	-X "github.com/semistrict/ratel/pkg/build.cgoTargetTriple=$(TARGET_TRIPLE)" \
+	$(if $(BUILDCHANNEL),-X "github.com/semistrict/ratel/pkg/build.channel=$(BUILDCHANNEL)")
 
 $(bins): bin/%: bin/%.d | bin/prereqs
 	@echo go install -v $*

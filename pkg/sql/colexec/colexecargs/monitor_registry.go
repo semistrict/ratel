@@ -17,9 +17,9 @@ package colexecargs
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/colexecerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/execinfra"
-	"github.com/cockroachdb/cockroach/pkg/util/mon"
+	"github.com/semistrict/ratel/pkg/sql/colexecerror"
+	"github.com/semistrict/ratel/pkg/sql/execinfra"
+	"github.com/semistrict/ratel/pkg/util/mon"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
 )

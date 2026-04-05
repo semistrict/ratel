@@ -15,7 +15,7 @@
 package geogfn
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/geo/geographiclib"
+	"github.com/semistrict/ratel/pkg/geo/geographiclib"
 	"github.com/golang/geo/s2"
 )
 

@@ -17,7 +17,7 @@ package tenantrate
 import (
 	"runtime"
 
-	"github.com/cockroachdb/cockroach/pkg/settings"
+	"github.com/semistrict/ratel/pkg/settings"
 	"github.com/cockroachdb/errors"
 )
 

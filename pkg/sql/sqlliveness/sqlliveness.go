@@ -16,17 +16,17 @@
 // level with tenant SQL processes.
 //
 // For more info see:
-// https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20200615_sql_liveness.md
+// https://github.com/semistrict/ratel/blob/master/docs/RFCS/20200615_sql_liveness.md
 package sqlliveness
 
 import (
 	"context"
 	"encoding/hex"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/util/encoding"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/util/encoding"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/metric"
 	"github.com/cockroachdb/errors"
 )
 

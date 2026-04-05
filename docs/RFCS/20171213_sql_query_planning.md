@@ -310,7 +310,7 @@ stats based on how fast a table is being modified. Or the system may
 notice when stat estimations are inaccurate during query execution.
 
 [A separate RFC covers statistics collection in
-CockroachDB.](https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20170908_sql_optimizer_statistics.md)
+CockroachDB.](https://github.com/semistrict/ratel/blob/master/docs/RFCS/20170908_sql_optimizer_statistics.md)
 
 ### Memo
 

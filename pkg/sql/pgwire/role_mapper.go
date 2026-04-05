@@ -17,9 +17,9 @@ package pgwire
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/hba"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/identmap"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/hba"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/identmap"
 	"github.com/cockroachdb/errors"
 )
 

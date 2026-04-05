@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/optgen/lang"
+	"github.com/semistrict/ratel/pkg/sql/opt/optgen/lang"
 )
 
 // contextDecl stores the Go code that accesses the expression that is currently

@@ -18,15 +18,15 @@ import (
 	"context"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/storage"
-	"github.com/cockroachdb/cockroach/pkg/storage/enginepb"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/uuid"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/storage"
+	"github.com/semistrict/ratel/pkg/storage/enginepb"
+	"github.com/semistrict/ratel/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -147,7 +147,7 @@ func TestCatchupScanSeesOldIntent(t *testing.T) {
 	// the intent and want to load the version, we must make sure to ignore time
 	// bounds, or we'll see a wholly unrelated version.
 	//
-	// [#85886]: https://github.com/cockroachdb/cockroach/issues/85886
+	// [#85886]: https://github.com/semistrict/ratel/issues/85886
 
 	ctx := context.Background()
 	eng := storage.NewDefaultInMemForTesting()

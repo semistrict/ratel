@@ -15,8 +15,8 @@
 package opt
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/server/telemetry"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqltelemetry"
+	"github.com/semistrict/ratel/pkg/server/telemetry"
+	"github.com/semistrict/ratel/pkg/sql/sqltelemetry"
 	"github.com/cockroachdb/errors"
 )
 

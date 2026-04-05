@@ -2,9 +2,9 @@
 - Status: completed
 - Start Date: 2017-03-17
 - Authors: David Taylor, knz, ben
-- RFC PR: [#14230](https://github.com/cockroachdb/cockroach/pull/14230),
-          [#15253](https://github.com/cockroachdb/cockroach/pull/15253)
-- Cockroach Issue: [#15242](https://github.com/cockroachdb/cockroach/issues/15242)
+- RFC PR: [#14230](https://github.com/semistrict/ratel/pull/14230),
+          [#15253](https://github.com/semistrict/ratel/pull/15253)
+- Cockroach Issue: [#15242](https://github.com/semistrict/ratel/issues/15242)
 
 # Summary
 
@@ -181,7 +181,7 @@ initialized from something else, for example the cluster setting.
 
 - What if we want to provide a non-default value for a setting that
   impacts cluster initialization? (Asked in
-  https://github.com/cockroachdb/cockroach/issues/15242#issuecomment-296224536
+  https://github.com/semistrict/ratel/issues/15242#issuecomment-296224536
   ) - we should provision a way to set up the cluster settings upfront
   for newly created clusters. Ben: "Another thing for the explicit
   init command, perhaps." (see RFC merged in #14251

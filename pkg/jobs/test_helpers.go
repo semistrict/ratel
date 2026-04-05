@@ -17,10 +17,10 @@ package jobs
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/jobs/jobspb"
-	"github.com/cockroachdb/cockroach/pkg/kv"
-	"github.com/cockroachdb/cockroach/pkg/server/tracedumper"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/jobs/jobspb"
+	"github.com/semistrict/ratel/pkg/kv"
+	"github.com/semistrict/ratel/pkg/server/tracedumper"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 // TestingNudgeAdoptionQueue is used by tests to tell the registry that there is

@@ -17,18 +17,18 @@ package coldata
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils/buildutil"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/testutils/buildutil"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 )
 
 func TestNoLinkForbidden(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 
 	buildutil.VerifyNoImports(t,
-		"github.com/cockroachdb/cockroach/pkg/col/coldata", true,
+		"github.com/semistrict/ratel/pkg/col/coldata", true,
 		[]string{
-			"github.com/cockroachdb/cockroach/pkg/sql/catalog",
-			"github.com/cockroachdb/cockroach/pkg/sql/sem/tree",
+			"github.com/semistrict/ratel/pkg/sql/catalog",
+			"github.com/semistrict/ratel/pkg/sql/sem/tree",
 		}, nil,
 	)
 }

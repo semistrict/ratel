@@ -27,8 +27,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/log/logpb"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/log/logpb"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/ttycolor"
 	"golang.org/x/sync/errgroup"

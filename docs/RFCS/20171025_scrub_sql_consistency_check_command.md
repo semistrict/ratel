@@ -2,8 +2,8 @@
 - Status: in-progress
 - Start Date: 2017-09-20
 - Authors: Joey Pereira
-- RFC PR: [#18675](https://github.com/cockroachdb/cockroach/issues/18675)
-- Cockroach Issue: [#10425](https://github.com/cockroachdb/cockroach/issues/10425)
+- RFC PR: [#18675](https://github.com/semistrict/ratel/issues/18675)
+- Cockroach Issue: [#10425](https://github.com/semistrict/ratel/issues/10425)
 
 # Summary
 
@@ -52,13 +52,13 @@ Schemas also can be checked for the following:
   number of columns.
 - Invalid column families
 
-[#17626]: https://github.com/cockroachdb/cockroach/issues/17626
-[#17690]: https://github.com/cockroachdb/cockroach/issues/17690
-[#18533]: https://github.com/cockroachdb/cockroach/issues/18533
-[#18705]: https://github.com/cockroachdb/cockroach/issues/18705
+[#17626]: https://github.com/semistrict/ratel/issues/17626
+[#17690]: https://github.com/semistrict/ratel/issues/17690
+[#18533]: https://github.com/semistrict/ratel/issues/18533
+[#18705]: https://github.com/semistrict/ratel/issues/18705
 [STORING]: https://www.cockroachlabs.com/docs/stable/create-index.html#store-columns
 [FAMILY]: https://www.cockroachlabs.com/docs/stable/column-families.html
-[Composite encodings]: https://github.com/cockroachdb/cockroach/blob/master/docs/tech-notes/encoding.md#composite-encoding
+[Composite encodings]: https://github.com/semistrict/ratel/blob/master/docs/tech-notes/encoding.md#composite-encoding
 
 
 # How to use SCRUB
@@ -327,7 +327,7 @@ As with `system.jobs`, we will need to clean up the `scrub_errors`
 table. This is currently an unresolved question/future work also in
 the [system jobs RFC].
 
-[system jobs RFC]: https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20170215_system_jobs.md#unresolved-questions-and-future-work
+[system jobs RFC]: https://github.com/semistrict/ratel/blob/master/docs/RFCS/20170215_system_jobs.md#unresolved-questions-and-future-work
 
 ## Checking system tables
 

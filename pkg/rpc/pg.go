@@ -17,11 +17,11 @@ package rpc
 import (
 	"net/url"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/server/pgurl"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catalogkeys"
-	"github.com/cockroachdb/cockroach/pkg/util/netutil/addr"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/server/pgurl"
+	"github.com/semistrict/ratel/pkg/sql/catalog/catalogkeys"
+	"github.com/semistrict/ratel/pkg/util/netutil/addr"
 	"github.com/cockroachdb/errors"
 )
 

@@ -15,7 +15,7 @@
 package types
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/oidext"
+	"github.com/semistrict/ratel/pkg/sql/oidext"
 	"github.com/cockroachdb/errors"
 	"github.com/lib/pq/oid"
 )

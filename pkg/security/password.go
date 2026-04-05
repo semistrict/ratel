@@ -30,11 +30,11 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/cockroachdb/cockroach/pkg/clusterversion"
-	"github.com/cockroachdb/cockroach/pkg/settings"
-	"github.com/cockroachdb/cockroach/pkg/util/envutil"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/quotapool"
+	"github.com/semistrict/ratel/pkg/clusterversion"
+	"github.com/semistrict/ratel/pkg/settings"
+	"github.com/semistrict/ratel/pkg/util/envutil"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/quotapool"
 	"github.com/cockroachdb/errors"
 	"github.com/xdg-go/scram"
 	"github.com/xdg-go/stringprep"
@@ -381,7 +381,7 @@ var PasswordHashMethod = settings.RegisterEnumSetting(
 	// in the GetConfiguredPasswordHashMethod() function.
 	//
 	// We'd like to default this to SCRAM, but is pending the following issue:
-	// https://github.com/cockroachdb/cockroach/issues/80246
+	// https://github.com/semistrict/ratel/issues/80246
 	HashBCrypt.String(),
 	map[int64]string{
 		int64(HashBCrypt):      HashBCrypt.String(),
@@ -675,7 +675,7 @@ func CheckPasswordHashValidity(
 		return true, true, 0, "scram-sha-256", hashedPassword, err
 	}
 	if isMD5Hash(inputPassword) {
-		// See: https://github.com/cockroachdb/cockroach/issues/73337
+		// See: https://github.com/semistrict/ratel/issues/73337
 		return true, false /* not supported */, 73337 /* issueNum */, "md5", inputPassword, nil
 	}
 
@@ -830,7 +830,7 @@ var autoUpgradePasswordHashes = settings.RegisterBoolSetting(
 	"server.user_login.upgrade_bcrypt_stored_passwords_to_scram.enabled",
 	"whether to automatically re-encode stored passwords using crdb-bcrypt to scram-sha-256",
 	// We'd like to default this to true, but is pending the following issue:
-	// https://github.com/cockroachdb/cockroach/issues/80246
+	// https://github.com/semistrict/ratel/issues/80246
 	false,
 ).WithPublic()
 

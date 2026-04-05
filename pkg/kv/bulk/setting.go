@@ -15,9 +15,9 @@
 package bulk
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver"
-	"github.com/cockroachdb/cockroach/pkg/settings"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/kv/kvserver"
+	"github.com/semistrict/ratel/pkg/settings"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
 )
 
 var (

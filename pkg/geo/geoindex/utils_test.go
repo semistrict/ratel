@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/geo/geopb"
+	"github.com/semistrict/ratel/pkg/geo/geopb"
 	"github.com/cockroachdb/datadriven"
 	"github.com/golang/geo/s2"
 )

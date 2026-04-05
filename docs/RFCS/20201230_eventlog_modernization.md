@@ -2,8 +2,8 @@
 - Status: completed
 - Start Date: 2020-12-01
 - Authors: knz
-- RFC PR: [#58374](https://github.com/cockroachdb/cockroach/pull/58374)
-- Cockroach Issue: [#57629](https://github.com/cockroachdb/cockroach/issues/57629)
+- RFC PR: [#58374](https://github.com/semistrict/ratel/pull/58374)
+- Cockroach Issue: [#57629](https://github.com/semistrict/ratel/issues/57629)
 
 # Summary
 
@@ -132,19 +132,19 @@ The salient aspects of the new functionality are as follows:
 ## Detailed design
 
 The meta-issue (epic) that tracks the changes is [this
-one](https://github.com/cockroachdb/cockroach/pull/58374). The main
+one](https://github.com/semistrict/ratel/pull/58374). The main
 implementation steps include:
 
-- [sql,log: productionize the event logging #57737](https://github.com/cockroachdb/cockroach/pull/57737)
-- [sql: make writes to `system.eventlog` conditional #57879](https://github.com/cockroachdb/cockroach/pull/57879)
-- [util/log: report the multi-tenant identifiers in log files, simplify event logging #57890](https://github.com/cockroachdb/cockroach/pull/57890)
-- [*: new logging channels OPS and HEALTH #57171](https://github.com/cockroachdb/cockroach/pull/57171)
-- [util/log: new logging channels SQL_SCHEMA, USER_ADMIN and PRIVILEGES #51987](https://github.com/cockroachdb/cockroach/pull/51987)
-- [eventpb: new JSON serialization with redaction markers #57990](https://github.com/cockroachdb/cockroach/pull/57990)
-- [sql,util/log: include the application name in SQL structured events #58130](https://github.com/cockroachdb/cockroach/pull/58130)
-- [util/log: new JSON output formats #58126](https://github.com/cockroachdb/cockroach/pull/58126)
-- [util/log: report the server identifiers in JSON payloads #58128](https://github.com/cockroachdb/cockroach/pull/58128)
-- [pgwire: migrate auth/conn logs to notable events #57839](https://github.com/cockroachdb/cockroach/pull/57839)
+- [sql,log: productionize the event logging #57737](https://github.com/semistrict/ratel/pull/57737)
+- [sql: make writes to `system.eventlog` conditional #57879](https://github.com/semistrict/ratel/pull/57879)
+- [util/log: report the multi-tenant identifiers in log files, simplify event logging #57890](https://github.com/semistrict/ratel/pull/57890)
+- [*: new logging channels OPS and HEALTH #57171](https://github.com/semistrict/ratel/pull/57171)
+- [util/log: new logging channels SQL_SCHEMA, USER_ADMIN and PRIVILEGES #51987](https://github.com/semistrict/ratel/pull/51987)
+- [eventpb: new JSON serialization with redaction markers #57990](https://github.com/semistrict/ratel/pull/57990)
+- [sql,util/log: include the application name in SQL structured events #58130](https://github.com/semistrict/ratel/pull/58130)
+- [util/log: new JSON output formats #58126](https://github.com/semistrict/ratel/pull/58126)
+- [util/log: report the server identifiers in JSON payloads #58128](https://github.com/semistrict/ratel/pull/58128)
+- [pgwire: migrate auth/conn logs to notable events #57839](https://github.com/semistrict/ratel/pull/57839)
 
 ### Event types
 

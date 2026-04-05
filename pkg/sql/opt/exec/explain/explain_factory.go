@@ -15,8 +15,8 @@
 package explain
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/exec"
+	"github.com/semistrict/ratel/pkg/sql/catalog/colinfo"
+	"github.com/semistrict/ratel/pkg/sql/opt/exec"
 )
 
 // Factory implements exec.ExplainFactory. It wraps another factory and forwards

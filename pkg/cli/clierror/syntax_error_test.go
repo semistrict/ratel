@@ -20,12 +20,12 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/cli"
-	"github.com/cockroachdb/cockroach/pkg/cli/clierror"
-	"github.com/cockroachdb/cockroach/pkg/cli/clisqlclient"
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/testutils/sqlutils"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/cli"
+	"github.com/semistrict/ratel/pkg/cli/clierror"
+	"github.com/semistrict/ratel/pkg/cli/clisqlclient"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/testutils/sqlutils"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 )
 
 // This test checks that IsSQLSyntaxError works. It could stop working if e.g.

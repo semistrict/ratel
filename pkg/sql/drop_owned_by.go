@@ -17,10 +17,10 @@ package sql
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/server/telemetry"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqltelemetry"
-	"github.com/cockroachdb/cockroach/pkg/util/errorutil/unimplemented"
+	"github.com/semistrict/ratel/pkg/server/telemetry"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/sqltelemetry"
+	"github.com/semistrict/ratel/pkg/util/errorutil/unimplemented"
 )
 
 // dropOwnedByNode represents a DROP OWNED BY <role(s)> statement.

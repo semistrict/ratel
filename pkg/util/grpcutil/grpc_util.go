@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	circuit "github.com/cockroachdb/circuitbreaker"
-	"github.com/cockroachdb/cockroach/pkg/util/netutil"
+	"github.com/semistrict/ratel/pkg/util/netutil"
 	"github.com/cockroachdb/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -164,7 +164,7 @@ func RequestDidNotStart(err error) bool {
 	// TODO(bdarnell): In gRPC 1.7, we have no good way to distinguish
 	// ambiguous from unambiguous failures, so we must assume all gRPC
 	// errors are ambiguous.
-	// https://github.com/cockroachdb/cockroach/issues/19708#issuecomment-343891640
+	// https://github.com/semistrict/ratel/issues/19708#issuecomment-343891640
 	if false && s.Code() == codes.Unavailable && s.Message() == "grpc: the connection is unavailable" {
 		return true
 	}

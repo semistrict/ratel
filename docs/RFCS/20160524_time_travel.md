@@ -2,8 +2,8 @@
 - Status: completed
 - Start Date: 2016-05-07
 - Authors: Matt Jibson
-- RFC PR: [#6573](https://github.com/cockroachdb/cockroach/pull/6573)
-- Issue PR: [#5963](https://github.com/cockroachdb/cockroach/issues/5963)
+- RFC PR: [#6573](https://github.com/semistrict/ratel/pull/6573)
+- Issue PR: [#5963](https://github.com/semistrict/ratel/issues/5963)
 
 # Summary
 

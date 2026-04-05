@@ -15,8 +15,8 @@
 package norm
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/memo"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/props"
+	"github.com/semistrict/ratel/pkg/sql/opt/memo"
+	"github.com/semistrict/ratel/pkg/sql/opt/props"
 )
 
 // CanSimplifyLimitOffsetOrdering returns true if the ordering required by the

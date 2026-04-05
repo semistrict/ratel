@@ -26,10 +26,10 @@ package tree
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/catid"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree/treewindow"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
+	"github.com/semistrict/ratel/pkg/sql/sem/catid"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree/treewindow"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
 )

@@ -17,16 +17,16 @@ package colexecutils
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils/buildutil"
+	"github.com/semistrict/ratel/pkg/testutils/buildutil"
 )
 
 func TestNoLinkForbidden(t *testing.T) {
 	buildutil.VerifyNoImports(t,
-		"github.com/cockroachdb/cockroach/pkg/sql/colexec/colexecutils", true, nil,
+		"github.com/semistrict/ratel/pkg/sql/colexec/colexecutils", true, nil,
 		[]string{
 			// We prohibit importing any subpackages that live within colexec
 			// folder.
-			"github.com/cockroachdb/cockroach/pkg/sql/colexec/*",
+			"github.com/semistrict/ratel/pkg/sql/colexec/*",
 		},
 	)
 }

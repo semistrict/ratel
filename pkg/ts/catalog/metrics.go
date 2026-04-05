@@ -104,7 +104,7 @@ func allInternalTSMetricsNames() []string {
 			for _, metric := range chart.Metrics {
 				// Jump through hoops to create the correct internal timeseries metrics names.
 				// See:
-				// https://github.com/cockroachdb/cockroach/issues/64373
+				// https://github.com/semistrict/ratel/issues/64373
 				_, isHist := histogramMetricsNames[metric]
 				if !isHist {
 					m[metric] = struct{}{}

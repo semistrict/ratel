@@ -24,13 +24,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/log/logcrash"
-	"github.com/cockroachdb/cockroach/pkg/util/quotapool"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
-	"github.com/cockroachdb/cockroach/pkg/util/tracing"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/log/logcrash"
+	"github.com/semistrict/ratel/pkg/util/quotapool"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/util/tracing"
 	"github.com/cockroachdb/errors"
 )
 
@@ -156,7 +156,7 @@ func (f CloserFn) Close() {
 //   - propagate quiescing via context cancellation
 //   - better API around refused tasks
 //   - all the other things mentioned in:
-//     https://github.com/cockroachdb/cockroach/issues/58164
+//     https://github.com/semistrict/ratel/issues/58164
 type Stopper struct {
 	quiescer chan struct{}     // Closed when quiescing
 	stopped  chan struct{}     // Closed when stopped completely

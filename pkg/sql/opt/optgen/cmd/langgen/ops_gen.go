@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/optgen/lang"
+	"github.com/semistrict/ratel/pkg/sql/opt/optgen/lang"
 )
 
 // generateOps generates the Operator type and enumeration for the Optgen

@@ -27,15 +27,15 @@ import (
 	"strings"
 	"testing"
 
-	_ "github.com/cockroachdb/cockroach/pkg/cloud/impl" // register cloud storage providers
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/sql/tests"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
-	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
-	"github.com/cockroachdb/cockroach/pkg/testutils/sqlutils"
-	"github.com/cockroachdb/cockroach/pkg/util/ioctx"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	_ "github.com/semistrict/ratel/pkg/cloud/impl" // register cloud storage providers
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/sql/tests"
+	"github.com/semistrict/ratel/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/testutils/serverutils"
+	"github.com/semistrict/ratel/pkg/testutils/sqlutils"
+	"github.com/semistrict/ratel/pkg/util/ioctx"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/log"
 	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/require"
 )
@@ -70,7 +70,7 @@ func prepareFileUploadURI(
 		}
 		uri = fmt.Sprintf("userfile://%s%s",
 			// TODO(knz): This is suspicious; see
-			// https://github.com/cockroachdb/cockroach/issues/55389
+			// https://github.com/semistrict/ratel/issues/55389
 			defaultQualifiedDBSchemaName+user.Normalized(),
 			testSendFile)
 	default:

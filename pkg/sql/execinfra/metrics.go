@@ -17,7 +17,7 @@ package execinfra
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
+	"github.com/semistrict/ratel/pkg/util/metric"
 )
 
 // DistSQLMetrics contains pointers to the metrics for monitoring DistSQL

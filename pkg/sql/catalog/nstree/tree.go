@@ -19,7 +19,7 @@ package nstree
 import (
 	"sync"
 
-	"github.com/cockroachdb/cockroach/pkg/util/iterutil"
+	"github.com/semistrict/ratel/pkg/util/iterutil"
 	"github.com/google/btree"
 )
 

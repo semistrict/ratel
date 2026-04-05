@@ -17,7 +17,7 @@ package kvserver
 import (
 	"container/heap"
 
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 )
 
 const (

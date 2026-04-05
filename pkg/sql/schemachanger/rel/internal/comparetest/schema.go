@@ -17,7 +17,7 @@ package comparetest
 import (
 	"reflect"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/rel"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/rel"
 )
 
 type entity struct {

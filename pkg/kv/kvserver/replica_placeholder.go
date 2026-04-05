@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/google/btree"
 )
 

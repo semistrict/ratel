@@ -24,8 +24,8 @@ import (
 	"bytes"
 	_ "embed"
 
-	"github.com/cockroachdb/cockroach/pkg/ui"
-	"github.com/cockroachdb/cockroach/pkg/util/targz"
+	"github.com/semistrict/ratel/pkg/ui"
+	"github.com/semistrict/ratel/pkg/util/targz"
 )
 
 //go:embed assets.tar.gz

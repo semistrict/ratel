@@ -30,9 +30,9 @@ import (
 	"strings"
 
 	"cloud.google.com/go/storage"
-	"github.com/cockroachdb/cockroach/pkg/build/bazel"
-	"github.com/cockroachdb/cockroach/pkg/build/starlarkutil"
-	"github.com/cockroachdb/cockroach/pkg/util/envutil"
+	"github.com/semistrict/ratel/pkg/build/bazel"
+	"github.com/semistrict/ratel/pkg/build/starlarkutil"
+	"github.com/semistrict/ratel/pkg/util/envutil"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/api/googleapi"
 )
@@ -191,7 +191,7 @@ func listAllModules(tmpdir string) (map[string]listedModule, error) {
 			jsonBuilder.Reset()
 			// The output will include the `cockroach` module, but we
 			// can just throw it away.
-			if mod.Path == "github.com/cockroachdb/cockroach" {
+			if mod.Path == "github.com/semistrict/ratel" {
 				continue
 			}
 			ret[mod.Path] = mod

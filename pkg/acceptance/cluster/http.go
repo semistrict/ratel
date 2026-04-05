@@ -18,7 +18,7 @@ import (
 	"crypto/tls"
 	"net/http"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
+	"github.com/semistrict/ratel/pkg/base"
 )
 
 // HTTPClient is an http.Client configured for querying a cluster. We need to

@@ -112,11 +112,11 @@ message StreamEndpointSpec {
   // SQLInstanceID of the target host, only used for outgoing REMOTE streams.
   optional int32 target_node_id = 4 [(gogoproto.nullable) = false,
     (gogoproto.customname) = "TargetNodeID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/base.SQLInstanceID"];
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/base.SQLInstanceID"];
   // SQLInstanceID of the origin node, only used for REMOTE streams.
   optional int32 origin_node_id = 5 [(gogoproto.nullable) = false,
     (gogoproto.customname) = "OriginNodeID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/base.SQLInstanceID"];
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/base.SQLInstanceID"];
   reserved 3;
 }
 

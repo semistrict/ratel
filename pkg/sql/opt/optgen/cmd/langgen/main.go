@@ -22,7 +22,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/optgen/lang"
+	"github.com/semistrict/ratel/pkg/sql/opt/optgen/lang"
 	"github.com/cockroachdb/errors"
 )
 

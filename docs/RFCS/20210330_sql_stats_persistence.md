@@ -2,8 +2,8 @@
 - Status: draft
 - Start Date: 2021-03-30
 - Authors: Archer Zhang
-- RFC PR: [#63752](https://github.com/cockroachdb/cockroach/pull/63752)
-- Cockroach Issue: [#56219](https://github.com/cockroachdb/cockroach/issues/56219)
+- RFC PR: [#63752](https://github.com/semistrict/ratel/pull/63752)
+- Cockroach Issue: [#56219](https://github.com/semistrict/ratel/issues/56219)
 
 # Summary
 
@@ -132,7 +132,7 @@ allows users to access both historical and most up-to-date statistics within
 the SQL shell.
 
 Lastly, since the new system tables will be accessed frequently, in order to
-prevent [bottleneck](https://github.com/cockroachdb/cockroach/pull/63241) in
+prevent [bottleneck](https://github.com/semistrict/ratel/pull/63241) in
 name resolution, we want to cache the table descriptors for the new system
 tables.
 

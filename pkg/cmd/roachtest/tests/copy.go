@@ -23,11 +23,11 @@ import (
 	"time"
 
 	"github.com/cockroachdb/cockroach-go/v2/crdb"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/cluster"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/option"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/registry"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/test"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/install"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/cluster"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/option"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/registry"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/test"
+	"github.com/semistrict/ratel/pkg/roachprod/install"
 	"github.com/cockroachdb/errors"
 )
 
@@ -166,7 +166,7 @@ func registerCopy(r registry.Registry) {
 	// and 2) have a shorter deadline due to existing table descriptor leases.
 	// If the margin is too small, the retries will always exceed the deadline
 	// and keep retrying forever. See:
-	// https://github.com/cockroachdb/cockroach/issues/62470
+	// https://github.com/semistrict/ratel/issues/62470
 	testcases := []struct {
 		rows  int
 		nodes int

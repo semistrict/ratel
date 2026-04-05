@@ -14,7 +14,7 @@
 
 package install
 
-import "github.com/cockroachdb/cockroach/pkg/roachprod/config"
+import "github.com/semistrict/ratel/pkg/roachprod/config"
 
 // ClusterSettings contains various knobs that affect operations on a cluster.
 type ClusterSettings struct {

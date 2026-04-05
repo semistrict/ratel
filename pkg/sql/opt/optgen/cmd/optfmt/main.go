@@ -24,8 +24,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/optgen/lang"
-	"github.com/cockroachdb/cockroach/pkg/util/pretty"
+	"github.com/semistrict/ratel/pkg/sql/opt/optgen/lang"
+	"github.com/semistrict/ratel/pkg/util/pretty"
 	"github.com/pmezard/go-difflib/difflib"
 )
 

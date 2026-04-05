@@ -19,16 +19,16 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/sessiondatapb"
-	"github.com/cockroachdb/cockroach/pkg/storage/enginepb"
-	"github.com/cockroachdb/cockroach/pkg/util/admission"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
-	"github.com/cockroachdb/cockroach/pkg/util/retry"
-	"github.com/cockroachdb/cockroach/pkg/util/stop"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/sql/sessiondatapb"
+	"github.com/semistrict/ratel/pkg/storage/enginepb"
+	"github.com/semistrict/ratel/pkg/util/admission"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/protoutil"
+	"github.com/semistrict/ratel/pkg/util/retry"
+	"github.com/semistrict/ratel/pkg/util/stop"
 	"github.com/cockroachdb/errors"
 )
 
@@ -861,7 +861,7 @@ func (db *DB) Run(ctx context.Context, b *Batch) error {
 func (db *DB) NewTxn(ctx context.Context, debugName string) *Txn {
 	// Observed timestamps don't work with multi-tenancy. See:
 	//
-	// https://github.com/cockroachdb/cockroach/issues/48008
+	// https://github.com/semistrict/ratel/issues/48008
 	nodeID, _ := db.ctx.NodeID.OptionalNodeID() // zero if not available
 	txn := NewTxn(ctx, db, nodeID)
 	txn.SetDebugName(debugName)
@@ -909,7 +909,7 @@ func (db *DB) TxnWithAdmissionControl(
 
 	// Observed timestamps don't work with multi-tenancy. See:
 	//
-	// https://github.com/cockroachdb/cockroach/issues/48008
+	// https://github.com/semistrict/ratel/issues/48008
 	nodeID, _ := db.ctx.NodeID.OptionalNodeID() // zero if not available
 	txn := NewTxnWithAdmissionControl(ctx, db, nodeID, source, priority)
 	txn.SetDebugName("unnamed")
@@ -928,7 +928,7 @@ func (db *DB) TxnWithSteppingEnabled(
 
 	// Observed timestamps don't work with multi-tenancy. See:
 	//
-	// https://github.com/cockroachdb/cockroach/issues/48008
+	// https://github.com/semistrict/ratel/issues/48008
 	nodeID, _ := db.ctx.NodeID.OptionalNodeID() // zero if not available
 	txn := NewTxnWithSteppingEnabled(ctx, db, nodeID, qualityOfService)
 	txn.SetDebugName("unnamed")

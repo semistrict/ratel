@@ -15,8 +15,8 @@
 package idalloc_test
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/security/securitytest"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/security/securitytest"
 )
 
 //go:generate ../../../util/leaktest/add-leaktest.sh *_test.go

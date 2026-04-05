@@ -2,7 +2,7 @@
   "name": "db-console",
   "version": "1.0.0",
   "main": "index.tsx",
-  "repository": "github.com/cockroachdb/cockroach",
+  "repository": "github.com/semistrict/ratel",
   "license": "MIT",
   "scripts": {
     "lint": "eslint './{src,ccl}/**/*.{tsx,ts,js}'",

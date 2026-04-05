@@ -2,7 +2,7 @@
 
 package channel
 
-import "github.com/cockroachdb/cockroach/pkg/util/log/logpb"
+import "github.com/semistrict/ratel/pkg/util/log/logpb"
 
 // DEV is used during development to collect log
 // details useful for troubleshooting that fall outside the

@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/testutils"
 )
 
 // SetClusterSetting executes set cluster settings statement, and then ensures that

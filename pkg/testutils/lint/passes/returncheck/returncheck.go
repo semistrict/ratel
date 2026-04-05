@@ -105,5 +105,5 @@ func recordUnchecked(pass *analysis.Pass, call *ast.CallExpr, pos int) {
 }
 
 func isTargetType(t types.Type) bool {
-	return t.String() == "github.com/cockroachdb/cockroach/pkg/roachpb.Error"
+	return t.String() == "github.com/semistrict/ratel/pkg/roachpb.Error"
 }

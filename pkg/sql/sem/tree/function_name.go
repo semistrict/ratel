@@ -17,7 +17,7 @@ package tree
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/sessiondata"
+	"github.com/semistrict/ratel/pkg/sql/sessiondata"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
 )

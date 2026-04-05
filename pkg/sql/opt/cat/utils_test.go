@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/cat"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/testcat"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	"github.com/semistrict/ratel/pkg/sql/opt/cat"
+	"github.com/semistrict/ratel/pkg/sql/opt/testutils/testcat"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 )
 
 func TestExpandDataSourceGlob(t *testing.T) {

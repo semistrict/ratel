@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/cockroachdb/cockroach/pkg/keysbase"
-	"github.com/cockroachdb/cockroach/pkg/util/treeprinter"
+	"github.com/semistrict/ratel/pkg/keysbase"
+	"github.com/semistrict/ratel/pkg/util/treeprinter"
 	"github.com/cockroachdb/errors"
 )
 

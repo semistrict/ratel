@@ -18,10 +18,10 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 // TestBatchPrevNext tests prev() and next()
@@ -65,7 +65,7 @@ func TestBatchPrevNext(t *testing.T) {
 			// Done with `key < c`, so `c <= key` next.
 			expFW: "c",
 			// This is the interesting case in this test. See
-			// https://github.com/cockroachdb/cockroach/issues/18174
+			// https://github.com/semistrict/ratel/issues/18174
 			//
 			// Done with `key >= c`, and nothing's in `[b, c)`, so all that's
 			// left is `key < b`. Before fixing #18174 we would end up at `c`

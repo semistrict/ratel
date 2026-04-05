@@ -28,10 +28,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
-	"github.com/cockroachdb/cockroach/pkg/workload"
-	"github.com/cockroachdb/cockroach/pkg/workload/histogram"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/workload"
+	"github.com/semistrict/ratel/pkg/workload/histogram"
 	"github.com/cockroachdb/errors"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
@@ -290,7 +290,7 @@ func (w *kv) Ops(
 		// TODO(ajwerner): We're currently manually plumbing down the computed shard column
 		// since the optimizer doesn't yet support deriving values of computed columns
 		// when all the columns they reference are available. See
-		// https://github.com/cockroachdb/cockroach/issues/39340#issuecomment-535338071
+		// https://github.com/semistrict/ratel/issues/39340#issuecomment-535338071
 		// for details. Remove this once that functionality is added.
 		buf.WriteString(`SELECT k, v FROM kv WHERE (shard, k) in (`)
 		for i := 0; i < w.batchSize; i++ {

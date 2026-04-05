@@ -32,7 +32,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/build/bazel"
+	"github.com/semistrict/ratel/pkg/build/bazel"
 )
 
 var (

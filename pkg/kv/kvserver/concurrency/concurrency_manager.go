@@ -20,20 +20,20 @@ import (
 	"runtime/debug"
 	"sync"
 
-	"github.com/cockroachdb/cockroach/pkg/kv"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/concurrency/lock"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/spanlatch"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/spanset"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/txnwait"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/settings"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/storage/enginepb"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
-	"github.com/cockroachdb/cockroach/pkg/util/stop"
-	"github.com/cockroachdb/cockroach/pkg/util/uuid"
+	"github.com/semistrict/ratel/pkg/kv"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/concurrency/lock"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/spanlatch"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/spanset"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/txnwait"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/settings"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/storage/enginepb"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/metric"
+	"github.com/semistrict/ratel/pkg/util/stop"
+	"github.com/semistrict/ratel/pkg/util/uuid"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
 )
@@ -287,7 +287,7 @@ func (m *managerImpl) sequenceReqWithGuard(
 			}
 			if g.EvalKind != PessimisticAfterFailedOptimisticEval {
 				panic(redact.Safe(fmt.Sprintf("must not be holding latches\n"+
-					"this is tracked in github.com/cockroachdb/cockroach/issues/77663; please comment if seen\n"+
+					"this is tracked in github.com/semistrict/ratel/issues/77663; please comment if seen\n"+
 					"eval_kind=%d, holding_latches=%t, branch=%d, first_iteration=%t, stack=\n%s",
 					g.EvalKind, g.HoldingLatches(), branch, firstIteration, string(debug.Stack()))))
 			}

@@ -1,10 +1,10 @@
 - Feature Name: replica_tombstone
 - Status: completed
 - Start Date: 2015-07-29
-- RFC PR: [#1865](https://github.com/cockroachdb/cockroach/pull/1865)
-- Cockroach Issue: [#768](https://github.com/cockroachdb/cockroach/issues/768),
-                   [#1878](https://github.com/cockroachdb/cockroach/issues/1878),
-                   [#2798](https://github.com/cockroachdb/cockroach/pull/2798)
+- RFC PR: [#1865](https://github.com/semistrict/ratel/pull/1865)
+- Cockroach Issue: [#768](https://github.com/semistrict/ratel/issues/768),
+                   [#1878](https://github.com/semistrict/ratel/issues/1878),
+                   [#2798](https://github.com/semistrict/ratel/pull/2798)
 
 # Summary
 
@@ -46,7 +46,7 @@ Here is a scenario that can lead to split-brain in the current system:
    (`DistSenders`) whose range descriptor cache is out of date may
    talk to the ABC group instead of the correct DEF group.
 
-The problems caused by removing replicas are also discussed in   [#768](https://github.com/cockroachdb/cockroach/issues/768).
+The problems caused by removing replicas are also discussed in   [#768](https://github.com/semistrict/ratel/issues/768).
 
 # Detailed design
 

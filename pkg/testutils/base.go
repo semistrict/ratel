@@ -15,8 +15,8 @@
 package testutils
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/security"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/security"
 )
 
 // NewNodeTestBaseContext creates a base context for testing. This uses

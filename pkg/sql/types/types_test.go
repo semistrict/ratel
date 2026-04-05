@@ -20,9 +20,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/geo/geopb"
-	"github.com/cockroachdb/cockroach/pkg/sql/oidext"
-	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
+	"github.com/semistrict/ratel/pkg/geo/geopb"
+	"github.com/semistrict/ratel/pkg/sql/oidext"
+	"github.com/semistrict/ratel/pkg/util/protoutil"
 	"github.com/lib/pq/oid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -14,7 +14,7 @@
 
 package scrun
 
-import "github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scplan"
+import "github.com/semistrict/ratel/pkg/sql/schemachanger/scplan"
 
 // TestingKnobs are testing knobs which affect the running of declarative
 // schema changes.

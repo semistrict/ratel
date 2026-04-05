@@ -20,19 +20,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/cluster"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/option"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/registry"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/test"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/install"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/cluster"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/option"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/registry"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/test"
+	"github.com/semistrict/ratel/pkg/roachprod/install"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 )
 
 func registerQueue(r registry.Registry) {
 	// One node runs the workload generator, all other nodes host CockroachDB.
 	const numNodes = 2
 	r.Add(registry.TestSpec{
-		Skip:    "https://github.com/cockroachdb/cockroach/issues/17229",
+		Skip:    "https://github.com/semistrict/ratel/issues/17229",
 		Name:    fmt.Sprintf("queue/nodes=%d", numNodes-1),
 		Owner:   registry.OwnerKV,
 		Cluster: r.MakeClusterSpec(numNodes),

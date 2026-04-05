@@ -2,8 +2,8 @@
 - Status: completed
 - Start Date: 2017-07-19
 - Authors: Radu
-- RFC PR: [#17105](https://github.com/cockroachdb/cockroach/pull/17105)
-- Cockroach Issue: [#17097](https://github.com/cockroachdb/cockroach/issues/17097)
+- RFC PR: [#17105](https://github.com/semistrict/ratel/pull/17105)
+- Cockroach Issue: [#17097](https://github.com/semistrict/ratel/issues/17097)
 
 # Summary
 
@@ -12,7 +12,7 @@ which doesn't stop sending results once a consumer is blocked.
 
 # Motivation
 
-Issue [#17097](https://github.com/cockroachdb/cockroach/issues/17097) describes
+Issue [#17097](https://github.com/semistrict/ratel/issues/17097) describes
 scenarios in which a distsql computation can deadlock. The crux of the issue is
 that the streams between the processors have limited buffers, and when sending
 on one of these streams blocks, it can block a producer with multiple consumers;

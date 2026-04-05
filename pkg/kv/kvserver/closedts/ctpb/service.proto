@@ -36,7 +36,7 @@ import "google/api/annotations.proto";
 message Update {
   option (gogoproto.goproto_stringer) = false;
   // node_id identifies the sending node.
-  int32 node_id = 1 [(gogoproto.customname) = "NodeID", (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.NodeID"];
+  int32 node_id = 1 [(gogoproto.customname) = "NodeID", (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.NodeID"];
 
   // seq_num identifies this update across all updates produced by a node. The
   // sequence is reset when the node restarts, so a recipient can only count on
@@ -79,7 +79,7 @@ message Update {
   // The field will be empty if snapshot is true, as a snapshot message implies
   // that all ranges not present in the snapshot's added_or_updated list are no
   // longer tracked.
-  repeated int32 removed = 5 [(gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.RangeID"];
+  repeated int32 removed = 5 [(gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.RangeID"];
 
   // added_or_updated contains the set of ranges that are either being added to
   // the tracked ranges set with a given (lai, policy) or updated within the
@@ -88,7 +88,7 @@ message Update {
   // explicitly by being included in a future removed set or implicitly by not
   // being included in the added_or_updated field of a future snapshot.
   message RangeUpdate {
-    uint64 range_id = 1 [(gogoproto.customname) = "RangeID", (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.RangeID"];
+    uint64 range_id = 1 [(gogoproto.customname) = "RangeID", (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.RangeID"];
     int64 lai = 2 [(gogoproto.customname) = "LAI", (gogoproto.casttype) = "LAI"];
     roachpb.RangeClosedTimestampPolicy policy = 3;
   }

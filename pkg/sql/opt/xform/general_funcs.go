@@ -18,15 +18,15 @@ import (
 	"container/list"
 	"math"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/constraint"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/idxconstraint"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/memo"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/norm"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/ordering"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/partialidx"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/props"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/opt"
+	"github.com/semistrict/ratel/pkg/sql/opt/constraint"
+	"github.com/semistrict/ratel/pkg/sql/opt/idxconstraint"
+	"github.com/semistrict/ratel/pkg/sql/opt/memo"
+	"github.com/semistrict/ratel/pkg/sql/opt/norm"
+	"github.com/semistrict/ratel/pkg/sql/opt/ordering"
+	"github.com/semistrict/ratel/pkg/sql/opt/partialidx"
+	"github.com/semistrict/ratel/pkg/sql/opt/props"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 	"github.com/cockroachdb/errors"
 )
 
@@ -388,7 +388,7 @@ func (c *CustomFuncs) splitScanIntoUnionScansOrSelects(
 	//   of scans is high, for example, introduce new operation types like
 	//   "SkipScanExpr", "SkipSelectExpr", "LooseScanExpr", "LooseSelectExpr" (see
 	//   https://wiki.postgresql.org/wiki/Loose_indexscan and
-	//   https://github.com/cockroachdb/cockroach/pull/38216), or maybe just set
+	//   https://github.com/semistrict/ratel/pull/38216), or maybe just set
 	//   new read modes in the pre-existing ScanExpr and SelectExpr?
 	//   This would allow us to represent order-preserving skip scans without the
 	//   need for large UNION ALL expressions.
@@ -408,7 +408,7 @@ func (c *CustomFuncs) splitScanIntoUnionScansOrSelects(
 	// 16 to ensure there are no regressions.
 	if hardMaxScanCount == 0 {
 		// TODO(msirek): Remove this code once the following PR ships:
-		//   https://github.com/cockroachdb/cockroach/pull/73267
+		//   https://github.com/semistrict/ratel/pull/73267
 		hardMaxScanCount = 16
 	}
 	if hardMaxScanCount < maxScanCount {

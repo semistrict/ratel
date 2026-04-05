@@ -18,7 +18,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
 )
 
 type errorCodeSet map[pgcode.Code]bool

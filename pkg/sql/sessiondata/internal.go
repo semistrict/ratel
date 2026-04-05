@@ -15,8 +15,8 @@
 package sessiondata
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/sql/sessiondatapb"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/sql/sessiondatapb"
 )
 
 // InternalExecutorOverride is used by the InternalExecutor interface

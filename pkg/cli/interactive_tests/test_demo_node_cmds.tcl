@@ -120,7 +120,7 @@ eexpect "node 6 has been shutdown"
 eexpect "movr>"
 
 # NB: use kv_node_liveness to avoid flakes due to gossip delays.
-# See https://github.com/cockroachdb/cockroach/issues/76391
+# See https://github.com/semistrict/ratel/issues/76391
 send "select node_id, draining, membership from crdb_internal.kv_node_liveness ORDER BY node_id;\r"
 eexpect "1 |  false   | active"
 eexpect "2 |  false   | active"

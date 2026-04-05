@@ -25,23 +25,23 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/kv"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvclient/kvcoord"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/storage"
-	"github.com/cockroachdb/cockroach/pkg/storage/enginepb"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
-	"github.com/cockroachdb/cockroach/pkg/testutils/kvclientutils"
-	"github.com/cockroachdb/cockroach/pkg/testutils/localtestcluster"
-	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
-	"github.com/cockroachdb/cockroach/pkg/util/stop"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/kv"
+	"github.com/semistrict/ratel/pkg/kv/kvclient/kvcoord"
+	"github.com/semistrict/ratel/pkg/kv/kvserver"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/storage"
+	"github.com/semistrict/ratel/pkg/storage/enginepb"
+	"github.com/semistrict/ratel/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/testutils/kvclientutils"
+	"github.com/semistrict/ratel/pkg/testutils/localtestcluster"
+	"github.com/semistrict/ratel/pkg/testutils/serverutils"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/metric"
+	"github.com/semistrict/ratel/pkg/util/stop"
 	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
@@ -466,7 +466,7 @@ func TestTxnCoordSenderEndTxn(t *testing.T) {
 }
 
 // TestTxnCoordSenderCommitCanceled is a regression test for
-// https://github.com/cockroachdb/cockroach/issues/68643. It makes sure that an
+// https://github.com/semistrict/ratel/issues/68643. It makes sure that an
 // EndTxn(commit=false) sent by the caller in response to a client context
 // cancellation isn't passed through TxnCoordSender concurrently with an
 // asynchronous EndTxn(commit=true) request sent by txnCommitter to make an
@@ -511,7 +511,7 @@ func TestTxnCoordSenderCommitCanceled(t *testing.T) {
 	// lock footprint isn't updated, the TxnCoordSender will incorrectly believe
 	// the txn hasn't taken out any locks, and will elide the final
 	// EndTxn(commit=false) rollback request. For details, see:
-	// https://github.com/cockroachdb/cockroach/issues/68643
+	// https://github.com/semistrict/ratel/issues/68643
 	_, err := txn.Get(ctx, "a")
 	require.NoError(t, err)
 

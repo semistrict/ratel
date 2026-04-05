@@ -2,9 +2,9 @@
 - Status: completed
 - Start Date: 2016-07-19
 - Authors: Nathan VanBenschoten
-- RFC PR: [#7965](https://github.com/cockroachdb/cockroach/pull/7965)
-- Cockroach Issue: [#5194](https://github.com/cockroachdb/cockroach/issues/5194),
-                   [#5583](https://github.com/cockroachdb/cockroach/issues/5583)
+- RFC PR: [#7965](https://github.com/semistrict/ratel/pull/7965)
+- Cockroach Issue: [#5194](https://github.com/semistrict/ratel/issues/5194),
+                   [#5583](https://github.com/semistrict/ratel/issues/5583)
 
 
 # Summary
@@ -71,9 +71,9 @@ will all be given **read-only privileges**, just like the majority of system tab
 
 Interactions with these "virtual" database and table descriptors will be handled by
 `sql.planner`'s implementation of
-[`DatabaseAccessor`](https://github.com/cockroachdb/cockroach/blob/4d45696ea776a5b912262e5eef9889eacb6abe41/sql/database.go#L90)
+[`DatabaseAccessor`](https://github.com/semistrict/ratel/blob/4d45696ea776a5b912262e5eef9889eacb6abe41/sql/database.go#L90)
 and
-[`SchemaAccessor`](https://github.com/cockroachdb/cockroach/blob/4d45696ea776a5b912262e5eef9889eacb6abe41/sql/table.go#L89),
+[`SchemaAccessor`](https://github.com/semistrict/ratel/blob/4d45696ea776a5b912262e5eef9889eacb6abe41/sql/table.go#L89),
 respectively. By handling these descriptors at this level, we can avoid having to add
 special-cases for `information_schema` constructs at abstraction levels above this.
 Desired behavior which this would naturally provide is:
@@ -86,7 +86,7 @@ Desired behavior which this would naturally provide is:
 
 To address the second implementation concern, the RFC proposes that we catch queries to
 these virtual descriptors in
-[`planner.getDataSource`](https://github.com/cockroachdb/cockroach/blob/4d45696ea776a5b912262e5eef9889eacb6abe41/sql/data_source.go#L191),
+[`planner.getDataSource`](https://github.com/semistrict/ratel/blob/4d45696ea776a5b912262e5eef9889eacb6abe41/sql/data_source.go#L191),
 and return a `valuesNode` instead of a `scanNode` with desired information populated. Using
 a `valueNode` in this way draws direct parallels to our current implementation of `SHOW`
 statements. It allows us to mock out the table scan, and populate the provided values using

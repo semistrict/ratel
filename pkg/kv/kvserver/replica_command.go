@@ -22,27 +22,27 @@ import (
 	"sort"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/clusterversion"
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/kv"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverbase"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverpb"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/rpc"
-	"github.com/cockroachdb/cockroach/pkg/rpc/nodedialer"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/storage"
-	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/cockroach/pkg/util/contextutil"
-	"github.com/cockroachdb/cockroach/pkg/util/ctxgroup"
-	"github.com/cockroachdb/cockroach/pkg/util/envutil"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
-	"github.com/cockroachdb/cockroach/pkg/util/retry"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
-	"github.com/cockroachdb/cockroach/pkg/util/uuid"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/clusterversion"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/kv"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverbase"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverpb"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/rpc"
+	"github.com/semistrict/ratel/pkg/rpc/nodedialer"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/storage"
+	"github.com/semistrict/ratel/pkg/util"
+	"github.com/semistrict/ratel/pkg/util/contextutil"
+	"github.com/semistrict/ratel/pkg/util/ctxgroup"
+	"github.com/semistrict/ratel/pkg/util/envutil"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/protoutil"
+	"github.com/semistrict/ratel/pkg/util/retry"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/util/uuid"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/logtags"
 	"go.etcd.io/etcd/raft/v3"
@@ -909,7 +909,7 @@ func waitForReplicasInit(
 //     used to catch up these new replicas before turning them into voters, which
 //     is important for the continued availability of the range throughout the
 //     replication change. Learners are added (and removed) one by one due to a
-//     technicality (see https://github.com/cockroachdb/cockroach/pull/40268).
+//     technicality (see https://github.com/semistrict/ratel/pull/40268).
 //
 //     The distributed transaction updates both copies of the range descriptor
 //     (the one on the range and that in the meta ranges) to that effect, and
@@ -938,7 +938,7 @@ func waitForReplicasInit(
 //     learner replicas, except this time it (atomically) changes all learners to
 //     voters and removes any replicas for which this was requested; voters are
 //     demoted before actually being removed to avoid bug in etcd/raft:
-//     See https://github.com/cockroachdb/cockroach/pull/40268.
+//     See https://github.com/semistrict/ratel/pull/40268.
 //
 //     If only one replica is being added, raft can chose the simple
 //     configuration change protocol; otherwise it has to use joint consensus. In
@@ -1119,7 +1119,7 @@ func (r *Replica) changeReplicasImpl(
 		// raft leader. Not attempting to upreplicate these non-voters here can lead
 		// to spurious interactions that can fail range merges and cause severe
 		// disruption to foreground traffic. See
-		// https://github.com/cockroachdb/cockroach/issues/63199 for an example.
+		// https://github.com/semistrict/ratel/issues/63199 for an example.
 		desc, err = r.initializeRaftLearners(
 			ctx, desc, priority, reason, details, adds, roachpb.NON_VOTER,
 		)
@@ -1340,7 +1340,7 @@ func (r *Replica) maybeLeaveAtomicChangeReplicasAndRemoveLearners(
 	// head-of-line blocking scenarios where these callers are blocked for long
 	// periods of time on a single range without making progress, which can stall
 	// other operations that they are expected to perform (see
-	// https://github.com/cockroachdb/cockroach/issues/79249 for example).
+	// https://github.com/semistrict/ratel/issues/79249 for example).
 	if r.hasOutstandingLearnerSnapshotInFlight() {
 		return nil /* desc */, 0, /* learnersRemoved */
 			errCannotRemoveLearnerWhileSnapshotInFlight
@@ -1361,7 +1361,7 @@ func (r *Replica) maybeLeaveAtomicChangeReplicasAndRemoveLearners(
 	// NB: unroll the removals because at the time of writing, we can't atomically
 	// remove multiple learners. This will be fixed in:
 	//
-	// https://github.com/cockroachdb/cockroach/pull/40268
+	// https://github.com/semistrict/ratel/pull/40268
 	origDesc := desc
 	store := r.store
 	for _, target := range targets {
@@ -1997,7 +1997,7 @@ const (
 	internalChangeTypeDemoteVoterToNonVoter
 	// NB: can't remove multiple learners at once (need to remove at least one
 	// voter with them), see:
-	// https://github.com/cockroachdb/cockroach/pull/40268
+	// https://github.com/semistrict/ratel/pull/40268
 	internalChangeTypeRemove
 )
 
@@ -2282,7 +2282,7 @@ func execChangeReplicasTxn(
 			// carry out operations that would lead to a loss of quorum.
 			//
 			// See:
-			// https://github.com/cockroachdb/cockroach/issues/54444#issuecomment-707706553
+			// https://github.com/semistrict/ratel/issues/54444#issuecomment-707706553
 			replicas := crt.Desc.Replicas()
 			// We consider stores marked as "suspect" to be alive for the purposes of
 			// determining whether the range can achieve quorum since these stores are

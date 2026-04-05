@@ -197,7 +197,19 @@ func (r *Registry) MakeFn(name string) (func(*tree.EvalContext, tree.Datums) (tr
 	}
 
 	return func(evalCtx *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
-		tc := r.NewTxnContext(nil, context.Background(), nil, nil)
+		var executor SQLExecutor
+		var txn interface{}
+		goCtx := context.Background()
+		if evalCtx != nil {
+			if ie, ok := evalCtx.UDFSQLExecutor.(SQLExecutor); ok {
+				executor = ie
+			}
+			if evalCtx.Txn != nil {
+				txn = evalCtx.Txn
+			}
+			goCtx = evalCtx.Context
+		}
+		tc := r.NewTxnContext(executor, goCtx, txn, nil)
 		defer tc.Close()
 		results, err := r.Call(tc, name, []tree.Datums{args})
 		if err != nil {

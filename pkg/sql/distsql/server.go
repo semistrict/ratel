@@ -384,6 +384,7 @@ func (ds *ServerImpl) setupFlow(
 			SQLStatsController:        ds.ServerConfig.SQLStatsController,
 			IndexUsageStatsController: ds.ServerConfig.IndexUsageStatsController,
 			UDFRegistry:               ds.ServerConfig.UDFRegistry,
+			UDFSQLExecutor:            ds.ServerConfig.Executor,
 		}
 		evalCtx.SetStmtTimestamp(timeutil.Unix(0 /* sec */, req.EvalContext.StmtTimestampNanos))
 		evalCtx.SetTxnTimestamp(timeutil.Unix(0 /* sec */, req.EvalContext.TxnTimestampNanos))

@@ -3799,14 +3799,25 @@ create_function_stmt:
     if lang != "wasm" && lang != "javascript" {
       return setErr(sqllex, errors.Newf("unsupported language %q; supported: wasm, javascript, js, plv8", lang))
     }
-    // $13 is optional IMMUTABLE -- accept and ignore any trailing keyword.
+    // $13 is the volatility keyword (IMMUTABLE, STABLE, VOLATILE).
+    var volatility tree.Volatility
+    switch $13 {
+    case "immutable":
+      volatility = tree.VolatilityImmutable
+    case "stable":
+      volatility = tree.VolatilityStable
+    case "volatile":
+      volatility = tree.VolatilityVolatile
+    default:
+      // Accept unknown keywords for forward compatibility.
+    }
     $$.val = &tree.CreateFunction{
       Name:       tree.Name($3),
       Params:     $5.funcParams(),
       ReturnType: $8.typeReference(),
       Language:   lang,
       Body:       $12,
-      Volatility: tree.VolatilityImmutable,
+      Volatility: volatility,
     }
   }
 | CREATE FUNCTION name '(' opt_func_param_list ')' name simple_typename LANGUAGE name AS SCONST
@@ -3828,7 +3839,7 @@ create_function_stmt:
       ReturnType: $8.typeReference(),
       Language:   lang,
       Body:       $12,
-      Volatility: tree.VolatilityImmutable,
+      Volatility: 0, // default; set per language in create_function.go
     }
   }
 | CREATE FUNCTION name '(' opt_func_param_list ')' name simple_typename AS SCONST LANGUAGE name
@@ -3850,7 +3861,7 @@ create_function_stmt:
       ReturnType: $8.typeReference(),
       Language:   lang,
       Body:       $10,
-      Volatility: tree.VolatilityImmutable,
+      Volatility: 0, // default; set per language in create_function.go
     }
   }
 | CREATE FUNCTION error // SHOW HELP: CREATE FUNCTION

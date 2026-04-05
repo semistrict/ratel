@@ -90,6 +90,12 @@ func (n *createWasmFunctionNode) startExec(params runParams) error {
 
 	switch lang {
 	case "wasm":
+		// WASM functions have no database access (no WASI), so IMMUTABLE
+		// is safe and is the default.
+		if n.n.Volatility == 0 {
+			n.n.Volatility = tree.VolatilityImmutable
+		}
+
 		// Compile WAT to WASM.
 		wasmBytes, err := udfruntime.Wat2Wasm(n.n.Body)
 		if err != nil {
@@ -136,6 +142,18 @@ func (n *createWasmFunctionNode) startExec(params runParams) error {
 		}
 
 	case "javascript":
+		// JavaScript UDFs always have access to sql``, so they can read
+		// the database. IMMUTABLE is not safe — the optimizer would fold
+		// the function at plan time, executing SQL during planning.
+		if n.n.Volatility == tree.VolatilityImmutable {
+			return pgerror.Newf(pgcode.InvalidFunctionDefinition,
+				"JavaScript functions cannot be IMMUTABLE because they have access to sql`...`; use STABLE or VOLATILE")
+		}
+		// Default to STABLE if no volatility specified.
+		if n.n.Volatility == 0 {
+			n.n.Volatility = tree.VolatilityStable
+		}
+
 		// Wrap the bare function body with parameter names.
 		// User writes:   $$ return first_name + ' ' + last_name; $$
 		// We generate:   function invoke(first_name, last_name) { return first_name + ' ' + last_name; }

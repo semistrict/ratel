@@ -15,11 +15,13 @@
 package udfruntime
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
+	"unsafe"
 
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	crdbJSON "github.com/cockroachdb/cockroach/pkg/util/json"
@@ -49,7 +51,7 @@ type Registry struct {
 	execMu      sync.Mutex           // serializes V8 execution (isolates are single-threaded)
 	sqlTemplate *v8.FunctionTemplate // async sql`` tagged template (returns Promise)
 	callState   asyncCallState       // per-call state, safe because execMu is held
-	sbPool      sync.Pool            // pool of *strings.Builder
+	bufPool     sync.Pool            // pool of *bytes.Buffer
 }
 
 type compiledFunc struct {
@@ -66,22 +68,22 @@ func NewRegistry() *Registry {
 	r := &Registry{
 		iso:   v8.NewIsolate(),
 		funcs: make(map[string]*compiledFunc),
-		sbPool: sync.Pool{New: func() interface{} {
-			return &strings.Builder{}
+		bufPool: sync.Pool{New: func() interface{} {
+			return &bytes.Buffer{}
 		}},
 	}
 	r.sqlTemplate = r.makeAsyncSQLTemplate()
 	return r
 }
 
-func (r *Registry) getSB() *strings.Builder {
-	sb := r.sbPool.Get().(*strings.Builder)
-	sb.Reset()
-	return sb
+func (r *Registry) getBuf() *bytes.Buffer {
+	buf := r.bufPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	return buf
 }
 
-func (r *Registry) putSB(sb *strings.Builder) {
-	r.sbPool.Put(sb)
+func (r *Registry) putBuf(buf *bytes.Buffer) {
+	r.bufPool.Put(buf)
 }
 
 // CompileAndRegisterWasm compiles a WASM binary and registers it.
@@ -307,36 +309,36 @@ func (r *Registry) Call(
 	}
 
 	// Build JSON array of args in Go: [[arg0_0,arg0_1],[arg1_0,arg1_1],...]
-	// MarshalDatumToJS already produces JSON-compatible output for most types
-	// (numbers, JSON-encoded strings via quoteJSString).
-	sb := r.getSB()
-	sb.Grow(len(argsBatch)*20 + 32)
-	sb.WriteByte('[')
+	buf := r.getBuf()
+	buf.Grow(len(argsBatch)*20 + 32)
+	buf.WriteByte('[')
 	for i, args := range argsBatch {
 		if i > 0 {
-			sb.WriteByte(',')
+			buf.WriteByte(',')
 		}
-		sb.WriteByte('[')
+		buf.WriteByte('[')
 		for j, arg := range args {
 			if j > 0 {
-				sb.WriteByte(',')
+				buf.WriteByte(',')
 			}
 			s, err := MarshalDatumToJS(arg, cf.paramTypes[j], forWasm)
 			if err != nil {
-				r.putSB(sb)
+				r.putBuf(buf)
 				return nil, fmt.Errorf("row %d arg %d: %w", i, j, err)
 			}
-			sb.WriteString(s)
+			buf.WriteString(s)
 		}
-		sb.WriteByte(']')
+		buf.WriteByte(']')
 	}
-	sb.WriteByte(']')
-	argsJSON := sb.String()
-	r.putSB(sb)
+	buf.WriteByte(']')
 
-	// Parse args JSON inside V8 using the fast JSON parser (not JS source
-	// parser), then call the batch helper with the parsed array.
+	// Parse args JSON inside V8 using the fast JSON parser.
+	// Use unsafe.String for a zero-copy string view of the buffer —
+	// JSONParse copies into V8's heap, so the buffer can be reused after.
+	b := buf.Bytes()
+	argsJSON := unsafe.String(&b[0], len(b))
 	argsVal, err := v8.JSONParse(tc.v8ctx, argsJSON)
+	r.putBuf(buf)
 	if err != nil {
 		return nil, fmt.Errorf("UDF %q: parsing args JSON: %w", name, err)
 	}

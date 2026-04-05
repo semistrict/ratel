@@ -29,18 +29,18 @@ jobs:
           echo "/usr/local/go/bin" >> "$GITHUB_PATH"
       - name: Build c-deps
         run: make -j$(nproc) c-deps
-      - name: Run inproc tests (race)
+      - name: Run inproc tests
         run: |
           set -e
           # Run each test individually to avoid goroutine leaks between
           # non-synctest and synctest tests within the same test binary.
-          # All tests run with -race.
           tests=(
             TestInprocSmoke
             TestSyncInprocSmoke
             TestSyncTestSmoke
             TestSyncRestart
             TestSyncNetworkPartition
+            TestSyncFakeTime
             TestSyncClockJump
             TestAddVoters
             TestSyncAddVoters
@@ -54,10 +54,5 @@ jobs:
           )
           for t in "${tests[@]}"; do
             echo "=== Running $t ==="
-            make testrace PKG=./pkg/testutils/inproc TESTS="^${t}\$" TESTFLAGS="-v -count=1 -timeout 60s"
+            make test PKG=./pkg/testutils/inproc TESTS="^${t}\$" TESTFLAGS="-v -count=1 -timeout 30s"
           done
-
-          # TestSyncFakeTime sleeps for 1 fake hour; with race overhead
-          # this takes ~2 minutes.
-          echo "=== Running TestSyncFakeTime ==="
-          make testrace PKG=./pkg/testutils/inproc TESTS="^TestSyncFakeTime\$" TESTFLAGS="-v -count=1 -timeout 180s"

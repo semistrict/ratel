@@ -24,13 +24,54 @@ jobs:
           make vendor/modules.txt
       - name: Build c-deps
         run: make -j$(nproc) c-deps
-      - name: Synctest (race)
+      - name: Synctest
         run: |
           # Run each test individually to avoid goroutine leaks between
           # non-synctest and synctest tests within the same test binary.
-          # All tests run with -race. TestSyncFakeTime needs a longer
-          # timeout because time.Sleep(time.Hour) under fake clock + race
-          # detector is slow.
+          tests=(
+            TestInprocSmoke
+            TestSyncInprocSmoke
+            TestSyncTestSmoke
+            TestSyncRestart
+            TestSyncNetworkPartition
+            TestSyncFakeTime
+            TestSyncClockJump
+            TestAddVoters
+            TestSyncAddVoters
+            TestAutoReplication
+            TestSyncAutoReplication
+            TestSyncRaftRestartWithReplication
+            TestSyncLeaseTransfer
+            TestDecommission
+            TestSyncDecommission
+            TestLeaseTransferAfterAddVoters
+          )
+          for t in "${tests[@]}"; do
+            echo "=== Running $t ==="
+            make test PKG=./pkg/testutils/inproc TESTS="^${t}\$" TESTFLAGS="-v -count=1 -timeout 30s"
+          done
+
+  synctest-race:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          submodules: true
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.1'
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y autoconf libedit-dev
+      - name: Vendor setup
+        run: |
+          make vendor/modules.txt
+      - name: Build c-deps
+        run: make -j$(nproc) c-deps
+      - name: Synctest (race)
+        run: |
           tests=(
             TestInprocSmoke
             TestSyncInprocSmoke

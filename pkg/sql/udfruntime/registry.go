@@ -16,7 +16,6 @@ package udfruntime
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
@@ -24,6 +23,7 @@ import (
 
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	crdbJSON "github.com/cockroachdb/cockroach/pkg/util/json"
+	jsoniter "github.com/json-iterator/go"
 	v8 "github.com/tommie/v8go"
 )
 
@@ -285,20 +285,37 @@ func (r *Registry) Call(
 	}
 
 	forWasm := cf.language == LangWasm
-	wrapBigInt := cf.resultType == ValI64 && cf.language == LangWasm
 
-	// Build a single script: JSON.stringify([invoke(a0), invoke(a1), ...])
+	// Lazily install the __batch helper that takes a JSON string of args,
+	// parses it inside V8 (fast JSON parser, not JS source parser), calls
+	// invoke for each row, and returns JSON.stringify of the results.
+	batchKey := "__batch_" + name
+	if !tc.setupDone[batchKey] {
+		wrapBigInt := cf.resultType == ValI64 && cf.language == LangWasm
+		var mapExpr string
+		if wrapBigInt {
+			mapExpr = "Number(" + cf.jsCall + "...a))"
+		} else {
+			mapExpr = cf.jsCall + "...a)"
+		}
+		batchSetup := fmt.Sprintf(
+			"function %s(jsonStr) { return JSON.stringify(JSON.parse(jsonStr).map(a => %s)); }",
+			batchKey, mapExpr)
+		if _, err := tc.v8ctx.RunScript(batchSetup, batchKey+".js"); err != nil {
+			return nil, fmt.Errorf("installing batch helper: %w", err)
+		}
+		tc.setupDone[batchKey] = true
+	}
+
+	// Build JSON array of args in Go: [[arg0_0,arg0_1],[arg1_0,arg1_1],...]
 	sb := r.getSB()
 	sb.Grow(len(argsBatch)*20 + 32)
-	sb.WriteString("JSON.stringify([")
+	sb.WriteByte('[')
 	for i, args := range argsBatch {
 		if i > 0 {
 			sb.WriteByte(',')
 		}
-		if wrapBigInt {
-			sb.WriteString("Number(")
-		}
-		sb.WriteString(cf.jsCall)
+		sb.WriteByte('[')
 		for j, arg := range args {
 			if j > 0 {
 				sb.WriteByte(',')
@@ -310,14 +327,15 @@ func (r *Registry) Call(
 			}
 			sb.WriteString(s)
 		}
-		sb.WriteByte(')')
-		if wrapBigInt {
-			sb.WriteByte(')')
-		}
+		sb.WriteByte(']')
 	}
-	sb.WriteString("])")
-	script := sb.String()
+	sb.WriteByte(']')
+	argsJSON := sb.String()
 	r.putSB(sb)
+
+	// Call: __batch_funcname('[[2],[3],[1]]')
+	// V8 parses the args as JSON (fast) not as JS source (slow).
+	script := batchKey + "('" + argsJSON + "')"
 
 	timer := time.AfterFunc(cf.timeout*time.Duration(len(argsBatch)), func() {
 		r.iso.TerminateExecution()
@@ -361,7 +379,7 @@ func (r *Registry) Call(
 	switch cf.resultType {
 	case ValI64:
 		var nums []float64
-		if err := json.Unmarshal([]byte(jsonStr), &nums); err != nil {
+		if err := jsoniter.Unmarshal([]byte(jsonStr), &nums); err != nil {
 			return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
 		}
 		for i, n := range nums {
@@ -370,7 +388,7 @@ func (r *Registry) Call(
 		}
 	case ValF64:
 		var nums []float64
-		if err := json.Unmarshal([]byte(jsonStr), &nums); err != nil {
+		if err := jsoniter.Unmarshal([]byte(jsonStr), &nums); err != nil {
 			return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
 		}
 		for i, n := range nums {
@@ -379,7 +397,7 @@ func (r *Registry) Call(
 		}
 	case ValI32:
 		var nums []float64
-		if err := json.Unmarshal([]byte(jsonStr), &nums); err != nil {
+		if err := jsoniter.Unmarshal([]byte(jsonStr), &nums); err != nil {
 			return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
 		}
 		for i, n := range nums {
@@ -391,7 +409,7 @@ func (r *Registry) Call(
 		}
 	case ValString:
 		var strs []string
-		if err := json.Unmarshal([]byte(jsonStr), &strs); err != nil {
+		if err := jsoniter.Unmarshal([]byte(jsonStr), &strs); err != nil {
 			return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
 		}
 		for i, s := range strs {
@@ -402,7 +420,7 @@ func (r *Registry) Call(
 		// Timestamps are serialized as epoch milliseconds by JSON.stringify(Date).
 		// But JSON.stringify on a Date produces a string like "2025-01-01T00:00:00.000Z".
 		var strs []string
-		if err := json.Unmarshal([]byte(jsonStr), &strs); err != nil {
+		if err := jsoniter.Unmarshal([]byte(jsonStr), &strs); err != nil {
 			return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
 		}
 		for i, s := range strs {
@@ -413,10 +431,10 @@ func (r *Registry) Call(
 			results[i] = t
 		}
 	case ValJSON:
-		// JSON results: each element is a raw JSON value. We use json.RawMessage
+		// JSON results: each element is a raw JSON value. We use jsoniter.RawMessage
 		// to avoid re-parsing.
-		var raws []json.RawMessage
-		if err := json.Unmarshal([]byte(jsonStr), &raws); err != nil {
+		var raws []jsoniter.RawMessage
+		if err := jsoniter.Unmarshal([]byte(jsonStr), &raws); err != nil {
 			return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
 		}
 		for i, raw := range raws {

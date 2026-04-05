@@ -15,15 +15,12 @@
 package udfruntime
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/types"
 )
-
-var jsonMarshal = json.Marshal
 
 // SQLTypeToValType converts a SQL type to a ValType for marshaling.
 func SQLTypeToValType(t *types.T) (ValType, error) {
@@ -139,9 +136,45 @@ func MarshalDatumToJS(d tree.Datum, vt ValType, forWasm bool) (string, error) {
 
 // quoteJSString produces a JSON-style quoted string safe for JS embedding.
 func quoteJSString(s string) string {
-	// Use JSON encoding which handles all escaping.
-	b, _ := jsonMarshal(s)
-	return string(b)
+	// Fast path: if no escaping needed, avoid allocation.
+	needsEscape := false
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c == '"' || c == '\\' || c < 0x20 {
+			needsEscape = true
+			break
+		}
+	}
+	if !needsEscape {
+		return `"` + s + `"`
+	}
+	// Slow path: escape special characters for JSON.
+	var b strings.Builder
+	b.Grow(len(s) + 10)
+	b.WriteByte('"')
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		switch c {
+		case '"':
+			b.WriteString(`\"`)
+		case '\\':
+			b.WriteString(`\\`)
+		case '\n':
+			b.WriteString(`\n`)
+		case '\r':
+			b.WriteString(`\r`)
+		case '\t':
+			b.WriteString(`\t`)
+		default:
+			if c < 0x20 {
+				fmt.Fprintf(&b, `\u%04x`, c)
+			} else {
+				b.WriteByte(c)
+			}
+		}
+	}
+	b.WriteByte('"')
+	return b.String()
 }
 
 // bytesToJSUint8Array converts bytes to a JS Uint8Array expression.

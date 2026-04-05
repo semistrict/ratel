@@ -68,6 +68,7 @@ var (
 		catconstants.SpanConfigurationsTableName,
 		catconstants.TenantSettingsTableName,
 		catconstants.SpanCountTableName,
+		catconstants.WasmFunctionsTableName,
 	}
 
 	// RestoreCopySystemTablePrefix is the prefix of the table name that we give

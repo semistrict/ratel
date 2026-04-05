@@ -15,6 +15,8 @@
 package colexec
 
 import (
+	"context"
+
 	"github.com/cockroachdb/cockroach/pkg/col/coldata"
 	"github.com/cockroachdb/cockroach/pkg/sql/colconv"
 	"github.com/cockroachdb/cockroach/pkg/sql/colexec/colexecutils"
@@ -24,6 +26,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/execinfra"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/cockroachdb/cockroach/pkg/sql/udfruntime"
 	"github.com/cockroachdb/errors"
 )
 
@@ -110,6 +113,92 @@ func (b *defaultBuiltinFuncOperator) Release() {
 	b.toDatumConverter.Release()
 }
 
+// udfBatchOperator calls a V8-backed UDF with an entire batch at once,
+// avoiding per-row V8 context creation overhead.
+type udfBatchOperator struct {
+	colexecop.OneInputHelper
+	allocator           *colmem.Allocator
+	registry            *udfruntime.Registry
+	funcName            string
+	columnTypes         []*types.T
+	argumentCols        []int
+	outputIdx           int
+	outputType          *types.T
+	toDatumConverter    *colconv.VecToDatumConverter
+	datumToVecConverter func(tree.Datum) interface{}
+	txnCtx              *udfruntime.TxnContext
+}
+
+var _ colexecop.Operator = &udfBatchOperator{}
+var _ execinfra.Releasable = &udfBatchOperator{}
+
+func (u *udfBatchOperator) Init(ctx context.Context) {
+	u.OneInputHelper.Init(ctx)
+	// Create a TxnContext that lives for the lifetime of this operator.
+	u.txnCtx = u.registry.NewTxnContext(nil, ctx, nil, nil)
+}
+
+func (u *udfBatchOperator) Next() coldata.Batch {
+	batch := u.Input.Next()
+	n := batch.Length()
+	if n == 0 {
+		return coldata.ZeroBatch
+	}
+
+	sel := batch.Selection()
+	output := batch.ColVec(u.outputIdx)
+	if output.MaybeHasNulls() {
+		output.Nulls().UnsetNulls()
+	}
+
+	u.allocator.PerformOperation(
+		[]coldata.Vec{output},
+		func() {
+			u.toDatumConverter.ConvertBatchAndDeselect(batch)
+
+			// Build a batch of Datums for the UDF call.
+			argsBatch := make([]tree.Datums, n)
+			for i := 0; i < n; i++ {
+				row := make(tree.Datums, len(u.argumentCols))
+				for j, argumentCol := range u.argumentCols {
+					row[j] = u.toDatumConverter.GetDatumColumn(argumentCol)[i]
+				}
+				argsBatch[i] = row
+			}
+
+			// Call the UDF with the entire batch.
+			results, err := u.registry.Call(u.txnCtx, u.funcName, argsBatch)
+			if err != nil {
+				colexecerror.ExpectedError(err)
+			}
+
+			// Write results to the output vector.
+			for i := 0; i < n; i++ {
+				rowIdx := i
+				if sel != nil {
+					rowIdx = sel[i]
+				}
+				if results[i] == tree.DNull {
+					output.Nulls().SetNull(rowIdx)
+				} else {
+					converted := u.datumToVecConverter(results[i])
+					coldata.SetValueAt(output, converted, rowIdx)
+				}
+			}
+		},
+	)
+	return batch
+}
+
+// Release is part of the execinfra.Releasable interface.
+func (u *udfBatchOperator) Release() {
+	u.toDatumConverter.Release()
+	if u.txnCtx != nil {
+		u.txnCtx.Close()
+		u.txnCtx = nil
+	}
+}
+
 // NewBuiltinFunctionOperator returns an operator that applies builtin functions.
 func NewBuiltinFunctionOperator(
 	allocator *colmem.Allocator,
@@ -124,6 +213,29 @@ func NewBuiltinFunctionOperator(
 	if overload.FnWithExprs != nil {
 		return nil, errors.New("builtins with FnWithExprs are not supported in the vectorized engine")
 	}
+
+	// Check if this is a UDF backed by the V8 registry. If so, use the
+	// batched operator which calls all rows in a single V8 invocation.
+	if reg, ok := evalCtx.UDFRegistry.(*udfruntime.Registry); ok && reg != nil {
+		funcName := funcExpr.Func.String()
+		if _, _, _, exists := reg.GetSignature(funcName); exists {
+			outputType := funcExpr.ResolvedType()
+			input = colexecutils.NewVectorTypeEnforcer(allocator, input, outputType, outputIdx)
+			return &udfBatchOperator{
+				OneInputHelper:      colexecop.MakeOneInputHelper(input),
+				allocator:           allocator,
+				registry:            reg,
+				funcName:            funcName,
+				columnTypes:         columnTypes,
+				argumentCols:        argumentCols,
+				outputIdx:           outputIdx,
+				outputType:          outputType,
+				toDatumConverter:    colconv.NewVecToDatumConverter(len(columnTypes), argumentCols, true /* willRelease */),
+				datumToVecConverter: colconv.GetDatumToPhysicalFn(outputType),
+			}, nil
+		}
+	}
+
 	switch overload.SpecializedVecBuiltin {
 	case tree.SubstringStringIntInt:
 		input = colexecutils.NewVectorTypeEnforcer(allocator, input, types.String, outputIdx)

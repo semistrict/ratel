@@ -15,6 +15,8 @@
 package tree
 
 import (
+	"sync"
+
 	"github.com/cockroachdb/cockroach/pkg/sql/sqltelemetry"
 	"github.com/lib/pq/oid"
 )
@@ -181,6 +183,33 @@ func NewFunctionDefinition(
 // FunDefs holds pre-allocated FunctionDefinition instances
 // for every builtin function. Initialized by builtins.init().
 var FunDefs map[string]*FunctionDefinition
+
+// funDefsMu protects dynamic registration of user-defined functions in FunDefs.
+var funDefsMu sync.RWMutex
+
+// RegisterFunction dynamically registers a function definition in FunDefs.
+// This is used for user-defined WASM functions.
+func RegisterFunction(name string, def *FunctionDefinition) {
+	funDefsMu.Lock()
+	defer funDefsMu.Unlock()
+	FunDefs[name] = def
+}
+
+// UnregisterFunction removes a dynamically registered function from FunDefs.
+func UnregisterFunction(name string) {
+	funDefsMu.Lock()
+	defer funDefsMu.Unlock()
+	delete(FunDefs, name)
+}
+
+// UDFResolver is a callback that resolves user-defined functions by name
+// from external storage (e.g. system.wasm_functions). It is called when
+// ResolveFunction does not find the function in the builtin FunDefs cache.
+// The resolver should compile and register the function in FunDefs if found,
+// then return the definition. Return nil if the function does not exist.
+//
+// This is set by the sql package at server startup.
+var UDFResolver func(name string) *FunctionDefinition
 
 // OidToBuiltinName contains a map from the hashed OID of all builtin functions
 // to their name. We populate this from the pg_catalog.go file in the sql

@@ -672,6 +672,24 @@ CREATE TABLE system.tenant_settings (
 	FAMILY (tenant_id, name, value, last_updated, value_type, reason)
 );`
 
+	WasmFunctionsTableSchema = `
+CREATE TABLE system.wasm_functions (
+	database_id    INT8 NOT NULL,
+	schema_id      INT8 NOT NULL,
+	function_name  STRING NOT NULL,
+	arg_types      BYTES NOT NULL,
+	return_type    BYTES NOT NULL,
+	wasm_module    BYTES NOT NULL,
+	wat_source     STRING NOT NULL,
+	export_name    STRING NOT NULL DEFAULT 'invoke',
+	fuel_limit     INT8 NOT NULL DEFAULT 1000000,
+	memory_limit   INT8 NOT NULL DEFAULT 16777216,
+	owner          STRING NOT NULL,
+	created_at     TIMESTAMP NOT NULL DEFAULT now(),
+	CONSTRAINT "primary" PRIMARY KEY (database_id, schema_id, function_name, arg_types),
+	FAMILY "primary" (database_id, schema_id, function_name, arg_types, return_type, wasm_module, wat_source, export_name, fuel_limit, memory_limit, owner, created_at)
+);`
+
 	SpanCountTableSchema = `
 CREATE TABLE system.span_count (
 	singleton  BOOL DEFAULT TRUE,
@@ -888,9 +906,12 @@ var (
 			pk("id"),
 		))
 
-	falseBoolString = "false"
-	trueBoolString  = "true"
-	zeroIntString   = "0:::INT8"
+	falseBoolString         = "false"
+	trueBoolString          = "true"
+	zeroIntString           = "0:::INT8"
+	invokeString            = "'invoke':::STRING"
+	defaultFuelLimitString  = "1000000:::INT8"
+	defaultMemoryLimitString = "16777216:::INT8"
 
 	// UsersTable is the descriptor for the users table.
 	UsersTable = registerSystemTable(
@@ -2367,6 +2388,50 @@ var (
 					descpb.IndexDescriptor_ASC,
 				},
 				KeyColumnIDs: []descpb.ColumnID{1, 2},
+				Version:      descpb.StrictIndexColumnIDGuaranteesVersion,
+			},
+		))
+
+	// WasmFunctionsTable is the descriptor for the WASM user-defined functions table.
+	WasmFunctionsTable = registerSystemTable(
+		WasmFunctionsTableSchema,
+		systemTable(
+			catconstants.WasmFunctionsTableName,
+			descpb.InvalidID, // dynamically assigned
+			[]descpb.ColumnDescriptor{
+				{Name: "database_id", ID: 1, Type: types.Int},
+				{Name: "schema_id", ID: 2, Type: types.Int},
+				{Name: "function_name", ID: 3, Type: types.String},
+				{Name: "arg_types", ID: 4, Type: types.Bytes},
+				{Name: "return_type", ID: 5, Type: types.Bytes},
+				{Name: "wasm_module", ID: 6, Type: types.Bytes},
+				{Name: "wat_source", ID: 7, Type: types.String},
+				{Name: "export_name", ID: 8, Type: types.String, DefaultExpr: &invokeString},
+				{Name: "fuel_limit", ID: 9, Type: types.Int, DefaultExpr: &defaultFuelLimitString},
+				{Name: "memory_limit", ID: 10, Type: types.Int, DefaultExpr: &defaultMemoryLimitString},
+				{Name: "owner", ID: 11, Type: types.String},
+				{Name: "created_at", ID: 12, Type: types.Timestamp, DefaultExpr: &nowString},
+			},
+			[]descpb.ColumnFamilyDescriptor{
+				{
+					Name:        "primary",
+					ID:          0,
+					ColumnNames: []string{"database_id", "schema_id", "function_name", "arg_types", "return_type", "wasm_module", "wat_source", "export_name", "fuel_limit", "memory_limit", "owner", "created_at"},
+					ColumnIDs:   []descpb.ColumnID{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
+				},
+			},
+			descpb.IndexDescriptor{
+				Name:   tabledesc.LegacyPrimaryKeyIndexName,
+				ID:     1,
+				Unique: true,
+				KeyColumnNames: []string{"database_id", "schema_id", "function_name", "arg_types"},
+				KeyColumnDirections: []descpb.IndexDescriptor_Direction{
+					descpb.IndexDescriptor_ASC,
+					descpb.IndexDescriptor_ASC,
+					descpb.IndexDescriptor_ASC,
+					descpb.IndexDescriptor_ASC,
+				},
+				KeyColumnIDs: []descpb.ColumnID{1, 2, 3, 4},
 				Version:      descpb.StrictIndexColumnIDGuaranteesVersion,
 			},
 		))

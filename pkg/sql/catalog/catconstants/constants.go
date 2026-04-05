@@ -89,6 +89,7 @@ const (
 	SpanConfigurationsTableName            SystemTableName = "span_configurations"
 	TenantSettingsTableName                SystemTableName = "tenant_settings"
 	SpanCountTableName                     SystemTableName = "span_count"
+	WasmFunctionsTableName                 SystemTableName = "wasm_functions"
 )
 
 // Oid for virtual database and table.

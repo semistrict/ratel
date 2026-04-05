@@ -157,6 +157,8 @@ func planOpaque(ctx context.Context, p *planner, stmt tree.Statement) (planNode,
 		return p.CreateSequence(ctx, n)
 	case *tree.CreateExtension:
 		return p.CreateExtension(ctx, n)
+	case *tree.CreateFunction:
+		return p.CreateFunction(ctx, n)
 	case *tree.Deallocate:
 		return p.Deallocate(ctx, n)
 	case *tree.DeclareCursor:
@@ -179,6 +181,8 @@ func planOpaque(ctx context.Context, p *planner, stmt tree.Statement) (planNode,
 		return p.DropTable(ctx, n)
 	case *tree.DropType:
 		return p.DropType(ctx, n)
+	case *tree.DropFunction:
+		return p.DropFunction(ctx, n)
 	case *tree.DropView:
 		return p.DropView(ctx, n)
 	case *tree.FetchCursor:
@@ -288,6 +292,7 @@ func init() {
 		&tree.CommentOnTable{},
 		&tree.CreateDatabase{},
 		&tree.CreateExtension{},
+		&tree.CreateFunction{},
 		&tree.CreateIndex{},
 		&tree.CreateSchema{},
 		&tree.CreateSequence{},
@@ -296,6 +301,7 @@ func init() {
 		&tree.Deallocate{},
 		&tree.DeclareCursor{},
 		&tree.Discard{},
+		&tree.DropFunction{},
 		&tree.DropDatabase{},
 		&tree.DropIndex{},
 		&tree.DropOwnedBy{},

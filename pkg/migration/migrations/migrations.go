@@ -161,6 +161,12 @@ var migrations = []migration.Migration{
 		NoPrecondition,
 		seedSpanCountTableMigration,
 	),
+	migration.NewTenantMigration(
+		"add the system.wasm_functions table",
+		toCV(clusterversion.WasmFunctionsTable),
+		NoPrecondition,
+		wasmFunctionsTableMigration,
+	),
 }
 
 func init() {

@@ -356,6 +356,10 @@ const (
 	// V22_1 is CockroachDB v22.1. It's used for all v22.1.x patch releases.
 	V22_1
 
+	// WasmFunctionsTable adds the system.wasm_functions table for storing
+	// user-defined WASM functions.
+	WasmFunctionsTable
+
 	// *************************************************
 	// Step (1): Add new versions here.
 	// Do not add new versions to a patch release.
@@ -610,6 +614,10 @@ var versionsSingleton = keyedVersions{
 		Key:     V22_1,
 		Version: roachpb.Version{Major: 22, Minor: 1},
 	},
+	{
+		Key:     WasmFunctionsTable,
+		Version: roachpb.Version{Major: 22, Minor: 1, Internal: 2},
+	},
 
 	// *************************************************
 	// Step (2): Add new versions here.
@@ -635,7 +643,7 @@ var (
 )
 
 func init() {
-	const isReleaseBranch = true
+	const isReleaseBranch = false
 	if isReleaseBranch {
 		if binaryVersion != ByKey(V22_1) {
 			panic("unexpected cluster version greater than release's binary version")

@@ -736,6 +736,12 @@ func (u *sqlSymUnion) typeReferences() []tree.ResolvableTypeReference {
 func (u *sqlSymUnion) alterTypeAddValuePlacement() *tree.AlterTypeAddValuePlacement {
     return u.val.(*tree.AlterTypeAddValuePlacement)
 }
+func (u *sqlSymUnion) funcParams() []tree.FuncParam {
+    return u.val.([]tree.FuncParam)
+}
+func (u *sqlSymUnion) funcParam() tree.FuncParam {
+    return u.val.(tree.FuncParam)
+}
 func (u *sqlSymUnion) scheduleState() tree.ScheduleState {
   return u.val.(tree.ScheduleState)
 }
@@ -1060,6 +1066,8 @@ func (u *sqlSymUnion) cursorStmt() tree.CursorStmt {
 %type <*tree.CreateStatsOptions> create_stats_option
 
 %type <tree.Statement> create_type_stmt
+%type <tree.Statement> create_function_stmt
+%type <tree.Statement> drop_function_stmt
 %type <tree.Statement> delete_stmt
 %type <tree.Statement> discard_stmt
 
@@ -1387,6 +1395,9 @@ func (u *sqlSymUnion) cursorStmt() tree.CursorStmt {
 
 %type <str> explain_option_name
 %type <[]string> explain_option_list opt_enum_val_list enum_val_list
+
+%type <[]tree.FuncParam> opt_func_param_list func_param_list
+%type <tree.FuncParam> func_param
 
 %type <tree.ResolvableTypeReference> typename simple_typename cast_target
 %type <*types.T> const_typename
@@ -3747,6 +3758,7 @@ create_stmt:
 | create_changefeed_stmt
 | create_replication_stream_stmt
 | create_extension_stmt  // EXTEND WITH HELP: CREATE EXTENSION
+| create_function_stmt   // EXTEND WITH HELP: CREATE FUNCTION
 | create_unsupported   {}
 | CREATE error         // SHOW HELP: CREATE
 
@@ -3770,6 +3782,126 @@ create_extension_stmt:
   }
 | CREATE EXTENSION error // SHOW HELP: CREATE EXTENSION
 
+// %Help: CREATE FUNCTION - define a new WASM function
+// %Category: DDL
+// %Text: CREATE FUNCTION <name> ( [<param_name> <type>, ...] ) RETURNS <type> LANGUAGE wasm AS '<wat_source>' IMMUTABLE
+create_function_stmt:
+  CREATE FUNCTION name '(' opt_func_param_list ')' name simple_typename LANGUAGE name AS SCONST name
+  {
+    returns := $7
+    if returns != "returns" {
+      return setErr(sqllex, errors.Newf("expected RETURNS, got %q", returns))
+    }
+    lang := $10
+    if lang == "js" || lang == "plv8" {
+      lang = "javascript"
+    }
+    if lang != "wasm" && lang != "javascript" {
+      return setErr(sqllex, errors.Newf("unsupported language %q; supported: wasm, javascript, js, plv8", lang))
+    }
+    // $13 is optional IMMUTABLE -- accept and ignore any trailing keyword.
+    $$.val = &tree.CreateFunction{
+      Name:       tree.Name($3),
+      Params:     $5.funcParams(),
+      ReturnType: $8.typeReference(),
+      Language:   lang,
+      Body:       $12,
+      Volatility: tree.VolatilityImmutable,
+    }
+  }
+| CREATE FUNCTION name '(' opt_func_param_list ')' name simple_typename LANGUAGE name AS SCONST
+  {
+    returns := $7
+    if returns != "returns" {
+      return setErr(sqllex, errors.Newf("expected RETURNS, got %q", returns))
+    }
+    lang := $10
+    if lang == "js" || lang == "plv8" {
+      lang = "javascript"
+    }
+    if lang != "wasm" && lang != "javascript" {
+      return setErr(sqllex, errors.Newf("unsupported language %q; supported: wasm, javascript, js, plv8", lang))
+    }
+    $$.val = &tree.CreateFunction{
+      Name:       tree.Name($3),
+      Params:     $5.funcParams(),
+      ReturnType: $8.typeReference(),
+      Language:   lang,
+      Body:       $12,
+      Volatility: tree.VolatilityImmutable,
+    }
+  }
+| CREATE FUNCTION name '(' opt_func_param_list ')' name simple_typename AS SCONST LANGUAGE name
+  {
+    returns := $7
+    if returns != "returns" {
+      return setErr(sqllex, errors.Newf("expected RETURNS, got %q", returns))
+    }
+    lang := $12
+    if lang == "js" || lang == "plv8" {
+      lang = "javascript"
+    }
+    if lang != "wasm" && lang != "javascript" {
+      return setErr(sqllex, errors.Newf("unsupported language %q; supported: wasm, javascript, js, plv8", lang))
+    }
+    $$.val = &tree.CreateFunction{
+      Name:       tree.Name($3),
+      Params:     $5.funcParams(),
+      ReturnType: $8.typeReference(),
+      Language:   lang,
+      Body:       $10,
+      Volatility: tree.VolatilityImmutable,
+    }
+  }
+| CREATE FUNCTION error // SHOW HELP: CREATE FUNCTION
+
+// %Help: DROP FUNCTION - remove a function
+// %Category: DDL
+// %Text: DROP FUNCTION [IF EXISTS] <name> ( [<type>, ...] )
+drop_function_stmt:
+  DROP FUNCTION name '(' opt_func_param_list ')'
+  {
+    $$.val = &tree.DropFunction{
+      Name:     tree.Name($3),
+      Params:   $5.funcParams(),
+    }
+  }
+| DROP FUNCTION IF EXISTS name '(' opt_func_param_list ')'
+  {
+    $$.val = &tree.DropFunction{
+      Name:     tree.Name($5),
+      Params:   $7.funcParams(),
+      IfExists: true,
+    }
+  }
+| DROP FUNCTION error // SHOW HELP: DROP FUNCTION
+
+opt_func_param_list:
+  func_param_list
+  {
+    $$.val = $1.funcParams()
+  }
+| /* EMPTY */
+  {
+    $$.val = []tree.FuncParam(nil)
+  }
+
+func_param_list:
+  func_param
+  {
+    $$.val = []tree.FuncParam{$1.funcParam()}
+  }
+| func_param_list ',' func_param
+  {
+    $$.val = append($1.funcParams(), $3.funcParam())
+  }
+
+func_param:
+  name simple_typename
+  {
+    $$.val = tree.FuncParam{Name: $1, Type: $2.typeReference()}
+  }
+
 create_unsupported:
   CREATE ACCESS METHOD error { return unimplemented(sqllex, "create access method") }
 | CREATE AGGREGATE error { return unimplementedWithIssueDetail(sqllex, 74775, "create aggregate") }
@@ -3779,8 +3911,7 @@ create_unsupported:
 | CREATE DEFAULT CONVERSION error { return unimplemented(sqllex, "create def conv") }
 | CREATE FOREIGN TABLE error { return unimplemented(sqllex, "create foreign table") }
 | CREATE FOREIGN DATA error { return unimplemented(sqllex, "create fdw") }
-| CREATE FUNCTION error { return unimplementedWithIssueDetail(sqllex, 17511, "create function") }
-| CREATE OR REPLACE FUNCTION error { return unimplementedWithIssueDetail(sqllex, 17511, "create function") }
+| CREATE OR REPLACE FUNCTION error { return unimplementedWithIssueDetail(sqllex, 17511, "create or replace function") }
 | CREATE opt_or_replace opt_trusted opt_procedural LANGUAGE name error { return unimplementedWithIssueDetail(sqllex, 17511, "create language " + $6) }
 | CREATE OPERATOR error { return unimplementedWithIssue(sqllex, 65017) }
 | CREATE PUBLICATION error { return unimplemented(sqllex, "create publication") }
@@ -3814,7 +3945,6 @@ drop_unsupported:
 | DROP EXTENSION name error { return unimplementedWithIssueDetail(sqllex, 74777, "drop extension") }
 | DROP FOREIGN TABLE error { return unimplemented(sqllex, "drop foreign table") }
 | DROP FOREIGN DATA error { return unimplemented(sqllex, "drop fdw") }
-| DROP FUNCTION error { return unimplementedWithIssueDetail(sqllex, 17511, "drop function") }
 | DROP opt_procedural LANGUAGE name error { return unimplementedWithIssueDetail(sqllex, 17511, "drop language " + $4) }
 | DROP OPERATOR error { return unimplemented(sqllex, "drop operator") }
 | DROP PUBLICATION error { return unimplemented(sqllex, "drop publication") }
@@ -4117,6 +4247,7 @@ drop_stmt:
   drop_ddl_stmt      // help texts in sub-rule
 | drop_role_stmt     // EXTEND WITH HELP: DROP ROLE
 | drop_schedule_stmt // EXTEND WITH HELP: DROP SCHEDULES
+| drop_function_stmt // EXTEND WITH HELP: DROP FUNCTION
 | drop_unsupported   {}
 | DROP error         // SHOW HELP: DROP
 

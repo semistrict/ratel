@@ -176,3 +176,112 @@ func BenchmarkUDF(b *testing.B) {
 
 	_ = strResult
 }
+
+// BenchmarkUDFRealistic uses a UDF that processes mixed types:
+// string + float + int + JSON-encoded array → string output.
+func BenchmarkUDFRealistic(b *testing.B) {
+	c, ctx := benchCluster(b)
+	db := c.ServerConn(0)
+
+	// Create a table with mixed column types.
+	_, err := db.ExecContext(ctx, `CREATE TABLE orders (
+		id INT PRIMARY KEY,
+		customer STRING,
+		amount FLOAT,
+		quantity INT,
+		tags STRING
+	)`)
+	require.NoError(b, err)
+
+	// Insert 10k rows with realistic data.
+	customers := []string{"Alice", "Bob", "Charlie", "Diana", "Eve"}
+	tagSets := []string{
+		`["electronics","sale"]`,
+		`["clothing","premium","sale"]`,
+		`["food"]`,
+		`["electronics","premium","bulk","sale"]`,
+		`["clothing"]`,
+	}
+	for batch := 0; batch < 100; batch++ {
+		vals := ""
+		for i := 0; i < 100; i++ {
+			id := batch*100 + i + 1
+			cust := customers[id%len(customers)]
+			amount := 9.99 + float64(id%50)*1.5
+			qty := 1 + id%20
+			tags := tagSets[id%len(tagSets)]
+			if i > 0 {
+				vals += ","
+			}
+			vals += fmt.Sprintf("(%d,'%s',%f,%d,'%s')", id, cust, amount, qty, tags)
+		}
+		_, err = db.ExecContext(ctx, "INSERT INTO orders VALUES "+vals)
+		require.NoError(b, err)
+	}
+
+	// UDF: parse tags JSON, compute total with discount based on tag count,
+	// format as "Customer: $123.45 (tag1, tag2)"
+	_, err = db.ExecContext(ctx, `
+		CREATE FUNCTION format_order(customer STRING, amount FLOAT, quantity INT, tags STRING)
+		RETURNS STRING LANGUAGE javascript AS $$
+			const t = JSON.parse(tags);
+			const total = amount * quantity;
+			const discount = t.length > 2 ? 0.1 : 0;
+			const final = (total * (1 - discount)).toFixed(2);
+			return customer + ": $" + final + " (" + t.join(", ") + ")";
+		$$
+	`)
+	require.NoError(b, err)
+
+	// Warm up.
+	var strResult string
+	err = db.QueryRowContext(ctx,
+		`SELECT format_order(customer, amount, quantity, tags) FROM orders LIMIT 1`).Scan(&strResult)
+	require.NoError(b, err)
+	b.Logf("sample: %s", strResult)
+
+	b.Run("BaselineScan/10000rows", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			rows, err := db.QueryContext(ctx,
+				`SELECT customer, amount, quantity, tags FROM orders`)
+			if err != nil {
+				b.Fatal(err)
+			}
+			n := 0
+			var cust, tags string
+			var amount float64
+			var qty int
+			for rows.Next() {
+				if err := rows.Scan(&cust, &amount, &qty, &tags); err != nil {
+					b.Fatal(err)
+				}
+				n++
+			}
+			rows.Close()
+			if n != 10000 {
+				b.Fatalf("expected 10000 rows, got %d", n)
+			}
+		}
+	})
+
+	b.Run("UDFScan/10000rows", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			rows, err := db.QueryContext(ctx,
+				`SELECT format_order(customer, amount, quantity, tags) FROM orders`)
+			if err != nil {
+				b.Fatal(err)
+			}
+			n := 0
+			for rows.Next() {
+				if err := rows.Scan(&strResult); err != nil {
+					b.Fatal(err)
+				}
+				n++
+			}
+			rows.Close()
+			if n != 10000 {
+				b.Fatalf("expected 10000 rows, got %d", n)
+			}
+		}
+	})
+}

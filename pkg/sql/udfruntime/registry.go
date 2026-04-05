@@ -286,9 +286,8 @@ func (r *Registry) Call(
 
 	forWasm := cf.language == LangWasm
 
-	// Lazily install the __batch helper that takes a JSON string of args,
-	// parses it inside V8 (fast JSON parser, not JS source parser), calls
-	// invoke for each row, and returns JSON.stringify of the results.
+	// Lazily install the __batch helper that takes a parsed array of args,
+	// calls invoke for each row, and returns the results array.
 	batchKey := "__batch_" + name
 	if !tc.setupDone[batchKey] {
 		wrapBigInt := cf.resultType == ValI64 && cf.language == LangWasm
@@ -299,7 +298,7 @@ func (r *Registry) Call(
 			mapExpr = cf.jsCall + "...a)"
 		}
 		batchSetup := fmt.Sprintf(
-			"function %s(jsonStr) { return JSON.stringify(JSON.parse(jsonStr).map(a => %s)); }",
+			"function %s(args) { return args.map(a => %s); }",
 			batchKey, mapExpr)
 		if _, err := tc.v8ctx.RunScript(batchSetup, batchKey+".js"); err != nil {
 			return nil, fmt.Errorf("installing batch helper: %w", err)
@@ -308,6 +307,8 @@ func (r *Registry) Call(
 	}
 
 	// Build JSON array of args in Go: [[arg0_0,arg0_1],[arg1_0,arg1_1],...]
+	// MarshalDatumToJS already produces JSON-compatible output for most types
+	// (numbers, JSON-encoded strings via quoteJSString).
 	sb := r.getSB()
 	sb.Grow(len(argsBatch)*20 + 32)
 	sb.WriteByte('[')
@@ -333,9 +334,19 @@ func (r *Registry) Call(
 	argsJSON := sb.String()
 	r.putSB(sb)
 
-	// Call: __batch_funcname('[[2],[3],[1]]')
-	// V8 parses the args as JSON (fast) not as JS source (slow).
-	script := batchKey + "('" + argsJSON + "')"
+	// Parse args JSON inside V8 using the fast JSON parser (not JS source
+	// parser), then call the batch helper with the parsed array.
+	argsVal, err := v8.JSONParse(tc.v8ctx, argsJSON)
+	if err != nil {
+		return nil, fmt.Errorf("UDF %q: parsing args JSON: %w", name, err)
+	}
+
+	// Build a tiny script that calls the batch function with the parsed args.
+	// We stash the parsed args in a global to avoid re-embedding them as source.
+	if err := tc.v8ctx.Global().Set("__args", argsVal); err != nil {
+		return nil, fmt.Errorf("UDF %q: setting args: %w", name, err)
+	}
+	script := "JSON.stringify(" + batchKey + "(__args))"
 
 	timer := time.AfterFunc(cf.timeout*time.Duration(len(argsBatch)), func() {
 		r.iso.TerminateExecution()

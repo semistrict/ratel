@@ -286,8 +286,9 @@ func (r *Registry) Call(
 		return r.callSequential(tc, cf, name, argsBatch)
 	}
 
-	// Lazily install the __batch helper that takes a parsed array of args,
-	// calls invoke for each row, and returns the results array.
+	// Lazily install the __batch helper that takes a JSON string of args,
+	// parses it inside V8, calls invoke for each row, and returns
+	// JSON.stringify of the results. All in one JS function call.
 	batchKey := "__batch_" + name
 	if !tc.setupDone[batchKey] {
 		wrapBigInt := cf.resultType == ValI64 && cf.language == LangWasm
@@ -298,7 +299,7 @@ func (r *Registry) Call(
 			mapExpr = cf.jsCall + "...a)"
 		}
 		batchSetup := fmt.Sprintf(
-			"function %s(args) { return args.map(a => %s); }",
+			"function %s(jsonStr) { return JSON.stringify(JSON.parse(jsonStr).map(a => %s)); }",
 			batchKey, mapExpr)
 		if _, err := tc.v8ctx.RunScript(batchSetup, batchKey+".js"); err != nil {
 			return nil, fmt.Errorf("installing batch helper: %w", err)
@@ -307,8 +308,6 @@ func (r *Registry) Call(
 	}
 
 	// Build JSON array of args in Go: [[arg0_0,arg0_1],[arg1_0,arg1_1],...]
-	// WriteDatumJSON writes directly to the buffer with zero intermediate
-	// string allocations.
 	buf := r.getBuf()
 	buf.Grow(len(argsBatch)*20 + 32)
 	buf.WriteByte('[')
@@ -330,29 +329,22 @@ func (r *Registry) Call(
 	}
 	buf.WriteByte(']')
 
-	// Parse args JSON inside V8 using the fast JSON parser.
-	// Use unsafe.String for a zero-copy string view of the buffer —
-	// JSONParse copies into V8's heap, so the buffer can be reused after.
-	b := buf.Bytes()
-	argsJSON := unsafe.String(&b[0], len(b))
-	argsVal, err := v8.JSONParse(tc.v8ctx, argsJSON)
+	// Create a V8 string value from the buffer (one CGO call, no parsing),
+	// then call the batch function directly (one CGO call). The batch
+	// function does JSON.parse + invoke + JSON.stringify all in JS.
+	byts := buf.Bytes()
+	argsStr := unsafe.String(&byts[0], len(byts))
+	strVal, err := v8.NewValue(r.iso, argsStr)
 	r.putBuf(buf)
 	if err != nil {
-		return nil, fmt.Errorf("UDF %q: parsing args JSON: %w", name, err)
+		return nil, fmt.Errorf("UDF %q: creating args string: %w", name, err)
 	}
-
-	// Build a tiny script that calls the batch function with the parsed args.
-	// We stash the parsed args in a global to avoid re-embedding them as source.
-	if err := tc.v8ctx.Global().Set("__args", argsVal); err != nil {
-		return nil, fmt.Errorf("UDF %q: setting args: %w", name, err)
-	}
-	script := "JSON.stringify(" + batchKey + "(__args))"
 
 	timer := time.AfterFunc(cf.timeout*time.Duration(len(argsBatch)), func() {
 		r.iso.TerminateExecution()
 	})
 
-	val, err := tc.v8ctx.RunScript(script, name+"_call.js")
+	val, err := tc.v8ctx.Global().MethodCall(batchKey, strVal)
 
 	// If the batch contains async functions (sql``), the result will be
 	// a Promise wrapping the array. Pump until resolved.

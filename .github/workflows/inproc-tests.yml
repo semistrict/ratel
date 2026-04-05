@@ -34,21 +34,34 @@ jobs:
           set -e
           # Run each test individually to avoid goroutine leaks between
           # non-synctest and synctest tests within the same test binary.
-          tests=(
-            TestInprocSmoke
+          # Synctest + race detector is incompatible (hangs), so only
+          # non-synctest tests run with -race.
+          synctest_tests=(
+            TestSyncInprocSmoke
             TestSyncTestSmoke
             TestSyncRestart
             TestSyncNetworkPartition
             TestSyncFakeTime
             TestSyncClockJump
-            TestAddVoters
             TestSyncAddVoters
-            TestAutoReplication
             TestSyncAutoReplication
             TestSyncRaftRestartWithReplication
             TestSyncLeaseTransfer
+            TestSyncDecommission
           )
-          for t in "${tests[@]}"; do
+          for t in "${synctest_tests[@]}"; do
             echo "=== Running $t ==="
             make test PKG=./pkg/testutils/inproc TESTS="$t" TESTFLAGS="-v -count=1 -timeout 30s"
+          done
+
+          race_tests=(
+            TestInprocSmoke
+            TestAddVoters
+            TestAutoReplication
+            TestDecommission
+            TestLeaseTransferAfterAddVoters
+          )
+          for t in "${race_tests[@]}"; do
+            echo "=== Running $t (race) ==="
+            make testrace PKG=./pkg/testutils/inproc TESTS="$t" TESTFLAGS="-v -count=1 -timeout 60s"
           done

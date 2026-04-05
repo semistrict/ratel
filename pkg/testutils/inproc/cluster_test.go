@@ -42,6 +42,23 @@ func TestInprocSmoke(t *testing.T) {
 	require.Equal(t, []byte("world"), val.ValueBytes())
 }
 
+// TestSyncInprocSmoke is TestInprocSmoke inside a synctest bubble.
+func TestSyncInprocSmoke(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		c := inproc.StartCluster(t, 3)
+		defer c.Stop()
+
+		db := c.Server(0).DB()
+
+		err := db.Put(t.Context(), roachpb.Key("hello"), []byte("world"))
+		require.NoError(t, err)
+
+		val, err := db.Get(t.Context(), roachpb.Key("hello"))
+		require.NoError(t, err)
+		require.Equal(t, []byte("world"), val.ValueBytes())
+	})
+}
+
 // TestSyncTestSmoke verifies that a 3-node cluster can start inside
 // a synctest bubble with in-memory networking and storage.
 func TestSyncTestSmoke(t *testing.T) {

@@ -186,10 +186,13 @@ func (registry *stickyInMemEnginesRegistryImpl) deleteEngine(id string) {
 	if !ok {
 		return
 	}
-	if !engine.closed {
-		engine.closed = true
-		engine.Engine.Close()
-	}
+	// Always close the underlying engine. The sticky wrapper's Close()
+	// only marks the wrapper as closed without touching the real engine,
+	// so we must call Engine.Close() here to shut down Pebble's
+	// background goroutines (cleanup manager, log writer flush loop,
+	// table cache release loops).
+	engine.closed = true
+	engine.Engine.Close()
 	delete(registry.entries, id)
 }
 

@@ -26,6 +26,6 @@ jobs:
         run: make -j$(nproc) c-deps
       - name: Synctest
         run: |
-          go test -mod=vendor -v -count=1 -timeout 60s \
-            -run 'TestSync|TestInproc|TestAutoReplication|TestAddVoters|TestDecommission' \
-            ./pkg/testutils/inproc/
+          make test PKG=./pkg/testutils/inproc \
+            TESTS='TestSync|TestInproc|TestAutoReplication|TestAddVoters|TestDecommission' \
+            TESTFLAGS="-v -count=1 -timeout 60s"

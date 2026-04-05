@@ -7,6 +7,8 @@ on:
 jobs:
   synctest:
     runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: local
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
@@ -15,11 +17,15 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.26.1'
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y autoconf libedit-dev
       - name: Vendor setup
         run: |
           make vendor/modules.txt
+      - name: Build c-deps
+        run: make -j$(nproc) c-deps
       - name: Synctest
         run: |
-          go test -mod=vendor -tags stdmalloc -v -count=1 -timeout 60s \
+          go test -mod=vendor -v -count=1 -timeout 60s \
             -run 'TestSync|TestInproc|TestAutoReplication|TestAddVoters|TestDecommission' \
             ./pkg/testutils/inproc/

@@ -19,6 +19,11 @@ package kvcoord
 
 import "github.com/cockroachdb/cockroach/pkg/rpc/nodedialer"
 
+// DisableRaceTransport is a no-op in non-race builds. In race builds,
+// setting this to true prevents the background transport racer goroutine
+// from starting, which is necessary for synctest compatibility.
+var DisableRaceTransport bool
+
 // GRPCTransportFactory is the default TransportFactory, using GRPC.
 func GRPCTransportFactory(
 	opts SendOptions, nodeDialer *nodedialer.Dialer, replicas ReplicaSlice,

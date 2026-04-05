@@ -35,6 +35,12 @@ import (
 var running int32 // atomically updated
 var incoming chan *roachpb.BatchRequest
 
+// DisableRaceTransport can be set to true to prevent the race transport
+// background goroutine from starting. This is necessary for synctest
+// compatibility: the racer goroutine's select is non-durable, which
+// prevents synctest from detecting quiescence and advancing fake time.
+var DisableRaceTransport bool
+
 func init() {
 	incoming = make(chan *roachpb.BatchRequest, 100)
 }
@@ -101,7 +107,7 @@ func (tr raceTransport) SendNext(
 func GRPCTransportFactory(
 	opts SendOptions, nodeDialer *nodedialer.Dialer, replicas ReplicaSlice,
 ) (Transport, error) {
-	if atomic.AddInt32(&running, 1) <= 1 {
+	if !DisableRaceTransport && atomic.AddInt32(&running, 1) <= 1 {
 		if err := nodeDialer.Stopper().RunAsyncTask(
 			context.TODO(), "transport racer", func(ctx context.Context) {
 				var iters int

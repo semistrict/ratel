@@ -24,38 +24,36 @@ jobs:
           make vendor/modules.txt
       - name: Build c-deps
         run: make -j$(nproc) c-deps
-      - name: Synctest
+      - name: Synctest (race)
         run: |
           # Run each test individually to avoid goroutine leaks between
           # non-synctest and synctest tests within the same test binary.
-          # Note: synctest + race detector is incompatible (hangs), so
-          # synctest tests run without -race, non-synctest tests with -race.
-          synctest_tests=(
+          # All tests run with -race. TestSyncFakeTime needs a longer
+          # timeout because time.Sleep(time.Hour) under fake clock + race
+          # detector is slow.
+          tests=(
+            TestInprocSmoke
             TestSyncInprocSmoke
             TestSyncTestSmoke
             TestSyncRestart
             TestSyncNetworkPartition
-            TestSyncFakeTime
             TestSyncClockJump
+            TestAddVoters
             TestSyncAddVoters
+            TestAutoReplication
             TestSyncAutoReplication
             TestSyncRaftRestartWithReplication
             TestSyncLeaseTransfer
-            TestSyncDecommission
-          )
-          for t in "${synctest_tests[@]}"; do
-            echo "=== Running $t ==="
-            make test PKG=./pkg/testutils/inproc TESTS="$t" TESTFLAGS="-v -count=1 -timeout 30s"
-          done
-
-          race_tests=(
-            TestInprocSmoke
-            TestAddVoters
-            TestAutoReplication
             TestDecommission
+            TestSyncDecommission
             TestLeaseTransferAfterAddVoters
           )
-          for t in "${race_tests[@]}"; do
-            echo "=== Running $t (race) ==="
+          for t in "${tests[@]}"; do
+            echo "=== Running $t ==="
             make testrace PKG=./pkg/testutils/inproc TESTS="$t" TESTFLAGS="-v -count=1 -timeout 60s"
           done
+
+          # TestSyncFakeTime sleeps for 1 fake hour; with race overhead
+          # this takes ~2 minutes.
+          echo "=== Running TestSyncFakeTime ==="
+          make testrace PKG=./pkg/testutils/inproc TESTS="TestSyncFakeTime" TESTFLAGS="-v -count=1 -timeout 180s"

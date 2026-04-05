@@ -20,6 +20,6 @@ jobs:
           make vendor/modules.txt
       - name: Synctest
         run: |
-          go test -mod=vendor -v -count=1 -timeout 60s \
+          go test -mod=vendor -tags stdmalloc -v -count=1 -timeout 60s \
             -run 'TestSync|TestInproc|TestAutoReplication|TestAddVoters|TestDecommission' \
             ./pkg/testutils/inproc/

@@ -224,8 +224,8 @@ func classifyToken(text string) tokenKind {
 // sexpr is either an atom (token) or a list of sexprs.
 type sexpr struct {
 	// If list is non-nil, this is a list. Otherwise it's an atom.
-	list  []sexpr
-	atom  token
+	list   []sexpr
+	atom   token
 	isList bool
 }
 
@@ -623,19 +623,19 @@ var instrTable = map[string]instrInfo{
 	"i64.rotr":   {0x8A, opNone},
 
 	// f64 arithmetic
-	"f64.abs":     {0x99, opNone},
-	"f64.neg":     {0x9A, opNone},
-	"f64.ceil":    {0x9B, opNone},
-	"f64.floor":   {0x9C, opNone},
-	"f64.trunc":   {0x9D, opNone},
-	"f64.nearest": {0x9E, opNone},
-	"f64.sqrt":    {0x9F, opNone},
-	"f64.add":     {0xA0, opNone},
-	"f64.sub":     {0xA1, opNone},
-	"f64.mul":     {0xA2, opNone},
-	"f64.div":     {0xA3, opNone},
-	"f64.min":     {0xA4, opNone},
-	"f64.max":     {0xA5, opNone},
+	"f64.abs":      {0x99, opNone},
+	"f64.neg":      {0x9A, opNone},
+	"f64.ceil":     {0x9B, opNone},
+	"f64.floor":    {0x9C, opNone},
+	"f64.trunc":    {0x9D, opNone},
+	"f64.nearest":  {0x9E, opNone},
+	"f64.sqrt":     {0x9F, opNone},
+	"f64.add":      {0xA0, opNone},
+	"f64.sub":      {0xA1, opNone},
+	"f64.mul":      {0xA2, opNone},
+	"f64.div":      {0xA3, opNone},
+	"f64.min":      {0xA4, opNone},
+	"f64.max":      {0xA5, opNone},
 	"f64.copysign": {0xA6, opNone},
 
 	// Conversions
@@ -1139,4 +1139,3 @@ func appendSection(buf []byte, id byte, content []byte) []byte {
 	buf = append(buf, content...)
 	return buf
 }
-

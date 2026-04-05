@@ -46,15 +46,15 @@ type Registry struct {
 	iso         *v8.Isolate
 	mu          sync.RWMutex
 	funcs       map[string]*compiledFunc
-	execMu      sync.Mutex               // serializes V8 execution (isolates are single-threaded)
-	sqlTemplate *v8.FunctionTemplate      // async sql`` tagged template (returns Promise)
-	callState   asyncCallState            // per-call state, safe because execMu is held
-	sbPool      sync.Pool                 // pool of *strings.Builder
+	execMu      sync.Mutex           // serializes V8 execution (isolates are single-threaded)
+	sqlTemplate *v8.FunctionTemplate // async sql`` tagged template (returns Promise)
+	callState   asyncCallState       // per-call state, safe because execMu is held
+	sbPool      sync.Pool            // pool of *strings.Builder
 }
 
 type compiledFunc struct {
-	jsSetup    string   // evaluated once per context to define the function
-	jsCall     string   // call expression prefix: "invoke(" or "__wasm_inst_X.exports.invoke("
+	jsSetup    string // evaluated once per context to define the function
+	jsCall     string // call expression prefix: "invoke(" or "__wasm_inst_X.exports.invoke("
 	language   Language
 	paramTypes []ValType
 	resultType ValType
@@ -210,10 +210,10 @@ func (r *Registry) MakeFn(name string) (func(*tree.EvalContext, tree.Datums) (tr
 // Call executes a UDF for a batch of row arguments within a TxnContext.
 // This is the primary execution API. All callers should batch rows.
 //
-// For pure JS/WASM functions (no sql``), it builds a single JS script
+// For pure JS/WASM functions (no sql“), it builds a single JS script
 // that calls invoke() for each row and returns results via JSON.stringify.
 //
-// For async functions using sql``, each row is executed sequentially
+// For async functions using sql“, each row is executed sequentially
 // with Promise pumping.
 //
 // Each element of argsBatch is the Datums for one invocation.
@@ -443,7 +443,7 @@ func (r *Registry) unmarshalResult(val *v8.Value, cf *compiledFunc) (tree.Datum,
 }
 
 // callSequential executes an async UDF one row at a time, pumping Promises.
-// Used for functions that contain sql`` calls (which return Promises).
+// Used for functions that contain sql“ calls (which return Promises).
 // Caller must hold execMu.
 func (r *Registry) callSequential(
 	tc *TxnContext, cf *compiledFunc, name string, argsBatch []tree.Datums,

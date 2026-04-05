@@ -427,13 +427,13 @@ func TestIsValidIdentifier(t *testing.T) {
 
 	invalid := []string{
 		"",
-		"1foo",              // starts with digit
-		"foo bar",           // space
-		"foo;evil()",        // semicolon injection
-		"foo\nbar",          // newline
-		"foo.bar",           // dot
-		"foo-bar",           // hyphen
-		"foo;evil();//",     // full JS injection
+		"1foo",                       // starts with digit
+		"foo bar",                    // space
+		"foo;evil()",                 // semicolon injection
+		"foo\nbar",                   // newline
+		"foo.bar",                    // dot
+		"foo-bar",                    // hyphen
+		"foo;evil();//",              // full JS injection
 		"__wasm_bytes_x`);evil();//", // template literal injection
 	}
 	for _, name := range invalid {

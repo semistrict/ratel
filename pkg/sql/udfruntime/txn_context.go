@@ -38,7 +38,7 @@ type TxnContext struct {
 }
 
 // NewTxnContext creates a V8 context bound to the given transaction.
-// The sql`` tagged template is always available and uses async execution
+// The sql“ tagged template is always available and uses async execution
 // (returns Promises, SQL runs in goroutines).
 func (r *Registry) NewTxnContext(
 	executor SQLExecutor,

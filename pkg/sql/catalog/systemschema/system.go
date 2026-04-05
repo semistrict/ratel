@@ -906,11 +906,11 @@ var (
 			pk("id"),
 		))
 
-	falseBoolString         = "false"
-	trueBoolString          = "true"
-	zeroIntString           = "0:::INT8"
-	invokeString            = "'invoke':::STRING"
-	defaultFuelLimitString  = "1000000:::INT8"
+	falseBoolString          = "false"
+	trueBoolString           = "true"
+	zeroIntString            = "0:::INT8"
+	invokeString             = "'invoke':::STRING"
+	defaultFuelLimitString   = "1000000:::INT8"
 	defaultMemoryLimitString = "16777216:::INT8"
 
 	// UsersTable is the descriptor for the users table.
@@ -2421,9 +2421,9 @@ var (
 				},
 			},
 			descpb.IndexDescriptor{
-				Name:   tabledesc.LegacyPrimaryKeyIndexName,
-				ID:     1,
-				Unique: true,
+				Name:           tabledesc.LegacyPrimaryKeyIndexName,
+				ID:             1,
+				Unique:         true,
 				KeyColumnNames: []string{"database_id", "schema_id", "function_name", "arg_types"},
 				KeyColumnDirections: []descpb.IndexDescriptor_Direction{
 					descpb.IndexDescriptor_ASC,

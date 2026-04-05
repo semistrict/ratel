@@ -32,7 +32,7 @@ type asyncSQLResult struct {
 	err      error
 }
 
-// makeAsyncSQLTemplate creates a FunctionTemplate for sql`` that returns
+// makeAsyncSQLTemplate creates a FunctionTemplate for sql“ that returns
 // Promises. SQL execution happens in goroutines; the V8 thread pumps
 // results between microtask checkpoints.
 func (r *Registry) makeAsyncSQLTemplate() *v8.FunctionTemplate {

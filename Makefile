@@ -311,19 +311,15 @@ endif
 CLUSTER_UI_JS := pkg/ui/cluster-ui/dist/main.js
 
 .SECONDARY: $(CLUSTER_UI_JS)
-$(CLUSTER_UI_JS): $(shell find pkg/ui/workspaces/cluster-ui/src -type f | sed 's/ /\\ /g') pkg/ui/yarn.installed pkg/ui/workspaces/db-console/src/js/protos.d.ts | bin/.submodules-initialized
-	$(NODE_RUN) -C pkg/ui/workspaces/cluster-ui yarn build
+$(CLUSTER_UI_JS): $(shell find pkg/ui/workspaces/cluster-ui/src -type f | sed 's/ /\\ /g') pkg/ui/pnpm.installed pkg/ui/workspaces/db-console/src/js/protos.d.ts | bin/.submodules-initialized
+	$(NODE_RUN) -C pkg/ui/workspaces/cluster-ui pnpm build
 
-.SECONDARY: pkg/ui/yarn.installed
-pkg/ui/yarn.installed: pkg/ui/package.json pkg/ui/yarn.lock | bin/.submodules-initialized
-	@# Do not install optional dependencies as far as they are required for UI development only
-	@# and should not be installed for production builds.
-	@# Also some linux distributions (that are used as development env) don't support some of
-	@# optional dependencies (i.e. cypress) so it is important to make these deps optional.
-	$(NODE_RUN) -C pkg/ui yarn install --ignore-optional
+.SECONDARY: pkg/ui/pnpm.installed
+pkg/ui/pnpm.installed: pkg/ui/package.json pkg/ui/pnpm-lock.yaml | bin/.submodules-initialized
+	$(NODE_RUN) -C pkg/ui pnpm install
 	@# We remove this broken dependency again in pkg/ui/webpack.config.js.
 	@# See the comment there for details.
-	rm -rf pkg/ui/node_modules/@types/node
+	find pkg/ui/node_modules -path '*/@types/node' -type d -exec rm -rf {} + 2>/dev/null || true
 	touch $@
 
 vendor/modules.txt: go.mod go.sum
@@ -672,6 +668,7 @@ build/defs.mk.sig: .ALWAYS_REBUILD
 COCKROACHOSS   := ./cockroachoss$(SUFFIX)
 COCKROACHSHORT := ./cockroachshort$(SUFFIX)
 COCKROACHSQL   := ./cockroach-sql$(SUFFIX)
+RATEL          := ./ratel$(SUFFIX)
 
 LOG_TARGETS = \
 	pkg/util/log/severity/severity_generated.go \
@@ -807,15 +804,17 @@ OPTGEN_TARGETS = \
 
 test-targets := \
 	check test testshort testslow testrace testraceslow testdeadlock testbuild \
+	testcompile smoketest vet \
 	stress stressrace \
 	roachprod-stress roachprod-stressrace \
 	testlogic testbaselogic testoptlogic
 
-go-targets := $(COCKROACHOSS) $(COCKROACHSHORT) $(COCKROACHSQL) \
+go-targets := $(COCKROACHOSS) $(COCKROACHSHORT) $(COCKROACHSQL) $(RATEL) \
 	bin/workload bin/roachprod bin/roachtest \
 	go-install \
 	bench benchshort \
 	check test testshort testslow testrace testraceslow testdeadlock testbuild \
+	testcompile smoketest vet \
 	stress stressrace \
 	roachprod-stress roachprod-stressrace \
 	generate \
@@ -839,6 +838,10 @@ $(COCKROACHSHORT): TAGS += short
 $(COCKROACHSHORT): $(C_LIBS_SHORT) | $(C_LIBS_DYNAMIC)
 
 $(COCKROACHSQL): BUILDTARGET = ./pkg/cmd/cockroach-sql
+
+$(RATEL): BUILDTARGET = ./pkg/cmd/ratel
+$(RATEL): TAGS += short
+$(RATEL): $(C_LIBS_SHORT) | $(C_LIBS_DYNAMIC)
 
 # For test targets, add a tag (used to enable extra assertions).
 $(test-targets): TAGS += crdb_test
@@ -881,7 +884,7 @@ SETTINGS_DOC_PAGES := docs/generated/settings/settings.html docs/generated/setti
 # dependencies are rebuilt which is useful when switching between
 # normal and race test builds.
 .PHONY: go-install
-$(COCKROACHOSS) $(COCKROACHSHORT) $(COCKROACHSQL) go-install:
+$(COCKROACHOSS) $(COCKROACHSHORT) $(COCKROACHSQL) $(RATEL) go-install:
 	 $(xgo) $(build-mode) -v $(GOFLAGS) $(GOMODVENDORFLAGS) -tags '$(TAGS)' -ldflags '$(LINKFLAGS)' $(BUILDTARGET)
 
 # The build targets, in addition to producing a Cockroach binary, silently
@@ -897,11 +900,13 @@ $(COCKROACHOSS) $(COCKROACHSHORT) $(COCKROACHSQL) go-install:
 # diagrams. When the generated files are not checked in, the breakage goes
 # unnoticed until the docs team comes along, potentially months later. Much
 # better to make the developer who introduces the breakage fix the breakage.
-.PHONY: buildoss buildshort
+.PHONY: buildoss buildshort buildratel
 buildoss: ## Build the CockroachDB binary.
 buildshort: ## Build the CockroachDB binary without the admin UI and RocksDB.
+buildratel: ## Build the ratel binary (S3-native CockroachDB).
 buildoss: $(COCKROACHOSS)
 buildshort: $(COCKROACHSHORT)
+buildratel: $(RATEL)
 buildoss buildshort: $(if $(is-cross-compile),,$(DOCGEN_TARGETS))
 buildshort: $(if $(is-cross-compile),,$(SETTINGS_DOC_PAGES))
 
@@ -946,6 +951,28 @@ bench benchshort: TESTTIMEOUT := $(BENCHTIMEOUT)
 # -benchtime=1ns runs one iteration of each benchmark. The -short flag is set so
 # that longer running benchmarks can skip themselves.
 benchshort: override TESTFLAGS += -benchtime=1ns -short
+
+SMOKETEST_PKGS := \
+	./pkg/util/hlc \
+	./pkg/roachpb \
+	./pkg/sql/parser \
+	./pkg/util/json \
+	./pkg/storage \
+	./pkg/util/log \
+	./pkg/geo \
+	./pkg/util/metric
+
+.PHONY: vet
+vet: ## Run go vet on all packages.
+	$(xgo) vet $(GOFLAGS) $(GOMODVENDORFLAGS) -tags '$(TAGS)' $(PKG)
+
+.PHONY: testcompile
+testcompile: ## Compile all test binaries without running them.
+	$(xgo) test $(GOFLAGS) $(GOMODVENDORFLAGS) -tags '$(TAGS)' -ldflags '$(LINKFLAGS)' -run=^$$ -count=0 $(PKG)
+
+.PHONY: smoketest
+smoketest: ## Run a fast subset of unit tests for CI.
+	$(xgo) test $(GOTESTFLAGS) $(GOFLAGS) $(GOMODVENDORFLAGS) -tags '$(TAGS)' -ldflags '$(LINKFLAGS)' -run "$(TESTS)" -timeout $(TESTTIMEOUT) -short -count=1 $(SMOKETEST_PKGS) $(TESTFLAGS)
 
 .PHONY: check test testshort testrace testdeadlock testlogic testbaselogic testoptlogic bench benchshort
 test: ## Run tests.
@@ -1182,7 +1209,7 @@ bin/.gw_protobuf_sources: $(GW_SERVER_PROTOS) $(GW_TS_PROTOS) $(GO_PROTOS) $(GOG
 	touch $@
 
 .SECONDARY: $(UI_JS_OSS)
-$(UI_JS_OSS): $(GW_PROTOS) $(GO_PROTOS) pkg/ui/yarn.installed vendor/modules.txt
+$(UI_JS_OSS): $(GW_PROTOS) $(GO_PROTOS) pkg/ui/pnpm.installed vendor/modules.txt
 	# Add comment recognized by reviewable.
 	echo '// GENERATED FILE DO NOT EDIT' > $@
 	$(PBJS) -t static-module -w es6 --strict-long --no-create --no-convert --no-delimited --no-verify --keep-case --path pkg --path ./vendor/github.com --path $(GOGO_PROTOBUF_PATH) --path $(ERRORS_PATH) --path $(COREOS_PATH) --path $(PROMETHEUS_PATH) --path $(GRPC_GATEWAY_GOOGLEAPIS_PATH) $(filter %.proto,$(GW_PROTOS)) >> $@
@@ -1190,17 +1217,17 @@ $(UI_JS_OSS): $(GW_PROTOS) $(GO_PROTOS) pkg/ui/yarn.installed vendor/modules.txt
 # End of PBJS-generated files.
 
 .SECONDARY: $(UI_TS_OSS)
-$(UI_TS_OSS): $(UI_JS_OSS) pkg/ui/yarn.installed
+$(UI_TS_OSS): $(UI_JS_OSS) pkg/ui/pnpm.installed
 $(UI_TS_OSS):
 	# Add comment recognized by reviewable.
 	echo '// GENERATED FILE DO NOT EDIT' > $@
 	$(PBTS) $< >> $@
 
 STYLINT            := ./node_modules/.bin/stylint
-TSC                := ./node_modules/.bin/tsc
-KARMA              := ./node_modules/.bin/karma
-WEBPACK            := ./node_modules/.bin/webpack
-WEBPACK_DEV_SERVER := ./node_modules/.bin/webpack-dev-server
+TSC                := ../../node_modules/.bin/tsc
+KARMA              := ../../node_modules/.bin/karma
+WEBPACK            := ../../node_modules/.bin/webpack
+WEBPACK_DEV_SERVER := ../../node_modules/.bin/webpack-dev-server
 WEBPACK_DASHBOARD  := ./opt/node_modules/.bin/webpack-dashboard
 
 .PHONY: ui-generate
@@ -1211,16 +1238,16 @@ ui-fonts:
 	pkg/ui/workspaces/db-console/scripts/font-gen
 
 .PHONY: ui-topo
-ui-topo: pkg/ui/yarn.installed
+ui-topo: pkg/ui/pnpm.installed
 	pkg/ui/workspaces/db-console/scripts/topo.js
 
 .PHONY: ui-lint
-ui-lint: pkg/ui/yarn.installed $(UI_PROTOS_OSS)
+ui-lint: pkg/ui/pnpm.installed $(UI_PROTOS_OSS)
 	$(NODE_RUN) -C pkg/ui/workspaces/db-console $(STYLINT) -c .stylintrc styl
 	$(NODE_RUN) -C pkg/ui/workspaces/db-console $(TSC)
-	$(NODE_RUN) -C pkg/ui/workspaces/db-console yarn lint
-	@if $(NODE_RUN) -C pkg/ui/workspaces/db-console yarn list | grep phantomjs; then echo ^ forbidden UI dependency >&2; exit 1; fi
-	$(NODE_RUN) -C pkg/ui/workspaces/cluster-ui yarn --cwd pkg/ui/workspaces/cluster-ui lint
+	$(NODE_RUN) -C pkg/ui/workspaces/db-console pnpm lint
+	@if $(NODE_RUN) -C pkg/ui/workspaces/db-console pnpm list | grep phantomjs; then echo ^ forbidden UI dependency >&2; exit 1; fi
+	$(NODE_RUN) -C pkg/ui/workspaces/cluster-ui pnpm lint
 
 # DLLs are Webpack bundles, not Windows shared libraries. See "DLLs for speedy
 # builds" in the UI README for details.
@@ -1244,18 +1271,18 @@ UI_OSS_MANIFESTS := pkg/ui/workspaces/db-console/protos.oss.manifest.json pkg/ui
 .SECONDARY: $(UI_OSS_DLLS) $(UI_OSS_MANIFESTS)
 
 pkg/ui/workspaces/db-console/dist/%.oss.dll.js pkg/ui/workspaces/db-console/%.oss.manifest.json: export NODE_OPTIONS=--max-old-space-size=5000
-pkg/ui/workspaces/db-console/dist/%.oss.dll.js pkg/ui/workspaces/db-console/%.oss.manifest.json: pkg/ui/workspaces/db-console/webpack.%.js pkg/ui/yarn.installed $(CLUSTER_UI_JS) $(UI_PROTOS_OSS)
+pkg/ui/workspaces/db-console/dist/%.oss.dll.js pkg/ui/workspaces/db-console/%.oss.manifest.json: pkg/ui/workspaces/db-console/webpack.%.js pkg/ui/pnpm.installed $(CLUSTER_UI_JS) $(UI_PROTOS_OSS)
 	$(NODE_RUN) -C pkg/ui/workspaces/db-console $(WEBPACK) -p --config webpack.$*.js --env.dist=oss
 
 .PHONY: ui-test
 ui-test: $(UI_OSS_DLLS) $(UI_OSS_MANIFESTS)
 	$(NODE_RUN) -C pkg/ui/workspaces/db-console $(KARMA) start
-	$(NODE_RUN) -C pkg/ui/workspaces/cluster-ui yarn ci
+	$(NODE_RUN) -C pkg/ui/workspaces/cluster-ui pnpm ci
 
 .PHONY: ui-test-watch
 ui-test-watch: $(UI_OSS_DLLS) $(UI_OSS_MANIFESTS)
 	$(NODE_RUN) -C pkg/ui/workspaces/db-console $(KARMA) start --no-single-run --auto-watch & \
-	$(NODE_RUN) -C pkg/ui/workspaces/cluster-ui yarn test
+	$(NODE_RUN) -C pkg/ui/workspaces/cluster-ui pnpm test
 
 .PHONY: ui-test-debug
 ui-test-debug: $(UI_DLLS) $(UI_MANIFESTS)
@@ -1269,8 +1296,8 @@ pkg/ui/assets.oss.installed: pkg/ui/workspaces/db-console/webpack.app.js $(shell
 	$(NODE_RUN) -C pkg/ui/workspaces/db-console $(WEBPACK) --config webpack.app.js --env.dist=oss
 	touch $@
 
-pkg/ui/yarn.opt.installed:
-	$(NODE_RUN) -C pkg/ui yarn install --check-files --offline
+pkg/ui/pnpm.opt.installed:
+	$(NODE_RUN) -C pkg/ui pnpm install --offline
 	touch $@
 
 .PHONY: ui-watch-secure
@@ -1280,14 +1307,14 @@ ui-watch-secure: export TARGET ?= https://localhost:8080/
 .PHONY: ui-watch
 ui-watch: export TARGET ?= http://localhost:8080
 ui-watch ui-watch-secure: PORT := 3000
-ui-watch ui-watch-secure: $(UI_OSS_DLLS) pkg/ui/yarn.opt.installed
+ui-watch ui-watch-secure: $(UI_OSS_DLLS) pkg/ui/pnpm.opt.installed
   # TODO (koorosh): running two webpack dev servers doesn't provide best performance and polling changes.
   # it has to be considered to use something like `parallel-webpack` lib.
   #
   # `node-run.sh` wrapper is removed because this command is supposed to be run in dev environment (not in docker of CI)
-  # so it is safe to run yarn commands directly to preserve formatting and colors for outputs
-	yarn --cwd pkg/ui/workspaces/cluster-ui build:watch & \
-	yarn --cwd pkg/ui/workspaces/db-console webpack-dev-server --config webpack.app.js --env.dist=oss --env.WEBPACK_SERVE --port $(PORT) --mode "development" $(WEBPACK_DEV_SERVER_FLAGS)
+  # so it is safe to run pnpm commands directly to preserve formatting and colors for outputs
+	pnpm --dir pkg/ui/workspaces/cluster-ui build:watch & \
+	pnpm --dir pkg/ui/workspaces/db-console webpack-dev-server --config webpack.app.js --env.dist=oss --env.WEBPACK_SERVE --port $(PORT) --mode "development" $(WEBPACK_DEV_SERVER_FLAGS)
 
 .PHONY: ui-clean
 ui-clean: ## Remove build artifacts.
@@ -1301,7 +1328,7 @@ ui-clean: ## Remove build artifacts.
 .PHONY: ui-maintainer-clean
 ui-maintainer-clean: ## Like clean, but also remove installed dependencies
 ui-maintainer-clean: ui-clean
-	rm -rf pkg/ui/node_modules pkg/ui/workspaces/db-console/node_modules pkg/ui/yarn.installed pkg/ui/workspaces/cluster-ui/node_modules pkg/ui/workspaces/db-console/src/js/node_modules
+	rm -rf pkg/ui/node_modules pkg/ui/workspaces/db-console/node_modules pkg/ui/pnpm.installed pkg/ui/workspaces/cluster-ui/node_modules pkg/ui/workspaces/db-console/src/js/node_modules
 
 pkg/roachprod/vm/aws/embedded.go: bin/.bootstrap pkg/roachprod/vm/aws/config.json pkg/roachprod/vm/aws/old.json bin/terraformgen
 	(cd pkg/roachprod/vm/aws && $(GO) generate)
@@ -1721,5 +1748,5 @@ $(foreach v,$(filter-out $(strip $(VALID_VARS)),$(.VARIABLES)),\
 
 # Cypress e2e tests
 .PHONY: db-console-e2e-test
-db-console-e2e-test: pkg/ui/yarn.opt.installed
-	cd pkg/ui/workspaces/db-console && yarn cypress:run
+db-console-e2e-test: pkg/ui/pnpm.opt.installed
+	cd pkg/ui/workspaces/db-console && pnpm cypress:run

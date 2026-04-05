@@ -37,12 +37,12 @@ export function getSortLabel(sort: SqlStatsSortType): string {
   }
 }
 
-export const stmtRequestSortOptions = Object.values(SqlStatsSortOptions).map(
-  sortVal => ({
-    value: sortVal as SqlStatsSortType,
-    label: getSortLabel(sortVal as SqlStatsSortType),
-  }),
-);
+export const stmtRequestSortOptions = (
+  Object.values(SqlStatsSortOptions) as SqlStatsSortType[]
+).map(sortVal => ({
+  value: sortVal,
+  label: getSortLabel(sortVal),
+}));
 
 export const txnRequestSortOptions = stmtRequestSortOptions.filter(
   option => option.value !== SqlStatsSortOptions.PCT_RUNTIME,

@@ -306,7 +306,7 @@ func (p *Provider) DeleteCluster(name string) error {
 	for it.NotDone() {
 		group := it.Value()
 		// Don't bother waiting for the cluster to get torn down.
-		future, err := client.Delete(ctx, *group.Name)
+		future, err := client.Delete(ctx, *group.Name, "" /* forceDeletionTypes */)
 		if err != nil {
 			return err
 		}
@@ -420,7 +420,7 @@ func (p *Provider) List(l *logger.Logger) (vm.List, error) {
 		return nil, err
 	}
 
-	it, err := client.ListAllComplete(ctx, "false")
+	it, err := client.ListAllComplete(ctx, "false", "" /* filter */)
 	if err != nil {
 		return nil, err
 	}
@@ -700,7 +700,7 @@ func (p *Provider) createNIC(
 					Name: to.StringPtr("ipConfig"),
 					InterfaceIPConfigurationPropertiesFormat: &network.InterfaceIPConfigurationPropertiesFormat{
 						Subnet:                    &subnet,
-						PrivateIPAllocationMethod: network.IPAllocationMethodDynamic,
+						PrivateIPAllocationMethod: network.Dynamic,
 						PublicIPAddress:           &ip,
 					},
 				},
@@ -1143,8 +1143,8 @@ func (p *Provider) createIP(
 			Location: group.Location,
 			Zones:    to.StringSlicePtr([]string{providerOpts.Zone}),
 			PublicIPAddressPropertiesFormat: &network.PublicIPAddressPropertiesFormat{
-				PublicIPAddressVersion:   network.IPVersionIPv4,
-				PublicIPAllocationMethod: network.IPAllocationMethodStatic,
+				PublicIPAddressVersion:   network.IPv4,
+				PublicIPAllocationMethod: network.Static,
 			},
 		})
 	if err != nil {
@@ -1289,11 +1289,11 @@ func (p *Provider) createUltraDisk(
 			Zones:    to.StringSlicePtr([]string{providerOpts.Zone}),
 			Location: group.Location,
 			Sku: &compute.DiskSku{
-				Name: compute.DiskStorageAccountTypesUltraSSDLRS,
+				Name: compute.UltraSSDLRS,
 			},
 			DiskProperties: &compute.DiskProperties{
 				CreationData: &compute.CreationData{
-					CreateOption: compute.DiskCreateOptionEmpty,
+					CreateOption: compute.Empty,
 				},
 				DiskSizeGB:        to.Int32Ptr(providerOpts.NetworkDiskSize),
 				DiskIOPSReadWrite: to.Int64Ptr(providerOpts.UltraDiskIOPS),

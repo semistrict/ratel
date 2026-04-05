@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
+    "rootDir": "./src",
     "allowJs": false,
     "emitDeclarationOnly": true,
     "esModuleInterop": true,
@@ -11,13 +12,16 @@
     "noImplicitAny": true,
     "outDir": "./dist/types",
     "target": "es6",
+    "lib": ["es2017", "dom"],
     "skipLibCheck": true,
+    "types": [],
     "sourceMap": false
   },
   "exclude": [
     "node_modules",
     "dist",
     "**/*.test.*",
+    "**/*.spec.*",
     ".jest"
   ]
 }

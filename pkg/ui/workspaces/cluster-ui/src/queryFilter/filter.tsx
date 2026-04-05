@@ -101,11 +101,11 @@ export const defaultFilters: Filters = {
  */
 export const getFiltersFromQueryString = (
   queryString: string,
-): Record<string, string> => {
+): Filters => {
   const searchParams = new URLSearchParams(queryString);
 
   return Object.keys(defaultFilters).reduce(
-    (filters, filter: keyof Filters): Filters => {
+    (filters: Filters, filter: keyof Filters): Filters => {
       const defaultValue = defaultFilters[filter];
       const queryStringFilter = searchParams.get(filter);
       const filterValue =

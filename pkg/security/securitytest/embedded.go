@@ -33,7 +33,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -43,7 +42,7 @@ import (
 func bindataRead(data []byte, name string) ([]byte, error) {
 	gz, err := gzip.NewReader(bytes.NewBuffer(data))
 	if err != nil {
-		return nil, fmt.Errorf("read %q: %v", name, err)
+		return nil, fmt.Errorf("read %q: %w", name, err)
 	}
 
 	var buf bytes.Buffer
@@ -51,7 +50,7 @@ func bindataRead(data []byte, name string) ([]byte, error) {
 	clErr := gz.Close()
 
 	if err != nil {
-		return nil, fmt.Errorf("read %q: %v", name, err)
+		return nil, fmt.Errorf("read %q: %w", name, err)
 	}
 	if clErr != nil {
 		return nil, err
@@ -663,54 +662,34 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"test_certs/ca-client-tenant.crt": test_certsCaClientTenantCrt,
-
-	"test_certs/ca-client-tenant.key": test_certsCaClientTenantKey,
-
-	"test_certs/ca.crt": test_certsCaCrt,
-
-	"test_certs/ca.key": test_certsCaKey,
-
-	"test_certs/client-tenant.10.crt": test_certsClientTenant10Crt,
-
-	"test_certs/client-tenant.10.key": test_certsClientTenant10Key,
-
-	"test_certs/client-tenant.11.crt": test_certsClientTenant11Crt,
-
-	"test_certs/client-tenant.11.key": test_certsClientTenant11Key,
-
-	"test_certs/client-tenant.20.crt": test_certsClientTenant20Crt,
-
-	"test_certs/client-tenant.20.key": test_certsClientTenant20Key,
-
-	"test_certs/client.root.crt": test_certsClientRootCrt,
-
-	"test_certs/client.root.key": test_certsClientRootKey,
-
-	"test_certs/client.testuser.crt": test_certsClientTestuserCrt,
-
-	"test_certs/client.testuser.key": test_certsClientTestuserKey,
-
-	"test_certs/client.testuser2.crt": test_certsClientTestuser2Crt,
-
-	"test_certs/client.testuser2.key": test_certsClientTestuser2Key,
-
-	"test_certs/node.crt": test_certsNodeCrt,
-
-	"test_certs/node.key": test_certsNodeKey,
-
+	"test_certs/ca-client-tenant.crt":  test_certsCaClientTenantCrt,
+	"test_certs/ca-client-tenant.key":  test_certsCaClientTenantKey,
+	"test_certs/ca.crt":                test_certsCaCrt,
+	"test_certs/ca.key":                test_certsCaKey,
+	"test_certs/client-tenant.10.crt":  test_certsClientTenant10Crt,
+	"test_certs/client-tenant.10.key":  test_certsClientTenant10Key,
+	"test_certs/client-tenant.11.crt":  test_certsClientTenant11Crt,
+	"test_certs/client-tenant.11.key":  test_certsClientTenant11Key,
+	"test_certs/client-tenant.20.crt":  test_certsClientTenant20Crt,
+	"test_certs/client-tenant.20.key":  test_certsClientTenant20Key,
+	"test_certs/client.root.crt":       test_certsClientRootCrt,
+	"test_certs/client.root.key":       test_certsClientRootKey,
+	"test_certs/client.testuser.crt":   test_certsClientTestuserCrt,
+	"test_certs/client.testuser.key":   test_certsClientTestuserKey,
+	"test_certs/client.testuser2.crt":  test_certsClientTestuser2Crt,
+	"test_certs/client.testuser2.key":  test_certsClientTestuser2Key,
+	"test_certs/node.crt":              test_certsNodeCrt,
+	"test_certs/node.key":              test_certsNodeKey,
 	"test_certs/tenant-signing.10.crt": test_certsTenantSigning10Crt,
-
 	"test_certs/tenant-signing.10.key": test_certsTenantSigning10Key,
-
 	"test_certs/tenant-signing.11.crt": test_certsTenantSigning11Crt,
-
 	"test_certs/tenant-signing.11.key": test_certsTenantSigning11Key,
-
 	"test_certs/tenant-signing.20.crt": test_certsTenantSigning20Crt,
-
 	"test_certs/tenant-signing.20.key": test_certsTenantSigning20Key,
 }
+
+// AssetDebug is true if the assets were built with the debug flag enabled.
+const AssetDebug = false
 
 // AssetDir returns the file names below a certain
 // directory embedded in the file by go-bindata.
@@ -797,7 +776,7 @@ func RestoreAsset(dir, name string) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(_filePath(dir, name), data, info.Mode())
+	err = os.WriteFile(_filePath(dir, name), data, info.Mode())
 	if err != nil {
 		return err
 	}

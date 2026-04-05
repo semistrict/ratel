@@ -56,7 +56,10 @@ func (e *Engine) Close() {
 // Get returns the value for this key with the highest timestamp <= ts. If no
 // such value exists, the returned value's RawBytes is nil.
 func (e *Engine) Get(key roachpb.Key, ts hlc.Timestamp) roachpb.Value {
-	iter := e.kvs.NewIter(nil)
+	iter, err := e.kvs.NewIter(nil)
+	if err != nil {
+		panic(err)
+	}
 	defer func() { _ = iter.Close() }()
 	iter.SeekGE(storage.EncodeMVCCKey(storage.MVCCKey{Key: key, Timestamp: ts}))
 	if !iter.Valid() {
@@ -98,7 +101,11 @@ func (e *Engine) Delete(key storage.MVCCKey) {
 // Iterate calls the given closure with every KV in the Engine, in ascending
 // order.
 func (e *Engine) Iterate(fn func(key storage.MVCCKey, value []byte, err error)) {
-	iter := e.kvs.NewIter(nil)
+	iter, err := e.kvs.NewIter(nil)
+	if err != nil {
+		fn(storage.MVCCKey{}, nil, err)
+		return
+	}
 	defer func() { _ = iter.Close() }()
 	for iter.First(); iter.Valid(); iter.Next() {
 		if err := iter.Error(); err != nil {

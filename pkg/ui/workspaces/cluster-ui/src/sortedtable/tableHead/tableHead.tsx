@@ -59,7 +59,7 @@ export const TableHead: React.FC<TableHeadProps> = ({
       <tr className={trClass}>
         {expandableConfig && <th className={thClass} />}
         {columns.map((c: SortableColumn, idx: number) => {
-          const sortable = c.columnTitle !== (null || undefined);
+          const sortable = c.columnTitle != null;
           const newColumnSelected = c.name !== sortSetting.columnTitle;
           const style = { textAlign: c.titleAlign };
           const cellAction = sortable
@@ -81,9 +81,9 @@ export const TableHead: React.FC<TableHeadProps> = ({
 
           return (
             <th
-              className={classNames(cellClasses)}
+              className={cx(cellClasses)}
               key={"headCell" + idx}
-              onClick={cellAction}
+              onClick={cellAction ?? undefined}
               style={style}
             >
               <div className={cellContentWrapper}>

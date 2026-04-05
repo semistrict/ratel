@@ -12,19 +12,29 @@ Main branch for PRs: `release-22.1-oxide`
 
 ## Build Commands
 
+**CRITICAL: Always build and test with vendor mode.** Direct `go build` / `go test` without `-mod=vendor` will use the module cache instead of the vendored (and patched) dependencies, causing C compilation errors and missing patches.
+
 ```bash
+# ALWAYS use the Makefile or pass -mod=vendor:
 make buildshort              # Fast build without admin UI (pkg/cmd/cockroach-short)
 make buildoss                # Full build with admin UI
 make build BUILDTARGET=./pkg/cmd/some-tool  # Build a specific binary
+
+# If running go directly, ALWAYS use -mod=vendor:
+go test -mod=vendor -run TestFoo ./pkg/some/package/
+go build -mod=vendor ./pkg/some/package/
+
+# Set up vendor directory (required after go.mod changes):
+make vendor/modules.txt      # Runs go mod vendor + applies patches from patches/
 ```
 
-Dependencies are vendored (`-mod=vendor`). C dependencies (jemalloc, GEOS, PROJ) are in `c-deps/` and built automatically.
+Dependencies are vendored (`-mod=vendor`). Patches in `patches/` are applied to the vendor directory by `make vendor/modules.txt`. C dependencies (jemalloc, GEOS, PROJ) are in `c-deps/` and built automatically.
 
 On illumos, `stdmalloc` build tag is used automatically instead of jemalloc.
 
 ## Testing
 
-Tests require `PKG` when specifying `TESTS` or `BENCHES`:
+Tests require `PKG` when specifying `TESTS` or `BENCHES`. **Always use the Makefile or `-mod=vendor`:**
 
 ```bash
 make test PKG=./pkg/sql                           # All tests in a package

@@ -186,8 +186,10 @@ func (registry *stickyInMemEnginesRegistryImpl) deleteEngine(id string) {
 	if !ok {
 		return
 	}
-	engine.closed = true
-	engine.Engine.Close()
+	if !engine.closed {
+		engine.closed = true
+		engine.Engine.Close()
+	}
 	delete(registry.entries, id)
 }
 

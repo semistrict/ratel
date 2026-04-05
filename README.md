@@ -1,38 +1,81 @@
-This is Oxide's long-term maintenance branch/fork of [CockroachDB 22.1](https://github.com/cockroachdb/cockroach/tree/release-22.1).
+# Ratel
 
-Oxide uses CockroachDB for control plane data storage on the Oxide Cloud Computer, which uses [illumos](https://illumos.org) (specifically [Helios](https://github.com/oxidecomputer/helios)) as the underlying operating system. We launched our product with CockroachDB 22.1. After Cockroach Labs' announcement that they will change to a strictly proprietary (source-available) model, we made the decision to continue self-supporting on this version for the foreseeable future. For more context, see [RFD 110](https://rfd.shared.oxide.computer/rfd/110) and [RFD 508](https://rfd.shared.oxide.computer/rfd/508).
+> **WARNING: Pre-alpha software. It will lose your data. Do not use for anything you care about.**
 
-The primary goal of this branch is to keep the wheels of building and testing CockroachDB rolling smoothly to enable our ability to self-support. Our product runs illumos, but we also support development of our product on Linux and macOS, so it's important to us that our bug fixes that go into the illumos build also end up on developer machines too. Currently we have builds for illumos, Linux, and macOS; and run the test suite on illumos and Linux.
+A lightweight, distributed SQL database that runs entirely on object storage. Nodes are stateless and ephemeral — all persistent state lives on S3.
 
-This code was originally licensed under the Business Source License 1.1 (BSL).
-The BSL for CockroachDB 22.1 specified a Change Date of April 1, 2025, at which
-point the license automatically converted to the Apache License, Version 2.0.
-We verified this by examining the git history of `licenses/BSL.txt`: every BSL
-version from 19.2 through 22.1 has passed its Change Date, with 22.1 (the
-latest in this fork) converting on 2025-04-01. We have replaced all BSL license
-headers in source files with Apache 2.0 headers and removed the BSL license
-file. You're welcome to use this branch under the [Apache License, Version 2.0](./licenses/APL.txt),
-but note that we're unable to provide any support outside the context of its use
-in our product.
+A single storage URL is the cluster identity. Certificates, node discovery, and shared storage are all derived from it.
 
-## Binary downloads
+## Quick Start
 
-Binaries for each commit are available via Buildomat's published artefact APIs:
+```bash
+# Build
+make buildratel
+
+# Initialize a new cluster
+ratel init s3://my-bucket/?endpoint=http://localhost:9000&region=us-east-1
+
+# Join additional nodes
+ratel join s3://my-bucket/?endpoint=http://localhost:9000&region=us-east-1
+
+# Connect a SQL shell
+ratel sql s3://my-bucket/?endpoint=http://localhost:9000&region=us-east-1
+```
+
+Local filesystem also works:
+
+```bash
+ratel init file:///tmp/my-cluster/
+ratel sql  file:///tmp/my-cluster/
+```
+
+## How It Works
+
+The storage URL points to an S3 bucket (or local directory) with this layout:
 
 ```
-https://buildomat.eng.oxide.computer/public/file/oxidecomputer/cockroach/$SERIES/$COMMIT/cockroach.tgz
+s3://my-bucket/                 (or file:///tmp/my-cluster/)
+  v1/
+    certs/                      CA cert, CA key (optionally encrypted), client certs
+    discovery/                  Node registry (JSON files for peer discovery)
+    sstables/                   Pebble SSTables (shared storage)
+    metadata/                   MANIFEST bundle
 ```
 
-where:
+- **`ratel init <url>`** — Generate CA + client certs, upload to S3, bootstrap the cluster, start serving.
+- **`ratel join <url>`** — Download CA from S3, generate a node cert with this host's name, discover peers, join.
+- **`ratel sql <url>`** — Download client certs, pick a live node from the registry, connect via PostgreSQL wire protocol.
 
-- `$SERIES` is one of `illumos-amd64`, `linux-amd64`, or `darwin-amd64` (or `darwin-arm64`, both refer to the same universal binary)
-- `$COMMIT` is the full 40-character commit hash
+Each node generates its own TLS certificate signed by the shared CA, with its hostname as a SAN. No shared node certs.
 
-A SHA-256 checksum is also available at `cockroach.tgz.sha256`.
+## Security
 
-## Major changes from upstream
+The storage URL is the trust boundary. Whoever has access to the bucket has full cluster access. The bucket must not be public.
 
-- We've removed all CCL-licensed code. The "Cockroach Community License" primarily covers enterprise features of the database. The split between Apache-licensed and CCL-licensed code was fairly clean, but we're not planning to maintain it, so we shouldn't keep it around.
-- The repository no longer needs to be cloned into `$GOPATH/github.com/cockroachdb/cockroach`; everything works without setting `$GOPATH`.
-- We're in the process of removing code specific to Cockroach Labs development processes (such as their tools for automated GitHub issues and pull requests). We're also not using the newer Bazel-based build system, and are planning on removing the related files eventually.
-- Our Linux builds are built with an Ubuntu 22.04 toolchain, so they won't run on systems with glibc < 2.35 or GCC < 11.
+The CA private key can be encrypted with a passphrase:
+
+```bash
+# Interactive prompt (with confirmation)
+ratel init s3://my-bucket/
+
+# Via environment variable
+RATEL_PASSPHRASE=secret ratel join s3://my-bucket/
+
+# Skip encryption entirely
+ratel init --no-passphrase s3://my-bucket/
+```
+
+## Docker Demo
+
+A 5-node demo with [rustfs](https://rustfs.com) (S3-compatible storage):
+
+```bash
+cd demo
+docker compose up --build
+```
+
+See [demo/README.md](demo/README.md) for details.
+
+## License
+
+Apache License, Version 2.0

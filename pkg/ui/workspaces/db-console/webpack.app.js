@@ -121,6 +121,9 @@ module.exports = (env, argv) => {
         ccl: path.resolve(__dirname, "ccl"),
         "src/js/protos": "@cockroachlabs/crdb-protobuf-client",
         "ccl/src/js/protos": "@cockroachlabs/crdb-protobuf-client-ccl",
+        // babel-runtime and babel-polyfill require core-js v2. pnpm hoists
+        // core-js v3 to the root, so alias to the v2 copy in babel-runtime.
+        "core-js": path.resolve(__dirname, "../..", "node_modules/babel-runtime/node_modules/core-js"),
       },
     },
 

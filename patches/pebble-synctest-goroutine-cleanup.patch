@@ -1,0 +1,23 @@
+--- a/vendor/github.com/cockroachdb/pebble/table_cache.go
++++ b/vendor/github.com/cockroachdb/pebble/table_cache.go
+@@ -1051,17 +1051,9 @@
+ 	c.mu.handCold = nil
+ 	c.mu.handTest = nil
+
+-	// Only shutdown the releasing goroutine if there were no leaked
+-	// iterators. If there were leaked iterators, we leave the goroutine running
+-	// and the releasingCh open so that a subsequent iterator close can
+-	// complete. This behavior is used by iterator leak tests. Leaking the
+-	// goroutine for these tests is less bad not closing the iterator which
+-	// triggers other warnings about block cache handles not being released.
+-	if err != nil {
+-		c.releasing.Wait()
+-		return err
+-	}
+-
++	// Always shutdown the releasing goroutine, even if there are leaked
++	// iterators. Leaving it running prevents synctest from detecting
++	// quiescence.
+ 	close(c.releasingCh)
+ 	c.releasing.Wait()
+ 	c.releaseLoopExit.Wait()

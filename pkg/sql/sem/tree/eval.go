@@ -3714,6 +3714,11 @@ type EvalContext struct {
 	// Not using sql.JobExecContext type to avoid cycle dependency with sql package
 	JobExecContext interface{}
 
+	// UDFRegistry holds the V8-backed UDF runtime registry. Typed as
+	// interface{} to avoid importing udfruntime from the tree package.
+	// The colexec package type-asserts this to *udfruntime.Registry.
+	UDFRegistry interface{}
+
 	PrivilegedAccessor PrivilegedAccessor
 
 	SessionAccessor EvalSessionAccessor

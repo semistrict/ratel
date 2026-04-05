@@ -1,0 +1,248 @@
+# LogicTest: local
+
+subtest create_and_call
+
+# Basic JavaScript UDF with named parameters
+statement ok
+CREATE FUNCTION add_nums(a INT, b INT)
+RETURNS INT AS $$
+  return a + b;
+$$ LANGUAGE plv8;
+
+query I
+SELECT add_nums(3, 4)
+----
+7
+
+query I
+SELECT add_nums(100, -50)
+----
+50
+
+# Nested calls
+query I
+SELECT add_nums(add_nums(1, 2), add_nums(3, 4))
+----
+10
+
+subtest float_udf
+
+statement ok
+CREATE FUNCTION mul_floats(x FLOAT, y FLOAT)
+RETURNS FLOAT AS $$
+  return x * y;
+$$ LANGUAGE js;
+
+query R
+SELECT mul_floats(2.5, 4.0)
+----
+10
+
+query R
+SELECT mul_floats(3.14, 2.0)
+----
+6.28
+
+subtest bool_udf
+
+statement ok
+CREATE FUNCTION is_positive(x INT)
+RETURNS BOOL AS $$
+  return x > 0 ? 1 : 0;
+$$ LANGUAGE javascript;
+
+query B
+SELECT is_positive(5)
+----
+true
+
+query B
+SELECT is_positive(-3)
+----
+false
+
+subtest udf_in_where
+
+statement ok
+CREATE TABLE t (a INT, b INT);
+INSERT INTO t VALUES (1, 2), (3, 4), (5, 6), (10, 20);
+
+query II rowsort
+SELECT * FROM t WHERE add_nums(a, b) > 5
+----
+3   4
+5   6
+10  20
+
+subtest udf_in_projection
+
+query IB rowsort
+SELECT a, is_positive(a - 4) FROM t
+----
+1   false
+3   false
+5   true
+10  true
+
+subtest math_udf
+
+statement ok
+CREATE FUNCTION circle_area(radius FLOAT)
+RETURNS FLOAT AS $$
+  return Math.PI * radius * radius;
+$$ LANGUAGE plv8;
+
+query R
+SELECT round(circle_area(1.0)::DECIMAL, 4)
+----
+3.1416
+
+subtest drop_function
+
+statement ok
+DROP FUNCTION add_nums(a INT, b INT)
+
+statement error function add_nums does not exist
+DROP FUNCTION add_nums(a INT, b INT)
+
+statement ok
+DROP FUNCTION IF EXISTS add_nums(a INT, b INT)
+
+statement error unknown function: add_nums
+SELECT add_nums(1, 2)
+
+subtest complex_logic
+
+statement ok
+CREATE FUNCTION price_tier(qty INT)
+RETURNS INT AS $$
+  if (qty < 10) return 100;
+  if (qty < 100) return 80;
+  return 50;
+$$ LANGUAGE plv8;
+
+query I
+SELECT price_tier(5)
+----
+100
+
+query I
+SELECT price_tier(50)
+----
+80
+
+query I
+SELECT price_tier(500)
+----
+50
+
+subtest string_udf
+
+statement ok
+CREATE FUNCTION greet(person_name TEXT)
+RETURNS TEXT AS $$
+  return "Hello, " + person_name + "!";
+$$ LANGUAGE plv8;
+
+query T
+SELECT greet('Alice')
+----
+Hello, Alice!
+
+statement ok
+CREATE FUNCTION str_upper(s TEXT)
+RETURNS TEXT AS $$
+  return s.toUpperCase();
+$$ LANGUAGE plv8;
+
+query T
+SELECT str_upper('hello world')
+----
+HELLO WORLD
+
+subtest json_udf
+
+statement ok
+CREATE FUNCTION json_get_name(input_obj JSONB)
+RETURNS TEXT AS $$
+  return input_obj.name;
+$$ LANGUAGE plv8;
+
+query T
+SELECT json_get_name('{"name": "Bob", "age": 30}'::JSONB)
+----
+Bob
+
+statement ok
+CREATE FUNCTION make_person(person_name TEXT, person_age INT)
+RETURNS JSONB AS $$
+  return {name: person_name, age: person_age};
+$$ LANGUAGE plv8;
+
+query T
+SELECT make_person('Charlie', 25)::TEXT
+----
+{"age": 25, "name": "Charlie"}
+
+subtest timestamp_udf
+
+statement ok
+CREATE FUNCTION get_year(ts TIMESTAMP)
+RETURNS INT AS $$
+  return ts.getFullYear();
+$$ LANGUAGE plv8;
+
+query I
+SELECT get_year('2025-06-15 10:30:00'::TIMESTAMP)
+----
+2025
+
+subtest string_in_where
+
+statement ok
+CREATE TABLE people (name TEXT, age INT);
+INSERT INTO people VALUES ('Alice', 30), ('Bob', 25), ('Charlie', 35);
+
+query TI rowsort
+SELECT name, age FROM people WHERE greet(name) = 'Hello, Bob!'
+----
+Bob  25
+
+subtest json_transform
+
+query T rowsort
+SELECT make_person(name, age)::TEXT FROM people
+----
+{"age": 25, "name": "Bob"}
+{"age": 30, "name": "Alice"}
+{"age": 35, "name": "Charlie"}
+
+subtest wasm_udf
+
+statement ok
+CREATE FUNCTION wasm_add(a INT, b INT) RETURNS INT LANGUAGE wasm AS '(module
+  (func (export "invoke") (param i64 i64) (result i64)
+    local.get 0
+    local.get 1
+    i64.add))' IMMUTABLE;
+
+query I
+SELECT wasm_add(10, 20)
+----
+30
+
+subtest cleanup
+
+statement ok
+DROP FUNCTION mul_floats(x FLOAT, y FLOAT);
+DROP FUNCTION is_positive(x INT);
+DROP FUNCTION circle_area(radius FLOAT);
+DROP FUNCTION price_tier(qty INT);
+DROP FUNCTION greet(person_name TEXT);
+DROP FUNCTION str_upper(s TEXT);
+DROP FUNCTION json_get_name(input_obj JSONB);
+DROP FUNCTION make_person(person_name TEXT, person_age INT);
+DROP FUNCTION get_year(ts TIMESTAMP);
+DROP FUNCTION wasm_add(a INT, b INT);
+DROP TABLE t;
+DROP TABLE people;

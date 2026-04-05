@@ -69,6 +69,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/systemschema"
 	"github.com/cockroachdb/cockroach/pkg/sql/colexec"
 	"github.com/cockroachdb/cockroach/pkg/sql/contention"
+	"github.com/cockroachdb/cockroach/pkg/sql/udfruntime"
 	"github.com/cockroachdb/cockroach/pkg/sql/descmetadata"
 	"github.com/cockroachdb/cockroach/pkg/sql/distsql"
 	"github.com/cockroachdb/cockroach/pkg/sql/execinfra"
@@ -722,6 +723,11 @@ func newSQLServer(ctx context.Context, cfg sqlServerArgs) (*SQLServer, error) {
 	)
 	contentionRegistry.Start(ctx, cfg.stopper)
 
+	udfRegistry := udfruntime.NewRegistry()
+	cfg.stopper.AddCloser(stop.CloserFn(func() {
+		udfRegistry.Close()
+	}))
+
 	*execCfg = sql.ExecutorConfig{
 		Settings:                cfg.Settings,
 		NodeInfo:                nodeInfo,
@@ -745,6 +751,7 @@ func newSQLServer(ctx context.Context, cfg sqlServerArgs) (*SQLServer, error) {
 		RegionsServer:           cfg.regionsServer,
 		SessionRegistry:         cfg.sessionRegistry,
 		ContentionRegistry:      contentionRegistry,
+		UDFRegistry:            udfRegistry,
 		SQLLiveness:             cfg.sqlLivenessProvider,
 		JobRegistry:             jobRegistry,
 		VirtualSchemas:          virtualSchemas,
@@ -816,6 +823,10 @@ func newSQLServer(ctx context.Context, cfg sqlServerArgs) (*SQLServer, error) {
 	}
 	execCfg.SchemaChangerMetrics = sql.NewSchemaChangerMetrics()
 	cfg.registry.AddMetricStruct(execCfg.SchemaChangerMetrics)
+
+	// Initialize the WASM UDF resolver for lazy-loading functions from
+	// system.wasm_functions on cache miss.
+	sql.InitWasmFunctionResolver(execCfg)
 
 	execCfg.FeatureFlagMetrics = featureflag.NewFeatureFlagMetrics()
 	cfg.registry.AddMetricStruct(execCfg.FeatureFlagMetrics)

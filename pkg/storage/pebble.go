@@ -567,6 +567,15 @@ func DefaultPebbleOptions() *pebble.Options {
 // returns a Closer that should be invoked when the filesystem will no longer be
 // used.
 func wrapFilesystemMiddleware(opts *pebble.Options) io.Closer {
+	// Skip disk health checks for in-memory filesystems. The health check
+	// tickers spawn goroutines that persist until the file is closed, which
+	// causes synctest deadlock panics when goroutines outlive the test.
+	if _, ok := opts.FS.(*vfs.MemFS); ok {
+		opts.FS = vfs.OnDiskFull(opts.FS, func() {
+			exit.WithCode(exit.DiskFull())
+		})
+		return io.NopCloser(nil)
+	}
 	// Set disk-health check interval to min(5s, maxSyncDurationDefault). This
 	// is mostly to ease testing; the default of 5s is too infrequent to test
 	// conveniently. See the disk-stalled roachtest for an example of how this

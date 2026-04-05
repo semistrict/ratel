@@ -133,6 +133,7 @@ func TestSyncRaftRestartWithReplication(t *testing.T) {
 
 		c.StopNode(2)
 		require.NoError(t, db.Put(ctx, roachpb.Key("while-down"), []byte("v2")))
+		c.RestartNode(t, 2)
 
 		val, err := db.Get(ctx, roachpb.Key("raft-restart"))
 		require.NoError(t, err)
@@ -177,5 +178,6 @@ func TestSyncLeaseTransfer(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, []byte("lease-data"), val.ValueBytes())
 
+		c.RestartNode(t, leaseholderIdx)
 	})
 }

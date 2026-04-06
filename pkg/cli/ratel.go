@@ -51,6 +51,7 @@ var ratelListenAddr string
 var ratelHTTPAddr string
 var ratelNoPassphrase bool
 var ratelNodeID string
+var ratelSQLHost string
 
 var ratelCmd = &cobra.Command{
 	Use:   "ratel [command]",
@@ -109,6 +110,8 @@ func init() {
 
 	// SQL-specific flags.
 	ratelSQLCmd.Flags().VarP(&ratelSQLExecStmts, cliflags.Execute.Name, cliflags.Execute.Shorthand, cliflags.Execute.Description)
+	ratelSQLCmd.Flags().StringVar(&ratelSQLHost, "host", "",
+		"Override the node address to connect to (e.g. localhost:26257 when using fly proxy)")
 }
 
 // ratelSQLExecStmts holds -e statements for ratel sql.
@@ -556,12 +559,22 @@ func runRatelSQL(cmd *cobra.Command, args []string) error {
 	}
 
 	// Try each registered node until one accepts a connection.
+	// If --host is set, use that instead of the discovered addresses.
+	var addrs []string
+	if ratelSQLHost != "" {
+		addrs = []string{ratelSQLHost}
+	} else {
+		for _, node := range nodes {
+			addrs = append(addrs, node.SQLAddr)
+		}
+	}
+
 	var conn clisqlclient.Conn
 	var lastErr error
-	for _, node := range nodes {
+	for _, addr := range addrs {
 		connURL := fmt.Sprintf(
 			"postgresql://root@%s/defaultdb?sslmode=verify-full&sslrootcert=%s&sslcert=%s&sslkey=%s",
-			node.SQLAddr,
+			addr,
 			filepath.Join(certsDir, "ca.crt"),
 			filepath.Join(certsDir, "client.root.crt"),
 			filepath.Join(certsDir, "client.root.key"),
@@ -570,7 +583,7 @@ func runRatelSQL(cmd *cobra.Command, args []string) error {
 		if lastErr == nil {
 			break
 		}
-		fmt.Fprintf(os.Stderr, "node %d (%s): %v\n", node.NodeID, node.SQLAddr, lastErr)
+		fmt.Fprintf(os.Stderr, "node (%s): %v\n", addr, lastErr)
 	}
 	if conn == nil {
 		return errors.Wrap(lastErr, "could not connect to any node")

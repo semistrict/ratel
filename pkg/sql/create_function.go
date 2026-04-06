@@ -126,14 +126,15 @@ func (n *createWasmFunctionNode) startExec(params runParams) error {
 			sessiondata.InternalExecutorOverride{User: security.RootUserName()},
 			`UPSERT INTO system.wasm_functions
 			(database_id, schema_id, function_name, arg_types, return_type,
-			 wasm_module, wat_source, export_name, owner)
-			VALUES (0, 0, $1, $2, $3, $4, $5, 'invoke', $6)`,
+			 wasm_module, wat_source, export_name, owner, volatility)
+			VALUES (0, 0, $1, $2, $3, $4, $5, 'invoke', $6, $7)`,
 			funcName,
 			argTypesBytes,
 			retTypeBytes,
 			wasmBytes,
 			n.n.Body,
 			p.User().Normalized(),
+			persistedUDFVolatility(n.n.Volatility),
 		)
 		if err != nil {
 			tree.UnregisterFunction(funcName)
@@ -154,34 +155,9 @@ func (n *createWasmFunctionNode) startExec(params runParams) error {
 			n.n.Volatility = tree.VolatilityStable
 		}
 
-		// Wrap the bare function body with parameter names.
-		// User writes:   $$ return first_name + ' ' + last_name; $$
-		// We generate:   function invoke(first_name, last_name) { return first_name + ' ' + last_name; }
-		// If the body already contains "function invoke" or "async function invoke",
-		// skip wrapping (backwards compatibility).
-		jsBody := n.n.Body
-		if !strings.Contains(jsBody, "function invoke") {
-			paramNames := make([]string, len(n.n.Params))
-			for i, p := range n.n.Params {
-				if p.Name != "" {
-					paramNames[i] = p.Name
-				} else {
-					paramNames[i] = fmt.Sprintf("$%d", i+1)
-				}
-			}
-			// Only wrap as async if the body uses await or sql``.
-			// Sync functions use the fast batched JSON.stringify path (one
-			// CGO call per batch). Async functions must use the sequential
-			// path (one CGO call per row) for Promise pumping.
-			needsAsync := strings.Contains(n.n.Body, "await") || strings.Contains(n.n.Body, "sql`")
-			if needsAsync {
-				jsBody = fmt.Sprintf("async function invoke(%s) {\n%s\n}",
-					strings.Join(paramNames, ", "), jsBody)
-			} else {
-				jsBody = fmt.Sprintf("function invoke(%s) {\n%s\n}",
-					strings.Join(paramNames, ", "), jsBody)
-			}
-		}
+		// Persist and execute the wrapped source so bare-body CREATE FUNCTION
+		// remains reloadable and retains the historical async semantics.
+		jsBody := prepareJavaScriptBody(n.n.Params, n.n.Body)
 
 		err = registry.CompileAndRegisterJS(funcName, jsBody,
 			paramValTypes, retValType, 0)
@@ -207,14 +183,15 @@ func (n *createWasmFunctionNode) startExec(params runParams) error {
 			sessiondata.InternalExecutorOverride{User: security.RootUserName()},
 			`UPSERT INTO system.wasm_functions
 			(database_id, schema_id, function_name, arg_types, return_type,
-			 wasm_module, wat_source, export_name, owner)
-			VALUES (0, 0, $1, $2, $3, $4, $5, 'invoke', $6)`,
+			 wasm_module, wat_source, export_name, owner, volatility)
+			VALUES (0, 0, $1, $2, $3, $4, $5, 'invoke', $6, $7)`,
 			funcName,
 			argTypesBytes,
 			retTypeBytes,
 			[]byte{}, // no wasm module for JS
-			n.n.Body,
+			jsBody,
 			p.User().Normalized(),
+			persistedUDFVolatility(n.n.Volatility),
 		)
 		if err != nil {
 			tree.UnregisterFunction(funcName)
@@ -278,6 +255,48 @@ func encodeArgTypes(types []*types.T) []byte {
 		result[i] = byte(vt)
 	}
 	return result
+}
+
+func prepareJavaScriptBody(params []tree.FuncParam, body string) string {
+	// Backwards compatibility: callers have historically provided a bare body,
+	// and those were always wrapped as async functions.
+	if strings.Contains(body, "function invoke") {
+		return body
+	}
+
+	paramNames := make([]string, len(params))
+	for i, param := range params {
+		if param.Name != "" {
+			paramNames[i] = param.Name
+		} else {
+			paramNames[i] = fmt.Sprintf("$%d", i+1)
+		}
+	}
+	return fmt.Sprintf("async function invoke(%s) {\n%s\n}",
+		strings.Join(paramNames, ", "), body)
+}
+
+func persistedUDFVolatility(volatility tree.Volatility) string {
+	if volatility == 0 {
+		return tree.VolatilityImmutable.String()
+	}
+	return volatility.String()
+}
+
+func parsePersistedUDFVolatility(language udfruntime.Language, volatility string) tree.Volatility {
+	switch volatility {
+	case tree.VolatilityImmutable.String():
+		return tree.VolatilityImmutable
+	case tree.VolatilityStable.String():
+		return tree.VolatilityStable
+	case tree.VolatilityVolatile.String():
+		return tree.VolatilityVolatile
+	case "":
+		if language == udfruntime.LangJavaScript {
+			return tree.VolatilityStable
+		}
+	}
+	return tree.VolatilityImmutable
 }
 
 func (n *createWasmFunctionNode) Next(runParams) (bool, error) { return false, nil }

@@ -685,9 +685,10 @@ CREATE TABLE system.wasm_functions (
 	fuel_limit     INT8 NOT NULL DEFAULT 1000000,
 	memory_limit   INT8 NOT NULL DEFAULT 16777216,
 	owner          STRING NOT NULL,
+	volatility     STRING NOT NULL DEFAULT 'immutable',
 	created_at     TIMESTAMP NOT NULL DEFAULT now(),
 	CONSTRAINT "primary" PRIMARY KEY (database_id, schema_id, function_name, arg_types),
-	FAMILY "primary" (database_id, schema_id, function_name, arg_types, return_type, wasm_module, wat_source, export_name, fuel_limit, memory_limit, owner, created_at)
+	FAMILY "primary" (database_id, schema_id, function_name, arg_types, return_type, wasm_module, wat_source, export_name, fuel_limit, memory_limit, owner, volatility, created_at)
 );`
 
 	SpanCountTableSchema = `
@@ -910,6 +911,7 @@ var (
 	trueBoolString           = "true"
 	zeroIntString            = "0:::INT8"
 	invokeString             = "'invoke':::STRING"
+	immutableString          = "'immutable':::STRING"
 	defaultFuelLimitString   = "1000000:::INT8"
 	defaultMemoryLimitString = "16777216:::INT8"
 
@@ -2410,14 +2412,15 @@ var (
 				{Name: "fuel_limit", ID: 9, Type: types.Int, DefaultExpr: &defaultFuelLimitString},
 				{Name: "memory_limit", ID: 10, Type: types.Int, DefaultExpr: &defaultMemoryLimitString},
 				{Name: "owner", ID: 11, Type: types.String},
-				{Name: "created_at", ID: 12, Type: types.Timestamp, DefaultExpr: &nowString},
+				{Name: "volatility", ID: 12, Type: types.String, DefaultExpr: &immutableString},
+				{Name: "created_at", ID: 13, Type: types.Timestamp, DefaultExpr: &nowString},
 			},
 			[]descpb.ColumnFamilyDescriptor{
 				{
 					Name:        "primary",
 					ID:          0,
-					ColumnNames: []string{"database_id", "schema_id", "function_name", "arg_types", "return_type", "wasm_module", "wat_source", "export_name", "fuel_limit", "memory_limit", "owner", "created_at"},
-					ColumnIDs:   []descpb.ColumnID{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
+					ColumnNames: []string{"database_id", "schema_id", "function_name", "arg_types", "return_type", "wasm_module", "wat_source", "export_name", "fuel_limit", "memory_limit", "owner", "volatility", "created_at"},
+					ColumnIDs:   []descpb.ColumnID{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13},
 				},
 			},
 			descpb.IndexDescriptor{

@@ -167,6 +167,12 @@ var migrations = []migration.Migration{
 		NoPrecondition,
 		wasmFunctionsTableMigration,
 	),
+	migration.NewTenantMigration(
+		"add volatility to system.wasm_functions",
+		toCV(clusterversion.WasmFunctionsVolatility),
+		NoPrecondition,
+		wasmFunctionsVolatilityMigration,
+	),
 }
 
 func init() {

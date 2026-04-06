@@ -359,6 +359,9 @@ const (
 	// WasmFunctionsTable adds the system.wasm_functions table for storing
 	// user-defined WASM functions.
 	WasmFunctionsTable
+	// WasmFunctionsVolatility adds persisted volatility metadata to
+	// system.wasm_functions.
+	WasmFunctionsVolatility
 
 	// *************************************************
 	// Step (1): Add new versions here.
@@ -617,6 +620,10 @@ var versionsSingleton = keyedVersions{
 	{
 		Key:     WasmFunctionsTable,
 		Version: roachpb.Version{Major: 22, Minor: 1, Internal: 2},
+	},
+	{
+		Key:     WasmFunctionsVolatility,
+		Version: roachpb.Version{Major: 22, Minor: 1, Internal: 4},
 	},
 
 	// *************************************************

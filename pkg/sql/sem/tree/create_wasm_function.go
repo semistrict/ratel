@@ -53,8 +53,13 @@ func (n *CreateFunction) Format(ctx *FmtCtx) {
 	ctx.WriteString("'")
 	ctx.WriteString(n.Body)
 	ctx.WriteString("'")
-	if n.Volatility == VolatilityImmutable {
+	switch n.Volatility {
+	case VolatilityImmutable:
 		ctx.WriteString(" IMMUTABLE")
+	case VolatilityStable:
+		ctx.WriteString(" STABLE")
+	case VolatilityVolatile:
+		ctx.WriteString(" VOLATILE")
 	}
 }
 

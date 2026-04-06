@@ -299,8 +299,8 @@ func (r *Registry) Call(
 			mapExpr = cf.jsCall + "...a)"
 		}
 		batchSetup := fmt.Sprintf(
-			"function %s(jsonStr) { return JSON.stringify(JSON.parse(jsonStr).map(a => %s)); }",
-			batchKey, mapExpr)
+			"function %s(jsonStr) { return JSON.stringify(JSON.parse(jsonStr).map(a => { %s return %s; })); }",
+			batchKey, jsBatchArgHydration(cf.paramTypes), mapExpr)
 		if _, err := tc.v8ctx.RunScript(batchSetup, batchKey+".js"); err != nil {
 			return nil, fmt.Errorf("installing batch helper: %w", err)
 		}
@@ -610,4 +610,15 @@ func wasmBytesToJSArray(b []byte) string {
 		parts[i] = fmt.Sprintf("%d", v)
 	}
 	return "[" + strings.Join(parts, ",") + "]"
+}
+
+func jsBatchArgHydration(paramTypes []ValType) string {
+	var b strings.Builder
+	for i, vt := range paramTypes {
+		if vt != ValTimestamp {
+			continue
+		}
+		fmt.Fprintf(&b, "a[%d] = new Date(a[%d]); ", i, i)
+	}
+	return b.String()
 }

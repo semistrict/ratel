@@ -46,7 +46,7 @@ func resolveWasmFunction(execCfg *ExecutorConfig, name string) *tree.FunctionDef
 		"resolve-wasm-function",
 		nil, // no txn needed for reads
 		sessiondata.InternalExecutorOverride{User: security.RootUserName()},
-		`SELECT wasm_module, arg_types, return_type, wat_source
+		`SELECT wasm_module, arg_types, return_type, wat_source, volatility
 		 FROM system.wasm_functions
 		 WHERE function_name = $1
 		 LIMIT 1`,
@@ -65,6 +65,7 @@ func resolveWasmFunction(execCfg *ExecutorConfig, name string) *tree.FunctionDef
 	argTypesBytes := []byte(tree.MustBeDBytes(row[1]))
 	retTypeBytes := []byte(tree.MustBeDBytes(row[2]))
 	watSource := string(tree.MustBeDString(row[3]))
+	volatility := string(tree.MustBeDString(row[4]))
 
 	if len(retTypeBytes) == 0 {
 		log.Warningf(ctx, "UDF function %q has empty return type", name)
@@ -93,6 +94,7 @@ func resolveWasmFunction(execCfg *ExecutorConfig, name string) *tree.FunctionDef
 		return nil
 	}
 
+	language := udfruntime.LangWasm
 	// Determine language based on whether wasm_module is present.
 	if len(wasmModule) > 0 {
 		// WASM function: compile and register.
@@ -104,6 +106,7 @@ func resolveWasmFunction(execCfg *ExecutorConfig, name string) *tree.FunctionDef
 		}
 	} else {
 		// JavaScript function: source is in watSource field.
+		language = udfruntime.LangJavaScript
 		err = registry.CompileAndRegisterJS(name, watSource,
 			paramValTypes, retValType, 0)
 		if err != nil {
@@ -113,7 +116,9 @@ func resolveWasmFunction(execCfg *ExecutorConfig, name string) *tree.FunctionDef
 	}
 
 	// Register the SQL function definition.
-	if err := registerUDFFunDef(registry, name, sqlArgTypes, retType, tree.VolatilityImmutable); err != nil {
+	if err := registerUDFFunDef(
+		registry, name, sqlArgTypes, retType, parsePersistedUDFVolatility(language, volatility),
+	); err != nil {
 		log.Warningf(ctx, "error registering UDF function %q: %v", name, err)
 		return nil
 	}

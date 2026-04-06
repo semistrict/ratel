@@ -52,6 +52,7 @@ var ratelHTTPAddr string
 var ratelNoPassphrase bool
 var ratelNodeID string
 var ratelSQLHost string
+var ratelTLS bool
 
 var ratelCmd = &cobra.Command{
 	Use:   "ratel [command]",
@@ -101,8 +102,10 @@ func init() {
 			"Address to listen on for RPC and SQL connections")
 		cmd.Flags().StringVar(&ratelHTTPAddr, "http-addr", "localhost:8080",
 			"Address to listen on for the admin HTTP interface")
+		cmd.Flags().BoolVar(&ratelTLS, "tls", false,
+			"Enable application-level TLS (generates and manages certificates via S3)")
 		cmd.Flags().BoolVar(&ratelNoPassphrase, "no-passphrase", false,
-			"Do not encrypt the CA key (skip passphrase prompt)")
+			"Do not encrypt the CA key (skip passphrase prompt, only with --tls)")
 		cmd.Flags().StringVar(&ratelNodeID, "node-id", "",
 			"Stable operator-assigned node identity (e.g. ratel-1)")
 		_ = cmd.MarkFlagRequired("node-id")
@@ -112,6 +115,8 @@ func init() {
 	ratelSQLCmd.Flags().VarP(&ratelSQLExecStmts, cliflags.Execute.Name, cliflags.Execute.Shorthand, cliflags.Execute.Description)
 	ratelSQLCmd.Flags().StringVar(&ratelSQLHost, "host", "",
 		"Override the node address to connect to (e.g. localhost:26257 when using fly proxy)")
+	ratelSQLCmd.Flags().BoolVar(&ratelTLS, "tls", false,
+		"Connect using TLS (download client certs from S3)")
 }
 
 // ratelSQLExecStmts holds -e statements for ratel sql.
@@ -208,34 +213,38 @@ func runRatelInit(cmd *cobra.Command, args []string) error {
 		return errors.Newf("cluster already initialized: found %d node(s) at %s", len(nodes), clusterURL)
 	}
 
-	// Get passphrase for CA key encryption.
-	passphrase, err := ratelPassphrase(true /* confirm */)
-	if err != nil {
-		return err
-	}
+	ld := ratelLocalDir(clusterURL)
+	certsDir := ""
+	storeDir := filepath.Join(ld, "store")
 
-	// Generate and upload CA + client certs if not already present.
-	exists, err := storage.CertsExist(ctx, cs.Certs)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		fmt.Fprintln(os.Stderr, "Generating CA and client certificates...")
-		if err := storage.GenerateAndUploadCACerts(ctx, cs.Certs, passphrase); err != nil {
+	if ratelTLS {
+		// Get passphrase for CA key encryption.
+		passphrase, err := ratelPassphrase(true /* confirm */)
+		if err != nil {
 			return err
 		}
-	}
 
-	// Download CA + client certs, then generate this node's cert locally.
-	ld := ratelLocalDir(clusterURL)
-	certsDir := filepath.Join(ld, "certs")
-	storeDir := filepath.Join(ld, "store")
-	if err := storage.DownloadCACerts(ctx, cs.Certs, certsDir, passphrase); err != nil {
-		return err
-	}
-	hostname := ratelAdvertiseHost()
-	if err := storage.GenerateNodeCert(certsDir, []string{hostname, "localhost"}); err != nil {
-		return err
+		// Generate and upload CA + client certs if not already present.
+		exists, err := storage.CertsExist(ctx, cs.Certs)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			fmt.Fprintln(os.Stderr, "Generating CA and client certificates...")
+			if err := storage.GenerateAndUploadCACerts(ctx, cs.Certs, passphrase); err != nil {
+				return err
+			}
+		}
+
+		// Download CA + client certs, then generate this node's cert locally.
+		certsDir = filepath.Join(ld, "certs")
+		if err := storage.DownloadCACerts(ctx, cs.Certs, certsDir, passphrase); err != nil {
+			return err
+		}
+		hostname := ratelAdvertiseHost()
+		if err := storage.GenerateNodeCert(certsDir, []string{hostname, "localhost"}); err != nil {
+			return err
+		}
 	}
 
 	// Configure and start the server.
@@ -282,22 +291,25 @@ func runRatelJoin(cmd *cobra.Command, args []string) error {
 		joinList = append(joinList, n.Addr)
 	}
 
-	// Get passphrase for CA key decryption.
-	passphrase, err := ratelPassphrase(false /* confirm */)
-	if err != nil {
-		return err
-	}
-
-	// Download CA + client certs, then generate this node's cert locally.
 	ld := ratelLocalDir(clusterURL)
-	certsDir := filepath.Join(ld, "certs")
+	certsDir := ""
 	storeDir := filepath.Join(ld, "store")
-	if err := storage.DownloadCACerts(ctx, cs.Certs, certsDir, passphrase); err != nil {
-		return errors.Wrap(err, "downloading certs (is the cluster initialized?)")
-	}
-	hostname := ratelAdvertiseHost()
-	if err := storage.GenerateNodeCert(certsDir, []string{hostname, "localhost"}); err != nil {
-		return err
+
+	if ratelTLS {
+		// Get passphrase for CA key decryption.
+		passphrase, err := ratelPassphrase(false /* confirm */)
+		if err != nil {
+			return err
+		}
+
+		certsDir = filepath.Join(ld, "certs")
+		if err := storage.DownloadCACerts(ctx, cs.Certs, certsDir, passphrase); err != nil {
+			return errors.Wrap(err, "downloading certs (is the cluster initialized?)")
+		}
+		hostname := ratelAdvertiseHost()
+		if err := storage.GenerateNodeCert(certsDir, []string{hostname, "localhost"}); err != nil {
+			return err
+		}
 	}
 
 	fmt.Fprintf(os.Stderr, "Joining cluster with %d existing node(s)...\n", len(nodes))
@@ -351,7 +363,7 @@ func ratelStartServer(ctx context.Context, opts ratelServerOpts) error {
 	logcrash.SetGlobalSettings(&st.SV)
 
 	cfg := server.MakeConfig(ctx, st)
-	cfg.Insecure = false
+	cfg.Insecure = opts.certsDir == ""
 	cfg.SSLCertsDir = opts.certsDir
 	_, port, _ := net.SplitHostPort(opts.listenAddr)
 	advertiseAddr := net.JoinHostPort(ratelAdvertiseHost(), port)
@@ -522,11 +534,13 @@ func runRatelSQL(cmd *cobra.Command, args []string) error {
 		return errors.New("no nodes found; is the cluster running?")
 	}
 
-	// Download client certs.
+	// Download client certs if TLS is enabled.
 	ld := ratelLocalDir(clusterURL)
 	certsDir := filepath.Join(ld, "certs")
-	if err := storage.DownloadClientCerts(ctx, cs.Certs, certsDir); err != nil {
-		return err
+	if ratelTLS {
+		if err := storage.DownloadClientCerts(ctx, cs.Certs, certsDir); err != nil {
+			return err
+		}
 	}
 
 	// Set up SQL shell config, following cockroach-sql pattern.
@@ -572,13 +586,18 @@ func runRatelSQL(cmd *cobra.Command, args []string) error {
 	var conn clisqlclient.Conn
 	var lastErr error
 	for _, addr := range addrs {
-		connURL := fmt.Sprintf(
-			"postgresql://root@%s/defaultdb?sslmode=verify-full&sslrootcert=%s&sslcert=%s&sslkey=%s",
-			addr,
-			filepath.Join(certsDir, "ca.crt"),
-			filepath.Join(certsDir, "client.root.crt"),
-			filepath.Join(certsDir, "client.root.key"),
-		)
+		var connURL string
+		if ratelTLS {
+			connURL = fmt.Sprintf(
+				"postgresql://root@%s/defaultdb?sslmode=verify-full&sslrootcert=%s&sslcert=%s&sslkey=%s",
+				addr,
+				filepath.Join(certsDir, "ca.crt"),
+				filepath.Join(certsDir, "client.root.crt"),
+				filepath.Join(certsDir, "client.root.key"),
+			)
+		} else {
+			connURL = fmt.Sprintf("postgresql://root@%s/defaultdb?sslmode=disable", addr)
+		}
 		conn, lastErr = sqlCfg.MakeConn(connURL)
 		if lastErr == nil {
 			break

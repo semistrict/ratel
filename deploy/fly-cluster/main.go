@@ -217,10 +217,10 @@ func create(c *client, regions []string) {
 
 		var subcmd string
 		if i == 0 {
-			subcmd = fmt.Sprintf("/ratel init '%s' --listen-addr %s --http-addr %s --no-passphrase --node-id %s",
+			subcmd = fmt.Sprintf("/ratel init '%s' --listen-addr %s --http-addr %s --node-id %s",
 				url, listenAddr, httpAddr, nodeID)
 		} else {
-			subcmd = fmt.Sprintf("/ratel join '%s' --listen-addr %s --http-addr %s --no-passphrase --node-id %s",
+			subcmd = fmt.Sprintf("/ratel join '%s' --listen-addr %s --http-addr %s --node-id %s",
 				url, listenAddr, httpAddr, nodeID)
 		}
 		cmd := []string{"-c", subcmd}

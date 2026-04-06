@@ -1,26 +1,10 @@
-# Build stage: compile ratel from source
 FROM golang:1.26-bookworm AS builder
-
-RUN apt-get update && apt-get install -y \
-    autoconf libedit-dev cmake g++ libncurses-dev \
-    && rm -rf /var/lib/apt/lists/*
-
+RUN apt-get update && apt-get install -y autoconf libedit-dev cmake g++ libncurses-dev && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
+# Copy everything (use .dockerignore to exclude large dirs if needed)
 COPY . .
-RUN make buildshort
+RUN make buildratel BUILDTYPE=release
 
-# Runtime stage
-FROM debian:bookworm-slim
-
-RUN apt-get update && apt-get install -y \
-    ca-certificates libedit2 \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN mkdir -p /cockroach/cockroach-data
-COPY --from=builder /src/cockroach-short /cockroach/cockroach
-COPY deploy/fly-cluster/entrypoint.sh /cockroach/entrypoint.sh
-RUN chmod +x /cockroach/entrypoint.sh
-
-WORKDIR /cockroach
-EXPOSE 26257 8080
-ENTRYPOINT ["/cockroach/entrypoint.sh"]
+FROM gcr.io/distroless/base-debian12
+COPY --from=builder /src/ratel /ratel
+ENTRYPOINT ["/ratel"]

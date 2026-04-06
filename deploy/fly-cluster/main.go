@@ -1,9 +1,9 @@
-// deploy/fly-cluster creates a globally distributed Ratel (CockroachDB)
-// cluster on Fly.io Machines with Tigris object storage for backups.
+// deploy/fly-cluster creates a globally distributed Ratel cluster
+// on Fly.io Machines with Tigris object storage for backups.
 //
 // Usage:
 //
-//	export FLY_API_TOKEN=$(fly tokens deploy)
+//	export FLY_API_TOKEN=$(fly auth token)
 //	go run ./deploy/fly-cluster [flags]
 //
 // Flags:
@@ -11,13 +11,12 @@
 //	-app        App name (default: ratel-cluster)
 //	-org        Fly org slug (default: personal)
 //	-regions    Comma-separated regions (default: iad,lhr,sin)
-//	-image      Docker image for ratel (default: ghcr.io/semistrict/ratel:latest)
+//	-image      Docker image (default: ghcr.io/semistrict/ratel:latest)
 //	-cpus       CPUs per machine (default: 2)
 //	-memory     Memory in MB per machine (default: 4096)
-//	-disk       Disk size in GB per machine (default: 10)
-//	-destroy    Tear down the cluster instead of creating it
+//	-destroy    Tear down the cluster
 //	-status     Show cluster status
-//	-sql        Connect to the cluster via cockroach sql
+//	-sql        Connect via cockroach sql
 package main
 
 import (
@@ -43,7 +42,6 @@ var (
 	flagImage   = flag.String("image", "ghcr.io/semistrict/ratel:latest", "Docker image")
 	flagCPUs    = flag.Int("cpus", 2, "CPUs per machine")
 	flagMemory  = flag.Int("memory", 4096, "Memory in MB per machine")
-	flagDisk    = flag.Int("disk", 10, "Disk size in GB per machine")
 	flagDestroy = flag.Bool("destroy", false, "Tear down the cluster")
 	flagStatus  = flag.Bool("status", false, "Show cluster status")
 	flagSQL     = flag.Bool("sql", false, "Connect via cockroach sql")
@@ -55,7 +53,7 @@ func main() {
 
 	token := os.Getenv("FLY_API_TOKEN")
 	if token == "" {
-		slog.Error("FLY_API_TOKEN not set. Run: export FLY_API_TOKEN=$(fly tokens deploy)")
+		slog.Error("FLY_API_TOKEN not set. Run: export FLY_API_TOKEN=$(fly auth token)")
 		os.Exit(1)
 	}
 
@@ -121,8 +119,12 @@ type machineConfig struct {
 	Env      map[string]string `json:"env"`
 	Guest    guestConfig       `json:"guest"`
 	Services []service         `json:"services"`
-	Mounts   []mount           `json:"mounts,omitempty"`
+	Init     *initConfig       `json:"init,omitempty"`
 	Metadata map[string]string `json:"metadata,omitempty"`
+}
+
+type initConfig struct {
+	Cmd []string `json:"cmd,omitempty"`
 }
 
 type guestConfig struct {
@@ -142,21 +144,10 @@ type port struct {
 	Handlers []string `json:"handlers"`
 }
 
-type mount struct {
-	Volume string `json:"volume"`
-	Path   string `json:"path"`
-}
-
 type createMachineReq struct {
 	Name   string        `json:"name"`
 	Region string        `json:"region"`
 	Config machineConfig `json:"config"`
-}
-
-type createVolumeReq struct {
-	Name   string `json:"name"`
-	Region string `json:"region"`
-	SizeGB int    `json:"size_gb"`
 }
 
 type machine struct {
@@ -165,13 +156,6 @@ type machine struct {
 	State     string `json:"state"`
 	Region    string `json:"region"`
 	PrivateIP string `json:"private_ip"`
-}
-
-type volume struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	Region string `json:"region"`
-	State  string `json:"state"`
 }
 
 // --- Create cluster ---
@@ -198,57 +182,42 @@ func create(c *client, regions []string) {
 		slog.Info("app created", "app", c.app)
 	}
 
-	// 2. Create Tigris bucket for backups
-	slog.Info("creating Tigris bucket (run manually if not done):")
-	fmt.Fprintf(os.Stderr, "  fly storage create -a %s -n %s-backups\n", c.app, c.app)
-
-	// 3. Create volumes and machines
+	// 2. Build join addresses using Fly internal DNS.
+	// Fly machines get <name>.vm.<app>.internal as their DNS name.
 	var joinAddrs []string
 	for i := range regions {
 		joinAddrs = append(joinAddrs, fmt.Sprintf("%s-node-%d.vm.%s.internal:26257", c.app, i, c.app))
 	}
 	joinStr := strings.Join(joinAddrs, ",")
 
+	// 3. Create machines — no volumes, CockroachDB replicates data across
+	// nodes so ephemeral storage is fine. Lost nodes re-replicate from peers.
 	var machines []machine
 	for i, region := range regions {
 		nodeName := fmt.Sprintf("%s-node-%d", c.app, i)
+		advertiseAddr := fmt.Sprintf("%s.vm.%s.internal:26257", nodeName, c.app)
 
-		// Create volume
-		slog.Info("creating volume", "name", nodeName, "region", region)
-		data, code, err = c.do("POST", fmt.Sprintf("/v1/apps/%s/volumes", c.app), createVolumeReq{
-			Name:   nodeName,
-			Region: region,
-			SizeGB: *flagDisk,
-		})
-		if err != nil {
-			slog.Error("creating volume", "error", err)
-			os.Exit(1)
-		}
-		if code >= 300 {
-			slog.Error("creating volume", "status", code, "body", string(data))
-			os.Exit(1)
-		}
-		var vol volume
-		if err := json.Unmarshal(data, &vol); err != nil {
-			slog.Error("parsing volume response", "error", err)
-			os.Exit(1)
-		}
-		slog.Info("volume created", "id", vol.ID, "region", region)
-
-		// Create machine
 		slog.Info("creating machine", "name", nodeName, "region", region)
 		machReq := createMachineReq{
 			Name:   nodeName,
 			Region: region,
 			Config: machineConfig{
 				Image: *flagImage,
-				Env: map[string]string{
-					"COCKROACH_CHANNEL": "fly",
-				},
 				Guest: guestConfig{
 					CPUs:    *flagCPUs,
 					MemMB:   *flagMemory,
 					CPUKind: "shared",
+				},
+				Init: &initConfig{
+					Cmd: []string{
+						"/ratel", "start",
+						"--insecure",
+						"--advertise-addr", advertiseAddr,
+						"--listen-addr", "0.0.0.0:26257",
+						"--http-addr", "0.0.0.0:8080",
+						"--join", joinStr,
+						"--locality", fmt.Sprintf("region=%s", region),
+					},
 				},
 				Services: []service{
 					{
@@ -266,33 +235,12 @@ func create(c *client, regions []string) {
 						},
 					},
 				},
-				Mounts: []mount{
-					{Volume: vol.ID, Path: "/cockroach/cockroach-data"},
-				},
 				Metadata: map[string]string{
-					"fly_process_group": "cockroach",
+					"fly_process_group": "ratel",
 					"ratel_node_index":  fmt.Sprintf("%d", i),
 				},
 			},
 		}
-
-		// Build the start command.
-		// First node initializes the cluster; others join.
-		cmd := []string{
-			"/cockroach/cockroach", "start",
-			"--insecure",
-			"--store=/cockroach/cockroach-data",
-			"--advertise-addr", fmt.Sprintf("%s.vm.%s.internal:26257", nodeName, c.app),
-			"--listen-addr", "0.0.0.0:26257",
-			"--http-addr", "0.0.0.0:8080",
-			"--join", joinStr,
-			"--locality", fmt.Sprintf("region=%s", region),
-		}
-		machReq.Config.Env["COCKROACH_ARGS"] = strings.Join(cmd[2:], " ")
-
-		// Use the entrypoint from the image. Override CMD with our args.
-		// For a custom image, we'd set config.cmd directly. For now,
-		// pass args via env and use a wrapper entrypoint.
 
 		data, code, err = c.do("POST", fmt.Sprintf("/v1/apps/%s/machines", c.app), machReq)
 		if err != nil {
@@ -320,28 +268,26 @@ func create(c *client, regions []string) {
 		}
 	}
 
-	// 5. Initialize cluster (only needed once)
+	// 5. Initialize cluster
 	slog.Info("initializing cluster...")
-	initNode := machines[0]
 	fmt.Fprintf(os.Stderr, "\nTo initialize the cluster, run:\n")
-	fmt.Fprintf(os.Stderr, "  fly ssh console -a %s -s -C '/cockroach/cockroach init --insecure --host=%s.vm.%s.internal:26257'\n\n",
-		c.app, fmt.Sprintf("%s-node-0", c.app), c.app)
+	fmt.Fprintf(os.Stderr, "  fly ssh console -a %s -s -C '/ratel init --insecure --host=%s'\n\n",
+		c.app, joinAddrs[0])
 
 	// 6. Print connection info
-	fmt.Fprintf(os.Stderr, "\nCluster ready!\n\n")
 	fmt.Fprintf(os.Stderr, "Nodes:\n")
 	for i, m := range machines {
 		fmt.Fprintf(os.Stderr, "  [%d] %s  region=%-3s  ip=%s  state=%s\n",
 			i, m.ID, regions[i], m.PrivateIP, m.State)
 	}
-	fmt.Fprintf(os.Stderr, "\nConnect via:\n")
+	fmt.Fprintf(os.Stderr, "\nConnect:\n")
 	fmt.Fprintf(os.Stderr, "  fly proxy 26257:26257 -a %s\n", c.app)
 	fmt.Fprintf(os.Stderr, "  cockroach sql --insecure --host=localhost:26257\n\n")
 	fmt.Fprintf(os.Stderr, "Admin UI:\n")
 	fmt.Fprintf(os.Stderr, "  fly proxy 8080:8080 -a %s\n", c.app)
 	fmt.Fprintf(os.Stderr, "  open http://localhost:8080\n\n")
-
-	_ = initNode
+	fmt.Fprintf(os.Stderr, "Tigris backup bucket:\n")
+	fmt.Fprintf(os.Stderr, "  fly storage create -a %s -n %s-backups\n\n", c.app, c.app)
 }
 
 func waitForState(c *client, machineID, target string, timeout time.Duration) error {
@@ -397,7 +343,7 @@ func status(c *client) {
 func destroy(c *client) {
 	slog.Info("destroying cluster", "app", c.app)
 
-	// List and stop all machines
+	// List all machines
 	data, code, err := c.do("GET", fmt.Sprintf("/v1/apps/%s/machines", c.app), nil)
 	if err != nil {
 		slog.Error("listing machines", "error", err)
@@ -413,12 +359,11 @@ func destroy(c *client) {
 		os.Exit(1)
 	}
 
+	// Stop, then destroy each machine
 	for _, m := range machines {
 		slog.Info("stopping machine", "id", m.ID)
 		c.do("POST", fmt.Sprintf("/v1/apps/%s/machines/%s/stop", c.app, m.ID), nil)
 	}
-
-	// Wait for stopped, then destroy
 	for _, m := range machines {
 		waitForState(c, m.ID, "stopped", 30*time.Second)
 		slog.Info("destroying machine", "id", m.ID)
@@ -429,18 +374,6 @@ func destroy(c *client) {
 			slog.Error("destroying machine", "id", m.ID, "status", code)
 		} else {
 			slog.Info("machine destroyed", "id", m.ID)
-		}
-	}
-
-	// Delete volumes
-	data, code, err = c.do("GET", fmt.Sprintf("/v1/apps/%s/volumes", c.app), nil)
-	if err == nil && code < 300 {
-		var volumes []volume
-		if json.Unmarshal(data, &volumes) == nil {
-			for _, v := range volumes {
-				slog.Info("deleting volume", "id", v.ID)
-				c.do("DELETE", fmt.Sprintf("/v1/apps/%s/volumes/%s", c.app, v.ID), nil)
-			}
 		}
 	}
 
@@ -459,7 +392,6 @@ func destroy(c *client) {
 // --- SQL connect ---
 
 func connectSQL(c *client) {
-	// Use fly proxy to tunnel to the cluster
 	slog.Info("connecting via fly proxy...")
 	cmd := exec.Command("fly", "proxy", "26257:26257", "-a", c.app)
 	cmd.Stdout = os.Stdout

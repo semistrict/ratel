@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/cockroachdb/cockroach/pkg/base"
@@ -85,11 +86,15 @@ downloaded from the storage URL.`,
 }
 
 var ratelSQLCmd = &cobra.Command{
-	Use:   "sql <storage-url>",
+	Use:   "sql [storage-url | host:port]",
 	Short: "Connect a SQL shell to a cluster",
-	Long: `Connect to a running ratel cluster's SQL interface. A node is discovered from
-the node registry in the storage URL, and client TLS certificates are downloaded
-for authentication.`,
+	Long: `Connect to a running ratel cluster's SQL interface.
+
+With a host:port argument, connect directly:
+  ratel sql localhost:26257
+
+With a storage URL, discover nodes from S3:
+  ratel sql s3://bucket/path?endpoint=...`,
 	Args: cobra.ExactArgs(1),
 	RunE: runRatelSQL,
 }
@@ -516,34 +521,46 @@ func runHeartbeat(ctx context.Context, quiesce <-chan struct{}, store remote.Sto
 }
 
 func runRatelSQL(cmd *cobra.Command, args []string) error {
-	clusterURL := args[0]
+	arg := args[0]
 
-	cs, err := storage.ClusterStorageFromURL(clusterURL)
-	if err != nil {
-		return err
-	}
+	// Determine connection addresses: either direct host:port or discovered from S3.
+	var addrs []string
+	var certsDir string
 
-	ctx := context.Background()
-
-	// Discover nodes.
-	nodes, err := storage.ListNodes(ctx, cs.Nodes)
-	if err != nil {
-		return errors.Wrap(err, "listing nodes")
-	}
-	if len(nodes) == 0 {
-		return errors.New("no nodes found; is the cluster running?")
-	}
-
-	// Download client certs if TLS is enabled.
-	ld := ratelLocalDir(clusterURL)
-	certsDir := filepath.Join(ld, "certs")
-	if ratelTLS {
-		if err := storage.DownloadClientCerts(ctx, cs.Certs, certsDir); err != nil {
+	if strings.Contains(arg, "://") {
+		// Storage URL — discover nodes from S3.
+		cs, err := storage.ClusterStorageFromURL(arg)
+		if err != nil {
 			return err
 		}
+		ctx := context.Background()
+		nodes, err := storage.ListNodes(ctx, cs.Nodes)
+		if err != nil {
+			return errors.Wrap(err, "listing nodes")
+		}
+		if len(nodes) == 0 {
+			return errors.New("no nodes found; is the cluster running?")
+		}
+		if ratelSQLHost != "" {
+			addrs = []string{ratelSQLHost}
+		} else {
+			for _, node := range nodes {
+				addrs = append(addrs, node.SQLAddr)
+			}
+		}
+		if ratelTLS {
+			ld := ratelLocalDir(arg)
+			certsDir = filepath.Join(ld, "certs")
+			if err := storage.DownloadClientCerts(ctx, cs.Certs, certsDir); err != nil {
+				return err
+			}
+		}
+	} else {
+		// Direct host:port.
+		addrs = []string{arg}
 	}
 
-	// Set up SQL shell config, following cockroach-sql pattern.
+	// Set up SQL shell config.
 	cliCfg := &clicfg.Context{}
 	sqlCfg := &clisqlcfg.Context{
 		CliCtx:  cliCfg,
@@ -570,17 +587,6 @@ func runRatelSQL(cmd *cobra.Command, args []string) error {
 # To exit, type: \q.
 #
 `)
-	}
-
-	// Try each registered node until one accepts a connection.
-	// If --host is set, use that instead of the discovered addresses.
-	var addrs []string
-	if ratelSQLHost != "" {
-		addrs = []string{ratelSQLHost}
-	} else {
-		for _, node := range nodes {
-			addrs = append(addrs, node.SQLAddr)
-		}
 	}
 
 	var conn clisqlclient.Conn

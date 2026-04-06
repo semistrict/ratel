@@ -139,7 +139,8 @@ type machineConfig struct {
 }
 
 type initConfig struct {
-	Cmd []string `json:"cmd,omitempty"`
+	Entrypoint []string `json:"entrypoint,omitempty"`
+	Cmd        []string `json:"cmd,omitempty"`
 }
 
 type guestConfig struct {
@@ -207,27 +208,22 @@ func create(c *client, regions []string) {
 	for i, region := range regions {
 		nodeID := fmt.Sprintf("node-%d", i)
 		nodeName := fmt.Sprintf("%s-%s", c.app, nodeID)
-		listenAddr := "0.0.0.0:26257"
-		httpAddr := "0.0.0.0:8080"
 
-		var cmd []string
+		// Use sh -c so that $FLY_MACHINE_ID and $FLY_APP_NAME (set by
+		// Fly automatically) get expanded to construct the .internal DNS
+		// name. This is how the node knows its own resolvable address.
+		listenAddr := `$FLY_MACHINE_ID.vm.$FLY_APP_NAME.internal:26257`
+		httpAddr := `$FLY_MACHINE_ID.vm.$FLY_APP_NAME.internal:8080`
+
+		var subcmd string
 		if i == 0 {
-			cmd = []string{
-				"init", url,
-				"--listen-addr", listenAddr,
-				"--http-addr", httpAddr,
-				"--no-passphrase",
-				"--node-id", nodeID,
-			}
+			subcmd = fmt.Sprintf("/ratel init '%s' --listen-addr %s --http-addr %s --no-passphrase --node-id %s",
+				url, listenAddr, httpAddr, nodeID)
 		} else {
-			cmd = []string{
-				"join", url,
-				"--listen-addr", listenAddr,
-				"--http-addr", httpAddr,
-				"--no-passphrase",
-				"--node-id", nodeID,
-			}
+			subcmd = fmt.Sprintf("/ratel join '%s' --listen-addr %s --http-addr %s --no-passphrase --node-id %s",
+				url, listenAddr, httpAddr, nodeID)
 		}
+		cmd := []string{"-c", subcmd}
 
 		slog.Info("creating machine", "name", nodeName, "region", region, "cmd", cmd[0])
 		machReq := createMachineReq{
@@ -245,7 +241,7 @@ func create(c *client, regions []string) {
 					MemMB:   *flagMemory,
 					CPUKind: "shared",
 				},
-				Init: &initConfig{Cmd: cmd},
+				Init: &initConfig{Entrypoint: []string{"sh"}, Cmd: cmd},
 				Services: []service{
 					{
 						Protocol:     "tcp",

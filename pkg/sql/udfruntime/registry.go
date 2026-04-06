@@ -300,7 +300,7 @@ func (r *Registry) Call(
 		}
 		batchSetup := fmt.Sprintf(
 			"function %s(jsonStr) { return JSON.stringify(JSON.parse(jsonStr).map(a => { %s return %s; })); }",
-			batchKey, jsBatchArgHydration(cf.paramTypes), mapExpr)
+			batchKey, jsBatchArgHydration(cf.paramTypes, cf.language), mapExpr)
 		if _, err := tc.v8ctx.RunScript(batchSetup, batchKey+".js"); err != nil {
 			return nil, fmt.Errorf("installing batch helper: %w", err)
 		}
@@ -604,13 +604,15 @@ func wasmBytesToJSArray(b []byte) string {
 	return "[" + strings.Join(parts, ",") + "]"
 }
 
-func jsBatchArgHydration(paramTypes []ValType) string {
+func jsBatchArgHydration(paramTypes []ValType, language Language) string {
 	var b strings.Builder
 	for i, vt := range paramTypes {
-		if vt != ValTimestamp {
-			continue
+		switch {
+		case vt == ValTimestamp:
+			fmt.Fprintf(&b, "a[%d] = new Date(a[%d]); ", i, i)
+		case vt == ValI64 && language == LangWasm:
+			fmt.Fprintf(&b, "a[%d] = BigInt(a[%d]); ", i, i)
 		}
-		fmt.Fprintf(&b, "a[%d] = new Date(a[%d]); ", i, i)
 	}
 	return b.String()
 }

@@ -3719,6 +3719,11 @@ type EvalContext struct {
 	// The colexec package type-asserts this to *udfruntime.Registry.
 	UDFRegistry interface{}
 
+	// UDFSQLExecutor provides SQL execution for UDFs that use the sql``
+	// tagged template. Typed as interface{} to avoid importing udfruntime.
+	// Set on both gateway and remote flows.
+	UDFSQLExecutor interface{}
+
 	PrivilegedAccessor PrivilegedAccessor
 
 	SessionAccessor EvalSessionAccessor

@@ -131,6 +131,7 @@ func (evalCtx *extendedEvalContext) copyFromExecCfg(execCfg *ExecutorConfig) {
 	evalCtx.VirtualSchemas = execCfg.VirtualSchemas
 	evalCtx.KVStoresIterator = execCfg.KVStoresIterator
 	evalCtx.UDFRegistry = execCfg.UDFRegistry
+	evalCtx.UDFSQLExecutor = execCfg.InternalExecutor
 }
 
 // copy returns a deep copy of ctx.

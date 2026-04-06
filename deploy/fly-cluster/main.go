@@ -50,8 +50,8 @@ var (
 const tigrisEndpoint = "https://fly.storage.tigris.dev"
 
 func storageURL() string {
-	return fmt.Sprintf("s3://%s?AWS_ACCESS_KEY_ID=%s&AWS_SECRET_ACCESS_KEY=%s&AWS_ENDPOINT=%s&AWS_REGION=auto",
-		*flagBucket, *flagKey, *flagSecret, tigrisEndpoint)
+	return fmt.Sprintf("s3://%s?endpoint=%s&region=auto",
+		*flagBucket, tigrisEndpoint)
 }
 
 func main() {

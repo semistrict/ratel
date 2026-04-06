@@ -15,15 +15,17 @@
 package udfruntime
 
 import (
+	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
+	"unsafe"
 
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	crdbJSON "github.com/cockroachdb/cockroach/pkg/util/json"
+	jsoniter "github.com/json-iterator/go"
 	v8 "github.com/tommie/v8go"
 )
 
@@ -49,7 +51,7 @@ type Registry struct {
 	execMu      sync.Mutex           // serializes V8 execution (isolates are single-threaded)
 	sqlTemplate *v8.FunctionTemplate // async sql`` tagged template (returns Promise)
 	callState   asyncCallState       // per-call state, safe because execMu is held
-	sbPool      sync.Pool            // pool of *strings.Builder
+	bufPool     sync.Pool            // pool of *bytes.Buffer
 }
 
 type compiledFunc struct {
@@ -66,22 +68,22 @@ func NewRegistry() *Registry {
 	r := &Registry{
 		iso:   v8.NewIsolate(),
 		funcs: make(map[string]*compiledFunc),
-		sbPool: sync.Pool{New: func() interface{} {
-			return &strings.Builder{}
+		bufPool: sync.Pool{New: func() interface{} {
+			return &bytes.Buffer{}
 		}},
 	}
 	r.sqlTemplate = r.makeAsyncSQLTemplate()
 	return r
 }
 
-func (r *Registry) getSB() *strings.Builder {
-	sb := r.sbPool.Get().(*strings.Builder)
-	sb.Reset()
-	return sb
+func (r *Registry) getBuf() *bytes.Buffer {
+	buf := r.bufPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	return buf
 }
 
-func (r *Registry) putSB(sb *strings.Builder) {
-	r.sbPool.Put(sb)
+func (r *Registry) putBuf(buf *bytes.Buffer) {
+	r.bufPool.Put(buf)
 }
 
 // CompileAndRegisterWasm compiles a WASM binary and registers it.
@@ -196,10 +198,33 @@ func (r *Registry) MakeFn(name string) (func(*tree.EvalContext, tree.Datums) (tr
 		return nil, fmt.Errorf("UDF %q not registered", name)
 	}
 
+	// Cache a TxnContext across calls to avoid the ~60µs cost of
+	// v8go.NewContext on every invocation. The cached context is
+	// invalidated when the evalCtx changes (new transaction/query).
+	var cachedTC *TxnContext
+	var cachedEvalCtx *tree.EvalContext
+
 	return func(evalCtx *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
-		tc := r.NewTxnContext(nil, context.Background(), nil, nil)
-		defer tc.Close()
-		results, err := r.Call(tc, name, []tree.Datums{args})
+		if cachedTC == nil || evalCtx != cachedEvalCtx {
+			if cachedTC != nil {
+				cachedTC.Close()
+			}
+			var executor SQLExecutor
+			var txn interface{}
+			goCtx := context.Background()
+			if evalCtx != nil {
+				if ie, ok := evalCtx.UDFSQLExecutor.(SQLExecutor); ok {
+					executor = ie
+				}
+				if evalCtx.Txn != nil {
+					txn = evalCtx.Txn
+				}
+				goCtx = evalCtx.Context
+			}
+			cachedTC = r.NewTxnContext(executor, goCtx, txn, nil)
+			cachedEvalCtx = evalCtx
+		}
+		results, err := r.Call(cachedTC, name, []tree.Datums{args})
 		if err != nil {
 			return nil, err
 		}
@@ -261,46 +286,65 @@ func (r *Registry) Call(
 		return r.callSequential(tc, cf, name, argsBatch)
 	}
 
-	forWasm := cf.language == LangWasm
-	wrapBigInt := cf.resultType == ValI64 && cf.language == LangWasm
+	// Lazily install the __batch helper that takes a JSON string of args,
+	// parses it inside V8, calls invoke for each row, and returns
+	// JSON.stringify of the results. All in one JS function call.
+	batchKey := "__batch_" + name
+	if !tc.setupDone[batchKey] {
+		wrapBigInt := cf.resultType == ValI64 && cf.language == LangWasm
+		var mapExpr string
+		if wrapBigInt {
+			mapExpr = "Number(" + cf.jsCall + "...a))"
+		} else {
+			mapExpr = cf.jsCall + "...a)"
+		}
+		batchSetup := fmt.Sprintf(
+			"function %s(jsonStr) { return JSON.stringify(JSON.parse(jsonStr).map(a => { %s return %s; })); }",
+			batchKey, jsBatchArgHydration(cf.paramTypes), mapExpr)
+		if _, err := tc.v8ctx.RunScript(batchSetup, batchKey+".js"); err != nil {
+			return nil, fmt.Errorf("installing batch helper: %w", err)
+		}
+		tc.setupDone[batchKey] = true
+	}
 
-	// Build a single script: JSON.stringify([invoke(a0), invoke(a1), ...])
-	sb := r.getSB()
-	sb.Grow(len(argsBatch)*20 + 32)
-	sb.WriteString("JSON.stringify([")
+	// Build JSON array of args in Go: [[arg0_0,arg0_1],[arg1_0,arg1_1],...]
+	buf := r.getBuf()
+	buf.Grow(len(argsBatch)*20 + 32)
+	buf.WriteByte('[')
 	for i, args := range argsBatch {
 		if i > 0 {
-			sb.WriteByte(',')
+			buf.WriteByte(',')
 		}
-		if wrapBigInt {
-			sb.WriteString("Number(")
-		}
-		sb.WriteString(cf.jsCall)
+		buf.WriteByte('[')
 		for j, arg := range args {
 			if j > 0 {
-				sb.WriteByte(',')
+				buf.WriteByte(',')
 			}
-			s, err := MarshalDatumToJS(arg, cf.paramTypes[j], forWasm)
-			if err != nil {
-				r.putSB(sb)
+			if err := WriteDatumJSON(buf, arg, cf.paramTypes[j]); err != nil {
+				r.putBuf(buf)
 				return nil, fmt.Errorf("row %d arg %d: %w", i, j, err)
 			}
-			sb.WriteString(s)
 		}
-		sb.WriteByte(')')
-		if wrapBigInt {
-			sb.WriteByte(')')
-		}
+		buf.WriteByte(']')
 	}
-	sb.WriteString("])")
-	script := sb.String()
-	r.putSB(sb)
+	buf.WriteByte(']')
+
+	// Create a V8 string value from the buffer (one CGO call, no parsing),
+	// then call the batch function directly (one CGO call). The batch
+	// function does JSON.parse + invoke + JSON.stringify all in JS.
+	byts := buf.Bytes()
+	argsStr := unsafe.String(&byts[0], len(byts))
+	strVal, err := v8.NewValue(r.iso, argsStr)
+	r.putBuf(buf)
+	if err != nil {
+		return nil, fmt.Errorf("UDF %q: creating args string: %w", name, err)
+	}
 
 	timer := time.AfterFunc(cf.timeout*time.Duration(len(argsBatch)), func() {
 		r.iso.TerminateExecution()
 	})
 
-	val, err := tc.v8ctx.RunScript(script, name+"_call.js")
+	val, err := tc.v8ctx.Global().MethodCall(batchKey, strVal)
 
 	// If the batch contains async functions (sql``), the result will be
 	// a Promise wrapping the array. Pump until resolved.
@@ -338,7 +382,7 @@ func (r *Registry) Call(
 	switch cf.resultType {
 	case ValI64:
 		var nums []float64
-		if err := json.Unmarshal([]byte(jsonStr), &nums); err != nil {
+		if err := jsoniter.Unmarshal([]byte(jsonStr), &nums); err != nil {
 			return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
 		}
 		for i, n := range nums {
@@ -347,7 +391,7 @@ func (r *Registry) Call(
 		}
 	case ValF64:
 		var nums []float64
-		if err := json.Unmarshal([]byte(jsonStr), &nums); err != nil {
+		if err := jsoniter.Unmarshal([]byte(jsonStr), &nums); err != nil {
 			return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
 		}
 		for i, n := range nums {
@@ -356,7 +400,7 @@ func (r *Registry) Call(
 		}
 	case ValI32:
 		var nums []float64
-		if err := json.Unmarshal([]byte(jsonStr), &nums); err != nil {
+		if err := jsoniter.Unmarshal([]byte(jsonStr), &nums); err != nil {
 			return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
 		}
 		for i, n := range nums {
@@ -368,7 +412,7 @@ func (r *Registry) Call(
 		}
 	case ValString:
 		var strs []string
-		if err := json.Unmarshal([]byte(jsonStr), &strs); err != nil {
+		if err := jsoniter.Unmarshal([]byte(jsonStr), &strs); err != nil {
 			return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
 		}
 		for i, s := range strs {
@@ -379,7 +423,7 @@ func (r *Registry) Call(
 		// Timestamps are serialized as epoch milliseconds by JSON.stringify(Date).
 		// But JSON.stringify on a Date produces a string like "2025-01-01T00:00:00.000Z".
 		var strs []string
-		if err := json.Unmarshal([]byte(jsonStr), &strs); err != nil {
+		if err := jsoniter.Unmarshal([]byte(jsonStr), &strs); err != nil {
 			return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
 		}
 		for i, s := range strs {
@@ -390,10 +434,10 @@ func (r *Registry) Call(
 			results[i] = t
 		}
 	case ValJSON:
-		// JSON results: each element is a raw JSON value. We use json.RawMessage
+		// JSON results: each element is a raw JSON value. We use jsoniter.RawMessage
 		// to avoid re-parsing.
-		var raws []json.RawMessage
-		if err := json.Unmarshal([]byte(jsonStr), &raws); err != nil {
+		var raws []jsoniter.RawMessage
+		if err := jsoniter.Unmarshal([]byte(jsonStr), &raws); err != nil {
 			return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
 		}
 		for i, raw := range raws {
@@ -566,4 +610,15 @@ func wasmBytesToJSArray(b []byte) string {
 		parts[i] = fmt.Sprintf("%d", v)
 	}
 	return "[" + strings.Join(parts, ",") + "]"
+}
+
+func jsBatchArgHydration(paramTypes []ValType) string {
+	var b strings.Builder
+	for i, vt := range paramTypes {
+		if vt != ValTimestamp {
+			continue
+		}
+		fmt.Fprintf(&b, "a[%d] = new Date(a[%d]); ", i, i)
+	}
+	return b.String()
 }

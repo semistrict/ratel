@@ -128,6 +128,13 @@ func RatelMain() {
 func ratelAdvertiseHost() string {
 	host, _, _ := net.SplitHostPort(ratelListenAddr)
 	if host == "0.0.0.0" || host == "" {
+		// On Fly.io, use <machine_id>.vm.<app>.internal which is
+		// resolvable by all machines in the app's private network.
+		if machID := os.Getenv("FLY_MACHINE_ID"); machID != "" {
+			if appName := os.Getenv("FLY_APP_NAME"); appName != "" {
+				return fmt.Sprintf("%s.vm.%s.internal", machID, appName)
+			}
+		}
 		if h, err := os.Hostname(); err == nil && h != "" {
 			return h
 		}

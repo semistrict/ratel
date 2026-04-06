@@ -50,8 +50,9 @@ var (
 const tigrisEndpoint = "https://fly.storage.tigris.dev"
 
 func storageURL() string {
-	return fmt.Sprintf("s3://%s?endpoint=%s&region=auto",
-		*flagBucket, tigrisEndpoint)
+	// Use app name as prefix so each deploy gets a clean namespace.
+	return fmt.Sprintf("s3://%s/%s?endpoint=%s&region=auto",
+		*flagBucket, *flagApp, tigrisEndpoint)
 }
 
 func main() {

@@ -378,77 +378,69 @@ func (r *Registry) Call(
 	// Parse the JSON string in Go -- one CGO call instead of N GetIdx calls.
 	jsonStr := val.String()
 
+	// Parse JSON results. Each element can be null (→ DNull) or a typed value.
+	var raws []jsoniter.RawMessage
+	if err := jsoniter.Unmarshal([]byte(jsonStr), &raws); err != nil {
+		return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
+	}
+
 	results := make([]tree.Datum, len(argsBatch))
-	switch cf.resultType {
-	case ValI64:
-		var nums []float64
-		if err := jsoniter.Unmarshal([]byte(jsonStr), &nums); err != nil {
-			return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
+	for i, raw := range raws {
+		if len(raw) == 0 || string(raw) == "null" {
+			results[i] = tree.DNull
+			continue
 		}
-		for i, n := range nums {
+		switch cf.resultType {
+		case ValI64:
+			var n float64
+			if err := jsoniter.Unmarshal(raw, &n); err != nil {
+				return nil, fmt.Errorf("UDF %q result %d: %w", name, i, err)
+			}
 			d := tree.DInt(int64(n))
 			results[i] = &d
-		}
-	case ValF64:
-		var nums []float64
-		if err := jsoniter.Unmarshal([]byte(jsonStr), &nums); err != nil {
-			return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
-		}
-		for i, n := range nums {
+		case ValF64:
+			var n float64
+			if err := jsoniter.Unmarshal(raw, &n); err != nil {
+				return nil, fmt.Errorf("UDF %q result %d: %w", name, i, err)
+			}
 			d := tree.DFloat(n)
 			results[i] = &d
-		}
-	case ValI32:
-		var nums []float64
-		if err := jsoniter.Unmarshal([]byte(jsonStr), &nums); err != nil {
-			return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
-		}
-		for i, n := range nums {
+		case ValI32:
+			var n float64
+			if err := jsoniter.Unmarshal(raw, &n); err != nil {
+				return nil, fmt.Errorf("UDF %q result %d: %w", name, i, err)
+			}
 			if n != 0 {
 				results[i] = tree.DBoolTrue
 			} else {
 				results[i] = tree.DBoolFalse
 			}
-		}
-	case ValString:
-		var strs []string
-		if err := jsoniter.Unmarshal([]byte(jsonStr), &strs); err != nil {
-			return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
-		}
-		for i, s := range strs {
+		case ValString:
+			var s string
+			if err := jsoniter.Unmarshal(raw, &s); err != nil {
+				return nil, fmt.Errorf("UDF %q result %d: %w", name, i, err)
+			}
 			d := tree.DString(s)
 			results[i] = &d
-		}
-	case ValTimestamp:
-		// Timestamps are serialized as epoch milliseconds by JSON.stringify(Date).
-		// But JSON.stringify on a Date produces a string like "2025-01-01T00:00:00.000Z".
-		var strs []string
-		if err := jsoniter.Unmarshal([]byte(jsonStr), &strs); err != nil {
-			return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
-		}
-		for i, s := range strs {
+		case ValTimestamp:
+			var s string
+			if err := jsoniter.Unmarshal(raw, &s); err != nil {
+				return nil, fmt.Errorf("UDF %q result %d: %w", name, i, err)
+			}
 			t, _, err := tree.ParseDTimestamp(nil, s, time.Microsecond)
 			if err != nil {
 				return nil, fmt.Errorf("UDF %q result %d: parsing timestamp %q: %w", name, i, s, err)
 			}
 			results[i] = t
-		}
-	case ValJSON:
-		// JSON results: each element is a raw JSON value. We use jsoniter.RawMessage
-		// to avoid re-parsing.
-		var raws []jsoniter.RawMessage
-		if err := jsoniter.Unmarshal([]byte(jsonStr), &raws); err != nil {
-			return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
-		}
-		for i, raw := range raws {
+		case ValJSON:
 			j, err := crdbJSON.ParseJSON(string(raw))
 			if err != nil {
 				return nil, fmt.Errorf("UDF %q result %d: parsing JSON: %w", name, i, err)
 			}
 			results[i] = tree.NewDJSON(j)
+		default:
+			return nil, fmt.Errorf("unsupported result type: 0x%02x", byte(cf.resultType))
 		}
-	default:
-		return nil, fmt.Errorf("unsupported result type: 0x%02x", byte(cf.resultType))
 	}
 
 	return results, nil

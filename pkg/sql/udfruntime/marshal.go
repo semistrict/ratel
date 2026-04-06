@@ -72,7 +72,7 @@ func ValTypeToSQLType(v ValType) (*types.T, error) {
 // If forWasm is true, i64 values are wrapped in BigInt() for WASM interop.
 func MarshalDatumToJS(d tree.Datum, vt ValType, forWasm bool) (string, error) {
 	if d == tree.DNull {
-		return "", fmt.Errorf("NULL values are not supported in UDF functions")
+		return "null", nil
 	}
 	switch vt {
 	case ValI64:
@@ -141,7 +141,8 @@ func MarshalDatumToJS(d tree.Datum, vt ValType, forWasm bool) (string, error) {
 // the batch call to build the args JSON array.
 func WriteDatumJSON(buf *bytes.Buffer, d tree.Datum, vt ValType) error {
 	if d == tree.DNull {
-		return fmt.Errorf("NULL values are not supported in UDF functions")
+		buf.WriteString("null")
+		return nil
 	}
 	switch vt {
 	case ValI64:

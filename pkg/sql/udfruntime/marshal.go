@@ -141,8 +141,7 @@ func MarshalDatumToJS(d tree.Datum, vt ValType, forWasm bool) (string, error) {
 // the batch call to build the args JSON array.
 func WriteDatumJSON(buf *bytes.Buffer, d tree.Datum, vt ValType) error {
 	if d == tree.DNull {
-		buf.WriteString("null")
-		return nil
+		return fmt.Errorf("NULL values are not supported in UDF functions")
 	}
 	switch vt {
 	case ValI64:

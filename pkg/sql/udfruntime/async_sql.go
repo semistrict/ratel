@@ -85,6 +85,11 @@ func (r *Registry) makeAsyncSQLTemplate() *v8.FunctionTemplate {
 		state := r.callState
 		resultCh := state.results
 
+		if state.executor == nil {
+			r.callState.err = fmt.Errorf("sql`...`: no SQL executor available (UDF cannot execute SQL in this context)")
+			return nil
+		}
+
 		// Launch SQL execution in a goroutine.
 		state.pending.Add(1)
 		go func() {

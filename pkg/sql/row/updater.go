@@ -390,6 +390,54 @@ func (ru *Updater) UpdateRow(
 		return nil, err
 	}
 
+	// Update subordinate keys for array columns. Put all new entries
+	// (overwrites any existing values at the same indices), then delete
+	// entries for indices that no longer exist (array shrunk).
+	newSubEntries, err := ru.Helper.encodeSubordinateKeys(
+		primaryIndexKey, ru.FetchColIDtoRowIndex, ru.newValues,
+	)
+	if err != nil {
+		return nil, err
+	}
+	for i := range newSubEntries {
+		e := &newSubEntries[i]
+		insertPutFn(ctx, batch, &e.Key, &e.Value, traceKV)
+	}
+	// Delete stale subordinate keys from old array values that are longer
+	// than the new ones.
+	for _, col := range ru.Helper.TableDesc.PublicColumns() {
+		if !ru.Helper.isArrayColumn(col.GetID()) {
+			continue
+		}
+		oldIdx, ok := ru.FetchColIDtoRowIndex.Get(col.GetID())
+		if !ok {
+			continue
+		}
+		oldArr, _ := oldValues[oldIdx].(*tree.DArray)
+		oldLen := 0
+		if oldArr != nil {
+			oldLen = oldArr.Len()
+		}
+		newIdx, ok := ru.FetchColIDtoRowIndex.Get(col.GetID())
+		if !ok {
+			continue
+		}
+		newArr, _ := ru.newValues[newIdx].(*tree.DArray)
+		newLen := 0
+		if newArr != nil {
+			newLen = newArr.Len()
+		}
+		if oldLen > newLen {
+			staleKeys := rowenc.SubordinateKeysForColumn(primaryIndexKey, col.GetID(), oldLen)
+			for i := newLen; i < oldLen; i++ {
+				if traceKV {
+					log.VEventf(ctx, 2, "Del %s", staleKeys[i])
+				}
+				batch.Del(staleKeys[i])
+			}
+		}
+	}
+
 	// Update secondary indexes.
 	// We're iterating through all of the indexes, which should have corresponding entries
 	// in the new and old values.

@@ -38,7 +38,9 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/execinfra"
 	"github.com/cockroachdb/cockroach/pkg/sql/kvstreamer"
 	"github.com/cockroachdb/cockroach/pkg/sql/row"
+	"github.com/cockroachdb/cockroach/pkg/sql/rowenc"
 	"github.com/cockroachdb/cockroach/pkg/sql/rowenc/keyside"
+	"github.com/cockroachdb/cockroach/pkg/sql/rowenc/valueside"
 	"github.com/cockroachdb/cockroach/pkg/sql/rowinfra"
 	"github.com/cockroachdb/cockroach/pkg/sql/scrub"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
@@ -283,6 +285,14 @@ type cFetcher struct {
 		tableoidCol coldata.DatumVec
 	}
 
+	// subordinateArrays accumulates array elements from subordinate keys
+	// during row assembly. Keyed by column ordinal into FetchedColumns.
+	subordinateArrays map[int]*tree.DArray
+
+	// hasArrayColumns is true if the table has any array-typed columns
+	// that would use subordinate key encoding.
+	hasArrayColumns bool
+
 	// scratch is a scratch space used when decoding bytes-like and decimal
 	// keys.
 	scratch []byte
@@ -476,6 +486,15 @@ func (cf *cFetcher) Init(
 	cf.table = table
 	cf.accountingHelper.Init(allocator, cf.memoryLimit, cf.table.typs)
 
+	// Check if any fetched columns are array types. If so, the row may
+	// contain subordinate keys that need special handling.
+	for i := range tableArgs.spec.FetchedColumns {
+		if tableArgs.spec.FetchedColumns[i].Type.Family() == types.ArrayFamily {
+			cf.hasArrayColumns = true
+			break
+		}
+	}
+
 	return nil
 }
 
@@ -535,7 +554,13 @@ func (cf *cFetcher) StartScan(
 		//   - KVs for some column families are omitted for some rows - then we
 		//     will actually fetch more KVs than necessary, but we'll decode
 		//     limitHint number of rows.
-		firstBatchLimit = rowinfra.KeyLimit(int(limitHint) * int(cf.table.spec.MaxKeysPerRow))
+		if cf.hasArrayColumns {
+			// Array columns use subordinate keys, so the number of KVs
+			// per row is unbounded. Disable the batch limit.
+			firstBatchLimit = 0
+		} else {
+			firstBatchLimit = rowinfra.KeyLimit(int(limitHint) * int(cf.table.spec.MaxKeysPerRow))
+		}
 	}
 
 	f, err := row.NewKVFetcher(
@@ -830,9 +855,10 @@ func (cf *cFetcher) NextBatch(ctx context.Context) (coldata.Batch, error) {
 			if cf.table.rowLastModified.Less(cf.machine.nextKV.Value.Timestamp) {
 				cf.table.rowLastModified = cf.machine.nextKV.Value.Timestamp
 			}
-			// If the index has only one column family, then the next KV will
+			// If the index has only one column family and no array columns
+			// (which produce subordinate keys), then the next KV will
 			// always belong to a different row than the current KV.
-			if cf.table.spec.MaxKeysPerRow == 1 {
+			if cf.table.spec.MaxKeysPerRow == 1 && !cf.hasArrayColumns {
 				cf.machine.state[0] = stateFinalizeRow
 				cf.machine.state[1] = stateInitFetch
 				continue
@@ -883,7 +909,10 @@ func (cf *cFetcher) NextBatch(ctx context.Context) (coldata.Batch, error) {
 				cf.table.rowLastModified = cf.machine.nextKV.Value.Timestamp
 			}
 
-			if familyID == cf.table.spec.MaxFamilyID {
+			// Check if the row might have more keys. Subordinate keys
+			// (array elements) always appear as familyID 0, so don't use
+			// the MaxFamilyID check to finalize when arrays are present.
+			if familyID == cf.table.spec.MaxFamilyID && !cf.hasArrayColumns {
 				// We know the row can't have any more keys, so finalize the row.
 				cf.machine.state[0] = stateFinalizeRow
 				cf.machine.state[1] = stateInitFetch
@@ -893,6 +922,9 @@ func (cf *cFetcher) NextBatch(ctx context.Context) (coldata.Batch, error) {
 			}
 
 		case stateFinalizeRow:
+			// Finalize any accumulated subordinate array elements.
+			cf.finalizeSubordinateArrays()
+
 			// Populate the timestamp system column if needed. We have to do it
 			// on a per row basis since each row can be modified at a different
 			// time.
@@ -1030,6 +1062,21 @@ func (cf *cFetcher) processValue(ctx context.Context, familyID descpb.FamilyID) 
 		// In these cases, the correct value will be present in family 0 and the
 		// table.row value gets overwritten.
 
+		// Check for subordinate keys before inspecting the value tag.
+		// Subordinate keys share family 0 but have additional suffix
+		// bytes (col_id + elem_idx + suffix_len).
+		if familyID == 0 {
+			suffix := cf.machine.nextKV.Key[len(cf.machine.lastRowPrefix):]
+			remaining, _, subErr := encoding.DecodeUvarintAscending(suffix)
+			if subErr == nil && len(remaining) > 0 {
+				prettyKey, prettyValue, err = cf.processSubordinateValue(ctx, table, remaining, prettyKey)
+				if err != nil {
+					return scrub.WrapError(scrub.IndexValueDecodingError, err)
+				}
+				return nil
+			}
+		}
+
 		switch val.GetTag() {
 		case roachpb.ValueType_TUPLE:
 			// In this case, we don't need to decode the column family ID, because
@@ -1043,8 +1090,7 @@ func (cf *cFetcher) processValue(ctx context.Context, familyID descpb.FamilyID) 
 			prettyKey, prettyValue, err = cf.processValueBytes(ctx, table, tupleBytes, prettyKey)
 
 		default:
-			// If familyID is 0, this is the row sentinel (in the legacy pre-family format),
-			// and a value is not expected, so we're done.
+			// If familyID is 0, this is the row sentinel — no value expected.
 			if familyID == 0 {
 				break
 			}
@@ -1145,6 +1191,17 @@ func (cf *cFetcher) processValueSingle(
 			return prettyKey, "", nil
 		}
 		typ := cf.table.spec.FetchedColumns[idx].Type
+		// Array columns must use subordinate key encoding. If we find one
+		// stored as a single family value, the data was written by an
+		// incompatible CockroachDB version.
+		if typ.Family() == types.ArrayFamily {
+			return "", "", errors.AssertionFailedf(
+				"column %q (id=%d) has array type encoded as single-column family value; "+
+					"this data was written by an incompatible CockroachDB version "+
+					"that does not use subordinate key encoding for arrays",
+				cf.table.spec.FetchedColumns[idx].Name, colID,
+			)
+		}
 		err := colencoding.UnmarshalColumnValueToCol(
 			&table.da, &cf.machine.colvecs, idx, cf.machine.rowIdx, typ, val,
 		)
@@ -1168,6 +1225,84 @@ func (cf *cFetcher) processValueSingle(
 		log.Infof(ctx, "Scan %s -> [%d] (skipped)", cf.machine.nextKV.Key, colID)
 	}
 	return prettyKey, prettyValue, nil
+}
+
+// processSubordinateValue handles a subordinate key (array element).
+// remaining is the key suffix after the family-0 sentinel has been consumed.
+func (cf *cFetcher) processSubordinateValue(
+	ctx context.Context,
+	table *cTableInfo,
+	remaining []byte,
+	prettyKeyPrefix string,
+) (prettyKey string, prettyValue string, err error) {
+	prettyKey = prettyKeyPrefix
+
+	// Decode col_id.
+	remaining, colID64, err := encoding.DecodeUvarintAscending(remaining)
+	if err != nil {
+		return "", "", errors.Wrap(err, "decoding subordinate key column ID")
+	}
+	colID := descpb.ColumnID(colID64)
+
+	// Decode elem_idx (we append in order, so don't need the value).
+	_, _, err = encoding.DecodeUvarintAscending(remaining)
+	if err != nil {
+		return "", "", errors.Wrap(err, "decoding subordinate key element index")
+	}
+
+	// Look up the column.
+	idx, ok := table.ColIdxMap.Get(colID)
+	if !ok {
+		return prettyKey, "", nil // Column not requested.
+	}
+
+	colSpec := &table.spec.FetchedColumns[idx]
+	elemType := colSpec.Type.ArrayContents()
+
+	// Unmarshal the element value.
+	val := cf.machine.nextKV.Value
+	var value tree.Datum
+	if rowenc.IsSubordinateNull(val) {
+		value = tree.DNull
+	} else {
+		var err error
+		value, err = valueside.UnmarshalLegacy(&table.da, elemType, val)
+		if err != nil {
+			return "", "", errors.Wrapf(err, "decoding subordinate value for column %d", colID)
+		}
+	}
+
+	// Accumulate into the DArray.
+	if cf.subordinateArrays == nil {
+		cf.subordinateArrays = make(map[int]*tree.DArray)
+	}
+	arr, exists := cf.subordinateArrays[idx]
+	if !exists {
+		arr = tree.NewDArray(elemType)
+		cf.subordinateArrays[idx] = arr
+	}
+	if err := arr.Append(value); err != nil {
+		return "", "", err
+	}
+
+	if cf.traceKV {
+		prettyKey = fmt.Sprintf("%s/%s[%d]", prettyKey, colSpec.Name, arr.Len()-1)
+		prettyValue = value.String()
+	}
+	return prettyKey, prettyValue, nil
+}
+
+// finalizeSubordinateArrays converts accumulated subordinate arrays into
+// datum values and sets them in the output column vectors.
+func (cf *cFetcher) finalizeSubordinateArrays() {
+	for idx, arr := range cf.subordinateArrays {
+		cf.machine.colvecs.Vecs[idx].Datum().Set(cf.machine.rowIdx, arr)
+		cf.machine.remainingValueColsByIdx.Remove(idx)
+	}
+	// Clear for next row.
+	for k := range cf.subordinateArrays {
+		delete(cf.subordinateArrays, k)
+	}
 }
 
 func (cf *cFetcher) processValueBytes(

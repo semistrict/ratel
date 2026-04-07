@@ -897,18 +897,11 @@ func (desc *Mutable) allocateColumnFamilyIDs(columnNames map[string]descpb.Colum
 				ColumnIDs:   []descpb.ColumnID{col.ID},
 			})
 		} else {
-			idx, ok := fitColumnToFamily(desc, *col)
-			if !ok {
-				idx = len(desc.Families)
-				desc.Families = append(desc.Families, descpb.ColumnFamilyDescriptor{
-					ID:          desc.NextFamilyID,
-					ColumnNames: []string{},
-					ColumnIDs:   []descpb.ColumnID{},
-				})
-			}
-			familyID = desc.Families[idx].ID
-			desc.Families[idx].ColumnNames = append(desc.Families[idx].ColumnNames, col.Name)
-			desc.Families[idx].ColumnIDs = append(desc.Families[idx].ColumnIDs, col.ID)
+			// Always assign to family 0. Multiple column families are
+			// not supported for user tables.
+			desc.Families[0].ColumnNames = append(desc.Families[0].ColumnNames, col.Name)
+			desc.Families[0].ColumnIDs = append(desc.Families[0].ColumnIDs, col.ID)
+			familyID = 0
 		}
 		if familyID >= desc.NextFamilyID {
 			desc.NextFamilyID = familyID + 1
@@ -1122,8 +1115,15 @@ func (desc *Mutable) AddColumn(col *descpb.ColumnDescriptor) {
 	desc.Columns = append(desc.Columns, *col)
 }
 
-// AddFamily adds a family to the table.
+// AddFamily adds a family to the table. For non-system user tables, all
+// columns are merged into family 0 since multiple families are not supported.
 func (desc *Mutable) AddFamily(fam descpb.ColumnFamilyDescriptor) {
+	if desc.ParentID != keys.SystemDatabaseID && len(desc.Families) > 0 {
+		// Merge into existing family 0 instead of creating a new family.
+		desc.Families[0].ColumnNames = append(desc.Families[0].ColumnNames, fam.ColumnNames...)
+		desc.Families[0].ColumnIDs = append(desc.Families[0].ColumnIDs, fam.ColumnIDs...)
+		return
+	}
 	desc.Families = append(desc.Families, fam)
 }
 

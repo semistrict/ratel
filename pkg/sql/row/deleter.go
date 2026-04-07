@@ -144,7 +144,21 @@ func (rd *Deleter) DeleteRow(
 		return err
 	}
 
-	// Delete the row.
+	// Delete subordinate keys for array columns.
+	subEntries, err := rd.Helper.encodeSubordinateKeys(
+		primaryIndexKey, rd.FetchColIDtoRowIndex, values,
+	)
+	if err != nil {
+		return err
+	}
+	for _, e := range subEntries {
+		if traceKV {
+			log.VEventf(ctx, 2, "Del %s", e.Key)
+		}
+		b.Del(e.Key)
+	}
+
+	// Delete the row's family keys.
 	var called bool
 	return rd.Helper.TableDesc.ForeachFamily(func(family *descpb.ColumnFamilyDescriptor) error {
 		if called {

@@ -78,6 +78,13 @@ func MakeSplitter(
 		}
 	}
 
+	// * The table must not have array columns. Array columns use subordinate
+	//   keys that extend beyond the family sentinel, so point Gets on
+	//   individual family keys would miss the subordinate entries.
+	if table.HasArrayColumn() {
+		return NoopSplitter()
+	}
+
 	neededFamilies := rowenc.NeededColumnFamilyIDs(neededColOrdinals, table, index)
 
 	// Sanity check.

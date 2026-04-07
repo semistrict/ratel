@@ -451,6 +451,10 @@ type TableDescriptor interface {
 	//   desc.TableDesc().Mutations slice.
 	// - all system columns defined in colinfo.AllSystemColumnDescs.
 	AllColumns() []Column
+	// HasArrayColumn returns true if the table has any public column with
+	// an array type. Tables with array columns use subordinate key encoding
+	// which affects span generation and fetching.
+	HasArrayColumn() bool
 	// PublicColumns returns a slice of Column interfaces containing the
 	// table's public columns, in the canonical order.
 	PublicColumns() []Column

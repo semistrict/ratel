@@ -143,6 +143,17 @@ func prepareInsertOrUpdateBatch(
 			// Storage optimization to store DefaultColumnID directly as a value. Also
 			// backwards compatible with the original BaseFormatVersion.
 
+			// Non-empty array columns are encoded as subordinate keys, not
+			// inline in family values. NULL and empty arrays are still
+			// encoded inline to preserve the NULL vs empty distinction.
+			if helper.isArrayColumn(family.DefaultColumnID) {
+				if idx, ok := valColIDMapping.Get(family.DefaultColumnID); ok {
+					if dArr, isDArr := values[idx].(*tree.DArray); isDArr && dArr != nil && dArr.Len() > 0 {
+						continue
+					}
+				}
+			}
+
 			idx, ok := marshaledColIDMapping.Get(family.DefaultColumnID)
 			if !ok {
 				continue
@@ -175,6 +186,16 @@ func prepareInsertOrUpdateBatch(
 			return nil, errors.AssertionFailedf("invalid family sorted column id map")
 		}
 		for _, colID := range familySortedColumnIDs {
+			// Non-empty array columns are encoded as subordinate keys,
+			// not inline. NULL and empty arrays still go in the TUPLE.
+			if helper.isArrayColumn(colID) {
+				if idx, ok := valColIDMapping.Get(colID); ok {
+					if dArr, isDArr := values[idx].(*tree.DArray); isDArr && dArr != nil && dArr.Len() > 0 {
+						continue
+					}
+				}
+			}
+
 			idx, ok := valColIDMapping.Get(colID)
 			if !ok || values[idx] == tree.DNull {
 				// Column not being updated or inserted.

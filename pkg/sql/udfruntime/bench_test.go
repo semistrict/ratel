@@ -15,6 +15,7 @@
 package udfruntime
 
 import (
+	"bytes"
 	"context"
 	"testing"
 
@@ -54,36 +55,6 @@ func BenchmarkBatchJS1(b *testing.B) {
 	defer reg.Close()
 
 	err := reg.CompileAndRegisterJS("add", "function invoke(a, b) { return a + b; }",
-		[]ValType{ValI64, ValI64}, ValI64, 0)
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	tc := reg.NewTxnContext(nil, context.Background(), nil, nil)
-	defer tc.Close()
-
-	batch := []tree.Datums{{tree.NewDInt(3), tree.NewDInt(4)}}
-
-	b.ResetTimer()
-	for range b.N {
-		if _, err := reg.Call(tc, "add", batch); err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkBatchWasm1(b *testing.B) {
-	reg := NewRegistry()
-	defer reg.Close()
-
-	wat := `(module
-		(func (export "invoke") (param i64 i64) (result i64)
-			local.get 0 local.get 1 i64.add))`
-	wasmBytes, err := Wat2Wasm(wat)
-	if err != nil {
-		b.Fatal(err)
-	}
-	err = reg.CompileAndRegisterWasm("add", wasmBytes, "invoke",
 		[]ValType{ValI64, ValI64}, ValI64, 0)
 	if err != nil {
 		b.Fatal(err)
@@ -154,6 +125,200 @@ func BenchmarkBatchAsyncSQL1(b *testing.B) {
 	b.ResetTimer()
 	for range b.N {
 		if _, err := reg.Call(tc, "count", batch); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+// --- Marshaling benchmarks ---
+
+func BenchmarkMarshalDatumToJS(b *testing.B) {
+	args := tree.Datums{
+		tree.NewDString("Alice"),
+		tree.NewDFloat(11.49),
+		tree.NewDInt(2),
+		tree.NewDString(`["electronics","sale"]`),
+	}
+	types := []ValType{ValString, ValF64, ValI64, ValString}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for j, arg := range args {
+			s, err := MarshalDatumToJS(arg, types[j])
+			if err != nil {
+				b.Fatal(err)
+			}
+			_ = s
+		}
+	}
+}
+
+func BenchmarkWriteDatumJSON(b *testing.B) {
+	args := tree.Datums{
+		tree.NewDString("Alice"),
+		tree.NewDFloat(11.49),
+		tree.NewDInt(2),
+		tree.NewDString(`["electronics","sale"]`),
+	}
+	types := []ValType{ValString, ValF64, ValI64, ValString}
+	var buf bytes.Buffer
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		buf.Reset()
+		for j, arg := range args {
+			if err := WriteDatumJSON(&buf, arg, types[j]); err != nil {
+				b.Fatal(err)
+			}
+		}
+	}
+}
+
+// --- Pool-specific benchmarks ---
+
+// BenchmarkPool_PureSync1000 measures pool overhead for 1000 pure sync rows.
+// This is THE regression benchmark — compare against BenchmarkBatchJS1000.
+func BenchmarkPool_PureSync1000(b *testing.B) {
+	reg := NewRegistry()
+	defer reg.Close()
+
+	err := reg.CompileAndRegisterJS("double", "function invoke(x) { return x * 2; }",
+		[]ValType{ValI64}, ValI64, 0)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	tc := reg.NewTxnContext(nil, context.Background(), nil, nil)
+	defer tc.Close()
+
+	batch := make([]tree.Datums, 1000)
+	for i := range batch {
+		batch[i] = tree.Datums{tree.NewDInt(tree.DInt(i))}
+	}
+
+	b.ResetTimer()
+	for range b.N {
+		if _, err := reg.Call(tc, "double", batch); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+// BenchmarkPool_PureAsync1000 measures 1000 rows all returning Promise.resolve().
+func BenchmarkPool_PureAsync1000(b *testing.B) {
+	reg := NewRegistry()
+	defer reg.Close()
+
+	err := reg.CompileAndRegisterJS("async_double",
+		"function invoke(x) { return Promise.resolve(x * 2); }",
+		[]ValType{ValI64}, ValI64, 0)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	tc := reg.NewTxnContext(nil, context.Background(), nil, nil)
+	defer tc.Close()
+
+	batch := make([]tree.Datums, 1000)
+	for i := range batch {
+		batch[i] = tree.Datums{tree.NewDInt(tree.DInt(i))}
+	}
+
+	b.ResetTimer()
+	for range b.N {
+		if _, err := reg.Call(tc, "async_double", batch); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+// BenchmarkPool_MixedAsync1000 measures 500 sync + 500 async rows.
+func BenchmarkPool_MixedAsync1000(b *testing.B) {
+	reg := NewRegistry()
+	defer reg.Close()
+
+	err := reg.CompileAndRegisterJS("mixed",
+		`function invoke(x) {
+			if (x % 2 === 0) return x * 2;
+			return Promise.resolve(x * 3);
+		}`,
+		[]ValType{ValI64}, ValI64, 0)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	tc := reg.NewTxnContext(nil, context.Background(), nil, nil)
+	defer tc.Close()
+
+	batch := make([]tree.Datums, 1000)
+	for i := range batch {
+		batch[i] = tree.Datums{tree.NewDInt(tree.DInt(i))}
+	}
+
+	b.ResetTimer()
+	for range b.N {
+		if _, err := reg.Call(tc, "mixed", batch); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+// BenchmarkPool_AsyncSQL100 measures 100 rows with mock sql`` executor.
+func BenchmarkPool_AsyncSQL100(b *testing.B) {
+	reg := NewRegistry()
+	defer reg.Close()
+
+	exec := &nopExecutor{
+		rows: []tree.Datums{{tree.NewDInt(42)}},
+		cols: []ResultColumn{{Name: "n"}},
+	}
+
+	err := reg.CompileAndRegisterJS("sql_lookup",
+		"async function invoke(x) { var r = await sql`SELECT n FROM t WHERE id = ${x}`; return r[0].n; }",
+		[]ValType{ValI64}, ValI64, 0)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	tc := reg.NewTxnContext(exec, context.Background(), nil, nil)
+	defer tc.Close()
+
+	batch := make([]tree.Datums, 100)
+	for i := range batch {
+		batch[i] = tree.Datums{tree.NewDInt(tree.DInt(i))}
+	}
+
+	b.ResetTimer()
+	for range b.N {
+		if _, err := reg.Call(tc, "sql_lookup", batch); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+// BenchmarkPool_Window4096 measures throughput with a large batch that
+// exercises the sliding window across multiple submit/collect cycles.
+func BenchmarkPool_Window4096(b *testing.B) {
+	reg := NewRegistry()
+	defer reg.Close()
+
+	err := reg.CompileAndRegisterJS("inc", "function invoke(x) { return x + 1; }",
+		[]ValType{ValI64}, ValI64, 0)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	tc := reg.NewTxnContext(nil, context.Background(), nil, nil)
+	defer tc.Close()
+
+	batch := make([]tree.Datums, 4096)
+	for i := range batch {
+		batch[i] = tree.Datums{tree.NewDInt(tree.DInt(i))}
+	}
+
+	b.ResetTimer()
+	for range b.N {
+		if _, err := reg.Call(tc, "inc", batch); err != nil {
 			b.Fatal(err)
 		}
 	}

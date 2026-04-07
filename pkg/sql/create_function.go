@@ -88,116 +88,75 @@ func (n *createWasmFunctionNode) startExec(params runParams) error {
 	funcName := string(n.n.Name)
 	lang := n.n.Language
 
-	switch lang {
-	case "wasm":
-		// Compile WAT to WASM.
-		wasmBytes, err := udfruntime.Wat2Wasm(n.n.Body)
-		if err != nil {
-			return fmt.Errorf("compiling WAT: %w", err)
-		}
+	if lang != "javascript" {
+		return fmt.Errorf("unsupported language %q; supported: javascript, js, plv8", lang)
+	}
 
-		// Register in the UDF runtime.
-		err = registry.CompileAndRegisterWasm(funcName, wasmBytes, "invoke",
-			paramValTypes, retValType, 0)
-		if err != nil {
-			return err
-		}
-
-		// Build and register the SQL function definition.
-		if err := registerUDFFunDef(registry, funcName, sqlArgTypes, retType, n.n.Volatility); err != nil {
-			registry.Deregister(funcName)
-			return err
-		}
-
-		// Persist to system.wasm_functions so other nodes can discover it.
-		argTypesBytes := encodeArgTypes(sqlArgTypes)
-		retTypeBytes := []byte{byte(retValType)}
-
-		_, err = p.execCfg.InternalExecutor.ExecEx(
-			ctx,
-			"create-wasm-function",
-			p.Txn(),
-			sessiondata.InternalExecutorOverride{User: security.RootUserName()},
-			`UPSERT INTO system.wasm_functions
-			(database_id, schema_id, function_name, arg_types, return_type,
-			 wasm_module, wat_source, export_name, owner)
-			VALUES (0, 0, $1, $2, $3, $4, $5, 'invoke', $6)`,
-			funcName,
-			argTypesBytes,
-			retTypeBytes,
-			wasmBytes,
-			n.n.Body,
-			p.User().Normalized(),
-		)
-		if err != nil {
-			tree.UnregisterFunction(funcName)
-			registry.Deregister(funcName)
-			return fmt.Errorf("persisting WASM function: %w", err)
-		}
-
-	case "javascript":
-		// Wrap the bare function body with parameter names.
-		// User writes:   $$ return first_name + ' ' + last_name; $$
-		// We generate:   function invoke(first_name, last_name) { return first_name + ' ' + last_name; }
-		// If the body already contains "function invoke" or "async function invoke",
-		// skip wrapping (backwards compatibility).
-		jsBody := n.n.Body
-		if !strings.Contains(jsBody, "function invoke") {
-			paramNames := make([]string, len(n.n.Params))
-			for i, p := range n.n.Params {
-				if p.Name != "" {
-					paramNames[i] = p.Name
-				} else {
-					paramNames[i] = fmt.Sprintf("$%d", i+1)
-				}
+	// Wrap the bare function body with parameter names.
+	// User writes:   $$ return first_name + ' ' + last_name; $$
+	// We generate:   function invoke(first_name, last_name) { return first_name + ' ' + last_name; }
+	// If the body already contains "function invoke" or "async function invoke",
+	// skip wrapping (backwards compatibility).
+	jsBody := n.n.Body
+	if !strings.Contains(jsBody, "function invoke") {
+		paramNames := make([]string, len(n.n.Params))
+		for i, p := range n.n.Params {
+			if p.Name != "" {
+				paramNames[i] = p.Name
+			} else {
+				paramNames[i] = fmt.Sprintf("$%d", i+1)
 			}
-			// Always wrap as async -- works for both sync and async bodies.
-			// The Call() method handles both Promise and non-Promise returns.
+		}
+		// Only wrap as async if the body uses await or sql``.
+		// Sync functions use the fast batched JSON.stringify path (one
+		// CGO call per batch). Async functions use the sequential path.
+		needsAsync := strings.Contains(n.n.Body, "await") || strings.Contains(n.n.Body, "sql`")
+		if needsAsync {
 			jsBody = fmt.Sprintf("async function invoke(%s) {\n%s\n}",
 				strings.Join(paramNames, ", "), jsBody)
+		} else {
+			jsBody = fmt.Sprintf("function invoke(%s) {\n%s\n}",
+				strings.Join(paramNames, ", "), jsBody)
 		}
+	}
 
-		err = registry.CompileAndRegisterJS(funcName, jsBody,
-			paramValTypes, retValType, 0)
-		if err != nil {
-			return err
-		}
+	err = registry.CompileAndRegisterJS(funcName, jsBody,
+		paramValTypes, retValType, 0)
+	if err != nil {
+		return err
+	}
 
-		// Build and register the SQL function definition.
-		if err := registerUDFFunDef(registry, funcName, sqlArgTypes, retType, n.n.Volatility); err != nil {
-			registry.Deregister(funcName)
-			return err
-		}
+	// Build and register the SQL function definition.
+	if err := registerUDFFunDef(registry, funcName, sqlArgTypes, retType, n.n.Volatility); err != nil {
+		registry.Deregister(funcName)
+		return err
+	}
 
-		// Persist to system.wasm_functions (reusing the table for all UDF languages).
-		// For JavaScript, wasm_module is empty and wat_source holds the JS source.
-		argTypesBytes := encodeArgTypes(sqlArgTypes)
-		retTypeBytes := []byte{byte(retValType)}
+	// Persist to system.wasm_functions (reusing the table for all UDF languages).
+	// For JavaScript, wasm_module is empty and wat_source holds the JS source.
+	argTypesBytes := encodeArgTypes(sqlArgTypes)
+	retTypeBytes := []byte{byte(retValType)}
 
-		_, err = p.execCfg.InternalExecutor.ExecEx(
-			ctx,
-			"create-js-function",
-			p.Txn(),
-			sessiondata.InternalExecutorOverride{User: security.RootUserName()},
-			`UPSERT INTO system.wasm_functions
-			(database_id, schema_id, function_name, arg_types, return_type,
-			 wasm_module, wat_source, export_name, owner)
-			VALUES (0, 0, $1, $2, $3, $4, $5, 'invoke', $6)`,
-			funcName,
-			argTypesBytes,
-			retTypeBytes,
-			[]byte{}, // no wasm module for JS
-			n.n.Body,
-			p.User().Normalized(),
-		)
-		if err != nil {
-			tree.UnregisterFunction(funcName)
-			registry.Deregister(funcName)
-			return fmt.Errorf("persisting JavaScript function: %w", err)
-		}
-
-	default:
-		return fmt.Errorf("unsupported language %q; supported: wasm, javascript", lang)
+	_, err = p.execCfg.InternalExecutor.ExecEx(
+		ctx,
+		"create-js-function",
+		p.Txn(),
+		sessiondata.InternalExecutorOverride{User: security.RootUserName()},
+		`UPSERT INTO system.wasm_functions
+		(database_id, schema_id, function_name, arg_types, return_type,
+		 wasm_module, wat_source, export_name, owner)
+		VALUES (0, 0, $1, $2, $3, $4, $5, 'invoke', $6)`,
+		funcName,
+		argTypesBytes,
+		retTypeBytes,
+		[]byte{}, // no wasm module for JS
+		n.n.Body,
+		p.User().Normalized(),
+	)
+	if err != nil {
+		tree.UnregisterFunction(funcName)
+		registry.Deregister(funcName)
+		return fmt.Errorf("persisting JavaScript function: %w", err)
 	}
 
 	return nil
@@ -237,6 +196,7 @@ func registerUDFFunDef(
 		&tree.FunctionProperties{
 			Category:                "User-defined functions",
 			AvailableOnPublicSchema: true,
+			NullableArgs:            true,
 		},
 		[]tree.Overload{overload},
 	)

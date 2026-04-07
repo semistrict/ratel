@@ -127,6 +127,7 @@ type udfBatchOperator struct {
 	toDatumConverter    *colconv.VecToDatumConverter
 	datumToVecConverter func(tree.Datum) interface{}
 	txnCtx              *udfruntime.TxnContext
+	evalCtx             *tree.EvalContext
 }
 
 var _ colexecop.Operator = &udfBatchOperator{}
@@ -135,7 +136,14 @@ var _ execinfra.Releasable = &udfBatchOperator{}
 func (u *udfBatchOperator) Init(ctx context.Context) {
 	u.OneInputHelper.Init(ctx)
 	// Create a TxnContext that lives for the lifetime of this operator.
-	u.txnCtx = u.registry.NewTxnContext(nil, ctx, nil, nil)
+	// Pass the evalCtx's Txn and SQL executor so that async sql`` calls
+	// can execute SQL within the query's transaction. This is required for
+	// distributed execution where the UDF runs on a remote node.
+	var executor udfruntime.SQLExecutor
+	if ie, ok := u.evalCtx.UDFSQLExecutor.(udfruntime.SQLExecutor); ok {
+		executor = ie
+	}
+	u.txnCtx = u.registry.NewTxnContext(executor, ctx, u.evalCtx.Txn, nil)
 }
 
 func (u *udfBatchOperator) Next() coldata.Batch {
@@ -218,7 +226,7 @@ func NewBuiltinFunctionOperator(
 	// batched operator which calls all rows in a single V8 invocation.
 	if reg, ok := evalCtx.UDFRegistry.(*udfruntime.Registry); ok && reg != nil {
 		funcName := funcExpr.Func.String()
-		if _, _, _, exists := reg.GetSignature(funcName); exists {
+		if _, _, exists := reg.GetSignature(funcName); exists {
 			outputType := funcExpr.ResolvedType()
 			input = colexecutils.NewVectorTypeEnforcer(allocator, input, outputType, outputIdx)
 			return &udfBatchOperator{
@@ -232,6 +240,7 @@ func NewBuiltinFunctionOperator(
 				outputType:          outputType,
 				toDatumConverter:    colconv.NewVecToDatumConverter(len(columnTypes), argumentCols, true /* willRelease */),
 				datumToVecConverter: colconv.GetDatumToPhysicalFn(outputType),
+				evalCtx:             evalCtx,
 			}, nil
 		}
 	}

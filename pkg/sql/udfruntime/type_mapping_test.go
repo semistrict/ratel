@@ -260,25 +260,72 @@ func TestTypeMapping_JSONArray(t *testing.T) {
 	}
 }
 
-// TestTypeMapping_NullHandling tests NULL input handling.
+// TestTypeMapping_NullHandling tests NULL pass-through: NULL inputs
+// become JS null, and JS null/undefined returns become SQL NULL.
 func TestTypeMapping_NullHandling(t *testing.T) {
 	reg := NewRegistry()
 	defer reg.Close()
 
-	err := reg.CompileAndRegisterJS("null_check",
+	// NULL input → JS null → function returns 0
+	err := reg.CompileAndRegisterJS("null_input",
 		`function invoke(x) { return x === null ? 0 : 1; }`,
 		[]ValType{ValString}, ValI64, 0)
 	if err != nil {
-		t.Fatalf("register: %v", err)
+		t.Fatalf("register null_input: %v", err)
 	}
 
 	tc := reg.NewTxnContext(nil, context.Background(), nil, nil)
 	defer tc.Close()
 
-	// Currently NULL fails -- this test documents the expected behavior.
-	_, err = reg.Call(tc, "null_check", []tree.Datums{{tree.DNull}})
-	if err == nil {
-		t.Fatal("expected error for NULL input, got nil")
+	results, err := reg.Call(tc, "null_input", []tree.Datums{{tree.DNull}})
+	if err != nil {
+		t.Fatalf("null_input: %v", err)
+	}
+	expected := tree.NewDInt(0)
+	if results[0].Compare(nil, expected) != 0 {
+		t.Fatalf("null_input: expected %s, got %s", expected, results[0])
+	}
+
+	// Non-NULL input → returns 1
+	results, err = reg.Call(tc, "null_input", []tree.Datums{{tree.NewDString("hello")}})
+	if err != nil {
+		t.Fatalf("non-null input: %v", err)
+	}
+	expected = tree.NewDInt(1)
+	if results[0].Compare(nil, expected) != 0 {
+		t.Fatalf("non-null input: expected %s, got %s", expected, results[0])
+	}
+
+	// NULL output: JS function returns null → SQL NULL
+	err = reg.CompileAndRegisterJS("null_output",
+		`function invoke(x) { return null; }`,
+		[]ValType{ValI64}, ValI64, 0)
+	if err != nil {
+		t.Fatalf("register null_output: %v", err)
+	}
+
+	results, err = reg.Call(tc, "null_output", []tree.Datums{{tree.NewDInt(1)}})
+	if err != nil {
+		t.Fatalf("null_output: %v", err)
+	}
+	if results[0] != tree.DNull {
+		t.Fatalf("null_output: expected DNull, got %s", results[0])
+	}
+
+	// NULL round-trip: NULL in → null in JS → null out → SQL NULL
+	err = reg.CompileAndRegisterJS("null_passthrough",
+		`function invoke(x) { return x; }`,
+		[]ValType{ValString}, ValString, 0)
+	if err != nil {
+		t.Fatalf("register null_passthrough: %v", err)
+	}
+
+	results, err = reg.Call(tc, "null_passthrough", []tree.Datums{{tree.DNull}})
+	if err != nil {
+		t.Fatalf("null_passthrough: %v", err)
+	}
+	if results[0] != tree.DNull {
+		t.Fatalf("null_passthrough: expected DNull, got %s", results[0])
 	}
 }
 

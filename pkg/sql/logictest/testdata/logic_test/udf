@@ -217,19 +217,86 @@ SELECT make_person(name, age)::TEXT FROM people
 {"age": 30, "name": "Alice"}
 {"age": 35, "name": "Charlie"}
 
-subtest wasm_udf
+subtest null_handling
 
+# NULL input passes through as JS null
 statement ok
-CREATE FUNCTION wasm_add(a INT, b INT) RETURNS INT LANGUAGE wasm AS '(module
-  (func (export "invoke") (param i64 i64) (result i64)
-    local.get 0
-    local.get 1
-    i64.add))' IMMUTABLE;
+CREATE FUNCTION null_check(x INT) RETURNS INT AS $$
+  return x === null ? -1 : x * 2;
+$$ LANGUAGE plv8;
 
 query I
-SELECT wasm_add(10, 20)
+SELECT null_check(5)
 ----
-30
+10
+
+query I
+SELECT null_check(NULL)
+----
+-1
+
+# NULL output: JS null becomes SQL NULL
+statement ok
+CREATE FUNCTION maybe_null(x INT) RETURNS INT AS $$
+  if (x < 0) return null;
+  return x;
+$$ LANGUAGE plv8;
+
+query I
+SELECT maybe_null(42)
+----
+42
+
+query I
+SELECT maybe_null(-1)
+----
+NULL
+
+# NULL with strings
+statement ok
+CREATE FUNCTION greet_or_null(name TEXT) RETURNS TEXT AS $$
+  if (name === null) return null;
+  return "Hello, " + name + "!";
+$$ LANGUAGE plv8;
+
+query T
+SELECT greet_or_null('Alice')
+----
+Hello, Alice!
+
+query T
+SELECT greet_or_null(NULL)
+----
+NULL
+
+# NULL in table scan context
+statement ok
+CREATE TABLE nullable_data (id INT PRIMARY KEY, val INT);
+INSERT INTO nullable_data VALUES (1, 10), (2, NULL), (3, 30), (4, NULL), (5, 50);
+
+query II rowsort
+SELECT id, null_check(val) FROM nullable_data
+----
+1  20
+2  -1
+3  60
+4  -1
+5  100
+
+query II rowsort
+SELECT id, maybe_null(COALESCE(val, -1)) FROM nullable_data
+----
+1  10
+2  NULL
+3  30
+4  NULL
+5  50
+
+statement ok
+DROP FUNCTION null_check(x INT);
+DROP FUNCTION maybe_null(x INT);
+DROP FUNCTION greet_or_null(name TEXT);
+DROP TABLE nullable_data;
 
 subtest cleanup
 
@@ -243,6 +310,5 @@ DROP FUNCTION str_upper(s TEXT);
 DROP FUNCTION json_get_name(input_obj JSONB);
 DROP FUNCTION make_person(person_name TEXT, person_age INT);
 DROP FUNCTION get_year(ts TIMESTAMP);
-DROP FUNCTION wasm_add(a INT, b INT);
 DROP TABLE t;
 DROP TABLE people;

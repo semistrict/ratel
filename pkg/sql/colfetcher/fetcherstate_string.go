@@ -12,14 +12,15 @@ func _() {
 	_ = x[stateInitFetch-1]
 	_ = x[stateResetBatch-2]
 	_ = x[stateDecodeFirstKVOfRow-3]
-	_ = x[stateFinalizeRow-4]
-	_ = x[stateEmitLastBatch-5]
-	_ = x[stateFinished-6]
+	_ = x[stateFetchNextKVWithUnfinishedRow-4]
+	_ = x[stateFinalizeRow-5]
+	_ = x[stateEmitLastBatch-6]
+	_ = x[stateFinished-7]
 }
 
-const _fetcherState_name = "stateInvalidstateInitFetchstateResetBatchstateDecodeFirstKVOfRowstateFinalizeRowstateEmitLastBatchstateFinished"
+const _fetcherState_name = "stateInvalidstateInitFetchstateResetBatchstateDecodeFirstKVOfRowstateFetchNextKVWithUnfinishedRowstateFinalizeRowstateEmitLastBatchstateFinished"
 
-var _fetcherState_index = [...]uint8{0, 12, 26, 41, 64, 80, 98, 111}
+var _fetcherState_index = [...]uint8{0, 12, 26, 41, 64, 97, 113, 131, 144}
 
 func (i fetcherState) String() string {
 	if i < 0 || i >= fetcherState(len(_fetcherState_index)-1) {

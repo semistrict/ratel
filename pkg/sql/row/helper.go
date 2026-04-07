@@ -31,6 +31,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/rowenc"
 	"github.com/cockroachdb/cockroach/pkg/sql/rowenc/rowencpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/cockroachdb/cockroach/pkg/util"
 	"github.com/cockroachdb/cockroach/pkg/util/encoding"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
@@ -109,6 +110,10 @@ type rowHelper struct {
 	primaryIndexKeyCols         catalog.TableColSet
 	primaryIndexValueCols       catalog.TableColSet
 	sortedPrimaryRowGroupColIDs []descpb.ColumnID
+
+	// arrayColIDs is the set of column IDs with array types. Computed lazily.
+	arrayColIDs     catalog.TableColSet
+	arrayColIDsInit bool
 
 	// Used to check row size.
 	maxRowSizeLog, maxRowSizeErr uint32
@@ -260,6 +265,31 @@ func (rh *rowHelper) sortedPrimaryRowGroup() []descpb.ColumnID {
 		rh.sortedPrimaryRowGroupColIDs = colIDs
 	}
 	return rh.sortedPrimaryRowGroupColIDs
+}
+
+// isArrayColumn returns true if the given column ID is an array column.
+// The set of array columns is computed lazily on first call.
+func (rh *rowHelper) isArrayColumn(colID descpb.ColumnID) bool {
+	if !rh.arrayColIDsInit {
+		for _, col := range rh.TableDesc.PublicColumns() {
+			if col.GetType().Family() == types.ArrayFamily {
+				rh.arrayColIDs.Add(col.GetID())
+			}
+		}
+		rh.arrayColIDsInit = true
+	}
+	return rh.arrayColIDs.Contains(colID)
+}
+
+// encodeSubordinateKeys returns subordinate key entries for all array columns
+// in the given row values. The primaryIndexKey is the PK prefix before row-group
+// encoding.
+func (rh *rowHelper) encodeSubordinateKeys(
+	primaryIndexKey []byte,
+	colIDtoRowIndex catalog.TableColMap,
+	values []tree.Datum,
+) ([]rowenc.IndexEntry, error) {
+	return rowenc.EncodeSubordinateKeys(rh.TableDesc, primaryIndexKey, colIDtoRowIndex, values)
 }
 
 // checkRowSize compares the size of a row KV against the max_row_size limits.

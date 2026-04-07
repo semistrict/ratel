@@ -123,6 +123,14 @@ func prepareInsertOrUpdateBatch(
 		} else if skip {
 			continue
 		}
+		// Non-empty array columns are encoded as subordinate keys rather than
+		// inline in the row-group tuple. NULL and empty arrays stay inline to
+		// preserve their distinction.
+		if helper.isArrayColumn(colID) {
+			if dArr, isDArr := values[idx].(*tree.DArray); isDArr && dArr != nil && dArr.Len() > 0 {
+				continue
+			}
+		}
 		col := fetchedCols[idx]
 		if lastColID > col.GetID() {
 			return nil, errors.AssertionFailedf("cannot write column id %d after %d", col.GetID(), lastColID)

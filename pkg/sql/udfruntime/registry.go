@@ -343,14 +343,21 @@ func (r *Registry) Call(
 			d := tree.DFloat(n)
 			results[i] = &d
 		case ValI32:
-			var n float64
-			if err := jsoniter.Unmarshal(raw, &n); err != nil {
-				return nil, fmt.Errorf("UDF %q result %d: %w", name, i, err)
-			}
-			if n != 0 {
+			s := string(raw)
+			if s == "true" || s == "1" {
 				results[i] = tree.DBoolTrue
-			} else {
+			} else if s == "false" || s == "0" || s == "" {
 				results[i] = tree.DBoolFalse
+			} else {
+				var n float64
+				if err := jsoniter.Unmarshal(raw, &n); err != nil {
+					return nil, fmt.Errorf("UDF %q result %d: %w", name, i, err)
+				}
+				if n != 0 {
+					results[i] = tree.DBoolTrue
+				} else {
+					results[i] = tree.DBoolFalse
+				}
 			}
 		case ValString:
 			var s string

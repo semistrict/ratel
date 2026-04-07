@@ -73,36 +73,6 @@ func BenchmarkBatchJS1(b *testing.B) {
 	}
 }
 
-func BenchmarkBatchWasm1(b *testing.B) {
-	reg := NewRegistry()
-	defer reg.Close()
-
-	wat := `(module
-		(func (export "invoke") (param i64 i64) (result i64)
-			local.get 0 local.get 1 i64.add))`
-	wasmBytes, err := Wat2Wasm(wat)
-	if err != nil {
-		b.Fatal(err)
-	}
-	err = reg.CompileAndRegisterWasm("add", wasmBytes, "invoke",
-		[]ValType{ValI64, ValI64}, ValI64, 0)
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	tc := reg.NewTxnContext(nil, context.Background(), nil, nil)
-	defer tc.Close()
-
-	batch := []tree.Datums{{tree.NewDInt(3), tree.NewDInt(4)}}
-
-	b.ResetTimer()
-	for range b.N {
-		if _, err := reg.Call(tc, "add", batch); err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
 func BenchmarkBatchJS1000(b *testing.B) {
 	reg := NewRegistry()
 	defer reg.Close()
@@ -174,7 +144,7 @@ func BenchmarkMarshalDatumToJS(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for j, arg := range args {
-			s, err := MarshalDatumToJS(arg, types[j], false)
+			s, err := MarshalDatumToJS(arg, types[j])
 			if err != nil {
 				b.Fatal(err)
 			}

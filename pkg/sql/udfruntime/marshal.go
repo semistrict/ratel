@@ -24,6 +24,20 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/types"
 )
 
+// ValType identifies a value type for UDF parameter and result marshaling.
+type ValType byte
+
+const (
+	ValI32 ValType = 0x7F
+	ValI64 ValType = 0x7E
+	ValF64 ValType = 0x7C
+
+	ValString    ValType = 0x01
+	ValBytes     ValType = 0x02
+	ValTimestamp ValType = 0x03
+	ValJSON      ValType = 0x04
+)
+
 // SQLTypeToValType converts a SQL type to a ValType for marshaling.
 func SQLTypeToValType(t *types.T) (ValType, error) {
 	switch t.Family() {
@@ -69,8 +83,7 @@ func ValTypeToSQLType(v ValType) (*types.T, error) {
 }
 
 // MarshalDatumToJS converts a SQL Datum to a JavaScript expression string.
-// If forWasm is true, i64 values are wrapped in BigInt() for WASM interop.
-func MarshalDatumToJS(d tree.Datum, vt ValType, forWasm bool) (string, error) {
+func MarshalDatumToJS(d tree.Datum, vt ValType) (string, error) {
 	if d == tree.DNull {
 		return "null", nil
 	}
@@ -79,9 +92,6 @@ func MarshalDatumToJS(d tree.Datum, vt ValType, forWasm bool) (string, error) {
 		v, ok := d.(*tree.DInt)
 		if !ok {
 			return "", fmt.Errorf("expected INT datum for i64 parameter, got %T", d)
-		}
-		if forWasm {
-			return fmt.Sprintf("BigInt(%d)", int64(*v)), nil
 		}
 		return fmt.Sprintf("%d", int64(*v)), nil
 	case ValF64:

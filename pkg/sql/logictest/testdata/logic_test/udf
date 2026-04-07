@@ -298,20 +298,6 @@ DROP FUNCTION maybe_null(x INT);
 DROP FUNCTION greet_or_null(name TEXT);
 DROP TABLE nullable_data;
 
-subtest wasm_udf
-
-statement ok
-CREATE FUNCTION wasm_add(a INT, b INT) RETURNS INT LANGUAGE wasm AS '(module
-  (func (export "invoke") (param i64 i64) (result i64)
-    local.get 0
-    local.get 1
-    i64.add))' IMMUTABLE;
-
-query I
-SELECT wasm_add(10, 20)
-----
-30
-
 subtest cleanup
 
 statement ok
@@ -324,6 +310,5 @@ DROP FUNCTION str_upper(s TEXT);
 DROP FUNCTION json_get_name(input_obj JSONB);
 DROP FUNCTION make_person(person_name TEXT, person_age INT);
 DROP FUNCTION get_year(ts TIMESTAMP);
-DROP FUNCTION wasm_add(a INT, b INT);
 DROP TABLE t;
 DROP TABLE people;

@@ -226,7 +226,7 @@ func NewBuiltinFunctionOperator(
 	// batched operator which calls all rows in a single V8 invocation.
 	if reg, ok := evalCtx.UDFRegistry.(*udfruntime.Registry); ok && reg != nil {
 		funcName := funcExpr.Func.String()
-		if _, _, _, exists := reg.GetSignature(funcName); exists {
+		if _, _, exists := reg.GetSignature(funcName); exists {
 			outputType := funcExpr.ResolvedType()
 			input = colexecutils.NewVectorTypeEnforcer(allocator, input, outputType, outputIdx)
 			return &udfBatchOperator{

@@ -32,16 +32,8 @@ import (
 // DefaultTimeout is the default execution timeout for a single UDF call.
 const DefaultTimeout = 100 * time.Millisecond
 
-// MaxModuleSize is the maximum size of a WASM binary or JS source body.
+// MaxModuleSize is the maximum size of a JS source body.
 const MaxModuleSize = 10 << 20 // 10MB
-
-// Language identifies the UDF source language.
-type Language string
-
-const (
-	LangWasm       Language = "wasm"
-	LangJavaScript Language = "javascript"
-)
 
 // Registry manages compiled UDF functions backed by V8.
 type Registry struct {
@@ -56,8 +48,7 @@ type Registry struct {
 
 type compiledFunc struct {
 	jsSetup    string // evaluated once per context to define the function
-	jsCall     string // call expression prefix: "invoke(" or "__wasm_inst_X.exports.invoke("
-	language   Language
+	jsCall     string // call expression prefix: "invoke("
 	paramTypes []ValType
 	resultType ValType
 	timeout    time.Duration
@@ -84,55 +75,6 @@ func (r *Registry) getBuf() *bytes.Buffer {
 
 func (r *Registry) putBuf(buf *bytes.Buffer) {
 	r.bufPool.Put(buf)
-}
-
-// CompileAndRegisterWasm compiles a WASM binary and registers it.
-func (r *Registry) CompileAndRegisterWasm(
-	name string,
-	wasmBytes []byte,
-	exportName string,
-	paramTypes []ValType,
-	resultType ValType,
-	timeout time.Duration,
-) error {
-	if timeout == 0 {
-		timeout = DefaultTimeout
-	}
-
-	if !isValidIdentifier(name) {
-		return fmt.Errorf("invalid function name %q: must be a valid identifier", name)
-	}
-	if len(wasmBytes) > MaxModuleSize {
-		return fmt.Errorf("WASM module too large: %d bytes (max %d)", len(wasmBytes), MaxModuleSize)
-	}
-
-	jsArray := wasmBytesToJSArray(wasmBytes)
-	jsSetup := fmt.Sprintf(`
-		const __wasm_bytes_%s = new Uint8Array(%s);
-		const __wasm_mod_%s = new WebAssembly.Module(__wasm_bytes_%s);
-		const __wasm_inst_%s = new WebAssembly.Instance(__wasm_mod_%s);
-	`, name, jsArray, name, name, name, name)
-
-	ctx := v8.NewContext(r.iso)
-	_, err := ctx.RunScript(jsSetup, "setup_"+name+".js")
-	ctx.Close()
-	if err != nil {
-		return fmt.Errorf("compiling WASM module %q: %w", name, err)
-	}
-
-	cf := &compiledFunc{
-		jsSetup:    jsSetup,
-		jsCall:     fmt.Sprintf("__wasm_inst_%s.exports.%s(", name, exportName),
-		language:   LangWasm,
-		paramTypes: paramTypes,
-		resultType: resultType,
-		timeout:    timeout,
-	}
-
-	r.mu.Lock()
-	r.funcs[name] = cf
-	r.mu.Unlock()
-	return nil
 }
 
 // CompileAndRegisterJS registers a JavaScript function.
@@ -163,7 +105,6 @@ func (r *Registry) CompileAndRegisterJS(
 	cf := &compiledFunc{
 		jsSetup:    jsBody,
 		jsCall:     "invoke(",
-		language:   LangJavaScript,
 		paramTypes: paramTypes,
 		resultType: resultType,
 		timeout:    timeout,
@@ -291,16 +232,10 @@ func (r *Registry) Call(
 	// JSON.stringify of the results. All in one JS function call.
 	batchKey := "__batch_" + name
 	if !tc.setupDone[batchKey] {
-		wrapBigInt := cf.resultType == ValI64 && cf.language == LangWasm
-		var mapExpr string
-		if wrapBigInt {
-			mapExpr = "Number(" + cf.jsCall + "...a))"
-		} else {
-			mapExpr = cf.jsCall + "...a)"
-		}
+		mapExpr := cf.jsCall + "...a)"
 		batchSetup := fmt.Sprintf(
 			"function %s(jsonStr) { return JSON.stringify(JSON.parse(jsonStr).map(a => { %s return %s; })); }",
-			batchKey, jsBatchArgHydration(cf.paramTypes, cf.language), mapExpr)
+			batchKey, jsBatchArgHydration(cf.paramTypes), mapExpr)
 		if _, err := tc.v8ctx.RunScript(batchSetup, batchKey+".js"); err != nil {
 			return nil, fmt.Errorf("installing batch helper: %w", err)
 		}
@@ -484,13 +419,12 @@ func (r *Registry) unmarshalResult(val *v8.Value, cf *compiledFunc) (tree.Datum,
 func (r *Registry) callSequential(
 	tc *TxnContext, cf *compiledFunc, name string, argsBatch []tree.Datums,
 ) ([]tree.Datum, error) {
-	forWasm := cf.language == LangWasm
 	results := make([]tree.Datum, len(argsBatch))
 
 	for i, args := range argsBatch {
 		jsArgs := make([]string, len(args))
 		for j, arg := range args {
-			s, err := MarshalDatumToJS(arg, cf.paramTypes[j], forWasm)
+			s, err := MarshalDatumToJS(arg, cf.paramTypes[j])
 			if err != nil {
 				return nil, fmt.Errorf("row %d arg %d: %w", i, j, err)
 			}
@@ -498,9 +432,6 @@ func (r *Registry) callSequential(
 		}
 
 		callExpr := cf.jsCall + strings.Join(jsArgs, ", ") + ")"
-		if cf.resultType == ValI64 && cf.language == LangWasm {
-			callExpr = "Number(" + callExpr + ")"
-		}
 
 		timer := time.AfterFunc(cf.timeout, func() {
 			r.iso.TerminateExecution()
@@ -566,15 +497,15 @@ func (r *Registry) List() []string {
 	return names
 }
 
-// GetSignature returns the param/result types and language for a registered function.
-func (r *Registry) GetSignature(name string) (paramTypes []ValType, resultType ValType, lang Language, ok bool) {
+// GetSignature returns the param/result types for a registered function.
+func (r *Registry) GetSignature(name string) (paramTypes []ValType, resultType ValType, ok bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	cf, exists := r.funcs[name]
 	if !exists {
-		return nil, 0, "", false
+		return nil, 0, false
 	}
-	return cf.paramTypes, cf.resultType, cf.language, true
+	return cf.paramTypes, cf.resultType, true
 }
 
 // isValidIdentifier checks that a name is safe to embed in generated JS code.
@@ -595,23 +526,11 @@ func isValidIdentifier(name string) bool {
 	return true
 }
 
-// wasmBytesToJSArray converts WASM bytes to a JS array literal like "[0,97,115,109,...]"
-func wasmBytesToJSArray(b []byte) string {
-	parts := make([]string, len(b))
-	for i, v := range b {
-		parts[i] = fmt.Sprintf("%d", v)
-	}
-	return "[" + strings.Join(parts, ",") + "]"
-}
-
-func jsBatchArgHydration(paramTypes []ValType, language Language) string {
+func jsBatchArgHydration(paramTypes []ValType) string {
 	var b strings.Builder
 	for i, vt := range paramTypes {
-		switch {
-		case vt == ValTimestamp:
+		if vt == ValTimestamp {
 			fmt.Fprintf(&b, "a[%d] = new Date(a[%d]); ", i, i)
-		case vt == ValI64 && language == LangWasm:
-			fmt.Fprintf(&b, "a[%d] = BigInt(a[%d]); ", i, i)
 		}
 	}
 	return b.String()

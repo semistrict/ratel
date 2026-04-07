@@ -538,11 +538,11 @@ CREATE ROLE, CREATE TYPE, CREATE EXTENSION
 	},
 	//line sql.y: 3785
 	`CREATE FUNCTION`: {
-		ShortDescription: `define a new WASM function`,
+		ShortDescription: `define a new JavaScript UDF`,
 		//line sql.y: 3786
 		Category: hDDL,
 		//line sql.y: 3787
-		Text: `CREATE FUNCTION <name> ( [<param_name> <type>, ...] ) RETURNS <type> LANGUAGE wasm AS '<wat_source>' IMMUTABLE
+		Text: `CREATE FUNCTION <name> ( [<param_name> <type>, ...] ) RETURNS <type> LANGUAGE javascript AS '<js_source>' IMMUTABLE
 `,
 	},
 	//line sql.y: 3858

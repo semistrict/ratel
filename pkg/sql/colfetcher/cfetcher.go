@@ -38,6 +38,8 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/execinfra"
 	"github.com/cockroachdb/cockroach/pkg/sql/kvstreamer"
 	"github.com/cockroachdb/cockroach/pkg/sql/row"
+	"github.com/cockroachdb/cockroach/pkg/sql/rowenc"
+	"github.com/cockroachdb/cockroach/pkg/sql/rowenc/valueside"
 	"github.com/cockroachdb/cockroach/pkg/sql/rowinfra"
 	"github.com/cockroachdb/cockroach/pkg/sql/scrub"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
@@ -279,6 +281,13 @@ type cFetcher struct {
 		tableoidCol coldata.DatumVec
 	}
 
+	// subordinateArrays accumulates array elements from subordinate keys during
+	// row assembly. Keyed by fetched-column ordinal.
+	subordinateArrays map[int]*tree.DArray
+
+	// hasArrayColumns indicates that subordinate keys may be present.
+	hasArrayColumns bool
+
 	// scratch is a scratch space used when decoding bytes-like and decimal
 	// keys.
 	scratch []byte
@@ -471,6 +480,12 @@ func (cf *cFetcher) Init(
 
 	cf.table = table
 	cf.accountingHelper.Init(allocator, cf.memoryLimit, cf.table.typs)
+	for i := range tableArgs.spec.FetchedColumns {
+		if tableArgs.spec.FetchedColumns[i].Type.Family() == types.ArrayFamily {
+			cf.hasArrayColumns = true
+			break
+		}
+	}
 
 	return nil
 }
@@ -514,10 +529,12 @@ func (cf *cFetcher) StartScan(
 	// a very restrictive filter and actually have to retrieve a lot of rows).
 	firstBatchLimit := rowinfra.KeyLimit(limitHint)
 	if firstBatchLimit != 0 {
-		// The limit hint is in rows; convert it to a key limit using the fetch
-		// spec's bound. In the single-row-KV layout this remains one key per row,
-		// but keeping the multiplication avoids changing the rowinfra contract.
-		firstBatchLimit = rowinfra.KeyLimit(int(limitHint) * int(cf.table.spec.MaxKeysPerRow))
+		if cf.hasArrayColumns || cf.table.spec.MaxKeysPerRow == 0 {
+			// Array subordinate keys make the number of KVs per row unbounded.
+			firstBatchLimit = 0
+		} else {
+			firstBatchLimit = rowinfra.KeyLimit(int(limitHint) * int(cf.table.spec.MaxKeysPerRow))
+		}
 	}
 
 	f, err := row.NewKVFetcher(
@@ -591,6 +608,10 @@ const (
 	//   3. parse value into row buffer.
 	//   4. -> doneRow(initFetch)
 	stateDecodeFirstKVOfRow
+
+	// stateFetchNextKVWithUnfinishedRow continues consuming KVs that share the
+	// current row prefix. This is needed for subordinate array keys.
+	stateFetchNextKVWithUnfinishedRow
 
 	// stateFinalizeRow is the state of finalizing a row. It assumes that no more
 	// keys for the current row are present.
@@ -737,11 +758,39 @@ func (cf *cFetcher) NextBatch(ctx context.Context) (coldata.Batch, error) {
 			if cf.table.rowLastModified.Less(cf.machine.nextKV.Value.Timestamp) {
 				cf.table.rowLastModified = cf.machine.nextKV.Value.Timestamp
 			}
-			cf.machine.state[0] = stateFinalizeRow
-			cf.machine.state[1] = stateInitFetch
-			continue
+			if cf.table.spec.MaxKeysPerRow == 1 && !cf.hasArrayColumns {
+				cf.machine.state[0] = stateFinalizeRow
+				cf.machine.state[1] = stateInitFetch
+				continue
+			}
+			cf.machine.state[0] = stateFetchNextKVWithUnfinishedRow
+
+		case stateFetchNextKVWithUnfinishedRow:
+			moreKVs, kv, finalReferenceToBatch, err := cf.fetcher.NextKV(ctx, cf.mvccDecodeStrategy)
+			if err != nil {
+				return nil, cf.convertFetchError(ctx, err)
+			}
+			if !moreKVs {
+				cf.machine.state[0] = stateFinalizeRow
+				cf.machine.state[1] = stateEmitLastBatch
+				continue
+			}
+			cf.setNextKV(kv, finalReferenceToBatch)
+			if !bytes.HasPrefix(kv.Key[cf.table.spec.KeyPrefixLength:], cf.machine.lastRowPrefix[cf.table.spec.KeyPrefixLength:]) {
+				cf.machine.state[0] = stateFinalizeRow
+				cf.machine.state[1] = stateDecodeFirstKVOfRow
+				continue
+			}
+			if err := cf.processValue(ctx); err != nil {
+				return nil, err
+			}
+			if cf.table.rowLastModified.Less(cf.machine.nextKV.Value.Timestamp) {
+				cf.table.rowLastModified = cf.machine.nextKV.Value.Timestamp
+			}
+			cf.machine.state[0] = stateFetchNextKVWithUnfinishedRow
 
 		case stateFinalizeRow:
+			cf.finalizeSubordinateArrays()
 			// Populate the timestamp system column if needed. We have to do it
 			// on a per row basis since each row can be modified at a different
 			// time.
@@ -869,7 +918,7 @@ func (cf *cFetcher) processValue(ctx context.Context) (err error) {
 
 	val := cf.machine.nextKV.Value
 	if !table.spec.IsSecondaryIndex || table.spec.EncodingType == descpb.PrimaryIndexEncoding {
-		// If familyID is 0, kv.Value contains values for composite key columns.
+		// kv.Value contains values for composite key columns.
 		// These columns already have a table.row value assigned above, but that value
 		// (obtained from the key encoding) might not be correct (e.g. for decimals,
 		// it might not contain the right number of trailing 0s; for collated
@@ -878,6 +927,17 @@ func (cf *cFetcher) processValue(ctx context.Context) (err error) {
 		//
 		// In these cases, the correct value is present in the row value and the
 		// table.row value gets overwritten.
+
+		// Check for subordinate keys before inspecting the value tag.
+		suffix := cf.machine.nextKV.Key[len(cf.machine.lastRowPrefix):]
+		remaining, famID, subErr := encoding.DecodeUvarintAscending(suffix)
+		if subErr == nil && famID == 0 && len(remaining) > 0 {
+			prettyKey, prettyValue, err = cf.processSubordinateValue(ctx, table, remaining, prettyKey)
+			if err != nil {
+				return scrub.WrapError(scrub.IndexValueDecodingError, err)
+			}
+			return nil
+		}
 
 		switch val.GetTag() {
 		case roachpb.ValueType_TUPLE:
@@ -966,7 +1026,7 @@ func (cf *cFetcher) processValueSingle(
 ) (prettyKey string, prettyValue string, err error) {
 	prettyKey = prettyKeyPrefix
 
-	if idx, ok := table.ColIdxMap.Get(colID); ok {
+		if idx, ok := table.ColIdxMap.Get(colID); ok {
 		if cf.traceKV {
 			prettyKey = fmt.Sprintf("%s/%s", prettyKey, table.spec.FetchedColumns[idx].Name)
 		}
@@ -975,6 +1035,12 @@ func (cf *cFetcher) processValueSingle(
 			return prettyKey, "", nil
 		}
 		typ := cf.table.spec.FetchedColumns[idx].Type
+		if typ.Family() == types.ArrayFamily {
+			return "", "", errors.AssertionFailedf(
+				"column %q (id=%d) has array type encoded as single-column row-group value; incompatible data layout",
+				cf.table.spec.FetchedColumns[idx].Name, colID,
+			)
+		}
 		err := colencoding.UnmarshalColumnValueToCol(
 			&table.da, &cf.machine.colvecs, idx, cf.machine.rowIdx, typ, val,
 		)
@@ -996,6 +1062,62 @@ func (cf *cFetcher) processValueSingle(
 	// the index key or it isn't needed.
 	if row.DebugRowFetch {
 		log.Infof(ctx, "Scan %s -> [%d] (skipped)", cf.machine.nextKV.Key, colID)
+	}
+	return prettyKey, prettyValue, nil
+}
+
+// processSubordinateValue handles a subordinate key holding a single array
+// element. remaining is the key suffix after the family-0 sentinel.
+func (cf *cFetcher) processSubordinateValue(
+	ctx context.Context,
+	table *cTableInfo,
+	remaining []byte,
+	prettyKeyPrefix string,
+) (prettyKey string, prettyValue string, err error) {
+	prettyKey = prettyKeyPrefix
+
+	remaining, colID64, err := encoding.DecodeUvarintAscending(remaining)
+	if err != nil {
+		return "", "", errors.Wrap(err, "decoding subordinate key column ID")
+	}
+	colID := descpb.ColumnID(colID64)
+	_, _, err = encoding.DecodeUvarintAscending(remaining)
+	if err != nil {
+		return "", "", errors.Wrap(err, "decoding subordinate key element index")
+	}
+
+	idx, ok := table.ColIdxMap.Get(colID)
+	if !ok {
+		return prettyKey, "", nil
+	}
+
+	colSpec := &table.spec.FetchedColumns[idx]
+	elemType := colSpec.Type.ArrayContents()
+	val := cf.machine.nextKV.Value
+	var value tree.Datum
+	if rowenc.IsSubordinateNull(val) {
+		value = tree.DNull
+	} else {
+		value, err = valueside.UnmarshalLegacy(&table.da, elemType, val)
+		if err != nil {
+			return "", "", errors.Wrapf(err, "decoding subordinate value for column %d", colID)
+		}
+	}
+
+	if cf.subordinateArrays == nil {
+		cf.subordinateArrays = make(map[int]*tree.DArray)
+	}
+	arr, exists := cf.subordinateArrays[idx]
+	if !exists {
+		arr = tree.NewDArray(elemType)
+		cf.subordinateArrays[idx] = arr
+	}
+	if err := arr.Append(value); err != nil {
+		return "", "", err
+	}
+	if cf.traceKV {
+		prettyKey = fmt.Sprintf("%s/%s[%d]", prettyKey, colSpec.Name, arr.Len()-1)
+		prettyValue = value.String()
 	}
 	return prettyKey, prettyValue, nil
 }
@@ -1085,6 +1207,19 @@ func (cf *cFetcher) processValueBytes(
 		prettyValue = cf.machine.prettyValueBuf.String()
 	}
 	return prettyKey, prettyValue, nil
+}
+
+// finalizeSubordinateArrays writes accumulated array datums into the current
+// output row and clears the per-row accumulator.
+func (cf *cFetcher) finalizeSubordinateArrays() {
+	for idx, arr := range cf.subordinateArrays {
+		cf.machine.colvecs.Vecs[idx].Datum().Set(cf.machine.rowIdx, arr)
+		cf.machine.colvecs.Nulls[idx].UnsetNull(cf.machine.rowIdx)
+		cf.machine.remainingValueColsByIdx.Remove(idx)
+	}
+	for k := range cf.subordinateArrays {
+		delete(cf.subordinateArrays, k)
+	}
 }
 
 func (cf *cFetcher) fillNulls() error {

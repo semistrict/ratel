@@ -160,12 +160,13 @@ func MakeSpanFromEncDatums(
 // SplitRowKeyIntoRowSpans converts a single-row lookup into the corresponding
 // KV span in the single-family layout.
 //
-// The returned spans might or might not have EndKeys set. If they are for a
-// single key, they will not have EndKeys set.
+// The returned span is a prefix span over the row-group-0 key so that
+// subordinate keys beneath the row sentinel are also included.
 //
 // The function accepts a slice of spans to append to.
 func SplitRowKeyIntoRowSpans(appendTo roachpb.Spans, key roachpb.Key) roachpb.Spans {
-	appendTo = append(appendTo, roachpb.Span{Key: keys.MakeFamilyKey(key[:len(key):len(key)], 0)})
+	rowKey := keys.MakeFamilyKey(key[:len(key):len(key)], 0)
+	appendTo = append(appendTo, roachpb.Span{Key: rowKey, EndKey: roachpb.Key(rowKey).PrefixEnd()})
 	return appendTo
 }
 

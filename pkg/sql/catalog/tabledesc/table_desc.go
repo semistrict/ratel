@@ -24,6 +24,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/cockroachdb/errors"
 )
 
@@ -387,6 +388,16 @@ func (desc *wrapper) getExistingOrNewColumnCache() *columnCache {
 // AllColumns implements the TableDescriptor interface.
 func (desc *wrapper) AllColumns() []catalog.Column {
 	return desc.getExistingOrNewColumnCache().all
+}
+
+// HasArrayColumn implements the TableDescriptor interface.
+func (desc *wrapper) HasArrayColumn() bool {
+	for _, col := range desc.PublicColumns() {
+		if col.GetType().Family() == types.ArrayFamily {
+			return true
+		}
+	}
+	return false
 }
 
 // PublicColumns implements the TableDescriptor interface.

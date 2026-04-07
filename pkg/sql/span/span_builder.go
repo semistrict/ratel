@@ -295,7 +295,9 @@ func (s *Builder) appendSpansFromConstraintSpan(
 	}
 
 	// Optimization: for single-row lookups, use the precise row KV span.
-	if splitter.IsNoop() && !containsNull && span.Key.Equal(span.EndKey) {
+	// Require at least one encoded index column so a full index scan over the
+	// bare index prefix is not collapsed into /.../{0-1}.
+	if splitter.IsNoop() && !containsNull && span.Key.Equal(span.EndKey) && len(span.Key) > len(s.KeyPrefix) {
 		return rowenc.SplitRowKeyIntoRowSpans(appendTo, span.Key), nil
 	}
 

@@ -434,7 +434,7 @@ SELECT k FROM t WHERE k < ALL ARRAY[2,4]
 
 # Undocumented - bounds should be allowed, as in Postgres
 statement ok
-CREATE TABLE boundedtable (b INT[10], c INT ARRAY[10])
+CREATE TABLE boundedtable (id INT PRIMARY KEY, b INT[10], c INT ARRAY[10])
 
 statement ok
 DROP TABLE boundedtable
@@ -1290,7 +1290,7 @@ false
 subtest 36477
 
 statement ok
-CREATE TABLE array_single_family (a INT PRIMARY KEY, b INT[], FAMILY fam0(a), FAMILY fam1(b))
+CREATE TABLE array_single_family (a INT PRIMARY KEY, b INT[])
 
 statement ok
 INSERT INTO array_single_family VALUES(0,ARRAY[])

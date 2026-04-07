@@ -112,6 +112,11 @@ func (desc *wrapper) GetParentSchemaID() descpb.ID {
 
 // IndexKeysPerRow implements the TableDescriptor interface.
 func (desc *wrapper) IndexKeysPerRow(idx catalog.Index) int {
+	if idx.Primary() && desc.HasArrayColumn() {
+		// Array elements are stored as subordinate keys beneath the primary row
+		// sentinel, so the number of KVs per row is unbounded.
+		return 0
+	}
 	return 1
 }
 

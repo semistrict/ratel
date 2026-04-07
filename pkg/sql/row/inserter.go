@@ -157,6 +157,18 @@ func (ri *Inserter) InsertRow(
 		return err
 	}
 
+	// Write subordinate keys for array columns.
+	subEntries, err := ri.Helper.encodeSubordinateKeys(
+		primaryIndexKey, ri.InsertColIDtoRowIndex, values,
+	)
+	if err != nil {
+		return err
+	}
+	for i := range subEntries {
+		e := &subEntries[i]
+		putFn(ctx, b, &e.Key, &e.Value, traceKV)
+	}
+
 	putFn = insertInvertedPutFn
 
 	// For determinism, add the entries for the secondary indexes in the same

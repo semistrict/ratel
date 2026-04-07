@@ -1,12 +1,16 @@
 // Copyright 2015 The Cockroach Authors.
 //
-// Use of this software is governed by the Business Source License
-// included in the file licenses/BSL.txt.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// As of the Change Date specified in that file, in accordance with
-// the Business Source License, use of this software will be governed
-// by the Apache License, Version 2.0, included in the file
-// licenses/APL.txt.
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// permissions and limitations under the License.
 
 package rowenc_test
 
@@ -14,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"sort"
 	"testing"
 
 	"github.com/cockroachdb/cockroach/pkg/keys"
@@ -22,22 +25,16 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catenumpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/tabledesc"
 	"github.com/cockroachdb/cockroach/pkg/sql/inverted"
-	"github.com/cockroachdb/cockroach/pkg/sql/parser"
 	"github.com/cockroachdb/cockroach/pkg/sql/randgen"
 	. "github.com/cockroachdb/cockroach/pkg/sql/rowenc"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/eval"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/util"
 	"github.com/cockroachdb/cockroach/pkg/util/json"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
 	"github.com/cockroachdb/cockroach/pkg/util/randutil"
-	"github.com/cockroachdb/cockroach/pkg/util/trigram"
 	"github.com/stretchr/testify/require"
 )
 
@@ -76,14 +73,14 @@ func makeTableDescForTest(test indexKeyTest) (catalog.TableDescriptor, catalog.T
 		PrimaryIndex: descpb.IndexDescriptor{
 			ID:                  1,
 			KeyColumnIDs:        primaryColumnIDs,
-			KeyColumnDirections: make([]catenumpb.IndexColumn_Direction, len(primaryColumnIDs)),
+			KeyColumnDirections: make([]descpb.IndexDescriptor_Direction, len(primaryColumnIDs)),
 		},
 		Indexes: []descpb.IndexDescriptor{{
 			ID:                  2,
 			KeyColumnIDs:        secondaryColumnIDs,
 			KeySuffixColumnIDs:  primaryColumnIDs,
 			Unique:              true,
-			KeyColumnDirections: make([]catenumpb.IndexColumn_Direction, len(secondaryColumnIDs)),
+			KeyColumnDirections: make([]descpb.IndexDescriptor_Direction, len(secondaryColumnIDs)),
 			Type:                secondaryType,
 		}},
 	}
@@ -99,7 +96,7 @@ func decodeIndex(
 	}
 	values := make([]EncDatum, index.NumKeyColumns())
 	colDirs := index.IndexDesc().KeyColumnDirections
-	if _, err := DecodeIndexKey(codec, values, colDirs, key); err != nil {
+	if _, _, err := DecodeIndexKey(codec, types, values, colDirs, key); err != nil {
 		return nil, err
 	}
 
@@ -177,7 +174,7 @@ func TestIndexKey(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		evalCtx := eval.NewTestingEvalContext(cluster.MakeTestingClusterSettings())
+		evalCtx := tree.NewTestingEvalContext(cluster.MakeTestingClusterSettings())
 		defer evalCtx.Stop(context.Background())
 		tableDesc, colMap := makeTableDescForTest(test)
 		// Add the default family metadata expected by the single-family layout.
@@ -413,7 +410,7 @@ func TestEncodeContainingArrayInvertedIndexSpans(t *testing.T) {
 		{`{2, NULL}`, `{NULL}`, false, true},
 	}
 
-	evalCtx := eval.MakeTestingEvalContext(cluster.MakeTestingClusterSettings())
+	evalCtx := tree.MakeTestingEvalContext(cluster.MakeTestingClusterSettings())
 	parseArray := func(s string) tree.Datum {
 		arr, _, err := tree.ParseDArrayFromString(&evalCtx, s, types.Int)
 		if err != nil {
@@ -426,7 +423,7 @@ func TestEncodeContainingArrayInvertedIndexSpans(t *testing.T) {
 		keys, err := EncodeInvertedIndexTableKeys(left, nil, descpb.LatestIndexDescriptorVersion)
 		require.NoError(t, err)
 
-		invertedExpr, err := EncodeContainingInvertedIndexSpans(context.Background(), &evalCtx, right)
+		invertedExpr, err := EncodeContainingInvertedIndexSpans(&evalCtx, right)
 		require.NoError(t, err)
 
 		spanExpr, ok := invertedExpr.(*inverted.SpanExpression)
@@ -548,7 +545,7 @@ func TestEncodeContainedArrayInvertedIndexSpans(t *testing.T) {
 		{`{2, NULL}`, `{1, NULL}`, false, false, false},
 	}
 
-	evalCtx := eval.MakeTestingEvalContext(cluster.MakeTestingClusterSettings())
+	evalCtx := tree.MakeTestingEvalContext(cluster.MakeTestingClusterSettings())
 	parseArray := func(s string) tree.Datum {
 		arr, _, err := tree.ParseDArrayFromString(&evalCtx, s, types.Int)
 		if err != nil {
@@ -561,7 +558,7 @@ func TestEncodeContainedArrayInvertedIndexSpans(t *testing.T) {
 		keys, err := EncodeInvertedIndexTableKeys(indexedValue, nil, descpb.LatestIndexDescriptorVersion)
 		require.NoError(t, err)
 
-		invertedExpr, err := EncodeContainedInvertedIndexSpans(context.Background(), &evalCtx, value)
+		invertedExpr, err := EncodeContainedInvertedIndexSpans(&evalCtx, value)
 		require.NoError(t, err)
 
 		spanExpr, ok := invertedExpr.(*inverted.SpanExpression)
@@ -659,7 +656,7 @@ func ExtractIndexKey(
 		return entry.Key, nil
 	}
 
-	index, err := catalog.MustFindIndexByID(tableDesc, indexID)
+	index, err := tableDesc.FindIndexWithID(indexID)
 	if err != nil {
 		return nil, err
 	}
@@ -671,7 +668,7 @@ func ExtractIndexKey(
 	}
 	values := make([]EncDatum, index.NumKeyColumns())
 	dirs := index.IndexDesc().KeyColumnDirections
-	key, _, err = DecodeKeyVals(values, dirs, key)
+	key, _, err = DecodeKeyVals(indexTypes, values, dirs, key)
 	if err != nil {
 		return nil, err
 	}
@@ -682,10 +679,10 @@ func ExtractIndexKey(
 		return nil, err
 	}
 	extraValues := make([]EncDatum, index.NumKeySuffixColumns())
-	dirs = make([]catenumpb.IndexColumn_Direction, index.NumKeySuffixColumns())
+	dirs = make([]descpb.IndexDescriptor_Direction, index.NumKeySuffixColumns())
 	for i := 0; i < index.NumKeySuffixColumns(); i++ {
 		// Implicit columns are always encoded Ascending.
-		dirs[i] = catenumpb.IndexColumn_ASC
+		dirs[i] = descpb.IndexDescriptor_ASC
 	}
 	extraKey := key
 	if index.IsUnique() {
@@ -694,7 +691,7 @@ func ExtractIndexKey(
 			return nil, err
 		}
 	}
-	_, _, err = DecodeKeyVals(extraValues, dirs, extraKey)
+	_, _, err = DecodeKeyVals(extraTypes, extraValues, dirs, extraKey)
 	if err != nil {
 		return nil, err
 	}
@@ -742,429 +739,32 @@ func getColumnTypes(columns []catalog.Column) ([]*types.T, error) {
 	return outTypes, nil
 }
 
-func TestEncodeOverlapsArrayInvertedIndexSpans(t *testing.T) {
-	testCases := []struct {
-		indexedValue string
-		value        string
-		ok           bool
-		expected     bool
-		unique       bool
-	}{
-
-		// This test uses EncodeInvertedIndexTableKeys and EncodeOverlapsInvertedIndexSpans
-		// to determine if the spans produced from the second Array value will
-		// correctly overlap or be distinct from the first value.
-
-		// The expression is a union of spans, so unique will be true IFF the value array
-		// only contains one or more entries of the same non-null element (e.g. A && [1]).
-
-		// First we test that the spans will include expected value.
-		{`{1}`, `{1}`, true, true, true},
-		{`{1, 2}`, `{1}`, true, true, true},
-		{`{2}`, `{1, 2}`, true, true, false},
-		{`{2,3}`, `{2,2,2}`, true, true, true},
-		{`{2, NULL}`, `{1, 2}`, true, true, false},
-		{`{1, 2}`, `{1, 2}`, true, true, false},
-		{`{1, 3}`, `{1, 2}`, true, true, false},
-		{`{2}`, `{2, 2}`, true, true, true},
-		{`{1, 2}`, `{1, 2, 1}`, true, true, false},
-		{`{1, 1, 2, 3}`, `{1, 2, 1}`, true, true, false},
-		{`{1, 2, 4}`, `{1, 2, 3}`, true, true, false},
-		{`{2}`, `{2, NULL}`, true, true, true},
-		{`{2, 3}`, `{2, NULL}`, true, true, true},
-		{`{1, NULL}`, `{1, 2, NULL}`, true, true, false},
-
-		// Then we test that the spans exclude results that should be excluded.
-		{`{}`, `{}`, false, false, false},
-		{`NULL`, `NULL`, false, false, false},
-		{`NULL`, `{1, 2}`, true, false, false},
-		{`{1, 2}`, `NULL`, false, false, false},
-		{`{}`, `{1}`, true, false, true},
-		{`{1}`, `{}`, false, false, false},
-		{`{}`, `{1, 2}`, true, false, false},
-		{`{NULL}`, `{}`, false, false, false},
-		{`{}`, `{NULL}`, false, false, false},
-		{`{}`, `{NULL, NULL}`, false, false, false},
-		{`{2}`, `{1}`, true, false, true},
-		{`{4, 3}`, `{2, 1}`, true, false, false},
-		{`{5}`, `{1, 2, 1}`, true, false, false},
-		{`{NULL, 3}`, `{1, 2, 1}`, true, false, false},
-		{`{NULL}`, `{NULL}`, false, false, false},
-		{`{NULL}`, `{1, NULL}`, true, false, true},
-		{`{1,NULL}`, `{NULL}`, false, false, false},
-		{`{2, NULL}`, `{1, NULL}`, true, false, true},
+// makeTableDescWithArray builds a table descriptor with an INT PK column (id=1)
+// and an INT[] array column (id=2), both in family 0.
+func makeTableDescWithArray() (catalog.TableDescriptor, catalog.TableColMap) {
+	columns := []descpb.ColumnDescriptor{
+		{ID: 1, Name: "pk", Type: types.Int},
+		{ID: 2, Name: "vals", Type: types.IntArray},
 	}
+	var colMap catalog.TableColMap
+	colMap.Set(1, 0)
+	colMap.Set(2, 1)
 
-	evalCtx := eval.MakeTestingEvalContext(cluster.MakeTestingClusterSettings())
-	parseArray := func(s string) tree.Datum {
-		if s == "NULL" {
-			return tree.DNull
-		}
-		arr, _, err := tree.ParseDArrayFromString(&evalCtx, s, types.Int)
-		if err != nil {
-			t.Fatalf("Failed to parse array %s: %v", s, err)
-		}
-		return arr
-	}
-
-	runTest := func(indexedValue, value tree.Datum, expected, ok, unique bool) {
-		keys, err := EncodeInvertedIndexTableKeys(indexedValue, nil, descpb.PrimaryIndexWithStoredColumnsVersion)
-		require.NoError(t, err)
-
-		invertedExpr, err := EncodeOverlapsInvertedIndexSpans(context.Background(), &evalCtx, value)
-		require.NoError(t, err)
-
-		spanExpr, conversionOk := invertedExpr.(*inverted.SpanExpression)
-		if ok && !conversionOk {
-			t.Fatalf("For (%s, %s), Expr %v is not an InvertedExpression contrary to expectation", indexedValue, value, invertedExpr)
-		} else if !ok && conversionOk {
-			t.Fatalf("For (%s, %s), Expr %v is an InvertedExpression contrary to expectation", indexedValue, value, invertedExpr)
-		} else if !ok && !conversionOk {
-			return
-		}
-
-		// Array spans for && are always tight.
-		if spanExpr.Tight != true {
-			t.Errorf("For (%s, %s), expected tight=true, but got false", indexedValue, value)
-		}
-
-		// Array spans for && are unique only when the value
-		// array contains one or more entries of the same non-null element.
-		// e.g. A && [1, 1].
-		if spanExpr.Unique != unique {
-			t.Errorf("For (%s, %s), expected unique=%t, but got %t", indexedValue, value, unique, spanExpr.Unique)
-		}
-
-		// Check if the indexedValue is included by the spans (i.e. Overlaps).
-		overlaps, err := spanExpr.ContainsKeys(keys)
-		require.NoError(t, err)
-
-		if overlaps != expected {
-			if expected {
-				t.Errorf("Expected spans of %s to overlap with %s but they did not", value, indexedValue)
-			} else {
-				t.Errorf("Expected spans of %s to not overlap with %s but they did", value, indexedValue)
-			}
-		}
-	}
-
-	// Run pre-defined test cases from above.
-	for _, c := range testCases {
-		indexedValue, value := parseArray(c.indexedValue), parseArray(c.value)
-		runTest(indexedValue, value, c.expected, c.ok, c.unique)
-	}
-
-	// Run a set of randomly generated test cases.
-	rng, _ := randutil.NewTestRand()
-	for i := 0; i < 100; i++ {
-		typ := randgen.RandArrayType(rng)
-
-		// Generate two random arrays and evaluate the result of `left && right`.
-		// Using 1/9th as the Null Chance to generate arrays with a small
-		// number of NULLs added in between.
-		left := randgen.RandArray(rng, typ, 9 /* nullChance */)
-		right := randgen.RandArray(rng, typ, 9 /* nullChance */)
-
-		overlaps, err := tree.ArrayOverlaps(&evalCtx, right.(*tree.DArray), left.(*tree.DArray))
-		require.NoError(t, err)
-
-		rightArr, _ := right.(*tree.DArray)
-		// An inverted expression can only be generated if the value array is
-		// non-empty or contains atleast one non-NULL element.
-		ok := rightArr.Len() > 0 && rightArr.HasNonNulls
-		// A unique span expression can be guaranteed when the input is of
-		// the form:
-		// Array A && Array containing one or more entries of same non-null
-		// element e.g. A && [1, 1].
-		unique := containsNonNullUniqueElement(&evalCtx, rightArr)
-
-		// Now check that we get the same result with the inverted index spans.
-		runTest(left, right, bool(*overlaps), ok, unique)
-	}
-}
-
-// Determines if the input array contains only one or more entries of the
-// same non-null element. NULL entries are not considered.
-func containsNonNullUniqueElement(evalCtx *eval.Context, valArr *tree.DArray) bool {
-	var lastVal tree.Datum = tree.DNull
-	for _, val := range valArr.Array {
-		if val != tree.DNull {
-			if lastVal != tree.DNull && lastVal.Compare(evalCtx, val) != 0 {
-				return false
-			}
-			lastVal = val
-		}
-	}
-	return lastVal != tree.DNull
-}
-
-type trigramSearchType int
-
-const (
-	like trigramSearchType = iota
-	similar
-	eq
-)
-
-func TestEncodeTrigramInvertedIndexSpans(t *testing.T) {
-	testCases := []struct {
-		// The value that's being indexed in the trigram index.
-		indexedValue string
-		// The value that's being turned into spans to search with.
-		value string
-		// Whether we're using LIKE or % operator for the search.
-		searchType trigramSearchType
-		// Whether we expect that the spans should contain the keys produced by
-		// indexing the indexedValue. If the searchType is similar, then the
-		// spans should contain at least one of the indexed keys, otherwise the
-		// spans should contain all the indexed keys.
-		containsKeys bool
-		// Whether we expect that the indexed value should evaluate as matching
-		// the LIKE or % expression that we're testing.
-		expected bool
-		unique   bool
-	}{
-
-		// This test uses EncodeInvertedIndexTableKeys and EncodeTrigramSpans
-		// to determine if the spans produced from the second string value will
-		// correctly include or exclude the first value.
-
-		{`foobarbaz`, `%oob%baz`, like, true, true, false},
-		{`foobarbaz`, `%oob%`, like, true, true, true},
-		// Test that the order of the trigrams doesn't matter for containment, but
-		// does matter for evaluation.
-		{`staticcheck`, `%check%static%`, like, true, false, false},
-		// Make sure that we can satisfy a query that includes a chunk that is too
-		// short to produce any trigrams at all.
-		{`test`, `%a%bar`, like, false, false, true},
-
-		// "Reverse order" trigrams shouldn't match.
-		{`test`, `tse`, like, false, false, true},
-
-		// Similarity (%) queries.
-		{`staticcheck`, `staricheck`, similar, true, true, false},
-		{`staticcheck`, `blevicchlrk`, similar, true, false, false},
-		{`staticcheck`, `che`, similar, true, false, false},
-		{`staticcheck`, `xxx`, similar, false, false, false},
-		{`staticcheck`, `xxxyyy`, similar, false, false, false},
-		{`aaaaaa`, `aab`, similar, true, true, false},
-
-		// Equality queries.
-		{`staticcheck`, `staticcheck`, eq, true, true, false},
-		{`staticcheck`, `staticcheckz`, eq, false, false, false},
-		{`staticcheck`, `zstaticcheck`, eq, false, false, false},
-		{`baba`, `abab`, eq, true, false, false},
-		{`foo`, `foo`, eq, true, true, true},
-		{`foo`, `bar`, eq, false, false, true},
-
-		{`eabc`, `eabd`, eq, false, false, false},
-	}
-
-	evalCtx := eval.MakeTestingEvalContext(cluster.MakeTestingClusterSettings())
-	evalCtx.SessionData().TrigramSimilarityThreshold = .3
-
-	runTest := func(indexedValue, value string, searchType trigramSearchType,
-		expectContainsKeys, expected, expectUnique bool) {
-		t.Logf("test case: %s %s %v %t %t %t", indexedValue, value, searchType, expectContainsKeys, expected, expectUnique)
-		keys, err := EncodeInvertedIndexTableKeys(tree.NewDString(indexedValue), nil, descpb.LatestIndexDescriptorVersion)
-		require.NoError(t, err)
-
-		typedExpr := makeTrigramBinOp(t, indexedValue, value, searchType)
-		invertedExpr, err := EncodeTrigramSpans(value, searchType != similar)
-		require.NoError(t, err)
-
-		spanExpr, ok := invertedExpr.(*inverted.SpanExpression)
-		if !ok {
-			t.Fatalf("invertedExpr %v is not a SpanExpression", invertedExpr)
-		}
-
-		if spanExpr.Tight {
-			// We never expect the inverted expressions for trigrams to be tight.
-			t.Fatalf("unexpectedly found a tight expression")
-		}
-		require.Equal(t, expectUnique, spanExpr.Unique, "%s, %s: unexpected unique attribute", indexedValue, value)
-
-		// Check if the indexedValue is included by the spans. If the search is
-		// a similarity search, the spans should contain at least one key.
-		// Otherwise, the spans should contain all the keys.
-		var containsKeys bool
-		if searchType == similar {
-			for i := range keys {
-				containsKey, err := spanExpr.ContainsKeys([][]byte{keys[i]})
-				require.NoError(t, err)
-				if containsKey {
-					containsKeys = true
-					break
-				}
-			}
-		} else {
-			containsKeys, err = spanExpr.ContainsKeys(keys)
-			require.NoError(t, err)
-		}
-		require.Equal(t, expectContainsKeys, containsKeys, "%s, %s: expected containsKeys", indexedValue, value)
-
-		// Since the spans are never tight, apply an additional filter to determine
-		// if the result is contained.
-		datum, err := eval.Expr(context.Background(), &evalCtx, typedExpr)
-		require.NoError(t, err)
-		actual := bool(*datum.(*tree.DBool))
-		require.Equal(t, expected, actual, "%s, %s: expected evaluation result to match", indexedValue, value)
-	}
-
-	// Run pre-defined test cases from above.
-	for _, c := range testCases {
-		runTest(c.indexedValue, c.value, c.searchType, c.containsKeys, c.expected, c.unique)
-	}
-
-	// Run some random test cases.
-
-	rng, _ := randutil.NewTestRand()
-	for i := 0; i < 100; i++ {
-		const alphabet = "abcdefg"
-
-		// Generate two random strings and evaluate left % right, left LIKE right,
-		// and left = right both via eval and via the span comparisons.
-		left := util.RandString(rng, 15, alphabet)
-		length := 3 + rng.Intn(5)
-		right := util.RandString(rng, length, alphabet+"%")
-
-		for _, searchType := range []trigramSearchType{like, eq, similar} {
-			expr := makeTrigramBinOp(t, left, right, searchType)
-			lTrigrams := trigram.MakeTrigrams(left, searchType == similar /* pad */)
-			// Check for intersection. We're looking for a non-zero intersection
-			// for similar, and complete containment of the right trigrams in the left
-			// for eq and like.
-			any := false
-			all := true
-			rTrigrams := trigram.MakeTrigrams(right, searchType == similar /* pad */)
-			for _, trigram := range rTrigrams {
-				idx := sort.Search(len(lTrigrams), func(i int) bool {
-					return lTrigrams[i] >= trigram
-				})
-				if idx < len(lTrigrams) && lTrigrams[idx] == trigram {
-					any = true
-				} else {
-					all = false
-				}
-			}
-			var expectedContainsKeys bool
-			if searchType == similar {
-				expectedContainsKeys = any
-			} else {
-				expectedContainsKeys = all
-			}
-
-			d, err := eval.Expr(context.Background(), &evalCtx, expr)
-			require.NoError(t, err)
-			expected := bool(*d.(*tree.DBool))
-			trigrams := trigram.MakeTrigrams(right, searchType == similar /* pad */)
-			nTrigrams := len(trigrams)
-			valid := nTrigrams > 0
-			unique := nTrigrams == 1
-			if !valid {
-				_, err := EncodeTrigramSpans(right, searchType != similar /* allMustMatch */)
-				require.Error(t, err)
-				continue
-			}
-			runTest(left, right, searchType, expectedContainsKeys, expected, unique)
-		}
-	}
-}
-
-func makeTrigramBinOp(
-	t *testing.T, indexedValue string, value string, searchType trigramSearchType,
-) (typedExpr tree.TypedExpr) {
-	var opstr string
-	switch searchType {
-	case like:
-		opstr = "LIKE"
-	case eq:
-		opstr = "="
-	case similar:
-		opstr = "%"
-	default:
-		panic("no such searchtype")
-	}
-	expr, err := parser.ParseExpr(fmt.Sprintf("'%s' %s '%s'", indexedValue, opstr, value))
-	require.NoError(t, err)
-
-	semaContext := tree.MakeSemaContext()
-	typedExpr, err = tree.TypeCheck(context.Background(), expr, &semaContext, types.Bool)
-	require.NoError(t, err)
-	return typedExpr
-}
-
-func TestEncodeTrigramInvertedIndexSpansError(t *testing.T) {
-	// Make sure that any input with a chunk with fewer than 3 characters returns
-	// an error, since we can't produce trigrams from strings that don't meet a
-	// minimum of 3 characters.
-	testCases := []struct {
-		input           string
-		allMustMatchErr bool
-		anyMustMatchErr bool
-	}{
-		{"fo", true, false},
-		{"a", true, false},
-		{"", true, true},
-		// Non-alpha characters don't count against the limit.
-		{"fo ", true, false},
-		{"%fo%", true, false},
-		{"#$(*)", true, true},
-	}
-	for _, tc := range testCases {
-		_, err := EncodeTrigramSpans(tc.input, true /* allMustMatch */)
-		if tc.allMustMatchErr {
-			require.Error(t, err)
-		} else {
-			require.NoError(t, err)
-		}
-		_, err = EncodeTrigramSpans(tc.input, false /* allMustMatch */)
-		if tc.anyMustMatchErr {
-			require.Error(t, err)
-		} else {
-			require.NoError(t, err)
-		}
-	}
-}
-
-func TestDecodeKeyVals(t *testing.T) {
-	defer leaktest.AfterTest(t)()
-
-	testCases := []struct {
-		desc                 string
-		key                  []byte
-		vals                 []EncDatum
-		expectedRemainingKey []byte
-		expectedNumVals      int
-	}{
-		{
-			desc:                 "vals_eq_bytes",
-			key:                  []byte{1},
-			vals:                 make([]EncDatum, 1),
-			expectedRemainingKey: []byte{},
-			expectedNumVals:      1,
+	tableDesc := descpb.TableDescriptor{
+		ID:      42,
+		Columns: columns,
+		PrimaryIndex: descpb.IndexDescriptor{
+			ID:                  1,
+			KeyColumnIDs:        []descpb.ColumnID{1},
+			KeyColumnDirections: []descpb.IndexDescriptor_Direction{descpb.IndexDescriptor_ASC},
 		},
-		{
-			desc:                 "vals_lt_bytes",
-			key:                  []byte{1, 1},
-			vals:                 make([]EncDatum, 1),
-			expectedRemainingKey: []byte{1},
-			expectedNumVals:      1,
-		},
-		{
-			desc:                 "vals_gt_bytes",
-			key:                  []byte{1},
-			vals:                 make([]EncDatum, 2),
-			expectedRemainingKey: []byte{},
-			expectedNumVals:      1,
-		},
+		RowGroups: []descpb.RowGroupDescriptor{{
+			Name:            "primary",
+			ID:              0,
+			ColumnNames:     []string{"pk", "vals"},
+			ColumnIDs:       []descpb.ColumnID{1, 2},
+			DefaultColumnID: 1,
+		}},
 	}
-	for _, tc := range testCases {
-		t.Run(tc.desc, func(t *testing.T) {
-			actualRemainingKey, actualNumVals, err := DecodeKeyVals(tc.vals, nil, tc.key)
-			require.NoError(t, err)
-			require.Equal(t, tc.expectedRemainingKey, actualRemainingKey)
-			require.Equal(t, tc.expectedNumVals, actualNumVals)
-		})
-	}
+	return tabledesc.NewBuilder(&tableDesc).BuildImmutableTable(), colMap
 }

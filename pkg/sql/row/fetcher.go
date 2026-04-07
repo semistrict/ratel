@@ -35,6 +35,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/scrub"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/sessiondatapb"
+	"github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/cockroachdb/cockroach/pkg/util"
 	"github.com/cockroachdb/cockroach/pkg/util/admission"
 	"github.com/cockroachdb/cockroach/pkg/util/encoding"
@@ -184,6 +185,15 @@ type Fetcher struct {
 	prettyValueBuf *bytes.Buffer
 
 	valueColsFound int // how many needed cols we've found so far in the value
+
+	// hasArrayColumns is true when the table has array columns that use
+	// subordinate key encoding.
+	hasArrayColumns bool
+
+	// subordinateArrays accumulates array elements from subordinate keys
+	// during row assembly. Keyed by index into spec.FetchedColumns.
+	// Cleared when starting a new row; finalized in finalizeRow.
+	subordinateArrays map[int]*tree.DArray
 
 	// The current key/value, unless kvEnd is true.
 	kv                roachpb.KeyValue
@@ -342,6 +352,14 @@ func (rf *Fetcher) Init(
 			table.extraVals = table.extraVals[:nExtraCols]
 		} else {
 			table.extraVals = make([]rowenc.EncDatum, nExtraCols)
+		}
+	}
+
+	// Check for array columns that use subordinate key encoding.
+	for i := range spec.FetchedColumns {
+		if spec.FetchedColumns[i].Type.Family() == types.ArrayFamily {
+			rf.hasArrayColumns = true
+			break
 		}
 	}
 
@@ -504,6 +522,11 @@ func (rf *Fetcher) rowLimitToKeyLimit(rowLimitHint rowinfra.RowLimit) rowinfra.K
 	if rowLimitHint == 0 {
 		return 0
 	}
+	if rf.hasArrayColumns || rf.table.spec.MaxKeysPerRow == 0 {
+		// Array subordinate keys make the number of KVs per row unbounded, so
+		// a KV limit derived from row counts can truncate a row mid-scan.
+		return 0
+	}
 	// If we have a limit hint, we limit the first batch size. Subsequent
 	// batches get larger to avoid making things too slow (e.g. in case we have
 	// a very restrictive filter and actually have to retrieve a lot of rows).
@@ -567,7 +590,20 @@ func (rf *Fetcher) nextKey(ctx context.Context) (newRow bool, _ error) {
 		rf.kvEnd = true
 		return true, nil
 	}
+	// unchangedPrefix will be set to true if the current KV belongs to the same
+	// row as the previous KV (i.e. the last and current keys have identical
+	// prefix). In this case, we can skip decoding the index key completely.
+	// Check if the current key shares the row prefix. For single-row-group tables with
+	// array columns, subordinate keys produce additional KVs under the
+	// same row prefix that also need grouping.
+	unchangedPrefix := (rf.table.spec.MaxKeysPerRow != 1 || rf.hasArrayColumns) && rf.indexKey != nil && bytes.HasPrefix(rf.kv.Key, rf.indexKey)
+	if unchangedPrefix {
+		// Skip decoding!
+		rf.keyRemainingBytes = rf.kv.Key[len(rf.indexKey):]
+		return false, nil
+	}
 
+	// The current key belongs to a new row.
 	if rf.mustDecodeIndexKey {
 		rf.keyRemainingBytes, _, err = rf.DecodeIndexKey(rf.kv.Key)
 		if err != nil {
@@ -640,6 +676,10 @@ func (rf *Fetcher) processKV(
 		for idx, ok := table.neededValueColsByIdx.Next(0); ok; idx, ok = table.neededValueColsByIdx.Next(idx + 1) {
 			table.row[idx].UnsetDatum()
 		}
+		// Clear subordinate array accumulators from the previous row.
+		for k := range rf.subordinateArrays {
+			delete(rf.subordinateArrays, k)
+		}
 
 		// Fill in the column values that are part of the index key.
 		for i := range table.keyVals {
@@ -686,6 +726,20 @@ func (rf *Fetcher) processKV(
 		//
 		// In these cases, the correct value is present in the row value and the
 		// table.row value gets overwritten.
+
+		// Check for subordinate keys before inspecting the value tag.
+		{
+			var remaining []byte
+			var famID uint64
+			remaining, famID, err = encoding.DecodeUvarintAscending(rf.keyRemainingBytes)
+			if err == nil && famID == 0 && len(remaining) > 0 {
+				prettyKey, prettyValue, err = rf.processSubordinateKV(ctx, table, kv, remaining, prettyKey)
+				if err != nil {
+					return "", "", scrub.WrapError(scrub.IndexValueDecodingError, err)
+				}
+				return prettyKey, prettyValue, nil
+			}
+		}
 
 		switch kv.Value.GetTag() {
 		case roachpb.ValueType_TUPLE:
@@ -789,6 +843,17 @@ func (rf *Fetcher) processValueSingle(
 		return prettyKey, "", nil
 	}
 	typ := table.spec.FetchedColumns[idx].Type
+	// Array columns must use subordinate key encoding. If we find one
+	// stored as a single family value, the data was written by an
+	// incompatible CockroachDB version.
+	if typ.Family() == types.ArrayFamily {
+		return "", "", errors.AssertionFailedf(
+			"column %q (id=%d) has array type encoded as single-column family value; "+
+				"this data was written by an incompatible CockroachDB version "+
+				"that does not use subordinate key encoding for arrays",
+			table.spec.FetchedColumns[idx].Name, colID,
+		)
+	}
 	// TODO(arjun): The value is a directly marshaled single value, so we
 	// unmarshal it eagerly here. This can potentially be optimized out,
 	// although that would require changing UnmarshalColumnValue to operate
@@ -873,6 +938,80 @@ func (rf *Fetcher) processValueBytes(
 	}
 	if rf.traceKV {
 		prettyValue = rf.prettyValueBuf.String()
+	}
+	return prettyKey, prettyValue, nil
+}
+
+// processSubordinateKV handles a subordinate key (an array element stored
+// under the row's family-0 sentinel). remaining is the key suffix after the
+// family-0 sentinel uvarint has been consumed; it contains col_id, elem_idx,
+// and suffix_len uvarints.
+func (rf *Fetcher) processSubordinateKV(
+	ctx context.Context,
+	table *tableInfo,
+	kv roachpb.KeyValue,
+	remaining []byte,
+	prettyKeyPrefix string,
+) (prettyKey string, prettyValue string, err error) {
+	prettyKey = prettyKeyPrefix
+
+	// Decode col_id.
+	remaining, colID64, err := encoding.DecodeUvarintAscending(remaining)
+	if err != nil {
+		return "", "", errors.Wrap(err, "decoding subordinate key column ID")
+	}
+	colID := descpb.ColumnID(colID64)
+
+	// Decode elem_idx (consumed but not used for placement — we append in order).
+	_, _, err = encoding.DecodeUvarintAscending(remaining)
+	if err != nil {
+		return "", "", errors.Wrap(err, "decoding subordinate key element index")
+	}
+
+	// Look up the column.
+	idx, ok := table.colIdxMap.Get(colID)
+	if !ok {
+		// Column not requested — skip.
+		if DebugRowFetch {
+			log.Infof(ctx, "Scan %s -> subordinate col %d (skipped)", kv.Key, colID)
+		}
+		return prettyKey, "", nil
+	}
+
+	colSpec := &table.spec.FetchedColumns[idx]
+	elemType := colSpec.Type.ArrayContents()
+
+	// Unmarshal the element value.
+	var value tree.Datum
+	if rowenc.IsSubordinateNull(kv.Value) {
+		value = tree.DNull
+	} else {
+		var err error
+		value, err = valueside.UnmarshalLegacy(rf.alloc, elemType, kv.Value)
+		if err != nil {
+			return "", "", errors.Wrapf(err, "decoding subordinate key value for column %d", colID)
+		}
+	}
+
+	// Accumulate into the DArray for this column.
+	if rf.subordinateArrays == nil {
+		rf.subordinateArrays = make(map[int]*tree.DArray)
+	}
+	arr, exists := rf.subordinateArrays[idx]
+	if !exists {
+		arr = tree.NewDArray(elemType)
+		rf.subordinateArrays[idx] = arr
+	}
+	if err := arr.Append(value); err != nil {
+		return "", "", err
+	}
+
+	if rf.traceKV {
+		prettyKey = fmt.Sprintf("%s/%s[%d]", prettyKey, colSpec.Name, arr.Len()-1)
+		prettyValue = value.String()
+	}
+	if DebugRowFetch {
+		log.Infof(ctx, "Scan %s -> subordinate %s[%d] = %v", kv.Key, colSpec.Name, arr.Len()-1, value)
 	}
 	return prettyKey, prettyValue, nil
 }
@@ -1022,6 +1161,12 @@ func (rf *Fetcher) RowIsDeleted() bool {
 
 func (rf *Fetcher) finalizeRow() error {
 	table := &rf.table
+
+	// Finalize subordinate arrays: convert accumulated DArrays into EncDatums.
+	for idx, arr := range rf.subordinateArrays {
+		table.row[idx] = rowenc.EncDatum{Datum: arr}
+		rf.valueColsFound++
+	}
 
 	// Fill in any system columns if requested.
 	if table.timestampOutputIdx != noOutputColumn {

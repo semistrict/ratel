@@ -47,11 +47,12 @@ type Registry struct {
 }
 
 type compiledFunc struct {
-	jsSetup    string // evaluated once per context to define the function
-	jsCall     string // call expression prefix: "invoke("
-	paramTypes []ValType
-	resultType ValType
-	timeout    time.Duration
+	jsSetup      string // evaluated once per context to define the function
+	jsBatchSetup string // evaluated once per context to define the __batch helper
+	batchKey     string // name of the __batch function: "__batch_<name>"
+	paramTypes   []ValType
+	resultType   ValType
+	timeout      time.Duration
 }
 
 // NewRegistry creates a new V8-backed UDF registry.
@@ -102,12 +103,19 @@ func (r *Registry) CompileAndRegisterJS(
 		return fmt.Errorf("compiling JS function %q: %w", name, err)
 	}
 
+	batchKey := "__batch_" + name
+	mapExpr := "invoke(...a)"
+	batchSetup := fmt.Sprintf(
+		"function %s(jsonStr) { return JSON.stringify(JSON.parse(jsonStr).map(a => { %s return %s; })); }",
+		batchKey, jsBatchArgHydration(paramTypes), mapExpr)
+
 	cf := &compiledFunc{
-		jsSetup:    jsBody,
-		jsCall:     "invoke(",
-		paramTypes: paramTypes,
-		resultType: resultType,
-		timeout:    timeout,
+		jsSetup:      jsBody,
+		jsBatchSetup: batchSetup,
+		batchKey:     batchKey,
+		paramTypes:   paramTypes,
+		resultType:   resultType,
+		timeout:      timeout,
 	}
 
 	r.mu.Lock()
@@ -227,19 +235,13 @@ func (r *Registry) Call(
 		return r.callSequential(tc, cf, name, argsBatch)
 	}
 
-	// Lazily install the __batch helper that takes a JSON string of args,
-	// parses it inside V8, calls invoke for each row, and returns
-	// JSON.stringify of the results. All in one JS function call.
-	batchKey := "__batch_" + name
-	if !tc.setupDone[batchKey] {
-		mapExpr := cf.jsCall + "...a)"
-		batchSetup := fmt.Sprintf(
-			"function %s(jsonStr) { return JSON.stringify(JSON.parse(jsonStr).map(a => { %s return %s; })); }",
-			batchKey, jsBatchArgHydration(cf.paramTypes), mapExpr)
-		if _, err := tc.v8ctx.RunScript(batchSetup, batchKey+".js"); err != nil {
+	// Install the __batch helper (precomputed at registration time)
+	// into this V8 context if not already done.
+	if !tc.setupDone[cf.batchKey] {
+		if _, err := tc.v8ctx.RunScript(cf.jsBatchSetup, cf.batchKey+".js"); err != nil {
 			return nil, fmt.Errorf("installing batch helper: %w", err)
 		}
-		tc.setupDone[batchKey] = true
+		tc.setupDone[cf.batchKey] = true
 	}
 
 	// Build JSON array of args in Go: [[arg0_0,arg0_1],[arg1_0,arg1_1],...]
@@ -279,7 +281,7 @@ func (r *Registry) Call(
 		r.iso.TerminateExecution()
 	})
 
-	val, err := tc.v8ctx.Global().MethodCall(batchKey, strVal)
+	val, err := tc.v8ctx.Global().MethodCall(cf.batchKey, strVal)
 
 	// If the batch contains async functions (sql``), the result will be
 	// a Promise wrapping the array. Pump until resolved.
@@ -431,7 +433,7 @@ func (r *Registry) callSequential(
 			jsArgs[j] = s
 		}
 
-		callExpr := cf.jsCall + strings.Join(jsArgs, ", ") + ")"
+		callExpr := "invoke(" + strings.Join(jsArgs, ", ") + ")"
 
 		timer := time.AfterFunc(cf.timeout, func() {
 			r.iso.TerminateExecution()

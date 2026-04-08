@@ -64,6 +64,19 @@ func InitIndexFetchSpec(
 			s.MaxFamilyID = id
 		}
 	}
+	if table.HasArrayColumn() {
+		// Array columns use subordinate keys stored under family 0. Even when an
+		// array column is not projected, fetchers still need to treat the row as
+		// potentially spanning multiple KVs under a shared row prefix.
+		if s.MaxKeysPerRow < 2 {
+			s.MaxKeysPerRow = 2
+		}
+		if s.MaxFamilyID == 0 {
+			// Force fetchers to decode the family suffix instead of assuming that a
+			// single-family row is always complete after its first KV.
+			s.MaxFamilyID = 1
+		}
+	}
 
 	s.KeyAndSuffixColumns = table.IndexFetchSpecKeyAndSuffixColumns(index)
 

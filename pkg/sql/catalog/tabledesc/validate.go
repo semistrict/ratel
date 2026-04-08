@@ -892,15 +892,6 @@ func (desc *wrapper) validateColumnFamilies(
 	if desc.Families[0].ID != descpb.FamilyID(0) {
 		return errors.Newf("the 0th family must have ID 0")
 	}
-	// Multiple column families are not supported for user tables. All
-	// columns must be in family 0. System tables are exempt.
-	if len(desc.Families) > 1 && !catalog.IsSystemDescriptor(desc) {
-		return errors.Newf(
-			"multiple column families are not supported; table %q has %d families",
-			desc.Name, len(desc.Families),
-		)
-	}
-
 	familyNames := map[string]struct{}{}
 	familyIDs := map[descpb.FamilyID]string{}
 	colIDToFamilyID := map[descpb.ColumnID]descpb.FamilyID{}

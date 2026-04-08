@@ -1,8 +1,5 @@
 // GENERATED FILE DO NOT EDIT
 
-//go:build !make
-// +build !make
-
 package clisqlshell
 
 // #cgo CPPFLAGS: -I${SRCDIR}/../../../lib/build/jemalloc/include

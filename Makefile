@@ -468,47 +468,28 @@ C_LIBS_DYNAMIC = $(LIBGEOS)
 # Go does not permit dashes in build tags. This is undocumented.
 native-tag := $(subst -,_,$(TARGET_TRIPLE))$(if $(use-stdmalloc),_stdmalloc)
 
-# In each package that uses cgo, we inject include and library search paths into
-# files named zcgo_flags_{native-tag}.go. The logic for this is complicated so
-# that Make-driven builds can cache the state of builds for multiple
-# configurations at once, while still allowing the use of `go build` and `go
-# test` for the configuration most recently built with Make.
-#
-# Building with Make always adds the `make` and {native-tag} tags to the build.
-#
-# Unsuffixed flags files (zcgo_flags.cgo) have the build constraint `!make` and
-# are only compiled when invoking the Go toolchain directly on a package-- i.e.,
-# when the `make` build tag is not specified. These files are rebuilt whenever
-# the build signature changes (see build/defs.mk.sig), and so reflect the target
-# triple that Make was most recently invoked with.
-#
-# Suffixed flags files (e.g. zcgo_flags_{native-tag}.go) have the build
-# constraint `{native-tag}` and are built the first time a Make-driven build
-# encounters a given native tag or when the build signature changes (see
-# build/defs.mk.sig). These tags are unset when building with the Go toolchain
-# directly, so these files are only compiled when building with Make.
+# In each package that uses cgo, we check in a zcgo_flags.go file that injects
+# the include and library search paths needed for our vendored native deps.
+# These files now use ${SRCDIR}-relative paths, so they are configuration
+# agnostic and work for both Make-driven and direct Go builds. Refresh them
+# explicitly with `make generate`; normal build/test targets should consume the
+# checked-in copies without rewriting the worktree.
 CGO_PKGS := \
 	pkg/cli \
 	pkg/cli/clisqlshell \
 	pkg/server/status \
-	pkg/geo/geoproj \
-	vendor/github.com/knz/go-libedit/unix
+	pkg/geo/geoproj
 vendor/github.com/knz/go-libedit/unix-package := libedit_unix
 pkg/cli-rootrel := ../..
 pkg/cli/clisqlshell-rootrel := ../../..
 pkg/server/status-rootrel := ../../..
 pkg/geo/geoproj-rootrel := ../../..
-CGO_UNSUFFIXED_FLAGS_FILES := $(addprefix ./,$(addsuffix /zcgo_flags.go,$(CGO_PKGS)))
-CGO_SUFFIXED_FLAGS_FILES   := $(addprefix ./,$(addsuffix /zcgo_flags_$(native-tag).go,$(CGO_PKGS)))
-BASE_CGO_FLAGS_FILES := $(CGO_UNSUFFIXED_FLAGS_FILES) $(CGO_SUFFIXED_FLAGS_FILES)
+BASE_CGO_FLAGS_FILES := $(addprefix ./,$(addsuffix /zcgo_flags.go,$(CGO_PKGS)))
 CGO_FLAGS_FILES := $(BASE_CGO_FLAGS_FILES) vendor/github.com/knz/go-libedit/unix/zcgo_flags_extra.go
 
 $(BASE_CGO_FLAGS_FILES): Makefile build/defs.mk.sig vendor/modules.txt
 	@echo "regenerating $@"
 	@echo '// GENERATED FILE DO NOT EDIT' > $@
-	@echo >> $@
-	@echo '//go:build $(if $(findstring $(native-tag),$@),$(native-tag),!make)' >> $@
-	@echo '// +build $(if $(findstring $(native-tag),$@),$(native-tag),!make)' >> $@
 	@echo >> $@
 	@echo 'package $(if $($(@D)-package),$($(@D)-package),$(notdir $(@D)))' >> $@
 	@echo >> $@
@@ -1566,7 +1547,6 @@ clean: ## Like cleanshort, but also includes C++ artifacts, Bazel artifacts, and
 clean: cleanshort clean-c-deps
 	rm -rf build/defs.mk*
 	-$(GO) clean $(GOFLAGS) $(GOMODVENDORFLAGS) -tags '$(TAGS)' -ldflags '$(LINKFLAGS)' -i -cache github.com/cockroachdb/cockroach...
-	$(FIND_RELEVANT) -type f -name 'zcgo_flags*.go' -exec rm {} +
 	if command -v bazel &> /dev/null; then bazel clean --expunge; fi
 	rm -rf artifacts bin
 

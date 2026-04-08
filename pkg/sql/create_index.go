@@ -752,11 +752,6 @@ func (n *createIndexNode) startExec(params runParams) error {
 		return err
 	}
 
-	// Increment the counter if this index could be storing data across multiple column families.
-	if len(indexDesc.StoreColumnNames) > 1 && len(n.tableDesc.Families) > 1 {
-		telemetry.Inc(sqltelemetry.SecondaryIndexColumnFamiliesCounter)
-	}
-
 	// TODO(postamar): bump version to LatestIndexDescriptorVersion in 22.2
 	// This is not possible until then because of a limitation in 21.2 which
 	// affects mixed-21.2-22.1-version clusters (issue #78426).

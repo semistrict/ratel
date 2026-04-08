@@ -64,8 +64,6 @@ func main() {
 				var newdefs tree.TableDefs
 				for _, def := range stmt.Defs {
 					switch def := def.(type) {
-					case *tree.FamilyTableDef:
-						// skip
 					case *tree.IndexTableDef:
 						// Postgres doesn't support
 						// indexes in CREATE TABLE,

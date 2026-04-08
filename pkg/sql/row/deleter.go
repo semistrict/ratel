@@ -142,23 +142,11 @@ func (rd *Deleter) DeleteRow(
 	}
 
 	// Delete the row.
-	var called bool
-	return rd.Helper.TableDesc.ForeachFamily(func(family *descpb.ColumnFamilyDescriptor) error {
-		if called {
-			// HACK: MakeFamilyKey appends to its argument, so on every loop iteration
-			// after the first, trim primaryIndexKey so nothing gets overwritten.
-			// TODO(dan): Instead of this, use something like engine.ChunkAllocator.
-			primaryIndexKey = primaryIndexKey[:len(primaryIndexKey):len(primaryIndexKey)]
-		} else {
-			called = true
-		}
-		familyID := family.ID
-		rd.key = keys.MakeFamilyKey(primaryIndexKey, uint32(familyID))
-		if traceKV {
-			log.VEventf(ctx, 2, "Del %s", keys.PrettyPrint(rd.Helper.primIndexValDirs, rd.key))
-		}
-		b.Del(&rd.key)
-		rd.key = nil
-		return nil
-	})
+	rd.key = keys.MakeFamilyKey(primaryIndexKey, 0)
+	if traceKV {
+		log.VEventf(ctx, 2, "Del %s", keys.PrettyPrint(rd.Helper.primIndexValDirs, rd.key))
+	}
+	b.Del(&rd.key)
+	rd.key = nil
+	return nil
 }

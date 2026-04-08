@@ -11,11 +11,6 @@ CREATE TABLE uniq (
   x INT,
   y INT DEFAULT 5,
   UNIQUE WITHOUT INDEX (x, y),
-  FAMILY (k),
-  FAMILY (v),
-  FAMILY (w),
-  FAMILY (x),
-  FAMILY (y)
 )
 
 statement ok
@@ -27,10 +22,6 @@ CREATE TABLE uniq_overlaps_pk (
   PRIMARY KEY (a, b),
   UNIQUE WITHOUT INDEX (b, c),
   UNIQUE WITHOUT INDEX (a, b, d),
-  FAMILY (a),
-  FAMILY (b),
-  FAMILY (c),
-  FAMILY (d)
 );
 ALTER TABLE uniq_overlaps_pk ADD CONSTRAINT unique_a UNIQUE WITHOUT INDEX (a) NOT VALID;
 ALTER TABLE uniq_overlaps_pk ADD CONSTRAINT unique_c_d UNIQUE WITHOUT INDEX (c, d) NOT VALID
@@ -45,10 +36,6 @@ CREATE TABLE uniq_hidden_pk (
   UNIQUE WITHOUT INDEX (b, c),
   UNIQUE WITHOUT INDEX (a, b, d),
   UNIQUE WITHOUT INDEX (a),
-  FAMILY (a),
-  FAMILY (b),
-  FAMILY (c),
-  FAMILY (d)
 )
 
 statement ok
@@ -57,7 +44,6 @@ CREATE TABLE uniq_fk_parent (
   b INT,
   c INT,
   UNIQUE WITHOUT INDEX (b, c),
-  FAMILY (rowid, a, b, c)
 )
 
 statement ok
@@ -67,9 +53,6 @@ CREATE TABLE uniq_fk_child (
   c INT,
   FOREIGN KEY (b, c) REFERENCES uniq_fk_parent (b, c) ON UPDATE CASCADE,
   UNIQUE WITHOUT INDEX (c),
-  FAMILY (a),
-  FAMILY (b),
-  FAMILY (c)
 )
 
 statement ok
@@ -79,9 +62,6 @@ CREATE TABLE uniq_partial (
   b INT,
   UNIQUE WITHOUT INDEX (a) WHERE b > 0,
   UNIQUE WITHOUT INDEX (b) WHERE b > 0,
-  FAMILY (k),
-  FAMILY (a),
-  FAMILY (b)
 )
 
 statement ok
@@ -91,9 +71,6 @@ CREATE TABLE uniq_partial_overlaps_pk (
   b INT,
   UNIQUE WITHOUT INDEX (k) WHERE b > 0,
   UNIQUE WITHOUT INDEX (k, a) WHERE b > 0,
-  FAMILY (k),
-  FAMILY (a),
-  FAMILY (b)
 )
 
 statement ok
@@ -102,9 +79,6 @@ CREATE TABLE uniq_partial_hidden_pk (
   b INT,
   c INT,
   UNIQUE WITHOUT INDEX (b) WHERE c > 0,
-  FAMILY (a),
-  FAMILY (b),
-  FAMILY (c)
 )
 
 statement ok
@@ -120,10 +94,6 @@ CREATE TABLE uniq_enum (
   UNIQUE INDEX (r, s, j),
   UNIQUE WITHOUT INDEX (i),
   UNIQUE WITHOUT INDEX (s, j),
-  FAMILY (r),
-  FAMILY (s),
-  FAMILY (i),
-  FAMILY (j)
 )
 
 statement ok
@@ -135,10 +105,6 @@ CREATE TABLE uniq_partial_enum (
   PRIMARY KEY (r, a),
   UNIQUE WITHOUT INDEX (b) WHERE c IN ('foo', 'bar', 'baz'),
   INDEX (r, b) WHERE c IN ('foo', 'bar', 'baz'),
-  FAMILY (r),
-  FAMILY (a),
-  FAMILY (b),
-  FAMILY (c)
 )
 
 statement ok
@@ -215,37 +181,14 @@ CREATE TABLE uniq_computed_pk (
   UNIQUE WITHOUT INDEX (i),
   UNIQUE WITHOUT INDEX (s),
   UNIQUE WITHOUT INDEX (d),
-  FAMILY (i),
-  FAMILY (s),
-  FAMILY (d),
-  FAMILY (c_i_expr),
-  FAMILY (c_d),
-  FAMILY (c_d_expr)
 )
 
 statement ok
 CREATE TABLE uniq_uuid (
   id1 UUID DEFAULT gen_random_uuid(),
   id2 UUID DEFAULT '00000000-0000-0000-0000-000000000000',
-  id3 BYTES DEFAULT gen_random_uuid()::BYTES,
-  id4 STRING DEFAULT gen_random_uuid(),
-  id5 VARCHAR(4) DEFAULT gen_random_uuid(),
-  id6 CHAR DEFAULT gen_random_uuid(),
-  id7 VARCHAR DEFAULT gen_random_uuid(),
   UNIQUE WITHOUT INDEX (id1),
   UNIQUE WITHOUT INDEX (id2),
-  UNIQUE WITHOUT INDEX (id3),
-  UNIQUE WITHOUT INDEX (id4),
-  UNIQUE WITHOUT INDEX (id5),
-  UNIQUE WITHOUT INDEX (id6),
-  UNIQUE WITHOUT INDEX (id7),
-  FAMILY (id1),
-  FAMILY (id2),
-  FAMILY (id3),
-  FAMILY (id4),
-  FAMILY (id5),
-  FAMILY (id6),
-  FAMILY (id7)
 )
 
 statement ok
@@ -286,7 +229,6 @@ vectorized: true
 │           │     spans: FULL SCAN
 │           │
 │           └── • scan buffer
-│                 estimated row count: 2
 │                 label: buffer 1
 │
 └── • constraint-check
@@ -303,7 +245,6 @@ vectorized: true
             │     spans: FULL SCAN
             │
             └── • scan buffer
-                  estimated row count: 2
                   label: buffer 1
 
 # No need to plan checks for w since it's always null.
@@ -339,7 +280,6 @@ vectorized: true
             │     spans: FULL SCAN
             │
             └── • scan buffer
-                  estimated row count: 2
                   label: buffer 1
 
 # Use all the unique indexes and constraints as arbiters for DO NOTHING with no
@@ -493,7 +433,6 @@ vectorized: true
 │           │     spans: FULL SCAN
 │           │
 │           └── • scan buffer
-│                 estimated row count: 2
 │                 label: buffer 1
 │
 ├── • constraint-check
@@ -506,7 +445,6 @@ vectorized: true
 │           │ pred: column2 != b
 │           │
 │           └── • scan buffer
-│                 estimated row count: 2
 │                 label: buffer 1
 │
 └── • constraint-check
@@ -613,6 +551,7 @@ vectorized: true
 │       │ label: buffer 1
 │       │
 │       └── • render
+│           │ estimated row count: 2
 │           │
 │           └── • values
 │                 size: 3 columns, 2 rows
@@ -631,7 +570,6 @@ vectorized: true
 │           │     spans: FULL SCAN
 │           │
 │           └── • scan buffer
-│                 estimated row count: 2
 │                 label: buffer 1
 │
 └── • constraint-check
@@ -648,7 +586,6 @@ vectorized: true
             │     spans: FULL SCAN
             │
             └── • scan buffer
-                  estimated row count: 2
                   label: buffer 1
 
 # Combine unique checks with foreign keys. There should be two foreign key
@@ -668,6 +605,7 @@ vectorized: true
 │       │ label: buffer 1
 │       │
 │       └── • render
+│           │ estimated row count: 2
 │           │
 │           └── • values
 │                 size: 3 columns, 2 rows
@@ -686,7 +624,6 @@ vectorized: true
 │           │     spans: FULL SCAN
 │           │
 │           └── • scan buffer
-│                 estimated row count: 2
 │                 label: buffer 1
 │
 ├── • constraint-check
@@ -702,7 +639,6 @@ vectorized: true
 │           │     spans: FULL SCAN
 │           │
 │           └── • scan buffer
-│                 estimated row count: 2
 │                 label: buffer 1
 │
 └── • constraint-check
@@ -718,7 +654,6 @@ vectorized: true
             │     spans: FULL SCAN
             │
             └── • scan buffer
-                  estimated row count: 2
                   label: buffer 1
 
 # Test that we use the index when available for the insert checks.
@@ -742,6 +677,7 @@ vectorized: true
 │       │
 │       └── • render
 │           │ columns: (column1, column2, column3, column4, check1)
+│           │ estimated row count: 2
 │           │ render check1: column1 IN ('us-east', 'us-west', 'eu-west')
 │           │ render column1: column1
 │           │ render column2: column2
@@ -767,21 +703,53 @@ vectorized: true
 │       │
 │       └── • project
 │           │ columns: (column3)
+│           │ estimated row count: 1 (missing stats)
 │           │
-│           └── • lookup join (semi)
+│           └── • project
 │               │ columns: (column1, column3)
 │               │ estimated row count: 1 (missing stats)
-│               │ table: uniq_enum@uniq_enum_pkey
-│               │ lookup condition: (r IN ('us-east', 'us-west', 'eu-west')) AND (column3 = i)
-│               │ pred: column1 != r
 │               │
-│               └── • project
-│                   │ columns: (column1, column3)
+│               └── • distinct
+│                   │ columns: (column1, column3, rownum)
+│                   │ estimated row count: 2 (missing stats)
+│                   │ distinct on: rownum
 │                   │
-│                   └── • scan buffer
-│                         columns: (column1, column2, column3, column4, check1)
-│                         estimated row count: 2
-│                         label: buffer 1
+│                   └── • project
+│                       │ columns: (column1, column3, rownum)
+│                       │
+│                       └── • project
+│                           │ columns: (r, i, column1, column3, rownum)
+│                           │ estimated row count: 7 (missing stats)
+│                           │
+│                           └── • lookup join (inner)
+│                               │ columns: ("lookup_join_const_col_@12", column1, column3, rownum, r, i)
+│                               │ table: uniq_enum@uniq_enum_pkey
+│                               │ equality: (lookup_join_const_col_@12, column3) = (r,i)
+│                               │ equality cols are key
+│                               │ pred: column1 != r
+│                               │
+│                               └── • cross join (inner)
+│                                   │ columns: ("lookup_join_const_col_@12", column1, column3, rownum)
+│                                   │ estimated row count: 6
+│                                   │
+│                                   ├── • values
+│                                   │     columns: ("lookup_join_const_col_@12")
+│                                   │     size: 1 column, 3 rows
+│                                   │     row 0, expr 0: 'us-east'
+│                                   │     row 1, expr 0: 'us-west'
+│                                   │     row 2, expr 0: 'eu-west'
+│                                   │
+│                                   └── • ordinality
+│                                       │ columns: (column1, column3, rownum)
+│                                       │ estimated row count: 2
+│                                       │
+│                                       └── • project
+│                                           │ columns: (column1, column3)
+│                                           │ estimated row count: 2
+│                                           │
+│                                           └── • scan buffer
+│                                                 columns: (column1, column2, column3, column4, check1)
+│                                                 label: buffer 1
 │
 └── • constraint-check
     │
@@ -790,21 +758,53 @@ vectorized: true
         │
         └── • project
             │ columns: (column2, column4)
+            │ estimated row count: 1 (missing stats)
             │
-            └── • lookup join (semi)
+            └── • project
                 │ columns: (column1, column2, column3, column4)
                 │ estimated row count: 1 (missing stats)
-                │ table: uniq_enum@uniq_enum_r_s_j_key
-                │ lookup condition: ((r IN ('us-east', 'us-west', 'eu-west')) AND (column2 = s)) AND (column4 = j)
-                │ pred: (column1 != r) OR (column3 != i)
                 │
-                └── • project
-                    │ columns: (column1, column2, column3, column4)
+                └── • distinct
+                    │ columns: (column1, column2, column3, column4, rownum)
+                    │ estimated row count: 0 (missing stats)
+                    │ distinct on: rownum
                     │
-                    └── • scan buffer
-                          columns: (column1, column2, column3, column4, check1)
-                          estimated row count: 2
-                          label: buffer 1
+                    └── • project
+                        │ columns: (column1, column2, column3, column4, rownum)
+                        │
+                        └── • project
+                            │ columns: (r, s, i, j, column1, column2, column3, column4, rownum)
+                            │ estimated row count: 0 (missing stats)
+                            │
+                            └── • lookup join (inner)
+                                │ columns: ("lookup_join_const_col_@22", column1, column2, column3, column4, rownum, r, s, i, j)
+                                │ table: uniq_enum@uniq_enum_r_s_j_key
+                                │ equality: (lookup_join_const_col_@22, column2, column4) = (r,s,j)
+                                │ equality cols are key
+                                │ pred: (column1 != r) OR (column3 != i)
+                                │
+                                └── • cross join (inner)
+                                    │ columns: ("lookup_join_const_col_@22", column1, column2, column3, column4, rownum)
+                                    │ estimated row count: 6
+                                    │
+                                    ├── • values
+                                    │     columns: ("lookup_join_const_col_@22")
+                                    │     size: 1 column, 3 rows
+                                    │     row 0, expr 0: 'us-east'
+                                    │     row 1, expr 0: 'us-west'
+                                    │     row 2, expr 0: 'eu-west'
+                                    │
+                                    └── • ordinality
+                                        │ columns: (column1, column2, column3, column4, rownum)
+                                        │ estimated row count: 2
+                                        │
+                                        └── • project
+                                            │ columns: (column1, column2, column3, column4)
+                                            │ estimated row count: 2
+                                            │
+                                            └── • scan buffer
+                                                  columns: (column1, column2, column3, column4, check1)
+                                                  label: buffer 1
 
 # Test that we use the index when available for the insert checks. This uses
 # the default value for columns r and j.
@@ -828,6 +828,7 @@ vectorized: true
 │       │
 │       └── • render
 │           │ columns: (r_default, column1, column2, j_default, check1)
+│           │ estimated row count: 2
 │           │ render check1: r_default IN ('us-east', 'us-west', 'eu-west')
 │           │ render column1: column1
 │           │ render column2: column2
@@ -836,6 +837,7 @@ vectorized: true
 │           │
 │           └── • render
 │               │ columns: (r_default, j_default, column1, column2)
+│               │ estimated row count: 2
 │               │ render r_default: CASE (random() * 3.0)::INT8 WHEN 0 THEN 'us-east' WHEN 1 THEN 'us-west' ELSE 'eu-west' END
 │               │ render j_default: CAST(NULL AS INT8)
 │               │ render column1: column1
@@ -856,21 +858,53 @@ vectorized: true
         │
         └── • project
             │ columns: (column2)
+            │ estimated row count: 1 (missing stats)
             │
-            └── • lookup join (semi)
+            └── • project
                 │ columns: (r_default, column2)
                 │ estimated row count: 1 (missing stats)
-                │ table: uniq_enum@uniq_enum_pkey
-                │ lookup condition: (r IN ('us-east', 'us-west', 'eu-west')) AND (column2 = i)
-                │ pred: r_default != r
                 │
-                └── • project
-                    │ columns: (r_default, column2)
+                └── • distinct
+                    │ columns: (r_default, column2, rownum)
+                    │ estimated row count: 2 (missing stats)
+                    │ distinct on: rownum
                     │
-                    └── • scan buffer
-                          columns: (r_default, column1, column2, j_default, check1)
-                          estimated row count: 2
-                          label: buffer 1
+                    └── • project
+                        │ columns: (r_default, column2, rownum)
+                        │
+                        └── • project
+                            │ columns: (r, i, r_default, column2, rownum)
+                            │ estimated row count: 7 (missing stats)
+                            │
+                            └── • lookup join (inner)
+                                │ columns: ("lookup_join_const_col_@12", r_default, column2, rownum, r, i)
+                                │ table: uniq_enum@uniq_enum_pkey
+                                │ equality: (lookup_join_const_col_@12, column2) = (r,i)
+                                │ equality cols are key
+                                │ pred: r_default != r
+                                │
+                                └── • cross join (inner)
+                                    │ columns: ("lookup_join_const_col_@12", r_default, column2, rownum)
+                                    │ estimated row count: 6
+                                    │
+                                    ├── • values
+                                    │     columns: ("lookup_join_const_col_@12")
+                                    │     size: 1 column, 3 rows
+                                    │     row 0, expr 0: 'us-east'
+                                    │     row 1, expr 0: 'us-west'
+                                    │     row 2, expr 0: 'eu-west'
+                                    │
+                                    └── • ordinality
+                                        │ columns: (r_default, column2, rownum)
+                                        │ estimated row count: 2
+                                        │
+                                        └── • project
+                                            │ columns: (r_default, column2)
+                                            │ estimated row count: 2
+                                            │
+                                            └── • scan buffer
+                                                  columns: (r_default, column1, column2, j_default, check1)
+                                                  label: buffer 1
 
 # Test that we use the index when available for de-duplicating INSERT ON
 # CONFLICT DO NOTHING rows before inserting.
@@ -890,6 +924,7 @@ vectorized: true
 │
 └── • render
     │ columns: (column1, column2, column3, column4, check1)
+    │ estimated row count: 0 (missing stats)
     │ render check1: column1 IN ('us-east', 'us-west', 'eu-west')
     │ render column1: column1
     │ render column2: column2
@@ -901,14 +936,14 @@ vectorized: true
         │ estimated row count: 0 (missing stats)
         │ table: uniq_enum@uniq_enum_pkey
         │ equality cols are key
-        │ lookup condition: (r IN ('us-east', 'us-west', 'eu-west')) AND (column3 = i)
+        │ lookup condition: (column3 = i) AND (r IN ('us-east', 'us-west', 'eu-west'))
         │
         └── • lookup join (anti)
             │ columns: (column1, column2, column3, column4)
             │ estimated row count: 0 (missing stats)
             │ table: uniq_enum@uniq_enum_r_s_j_key
             │ equality cols are key
-            │ lookup condition: ((r IN ('us-east', 'us-west', 'eu-west')) AND (column2 = s)) AND (column4 = j)
+            │ lookup condition: ((column2 = s) AND (column4 = j)) AND (r IN ('us-east', 'us-west', 'eu-west'))
             │
             └── • values
                   columns: (column1, column2, column3, column4)
@@ -985,7 +1020,6 @@ vectorized: true
                 │ filter: column3 > 0
                 │
                 └── • scan buffer
-                      estimated row count: 2
                       label: buffer 1
 
 # No need to plan checks for a since it's always null.
@@ -1027,7 +1061,6 @@ vectorized: true
                 │ filter: column3 > 0
                 │
                 └── • scan buffer
-                      estimated row count: 2
                       label: buffer 1
 
 # Use all the unique indexes and constraints as arbiters for DO NOTHING with no
@@ -1048,6 +1081,7 @@ vectorized: true
 │
 └── • project
     │ columns: (column1, column2, column3)
+    │ estimated row count: 0 (missing stats)
     │
     └── • distinct
         │ columns: (arbiter_unique_b_distinct, column1, column2, column3)
@@ -1057,6 +1091,7 @@ vectorized: true
         │
         └── • render
             │ columns: (arbiter_unique_b_distinct, column1, column2, column3)
+            │ estimated row count: 0 (missing stats)
             │ render arbiter_unique_b_distinct: (column3 > 0) OR CAST(NULL AS BOOL)
             │ render column1: column1
             │ render column2: column2
@@ -1070,6 +1105,7 @@ vectorized: true
                 │
                 └── • render
                     │ columns: (arbiter_unique_a_distinct, column1, column2, column3)
+                    │ estimated row count: 0 (missing stats)
                     │ render arbiter_unique_a_distinct: (column3 > 0) OR CAST(NULL AS BOOL)
                     │ render column1: column1
                     │ render column2: column2
@@ -1270,6 +1306,7 @@ vectorized: true
 │       │
 │       └── • render
 │           │ columns: (column1, column2, column3, column4, check1, partial_index_put1)
+│           │ estimated row count: 2
 │           │ render partial_index_put1: column4 IN ('bar', 'baz', 'foo')
 │           │ render check1: column1 IN ('us-east', 'us-west', 'eu-west')
 │           │ render column1: column1
@@ -1296,12 +1333,13 @@ vectorized: true
         │
         └── • project
             │ columns: (column3)
+            │ estimated row count: 1
             │
             └── • lookup join (semi)
                 │ columns: (column1, column2, column3, column4)
                 │ estimated row count: 1
                 │ table: uniq_partial_enum@uniq_partial_enum_r_b_idx (partial index)
-                │ lookup condition: (r IN ('us-east', 'us-west', 'eu-west')) AND (column3 = b)
+                │ lookup condition: (column3 = b) AND (r IN ('us-east', 'us-west', 'eu-west'))
                 │ pred: (column1 != r) OR (column2 != a)
                 │
                 └── • filter
@@ -1311,10 +1349,10 @@ vectorized: true
                     │
                     └── • project
                         │ columns: (column1, column2, column3, column4)
+                        │ estimated row count: 2
                         │
                         └── • scan buffer
                               columns: (column1, column2, column3, column4, check1, partial_index_put1)
-                              estimated row count: 2
                               label: buffer 1
 
 # Test that we use the partial index when available for de-duplicating INSERT ON
@@ -1336,6 +1374,7 @@ vectorized: true
 │
 └── • render
     │ columns: (column1, column2, column3, column4, check1, partial_index_put1)
+    │ estimated row count: 0
     │ render partial_index_put1: column4 IN ('bar', 'baz', 'foo')
     │ render check1: column1 IN ('us-east', 'us-west', 'eu-west')
     │ render column1: column1
@@ -1351,6 +1390,7 @@ vectorized: true
         │
         └── • render
             │ columns: (arbiter_unique_b_distinct, column1, column2, column3, column4)
+            │ estimated row count: 0
             │ render arbiter_unique_b_distinct: (column4 IN ('bar', 'baz', 'foo')) OR CAST(NULL AS BOOL)
             │ render column1: column1
             │ render column2: column2
@@ -1361,7 +1401,7 @@ vectorized: true
                 │ columns: (column1, column2, column3, column4)
                 │ estimated row count: 0
                 │ table: uniq_partial_enum@uniq_partial_enum_r_b_idx (partial index)
-                │ lookup condition: (r IN ('us-east', 'us-west', 'eu-west')) AND (column3 = b)
+                │ lookup condition: (column3 = b) AND (r IN ('us-east', 'us-west', 'eu-west'))
                 │ pred: column4 IN ('bar', 'baz', 'foo')
                 │
                 └── • lookup join (anti)
@@ -1401,6 +1441,7 @@ vectorized: true
 │       │ label: buffer 1
 │       │
 │       └── • render
+│           │ estimated row count: 2
 │           │
 │           └── • values
 │                 size: 3 columns, 2 rows
@@ -1419,18 +1460,12 @@ vectorized: true
             │     spans: FULL SCAN
             │
             └── • scan buffer
-                  estimated row count: 2
                   label: buffer 1
 
 # By default, we do not require checks on UUID columns set to gen_random_uuid(),
-# but we do for UUID columns set to other values. We also don't require checks
-# on STRING or BYTES columns set to gen_random_uuid() with either an explicit or
-# implicit cast, but we do require checks on CHAR and VARCHAR columns with a
-# limited width.
+# but we do for UUID columns set to other values.
 query T
-EXPLAIN INSERT INTO uniq_uuid (id1, id2, id3, id4, id5, id6)
-VALUES (gen_random_uuid(), '8597b0eb-7b89-4857-858a-fabf86f6a3ac',
-  gen_random_uuid()::BYTES, gen_random_uuid(), gen_random_uuid(), gen_random_uuid())
+EXPLAIN INSERT INTO uniq_uuid (id1, id2) VALUES (gen_random_uuid(), '8597b0eb-7b89-4857-858a-fabf86f6a3ac')
 ----
 distribution: local
 vectorized: true
@@ -1438,56 +1473,20 @@ vectorized: true
 • root
 │
 ├── • insert
-│   │ into: uniq_uuid(id1, id2, id3, id4, id5, id6, id7, rowid)
+│   │ into: uniq_uuid(id1, id2, rowid)
 │   │
 │   └── • buffer
 │       │ label: buffer 1
 │       │
 │       └── • values
-│             size: 8 columns, 1 row
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (right semi)
-│           │ equality: (id2) = (column2)
-│           │ right cols are key
-│           │ pred: rowid_default != rowid
-│           │
-│           ├── • scan
-│           │     missing stats
-│           │     table: uniq_uuid@uniq_uuid_pkey
-│           │     spans: FULL SCAN
-│           │
-│           └── • scan buffer
-│                 estimated row count: 1
-│                 label: buffer 1
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (right semi)
-│           │ equality: (id5) = (id5_cast)
-│           │ right cols are key
-│           │ pred: rowid_default != rowid
-│           │
-│           ├── • scan
-│           │     missing stats
-│           │     table: uniq_uuid@uniq_uuid_pkey
-│           │     spans: FULL SCAN
-│           │
-│           └── • scan buffer
-│                 estimated row count: 1
-│                 label: buffer 1
+│             size: 3 columns, 1 row
 │
 └── • constraint-check
     │
     └── • error if rows
         │
         └── • hash join (right semi)
-            │ equality: (id6) = (id6_cast)
+            │ equality: (id2) = (column2)
             │ right cols are key
             │ pred: rowid_default != rowid
             │
@@ -1497,21 +1496,13 @@ vectorized: true
             │     spans: FULL SCAN
             │
             └── • scan buffer
-                  estimated row count: 1
                   label: buffer 1
 
 # The default value of id1 is gen_random_uuid(), so we don't need to plan checks
 # for it. But the default value of id2 is '00000000-0000-0000-0000-000000000000',
 # so we do need checks.
-#
-# We don't need checks for id3 and id4, since those columns are types BYTES and
-# STRING respectively, with default values of gen_random_uuid()::BYTES and
-# gen_random_uuid(). We do need checks for id5 and id6, since even though the
-# default value for those columns is gen_random_uuid(), the column width is
-# limited (the types are VARCHAR(4) and CHAR).
 query T
-EXPLAIN INSERT INTO uniq_uuid (id1, id2, id3, id4, id5, id6)
-VALUES (DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT)
+EXPLAIN INSERT INTO uniq_uuid (id1, id2) VALUES (DEFAULT, DEFAULT)
 ----
 distribution: local
 vectorized: true
@@ -1519,56 +1510,20 @@ vectorized: true
 • root
 │
 ├── • insert
-│   │ into: uniq_uuid(id1, id2, id3, id4, id5, id6, id7, rowid)
+│   │ into: uniq_uuid(id1, id2, rowid)
 │   │
 │   └── • buffer
 │       │ label: buffer 1
 │       │
 │       └── • values
-│             size: 8 columns, 1 row
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (right semi)
-│           │ equality: (id2) = (column2)
-│           │ right cols are key
-│           │ pred: rowid_default != rowid
-│           │
-│           ├── • scan
-│           │     missing stats
-│           │     table: uniq_uuid@uniq_uuid_pkey
-│           │     spans: FULL SCAN
-│           │
-│           └── • scan buffer
-│                 estimated row count: 1
-│                 label: buffer 1
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (right semi)
-│           │ equality: (id5) = (id5_cast)
-│           │ right cols are key
-│           │ pred: rowid_default != rowid
-│           │
-│           ├── • scan
-│           │     missing stats
-│           │     table: uniq_uuid@uniq_uuid_pkey
-│           │     spans: FULL SCAN
-│           │
-│           └── • scan buffer
-│                 estimated row count: 1
-│                 label: buffer 1
+│             size: 3 columns, 1 row
 │
 └── • constraint-check
     │
     └── • error if rows
         │
         └── • hash join (right semi)
-            │ equality: (id6) = (id6_cast)
+            │ equality: (id2) = (column2)
             │ right cols are key
             │ pred: rowid_default != rowid
             │
@@ -1578,14 +1533,11 @@ vectorized: true
             │     spans: FULL SCAN
             │
             └── • scan buffer
-                  estimated row count: 1
                   label: buffer 1
 
 # We can also detect gen_random_uuid() when it is a projection.
 query T
-EXPLAIN INSERT INTO uniq_uuid (id1, id2, id3, id4, id5, id6, id7)
-SELECT gen_random_uuid(), u, gen_random_uuid()::BYTES, gen_random_uuid(),
-  gen_random_uuid(), gen_random_uuid(), gen_random_uuid() FROM other
+EXPLAIN INSERT INTO uniq_uuid (id1, id2) SELECT gen_random_uuid(), u FROM other
 ----
 distribution: local
 vectorized: true
@@ -1593,7 +1545,7 @@ vectorized: true
 • root
 │
 ├── • insert
-│   │ into: uniq_uuid(id1, id2, id3, id4, id5, id6, id7, rowid)
+│   │ into: uniq_uuid(id1, id2, rowid)
 │   │
 │   └── • buffer
 │       │ label: buffer 1
@@ -1605,44 +1557,12 @@ vectorized: true
 │                 table: other@other_pkey
 │                 spans: FULL SCAN
 │
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (semi)
-│           │ equality: (u) = (id2)
-│           │ pred: rowid_default != rowid
-│           │
-│           ├── • scan buffer
-│           │     label: buffer 1
-│           │
-│           └── • scan
-│                 missing stats
-│                 table: uniq_uuid@uniq_uuid_pkey
-│                 spans: FULL SCAN
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (semi)
-│           │ equality: (id5_cast) = (id5)
-│           │ pred: rowid_default != rowid
-│           │
-│           ├── • scan buffer
-│           │     label: buffer 1
-│           │
-│           └── • scan
-│                 missing stats
-│                 table: uniq_uuid@uniq_uuid_pkey
-│                 spans: FULL SCAN
-│
 └── • constraint-check
     │
     └── • error if rows
         │
         └── • hash join (semi)
-            │ equality: (id6_cast) = (id6)
+            │ equality: (u) = (id2)
             │ pred: rowid_default != rowid
             │
             ├── • scan buffer
@@ -1653,178 +1573,10 @@ vectorized: true
                   table: uniq_uuid@uniq_uuid_pkey
                   spans: FULL SCAN
 
-# With an explicit cast, we still don't need a check on the STRING column (id4).
-# The VARCHAR(4) and CHAR columns (id5 and id6) do need a check.
-query T
-EXPLAIN INSERT INTO uniq_uuid (id4, id5, id6)
-VALUES (gen_random_uuid()::STRING, gen_random_uuid()::VARCHAR(4), gen_random_uuid()::CHAR)
-----
-distribution: local
-vectorized: true
-·
-• root
-│
-├── • insert
-│   │ into: uniq_uuid(id1, id2, id3, id4, id5, id6, id7, rowid)
-│   │
-│   └── • buffer
-│       │ label: buffer 1
-│       │
-│       └── • values
-│             size: 8 columns, 1 row
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (right semi)
-│           │ equality: (id2) = (id2_default)
-│           │ right cols are key
-│           │ pred: rowid_default != rowid
-│           │
-│           ├── • scan
-│           │     missing stats
-│           │     table: uniq_uuid@uniq_uuid_pkey
-│           │     spans: FULL SCAN
-│           │
-│           └── • scan buffer
-│                 estimated row count: 1
-│                 label: buffer 1
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (right semi)
-│           │ equality: (id5) = (column2)
-│           │ right cols are key
-│           │ pred: rowid_default != rowid
-│           │
-│           ├── • scan
-│           │     missing stats
-│           │     table: uniq_uuid@uniq_uuid_pkey
-│           │     spans: FULL SCAN
-│           │
-│           └── • scan buffer
-│                 estimated row count: 1
-│                 label: buffer 1
-│
-└── • constraint-check
-    │
-    └── • error if rows
-        │
-        └── • hash join (right semi)
-            │ equality: (id6) = (column3)
-            │ right cols are key
-            │ pred: rowid_default != rowid
-            │
-            ├── • scan
-            │     missing stats
-            │     table: uniq_uuid@uniq_uuid_pkey
-            │     spans: FULL SCAN
-            │
-            └── • scan buffer
-                  estimated row count: 1
-                  label: buffer 1
-
-# We do need a check if the value in the STRING column (id4) is cast to a
-# limited-width VARCHAR. The VARCHAR(4) and CHAR columns (id5 and id6) still
-# need a check even if the value is cast to a STRING first.
-query T
-EXPLAIN INSERT INTO uniq_uuid (id4, id5, id6)
-VALUES (gen_random_uuid()::VARCHAR(4), gen_random_uuid()::STRING, gen_random_uuid()::STRING)
-----
-distribution: local
-vectorized: true
-·
-• root
-│
-├── • insert
-│   │ into: uniq_uuid(id1, id2, id3, id4, id5, id6, id7, rowid)
-│   │
-│   └── • buffer
-│       │ label: buffer 1
-│       │
-│       └── • values
-│             size: 8 columns, 1 row
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (right semi)
-│           │ equality: (id2) = (id2_default)
-│           │ right cols are key
-│           │ pred: rowid_default != rowid
-│           │
-│           ├── • scan
-│           │     missing stats
-│           │     table: uniq_uuid@uniq_uuid_pkey
-│           │     spans: FULL SCAN
-│           │
-│           └── • scan buffer
-│                 estimated row count: 1
-│                 label: buffer 1
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (right semi)
-│           │ equality: (id4) = (id4_cast)
-│           │ right cols are key
-│           │ pred: rowid_default != rowid
-│           │
-│           ├── • scan
-│           │     missing stats
-│           │     table: uniq_uuid@uniq_uuid_pkey
-│           │     spans: FULL SCAN
-│           │
-│           └── • scan buffer
-│                 estimated row count: 1
-│                 label: buffer 1
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (right semi)
-│           │ equality: (id5) = (id5_cast)
-│           │ right cols are key
-│           │ pred: rowid_default != rowid
-│           │
-│           ├── • scan
-│           │     missing stats
-│           │     table: uniq_uuid@uniq_uuid_pkey
-│           │     spans: FULL SCAN
-│           │
-│           └── • scan buffer
-│                 estimated row count: 1
-│                 label: buffer 1
-│
-└── • constraint-check
-    │
-    └── • error if rows
-        │
-        └── • hash join (right semi)
-            │ equality: (id6) = (id6_cast)
-            │ right cols are key
-            │ pred: rowid_default != rowid
-            │
-            ├── • scan
-            │     missing stats
-            │     table: uniq_uuid@uniq_uuid_pkey
-            │     spans: FULL SCAN
-            │
-            └── • scan buffer
-                  estimated row count: 1
-                  label: buffer 1
-
-
 statement ok
 SET CLUSTER SETTING sql.optimizer.uniqueness_checks_for_gen_random_uuid.enabled = true
 
-# After changing the cluster setting, checks are required for all columns.
+# After changing the cluster setting, checks are required for both columns.
 query T
 EXPLAIN INSERT INTO uniq_uuid (id1, id2) VALUES (gen_random_uuid(), '8597b0eb-7b89-4857-858a-fabf86f6a3ac')
 ----
@@ -1834,13 +1586,13 @@ vectorized: true
 • root
 │
 ├── • insert
-│   │ into: uniq_uuid(id1, id2, id3, id4, id5, id6, id7, rowid)
+│   │ into: uniq_uuid(id1, id2, rowid)
 │   │
 │   └── • buffer
 │       │ label: buffer 1
 │       │
 │       └── • values
-│             size: 8 columns, 1 row
+│             size: 3 columns, 1 row
 │
 ├── • constraint-check
 │   │
@@ -1857,97 +1609,6 @@ vectorized: true
 │           │     spans: FULL SCAN
 │           │
 │           └── • scan buffer
-│                 estimated row count: 1
-│                 label: buffer 1
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (right semi)
-│           │ equality: (id2) = (column2)
-│           │ right cols are key
-│           │ pred: rowid_default != rowid
-│           │
-│           ├── • scan
-│           │     missing stats
-│           │     table: uniq_uuid@uniq_uuid_pkey
-│           │     spans: FULL SCAN
-│           │
-│           └── • scan buffer
-│                 estimated row count: 1
-│                 label: buffer 1
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (right semi)
-│           │ equality: (id3) = (id3_default)
-│           │ right cols are key
-│           │ pred: rowid_default != rowid
-│           │
-│           ├── • scan
-│           │     missing stats
-│           │     table: uniq_uuid@uniq_uuid_pkey
-│           │     spans: FULL SCAN
-│           │
-│           └── • scan buffer
-│                 estimated row count: 1
-│                 label: buffer 1
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (right semi)
-│           │ equality: (id4) = (id4_cast)
-│           │ right cols are key
-│           │ pred: rowid_default != rowid
-│           │
-│           ├── • scan
-│           │     missing stats
-│           │     table: uniq_uuid@uniq_uuid_pkey
-│           │     spans: FULL SCAN
-│           │
-│           └── • scan buffer
-│                 estimated row count: 1
-│                 label: buffer 1
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (right semi)
-│           │ equality: (id5) = (id5_cast)
-│           │ right cols are key
-│           │ pred: rowid_default != rowid
-│           │
-│           ├── • scan
-│           │     missing stats
-│           │     table: uniq_uuid@uniq_uuid_pkey
-│           │     spans: FULL SCAN
-│           │
-│           └── • scan buffer
-│                 estimated row count: 1
-│                 label: buffer 1
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (right semi)
-│           │ equality: (id6) = (id6_cast)
-│           │ right cols are key
-│           │ pred: rowid_default != rowid
-│           │
-│           ├── • scan
-│           │     missing stats
-│           │     table: uniq_uuid@uniq_uuid_pkey
-│           │     spans: FULL SCAN
-│           │
-│           └── • scan buffer
-│                 estimated row count: 1
 │                 label: buffer 1
 │
 └── • constraint-check
@@ -1955,7 +1616,7 @@ vectorized: true
     └── • error if rows
         │
         └── • hash join (right semi)
-            │ equality: (id7) = (id7_cast)
+            │ equality: (id2) = (column2)
             │ right cols are key
             │ pred: rowid_default != rowid
             │
@@ -1965,7 +1626,6 @@ vectorized: true
             │     spans: FULL SCAN
             │
             └── • scan buffer
-                  estimated row count: 1
                   label: buffer 1
 
 statement ok
@@ -2166,13 +1826,6 @@ ALTER TABLE uniq_overlaps_pk VALIDATE CONSTRAINT unique_a
 
 # Same test as the previous, but now that the constraint has been validated, it
 # can be treated as a key. This allows the joins to be more efficient.
-#
-# The implementation detail for VALIDATE CONSTRAINT is slightly different between
-# legacy and declarative schema changer, causing the output of the following
-# EXPLAIN UPDATE to be slightly different: the ordering of three same-level
-# constraint checks is different. We thus test on the same EXPLAIN UPDATE twice
-# with slightly different expected output.
-skipif config local
 query T
 EXPLAIN UPDATE uniq_overlaps_pk SET a = 1, b = 2, c = 3, d = 4 WHERE a = 5
 ----
@@ -2242,76 +1895,6 @@ vectorized: true
             └── • scan buffer
                   label: buffer 1
 
-onlyif config local
-query T
-EXPLAIN UPDATE uniq_overlaps_pk SET a = 1, b = 2, c = 3, d = 4 WHERE a = 5
-----
-distribution: local
-vectorized: true
-·
-• root
-│
-├── • update
-│   │ table: uniq_overlaps_pk
-│   │ set: a, b, c, d
-│   │
-│   └── • buffer
-│       │ label: buffer 1
-│       │
-│       └── • render
-│           │
-│           └── • scan
-│                 missing stats
-│                 table: uniq_overlaps_pk@uniq_overlaps_pk_pkey
-│                 spans: [/5 - /5]
-│                 locking strength: for update
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (right semi)
-│           │ equality: (b, c) = (b_new, c_new)
-│           │ right cols are key
-│           │ pred: a_new != a
-│           │
-│           ├── • scan
-│           │     missing stats
-│           │     table: uniq_overlaps_pk@uniq_overlaps_pk_pkey
-│           │     spans: FULL SCAN
-│           │
-│           └── • scan buffer
-│                 label: buffer 1
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (right semi)
-│           │ equality: (c, d) = (c_new, d_new)
-│           │ right cols are key
-│           │ pred: (a_new != a) OR (b_new != b)
-│           │
-│           ├── • scan
-│           │     missing stats
-│           │     table: uniq_overlaps_pk@uniq_overlaps_pk_pkey
-│           │     spans: FULL SCAN
-│           │
-│           └── • scan buffer
-│                 label: buffer 1
-│
-└── • constraint-check
-    │
-    └── • error if rows
-        │
-        └── • lookup join (semi)
-            │ table: uniq_overlaps_pk@uniq_overlaps_pk_pkey
-            │ equality: (a_new) = (a)
-            │ pred: b_new != b
-            │
-            └── • scan buffer
-                  label: buffer 1
-
 # Update with non-constant input.
 # No need to add a check for b,c since those columns weren't updated.
 # Add inequality filters for the hidden primary key column.
@@ -2330,20 +1913,17 @@ vectorized: true
 │   └── • buffer
 │       │ label: buffer 1
 │       │
-│       └── • distinct
-│           │ distinct on: rowid
+│       └── • cross join
 │           │
-│           └── • cross join
-│               │
-│               ├── • scan
-│               │     missing stats
-│               │     table: uniq_hidden_pk@uniq_hidden_pk_pkey
-│               │     spans: FULL SCAN
-│               │
-│               └── • scan
-│                     missing stats
-│                     table: other@other_pkey
-│                     spans: FULL SCAN
+│           ├── • scan
+│           │     missing stats
+│           │     table: uniq_hidden_pk@uniq_hidden_pk_pkey
+│           │     spans: FULL SCAN
+│           │
+│           └── • scan
+│                 missing stats
+│                 table: other@other_pkey
+│                 spans: FULL SCAN
 │
 ├── • constraint-check
 │   │
@@ -2559,6 +2139,7 @@ vectorized: true
 │       │
 │       └── • render
 │           │ columns: (r, s, i, j, r_new, s_new, i_new, check1)
+│           │ estimated row count: 9 (missing stats)
 │           │ render check1: r_new IN ('us-east', 'us-west', 'eu-west')
 │           │ render r: r
 │           │ render s: s
@@ -2570,6 +2151,7 @@ vectorized: true
 │           │
 │           └── • render
 │               │ columns: (r_new, s_new, i_new, r, s, i, j)
+│               │ estimated row count: 9 (missing stats)
 │               │ render r_new: CASE (random() * 3.0)::INT8 WHEN 0 THEN 'us-east' WHEN 1 THEN 'us-west' ELSE 'eu-west' END
 │               │ render s_new: 'baz'
 │               │ render i_new: 3
@@ -2593,21 +2175,53 @@ vectorized: true
 │       │
 │       └── • project
 │           │ columns: (i_new)
+│           │ estimated row count: 3 (missing stats)
 │           │
-│           └── • lookup join (semi)
+│           └── • project
 │               │ columns: (r_new, i_new)
 │               │ estimated row count: 3 (missing stats)
-│               │ table: uniq_enum@uniq_enum_pkey
-│               │ lookup condition: (r IN ('us-east', 'us-west', 'eu-west')) AND (i_new = i)
-│               │ pred: r_new != r
 │               │
-│               └── • project
-│                   │ columns: (r_new, i_new)
+│               └── • distinct
+│                   │ columns: (r_new, i_new, rownum)
+│                   │ estimated row count: 9 (missing stats)
+│                   │ distinct on: rownum
 │                   │
-│                   └── • scan buffer
-│                         columns: (r, s, i, j, r_new, s_new, i_new, check1)
-│                         estimated row count: 9 (missing stats)
-│                         label: buffer 1
+│                   └── • project
+│                       │ columns: (r_new, i_new, rownum)
+│                       │
+│                       └── • project
+│                           │ columns: (r, i, r_new, i_new, rownum)
+│                           │ estimated row count: 31 (missing stats)
+│                           │
+│                           └── • lookup join (inner)
+│                               │ columns: (r_new, i_new, rownum, "lookup_join_const_col_@17", r, i)
+│                               │ table: uniq_enum@uniq_enum_pkey
+│                               │ equality: (lookup_join_const_col_@17, i_new) = (r,i)
+│                               │ equality cols are key
+│                               │ pred: r_new != r
+│                               │
+│                               └── • cross join (inner)
+│                                   │ columns: (r_new, i_new, rownum, "lookup_join_const_col_@17")
+│                                   │ estimated row count: 28 (missing stats)
+│                                   │
+│                                   ├── • ordinality
+│                                   │   │ columns: (r_new, i_new, rownum)
+│                                   │   │ estimated row count: 9 (missing stats)
+│                                   │   │
+│                                   │   └── • project
+│                                   │       │ columns: (r_new, i_new)
+│                                   │       │ estimated row count: 9 (missing stats)
+│                                   │       │
+│                                   │       └── • scan buffer
+│                                   │             columns: (r, s, i, j, r_new, s_new, i_new, check1)
+│                                   │             label: buffer 1
+│                                   │
+│                                   └── • values
+│                                         columns: ("lookup_join_const_col_@17")
+│                                         size: 1 column, 3 rows
+│                                         row 0, expr 0: 'us-east'
+│                                         row 1, expr 0: 'us-west'
+│                                         row 2, expr 0: 'eu-west'
 │
 └── • constraint-check
     │
@@ -2616,21 +2230,53 @@ vectorized: true
         │
         └── • project
             │ columns: (s_new, j)
+            │ estimated row count: 3 (missing stats)
             │
-            └── • lookup join (semi)
+            └── • project
                 │ columns: (r_new, s_new, i_new, j)
                 │ estimated row count: 3 (missing stats)
-                │ table: uniq_enum@uniq_enum_r_s_j_key
-                │ lookup condition: ((r IN ('us-east', 'us-west', 'eu-west')) AND (s_new = s)) AND (j = j)
-                │ pred: (r_new != r) OR (i_new != i)
                 │
-                └── • project
-                    │ columns: (r_new, s_new, i_new, j)
+                └── • distinct
+                    │ columns: (r_new, s_new, i_new, j, rownum)
+                    │ estimated row count: 0 (missing stats)
+                    │ distinct on: rownum
                     │
-                    └── • scan buffer
-                          columns: (r, s, i, j, r_new, s_new, i_new, check1)
-                          estimated row count: 9 (missing stats)
-                          label: buffer 1
+                    └── • project
+                        │ columns: (r_new, s_new, i_new, j, rownum)
+                        │
+                        └── • project
+                            │ columns: (r, s, i, j, r_new, s_new, i_new, j, rownum)
+                            │ estimated row count: 0 (missing stats)
+                            │
+                            └── • lookup join (inner)
+                                │ columns: (r_new, s_new, i_new, j, rownum, "lookup_join_const_col_@27", r, s, i, j)
+                                │ table: uniq_enum@uniq_enum_r_s_j_key
+                                │ equality: (lookup_join_const_col_@27, s_new, j) = (r,s,j)
+                                │ equality cols are key
+                                │ pred: (r_new != r) OR (i_new != i)
+                                │
+                                └── • cross join (inner)
+                                    │ columns: (r_new, s_new, i_new, j, rownum, "lookup_join_const_col_@27")
+                                    │ estimated row count: 28 (missing stats)
+                                    │
+                                    ├── • ordinality
+                                    │   │ columns: (r_new, s_new, i_new, j, rownum)
+                                    │   │ estimated row count: 9 (missing stats)
+                                    │   │
+                                    │   └── • project
+                                    │       │ columns: (r_new, s_new, i_new, j)
+                                    │       │ estimated row count: 9 (missing stats)
+                                    │       │
+                                    │       └── • scan buffer
+                                    │             columns: (r, s, i, j, r_new, s_new, i_new, check1)
+                                    │             label: buffer 1
+                                    │
+                                    └── • values
+                                          columns: ("lookup_join_const_col_@27")
+                                          size: 1 column, 3 rows
+                                          row 0, expr 0: 'us-east'
+                                          row 1, expr 0: 'us-west'
+                                          row 2, expr 0: 'eu-west'
 
 # None of the updated values have nulls.
 query T
@@ -2860,6 +2506,7 @@ vectorized: true
 │           │
 │           └── • render
 │               │ columns: (partial_index_put1, b_new, r, a, b, c)
+│               │ estimated row count: 1
 │               │ render partial_index_put1: c IN ('bar', 'baz', 'foo')
 │               │ render b_new: 20
 │               │ render r: r
@@ -2882,12 +2529,13 @@ vectorized: true
         │
         └── • project
             │ columns: (b_new)
+            │ estimated row count: 0
             │
             └── • lookup join (semi)
                 │ columns: (r, a, b_new, c)
                 │ estimated row count: 0
                 │ table: uniq_partial_enum@uniq_partial_enum_r_b_idx (partial index)
-                │ lookup condition: (r IN ('us-east', 'us-west', 'eu-west')) AND (b_new = b)
+                │ lookup condition: (b_new = b) AND (r IN ('us-east', 'us-west', 'eu-west'))
                 │ pred: (r != r) OR (a != a)
                 │
                 └── • filter
@@ -2897,20 +2545,16 @@ vectorized: true
                     │
                     └── • project
                         │ columns: (r, a, b_new, c)
+                        │ estimated row count: 1
                         │
                         └── • scan buffer
                               columns: (r, a, b, b_new, partial_index_put1, partial_index_put1, c)
-                              estimated row count: 1
                               label: buffer 1
 
 # By default, we do not require checks on UUID columns set to gen_random_uuid(),
-# but we do for UUID columns set to other values. We also don't require checks
-# on STRING or BYTES columns set to gen_random_uuid() with either an explicit or
-# implicit cast, but we do require checks on CHAR and VARCHAR columns with a
-# limited width.
+# but we do for UUID columns set to other values.
 query T
-EXPLAIN UPDATE uniq_uuid SET id1 = '8597b0eb-7b89-4857-858a-fabf86f6a3ac', id2 = gen_random_uuid(),
-id3 = gen_random_uuid()::BYTES, id4 = gen_random_uuid(), id5 = gen_random_uuid(), id6 = gen_random_uuid()
+EXPLAIN UPDATE uniq_uuid SET id1 = '8597b0eb-7b89-4857-858a-fabf86f6a3ac', id2 = gen_random_uuid()
 ----
 distribution: local
 vectorized: true
@@ -2919,7 +2563,7 @@ vectorized: true
 │
 ├── • update
 │   │ table: uniq_uuid
-│   │ set: id1, id2, id3, id4, id5, id6
+│   │ set: id1, id2
 │   │
 │   └── • buffer
 │       │ label: buffer 1
@@ -2932,44 +2576,12 @@ vectorized: true
 │                 spans: FULL SCAN
 │                 locking strength: for update
 │
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (semi)
-│           │ equality: (id1_new) = (id1)
-│           │ pred: rowid != rowid
-│           │
-│           ├── • scan buffer
-│           │     label: buffer 1
-│           │
-│           └── • scan
-│                 missing stats
-│                 table: uniq_uuid@uniq_uuid_pkey
-│                 spans: FULL SCAN
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (semi)
-│           │ equality: (id5_cast) = (id5)
-│           │ pred: rowid != rowid
-│           │
-│           ├── • scan buffer
-│           │     label: buffer 1
-│           │
-│           └── • scan
-│                 missing stats
-│                 table: uniq_uuid@uniq_uuid_pkey
-│                 spans: FULL SCAN
-│
 └── • constraint-check
     │
     └── • error if rows
         │
         └── • hash join (semi)
-            │ equality: (id6_cast) = (id6)
+            │ equality: (id1_new) = (id1)
             │ pred: rowid != rowid
             │
             ├── • scan buffer
@@ -2983,10 +2595,9 @@ vectorized: true
 statement ok
 SET CLUSTER SETTING sql.optimizer.uniqueness_checks_for_gen_random_uuid.enabled = true
 
-# After changing the cluster setting, checks are required for all columns.
+# After changing the cluster setting, checks are required for both columns.
 query T
-EXPLAIN UPDATE uniq_uuid SET id1 = '8597b0eb-7b89-4857-858a-fabf86f6a3ac', id2 = gen_random_uuid(),
-id3 = gen_random_uuid()::BYTES, id4 = gen_random_uuid(), id5 = gen_random_uuid(), id6 = gen_random_uuid()
+EXPLAIN UPDATE uniq_uuid SET id1 = '8597b0eb-7b89-4857-858a-fabf86f6a3ac', id2 = gen_random_uuid()
 ----
 distribution: local
 vectorized: true
@@ -2995,7 +2606,7 @@ vectorized: true
 │
 ├── • update
 │   │ table: uniq_uuid
-│   │ set: id1, id2, id3, id4, id5, id6
+│   │ set: id1, id2
 │   │
 │   └── • buffer
 │       │ label: buffer 1
@@ -3024,76 +2635,12 @@ vectorized: true
 │                 table: uniq_uuid@uniq_uuid_pkey
 │                 spans: FULL SCAN
 │
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (semi)
-│           │ equality: (id2_new) = (id2)
-│           │ pred: rowid != rowid
-│           │
-│           ├── • scan buffer
-│           │     label: buffer 1
-│           │
-│           └── • scan
-│                 missing stats
-│                 table: uniq_uuid@uniq_uuid_pkey
-│                 spans: FULL SCAN
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (semi)
-│           │ equality: (id3_new) = (id3)
-│           │ pred: rowid != rowid
-│           │
-│           ├── • scan buffer
-│           │     label: buffer 1
-│           │
-│           └── • scan
-│                 missing stats
-│                 table: uniq_uuid@uniq_uuid_pkey
-│                 spans: FULL SCAN
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (semi)
-│           │ equality: (id4_cast) = (id4)
-│           │ pred: rowid != rowid
-│           │
-│           ├── • scan buffer
-│           │     label: buffer 1
-│           │
-│           └── • scan
-│                 missing stats
-│                 table: uniq_uuid@uniq_uuid_pkey
-│                 spans: FULL SCAN
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (semi)
-│           │ equality: (id5_cast) = (id5)
-│           │ pred: rowid != rowid
-│           │
-│           ├── • scan buffer
-│           │     label: buffer 1
-│           │
-│           └── • scan
-│                 missing stats
-│                 table: uniq_uuid@uniq_uuid_pkey
-│                 spans: FULL SCAN
-│
 └── • constraint-check
     │
     └── • error if rows
         │
         └── • hash join (semi)
-            │ equality: (id6_cast) = (id6)
+            │ equality: (id2_new) = (id2)
             │ pred: rowid != rowid
             │
             ├── • scan buffer
@@ -3196,6 +2743,7 @@ vectorized: true
 │               │ locking strength: for update
 │               │
 │               └── • render
+│                   │ estimated row count: 2
 │                   │
 │                   └── • values
 │                         size: 3 columns, 2 rows
@@ -3258,6 +2806,7 @@ vectorized: true
 │               │ locking strength: for update
 │               │
 │               └── • render
+│                   │ estimated row count: 2
 │                   │
 │                   └── • values
 │                         size: 3 columns, 2 rows
@@ -3321,6 +2870,7 @@ vectorized: true
 │               │ locking strength: for update
 │               │
 │               └── • render
+│                   │ estimated row count: 2
 │                   │
 │                   └── • values
 │                         size: 2 columns, 2 rows
@@ -3457,6 +3007,7 @@ vectorized: true
 │               │     spans: FULL SCAN
 │               │
 │               └── • render
+│                   │ estimated row count: 2
 │                   │
 │                   └── • values
 │                         size: 3 columns, 2 rows
@@ -3652,6 +3203,7 @@ vectorized: true
 │                   │ error on duplicate
 │                   │
 │                   └── • render
+│                       │ estimated row count: 2
 │                       │
 │                       └── • values
 │                             size: 3 columns, 2 rows
@@ -3729,6 +3281,7 @@ vectorized: true
 │       │ label: buffer 1
 │       │
 │       └── • render
+│           │ estimated row count: 2
 │           │
 │           └── • values
 │                 size: 3 columns, 2 rows
@@ -3747,7 +3300,6 @@ vectorized: true
 │           │     spans: FULL SCAN
 │           │
 │           └── • scan buffer
-│                 estimated row count: 2
 │                 label: buffer 1
 │
 ├── • constraint-check
@@ -3763,7 +3315,6 @@ vectorized: true
 │           │     spans: FULL SCAN
 │           │
 │           └── • scan buffer
-│                 estimated row count: 2
 │                 label: buffer 1
 │
 └── • constraint-check
@@ -3779,7 +3330,6 @@ vectorized: true
             │     spans: FULL SCAN
             │
             └── • scan buffer
-                  estimated row count: 2
                   label: buffer 1
 
 # Test that we use the index when available for the upsert checks.
@@ -3807,6 +3357,7 @@ vectorized: true
 │           │
 │           └── • render
 │               │ columns: (check1, column1, column2, column3, column4, r, s, i, j, upsert_r, upsert_i)
+│               │ estimated row count: 2 (missing stats)
 │               │ render check1: upsert_r IN ('us-east', 'us-west', 'eu-west')
 │               │ render column1: column1
 │               │ render column2: column2
@@ -3821,6 +3372,7 @@ vectorized: true
 │               │
 │               └── • render
 │                   │ columns: (upsert_r, upsert_i, column1, column2, column3, column4, r, s, i, j)
+│                   │ estimated row count: 2 (missing stats)
 │                   │ render upsert_r: CASE WHEN r IS NULL THEN column1 ELSE r END
 │                   │ render upsert_i: CASE WHEN r IS NULL THEN column3 ELSE i END
 │                   │ render column1: column1
@@ -3859,21 +3411,53 @@ vectorized: true
 │       │
 │       └── • project
 │           │ columns: (upsert_i)
+│           │ estimated row count: 1 (missing stats)
 │           │
-│           └── • lookup join (semi)
+│           └── • project
 │               │ columns: (upsert_r, upsert_i)
 │               │ estimated row count: 1 (missing stats)
-│               │ table: uniq_enum@uniq_enum_pkey
-│               │ lookup condition: (r IN ('us-east', 'us-west', 'eu-west')) AND (upsert_i = i)
-│               │ pred: upsert_r != r
 │               │
-│               └── • project
-│                   │ columns: (upsert_r, upsert_i)
+│               └── • distinct
+│                   │ columns: (upsert_r, upsert_i, rownum)
+│                   │ estimated row count: 2 (missing stats)
+│                   │ distinct on: rownum
 │                   │
-│                   └── • scan buffer
-│                         columns: (column1, column2, column3, column4, r, s, i, j, column2, column4, r, check1, upsert_r, upsert_i)
-│                         estimated row count: 2 (missing stats)
-│                         label: buffer 1
+│                   └── • project
+│                       │ columns: (upsert_r, upsert_i, rownum)
+│                       │
+│                       └── • project
+│                           │ columns: (r, i, upsert_r, upsert_i, rownum)
+│                           │ estimated row count: 7 (missing stats)
+│                           │
+│                           └── • lookup join (inner)
+│                               │ columns: ("lookup_join_const_col_@20", upsert_r, upsert_i, rownum, r, i)
+│                               │ table: uniq_enum@uniq_enum_pkey
+│                               │ equality: (lookup_join_const_col_@20, upsert_i) = (r,i)
+│                               │ equality cols are key
+│                               │ pred: upsert_r != r
+│                               │
+│                               └── • cross join (inner)
+│                                   │ columns: ("lookup_join_const_col_@20", upsert_r, upsert_i, rownum)
+│                                   │ estimated row count: 6 (missing stats)
+│                                   │
+│                                   ├── • values
+│                                   │     columns: ("lookup_join_const_col_@20")
+│                                   │     size: 1 column, 3 rows
+│                                   │     row 0, expr 0: 'us-east'
+│                                   │     row 1, expr 0: 'us-west'
+│                                   │     row 2, expr 0: 'eu-west'
+│                                   │
+│                                   └── • ordinality
+│                                       │ columns: (upsert_r, upsert_i, rownum)
+│                                       │ estimated row count: 2 (missing stats)
+│                                       │
+│                                       └── • project
+│                                           │ columns: (upsert_r, upsert_i)
+│                                           │ estimated row count: 2 (missing stats)
+│                                           │
+│                                           └── • scan buffer
+│                                                 columns: (column1, column2, column3, column4, r, s, i, j, column2, column4, r, check1, upsert_r, upsert_i)
+│                                                 label: buffer 1
 │
 └── • constraint-check
     │
@@ -3882,21 +3466,53 @@ vectorized: true
         │
         └── • project
             │ columns: (column2, column4)
+            │ estimated row count: 1 (missing stats)
             │
-            └── • lookup join (semi)
+            └── • project
                 │ columns: (upsert_r, column2, upsert_i, column4)
                 │ estimated row count: 1 (missing stats)
-                │ table: uniq_enum@uniq_enum_r_s_j_key
-                │ lookup condition: ((r IN ('us-east', 'us-west', 'eu-west')) AND (column2 = s)) AND (column4 = j)
-                │ pred: (upsert_r != r) OR (upsert_i != i)
                 │
-                └── • project
-                    │ columns: (upsert_r, column2, upsert_i, column4)
+                └── • distinct
+                    │ columns: (upsert_r, column2, upsert_i, column4, rownum)
+                    │ estimated row count: 0 (missing stats)
+                    │ distinct on: rownum
                     │
-                    └── • scan buffer
-                          columns: (column1, column2, column3, column4, r, s, i, j, column2, column4, r, check1, upsert_r, upsert_i)
-                          estimated row count: 2 (missing stats)
-                          label: buffer 1
+                    └── • project
+                        │ columns: (upsert_r, column2, upsert_i, column4, rownum)
+                        │
+                        └── • project
+                            │ columns: (r, s, i, j, upsert_r, column2, upsert_i, column4, rownum)
+                            │ estimated row count: 0 (missing stats)
+                            │
+                            └── • lookup join (inner)
+                                │ columns: ("lookup_join_const_col_@30", upsert_r, column2, upsert_i, column4, rownum, r, s, i, j)
+                                │ table: uniq_enum@uniq_enum_r_s_j_key
+                                │ equality: (lookup_join_const_col_@30, column2, column4) = (r,s,j)
+                                │ equality cols are key
+                                │ pred: (upsert_r != r) OR (upsert_i != i)
+                                │
+                                └── • cross join (inner)
+                                    │ columns: ("lookup_join_const_col_@30", upsert_r, column2, upsert_i, column4, rownum)
+                                    │ estimated row count: 6 (missing stats)
+                                    │
+                                    ├── • values
+                                    │     columns: ("lookup_join_const_col_@30")
+                                    │     size: 1 column, 3 rows
+                                    │     row 0, expr 0: 'us-east'
+                                    │     row 1, expr 0: 'us-west'
+                                    │     row 2, expr 0: 'eu-west'
+                                    │
+                                    └── • ordinality
+                                        │ columns: (upsert_r, column2, upsert_i, column4, rownum)
+                                        │ estimated row count: 2 (missing stats)
+                                        │
+                                        └── • project
+                                            │ columns: (upsert_r, column2, upsert_i, column4)
+                                            │ estimated row count: 2 (missing stats)
+                                            │
+                                            └── • scan buffer
+                                                  columns: (column1, column2, column3, column4, r, s, i, j, column2, column4, r, check1, upsert_r, upsert_i)
+                                                  label: buffer 1
 
 # Test that we use the index when available for the ON CONFLICT checks.
 query T
@@ -3924,6 +3540,7 @@ vectorized: true
 │           │
 │           └── • render
 │               │ columns: (check1, column1, column2, column3, column4, r, s, i, j, upsert_r, upsert_i)
+│               │ estimated row count: 2 (missing stats)
 │               │ render check1: upsert_r IN ('us-east', 'us-west', 'eu-west')
 │               │ render column1: column1
 │               │ render column2: column2
@@ -3938,6 +3555,7 @@ vectorized: true
 │               │
 │               └── • render
 │                   │ columns: (upsert_r, upsert_i, column1, column2, column3, column4, r, s, i, j)
+│                   │ estimated row count: 2 (missing stats)
 │                   │ render upsert_r: CASE WHEN r IS NULL THEN column1 ELSE r END
 │                   │ render upsert_i: CASE WHEN r IS NULL THEN column3 ELSE 3 END
 │                   │ render column1: column1
@@ -3954,7 +3572,7 @@ vectorized: true
 │                       │ estimated row count: 2 (missing stats)
 │                       │ table: uniq_enum@uniq_enum_r_s_j_key
 │                       │ equality cols are key
-│                       │ lookup condition: ((r IN ('us-east', 'us-west', 'eu-west')) AND (column2 = s)) AND (column4 = j)
+│                       │ lookup condition: ((column2 = s) AND (column4 = j)) AND (r IN ('us-east', 'us-west', 'eu-west'))
 │                       │ locking strength: for update
 │                       │
 │                       └── • values
@@ -3976,21 +3594,53 @@ vectorized: true
         │
         └── • project
             │ columns: (upsert_i)
+            │ estimated row count: 1 (missing stats)
             │
-            └── • lookup join (semi)
+            └── • project
                 │ columns: (upsert_r, upsert_i)
                 │ estimated row count: 1 (missing stats)
-                │ table: uniq_enum@uniq_enum_pkey
-                │ lookup condition: (r IN ('us-east', 'us-west', 'eu-west')) AND (upsert_i = i)
-                │ pred: upsert_r != r
                 │
-                └── • project
-                    │ columns: (upsert_r, upsert_i)
+                └── • distinct
+                    │ columns: (upsert_r, upsert_i, rownum)
+                    │ estimated row count: 2 (missing stats)
+                    │ distinct on: rownum
                     │
-                    └── • scan buffer
-                          columns: (column1, column2, column3, column4, r, s, i, j, upsert_i, r, check1, upsert_r)
-                          estimated row count: 2 (missing stats)
-                          label: buffer 1
+                    └── • project
+                        │ columns: (upsert_r, upsert_i, rownum)
+                        │
+                        └── • project
+                            │ columns: (r, i, upsert_r, upsert_i, rownum)
+                            │ estimated row count: 7 (missing stats)
+                            │
+                            └── • lookup join (inner)
+                                │ columns: ("lookup_join_const_col_@23", upsert_r, upsert_i, rownum, r, i)
+                                │ table: uniq_enum@uniq_enum_pkey
+                                │ equality: (lookup_join_const_col_@23, upsert_i) = (r,i)
+                                │ equality cols are key
+                                │ pred: upsert_r != r
+                                │
+                                └── • cross join (inner)
+                                    │ columns: ("lookup_join_const_col_@23", upsert_r, upsert_i, rownum)
+                                    │ estimated row count: 6 (missing stats)
+                                    │
+                                    ├── • values
+                                    │     columns: ("lookup_join_const_col_@23")
+                                    │     size: 1 column, 3 rows
+                                    │     row 0, expr 0: 'us-east'
+                                    │     row 1, expr 0: 'us-west'
+                                    │     row 2, expr 0: 'eu-west'
+                                    │
+                                    └── • ordinality
+                                        │ columns: (upsert_r, upsert_i, rownum)
+                                        │ estimated row count: 2 (missing stats)
+                                        │
+                                        └── • project
+                                            │ columns: (upsert_r, upsert_i)
+                                            │ estimated row count: 2 (missing stats)
+                                            │
+                                            └── • scan buffer
+                                                  columns: (column1, column2, column3, column4, r, s, i, j, upsert_i, r, check1, upsert_r)
+                                                  label: buffer 1
 
 # None of the upserted values have nulls.
 query T
@@ -4031,7 +3681,6 @@ vectorized: true
 │               │ filter: column3 > 0
 │               │
 │               └── • scan buffer
-│                     estimated row count: 2
 │                     label: buffer 1
 │
 └── • constraint-check
@@ -4055,7 +3704,6 @@ vectorized: true
                 │ filter: column3 > 0
                 │
                 └── • scan buffer
-                      estimated row count: 2
                       label: buffer 1
 
 # TODO(rytaft/mgartner): The default value for b is NULL, and we're not updating
@@ -4084,6 +3732,7 @@ vectorized: true
 │               │ locking strength: for update
 │               │
 │               └── • render
+│                   │ estimated row count: 2
 │                   │
 │                   └── • values
 │                         size: 2 columns, 2 rows
@@ -4171,7 +3820,6 @@ vectorized: true
                 │ filter: column3 > 0
                 │
                 └── • scan buffer
-                      estimated row count: 2
                       label: buffer 1
 
 # On conflict do update with constant input.
@@ -4213,6 +3861,7 @@ vectorized: true
 │                   │ error on duplicate
 │                   │
 │                   └── • render
+│                       │ estimated row count: 2
 │                       │
 │                       └── • values
 │                             size: 2 columns, 2 rows
@@ -4434,6 +4083,7 @@ vectorized: true
 │           │
 │           └── • render
 │               │ columns: (partial_index_put1, partial_index_del1, check1, column1, column2, column3, column4, r, a, b, c, upsert_r, upsert_a)
+│               │ estimated row count: 2
 │               │ render partial_index_put1: column4 IN ('bar', 'baz', 'foo')
 │               │ render partial_index_del1: c IN ('bar', 'baz', 'foo')
 │               │ render check1: upsert_r IN ('us-east', 'us-west', 'eu-west')
@@ -4450,6 +4100,7 @@ vectorized: true
 │               │
 │               └── • render
 │                   │ columns: (upsert_r, upsert_a, column1, column2, column3, column4, r, a, b, c)
+│                   │ estimated row count: 2
 │                   │ render upsert_r: CASE WHEN r IS NULL THEN column1 ELSE r END
 │                   │ render upsert_a: CASE WHEN r IS NULL THEN column2 ELSE a END
 │                   │ render column1: column1
@@ -4488,12 +4139,13 @@ vectorized: true
         │
         └── • project
             │ columns: (column3)
+            │ estimated row count: 1
             │
             └── • lookup join (semi)
                 │ columns: (upsert_r, upsert_a, column3, column4)
                 │ estimated row count: 1
                 │ table: uniq_partial_enum@uniq_partial_enum_r_b_idx (partial index)
-                │ lookup condition: (r IN ('us-east', 'us-west', 'eu-west')) AND (column3 = b)
+                │ lookup condition: (column3 = b) AND (r IN ('us-east', 'us-west', 'eu-west'))
                 │ pred: (upsert_r != r) OR (upsert_a != a)
                 │
                 └── • filter
@@ -4503,10 +4155,10 @@ vectorized: true
                     │
                     └── • project
                         │ columns: (upsert_r, upsert_a, column3, column4)
+                        │ estimated row count: 2
                         │
                         └── • scan buffer
                               columns: (column1, column2, column3, column4, r, a, b, c, column3, column4, r, check1, partial_index_put1, partial_index_del1, upsert_r, upsert_a)
-                              estimated row count: 2
                               label: buffer 1
 
 # Test that we use the partial index when available for de-duplicating INSERT ON
@@ -4530,6 +4182,7 @@ vectorized: true
     │
     └── • render
         │ columns: (partial_index_put1, partial_index_del1, check1, upsert_a, column1, column2, column3, column4, r, a, b, c)
+        │ estimated row count: 2
         │ render partial_index_put1: CASE WHEN r IS NULL THEN column4 ELSE c END IN ('bar', 'baz', 'foo')
         │ render partial_index_del1: c IN ('bar', 'baz', 'foo')
         │ render check1: CASE WHEN r IS NULL THEN column1 ELSE r END IN ('us-east', 'us-west', 'eu-west')
@@ -4554,7 +4207,7 @@ vectorized: true
                 │ columns: (arbiter_unique_b_distinct, column1, column2, column3, column4, r, a, b)
                 │ estimated row count: 2
                 │ table: uniq_partial_enum@uniq_partial_enum_r_b_idx (partial index)
-                │ lookup condition: (r IN ('us-east', 'us-west', 'eu-west')) AND (column3 = b)
+                │ lookup condition: (column3 = b) AND (r IN ('us-east', 'us-west', 'eu-west'))
                 │ pred: column4 IN ('bar', 'baz', 'foo')
                 │
                 └── • distinct
@@ -4566,6 +4219,7 @@ vectorized: true
                     │
                     └── • render
                         │ columns: (arbiter_unique_b_distinct, column1, column2, column3, column4)
+                        │ estimated row count: 2
                         │ render arbiter_unique_b_distinct: (column4 IN ('bar', 'baz', 'foo')) OR CAST(NULL AS BOOL)
                         │ render column1: column1
                         │ render column2: column2
@@ -4585,15 +4239,9 @@ vectorized: true
                               row 1, expr 3: 'bar'
 
 # By default, we do not require checks on UUID columns set to gen_random_uuid(),
-# but we do for UUID columns set to other values. We also don't require checks
-# on STRING or BYTES columns set to gen_random_uuid() with either an explicit or
-# implicit cast, but we do require checks on CHAR and VARCHAR columns with a
-# limited width.
+# but we do for UUID columns set to other values.
 query T
-EXPLAIN UPSERT INTO uniq_uuid (id1, id2, id3, id4, id5, id6, id7)
-VALUES (gen_random_uuid(), '8597b0eb-7b89-4857-858a-fabf86f6a3ac',
-  gen_random_uuid()::BYTES, gen_random_uuid()::TEXT, gen_random_uuid(),
-  gen_random_uuid(), gen_random_uuid())
+EXPLAIN UPSERT INTO uniq_uuid (id1, id2) VALUES (gen_random_uuid(), '8597b0eb-7b89-4857-858a-fabf86f6a3ac')
 ----
 distribution: local
 vectorized: true
@@ -4601,56 +4249,20 @@ vectorized: true
 • root
 │
 ├── • upsert
-│   │ into: uniq_uuid(id1, id2, id3, id4, id5, id6, id7, rowid)
+│   │ into: uniq_uuid(id1, id2, rowid)
 │   │
 │   └── • buffer
 │       │ label: buffer 1
 │       │
 │       └── • values
-│             size: 8 columns, 1 row
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (right semi)
-│           │ equality: (id2) = (column2)
-│           │ right cols are key
-│           │ pred: rowid_default != rowid
-│           │
-│           ├── • scan
-│           │     missing stats
-│           │     table: uniq_uuid@uniq_uuid_pkey
-│           │     spans: FULL SCAN
-│           │
-│           └── • scan buffer
-│                 estimated row count: 1
-│                 label: buffer 1
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (right semi)
-│           │ equality: (id5) = (id5_cast)
-│           │ right cols are key
-│           │ pred: rowid_default != rowid
-│           │
-│           ├── • scan
-│           │     missing stats
-│           │     table: uniq_uuid@uniq_uuid_pkey
-│           │     spans: FULL SCAN
-│           │
-│           └── • scan buffer
-│                 estimated row count: 1
-│                 label: buffer 1
+│             size: 3 columns, 1 row
 │
 └── • constraint-check
     │
     └── • error if rows
         │
         └── • hash join (right semi)
-            │ equality: (id6) = (id6_cast)
+            │ equality: (id2) = (column2)
             │ right cols are key
             │ pred: rowid_default != rowid
             │
@@ -4660,18 +4272,14 @@ vectorized: true
             │     spans: FULL SCAN
             │
             └── • scan buffer
-                  estimated row count: 1
                   label: buffer 1
 
 statement ok
 SET CLUSTER SETTING sql.optimizer.uniqueness_checks_for_gen_random_uuid.enabled = true
 
-# After changing the cluster setting, checks are required for all columns.
+# After changing the cluster setting, checks are required for both columns.
 query T
-EXPLAIN UPSERT INTO uniq_uuid (id1, id2, id3, id4, id5, id6, id7)
-VALUES (gen_random_uuid(), '8597b0eb-7b89-4857-858a-fabf86f6a3ac',
-  gen_random_uuid()::BYTES, gen_random_uuid(), gen_random_uuid(),
-  gen_random_uuid(), gen_random_uuid())
+EXPLAIN UPSERT INTO uniq_uuid (id1, id2) VALUES (gen_random_uuid(), '8597b0eb-7b89-4857-858a-fabf86f6a3ac')
 ----
 distribution: local
 vectorized: true
@@ -4679,13 +4287,13 @@ vectorized: true
 • root
 │
 ├── • upsert
-│   │ into: uniq_uuid(id1, id2, id3, id4, id5, id6, id7, rowid)
+│   │ into: uniq_uuid(id1, id2, rowid)
 │   │
 │   └── • buffer
 │       │ label: buffer 1
 │       │
 │       └── • values
-│             size: 8 columns, 1 row
+│             size: 3 columns, 1 row
 │
 ├── • constraint-check
 │   │
@@ -4702,97 +4310,6 @@ vectorized: true
 │           │     spans: FULL SCAN
 │           │
 │           └── • scan buffer
-│                 estimated row count: 1
-│                 label: buffer 1
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (right semi)
-│           │ equality: (id2) = (column2)
-│           │ right cols are key
-│           │ pred: rowid_default != rowid
-│           │
-│           ├── • scan
-│           │     missing stats
-│           │     table: uniq_uuid@uniq_uuid_pkey
-│           │     spans: FULL SCAN
-│           │
-│           └── • scan buffer
-│                 estimated row count: 1
-│                 label: buffer 1
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (right semi)
-│           │ equality: (id3) = (column3)
-│           │ right cols are key
-│           │ pred: rowid_default != rowid
-│           │
-│           ├── • scan
-│           │     missing stats
-│           │     table: uniq_uuid@uniq_uuid_pkey
-│           │     spans: FULL SCAN
-│           │
-│           └── • scan buffer
-│                 estimated row count: 1
-│                 label: buffer 1
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (right semi)
-│           │ equality: (id4) = (id4_cast)
-│           │ right cols are key
-│           │ pred: rowid_default != rowid
-│           │
-│           ├── • scan
-│           │     missing stats
-│           │     table: uniq_uuid@uniq_uuid_pkey
-│           │     spans: FULL SCAN
-│           │
-│           └── • scan buffer
-│                 estimated row count: 1
-│                 label: buffer 1
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (right semi)
-│           │ equality: (id5) = (id5_cast)
-│           │ right cols are key
-│           │ pred: rowid_default != rowid
-│           │
-│           ├── • scan
-│           │     missing stats
-│           │     table: uniq_uuid@uniq_uuid_pkey
-│           │     spans: FULL SCAN
-│           │
-│           └── • scan buffer
-│                 estimated row count: 1
-│                 label: buffer 1
-│
-├── • constraint-check
-│   │
-│   └── • error if rows
-│       │
-│       └── • hash join (right semi)
-│           │ equality: (id6) = (id6_cast)
-│           │ right cols are key
-│           │ pred: rowid_default != rowid
-│           │
-│           ├── • scan
-│           │     missing stats
-│           │     table: uniq_uuid@uniq_uuid_pkey
-│           │     spans: FULL SCAN
-│           │
-│           └── • scan buffer
-│                 estimated row count: 1
 │                 label: buffer 1
 │
 └── • constraint-check
@@ -4800,7 +4317,7 @@ vectorized: true
     └── • error if rows
         │
         └── • hash join (right semi)
-            │ equality: (id7) = (id7_cast)
+            │ equality: (id2) = (column2)
             │ right cols are key
             │ pred: rowid_default != rowid
             │
@@ -4810,7 +4327,6 @@ vectorized: true
             │     spans: FULL SCAN
             │
             └── • scan buffer
-                  estimated row count: 1
                   label: buffer 1
 
 statement ok

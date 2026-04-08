@@ -1018,10 +1018,7 @@ func newOptTable(
 	}
 
 	ot.primaryFamily.init(ot, &desc.GetFamilies()[0])
-	ot.families = make([]optFamily, len(desc.GetFamilies())-1)
-	for i := range ot.families {
-		ot.families[i].init(ot, &desc.GetFamilies()[i+1])
-	}
+	ot.families = nil
 
 	// Synthesize any check constraints for user defined types.
 	var synthesizedChecks []cat.CheckConstraint

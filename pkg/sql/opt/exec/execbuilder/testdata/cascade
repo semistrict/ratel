@@ -17,28 +17,24 @@ statement ok
 CREATE TABLE b1 (
   id STRING PRIMARY KEY,
   delete_cascade STRING NOT NULL REFERENCES a ON DELETE CASCADE,
-  FAMILY (id, delete_cascade)
 )
 
 statement ok
 CREATE TABLE b2 (
   id STRING PRIMARY KEY,
   delete_cascade STRING NOT NULL REFERENCES a ON DELETE CASCADE,
-  FAMILY (id, delete_cascade)
 )
 
 statement ok
 CREATE TABLE c1 (
   id STRING PRIMARY KEY,
   delete_cascade STRING NOT NULL REFERENCES b1 ON DELETE CASCADE,
-  FAMILY (id, delete_cascade)
 )
 
 statement ok
 CREATE TABLE c2 (
   id STRING PRIMARY KEY,
   delete_cascade STRING NOT NULL REFERENCES b1 ON DELETE CASCADE,
-  FAMILY (id, delete_cascade)
 )
 
 statement ok
@@ -113,28 +109,24 @@ statement ok
 CREATE TABLE b1 (
   id STRING PRIMARY KEY,
   update_cascade STRING NOT NULL UNIQUE REFERENCES a ON UPDATE CASCADE,
-  FAMILY (id, update_cascade)
 );
 
 statement ok
 CREATE TABLE b2 (
   id STRING PRIMARY KEY,
   update_cascade STRING NOT NULL UNIQUE REFERENCES a ON UPDATE CASCADE,
-  FAMILY (id, update_cascade)
 );
 
 statement ok
 CREATE TABLE c1 (
   id STRING PRIMARY KEY,
   update_cascade STRING NOT NULL REFERENCES b1 (update_cascade) ON UPDATE CASCADE,
-  FAMILY (id, update_cascade)
 );
 
 statement ok
 CREATE TABLE c2 (
   id STRING PRIMARY KEY,
   update_cascade STRING NOT NULL REFERENCES b1 (update_cascade) ON UPDATE CASCADE,
-  FAMILY (id, update_cascade)
 );
 
 statement ok
@@ -203,22 +195,18 @@ CREATE TABLE a (
 CREATE TABLE b1 (
   id STRING PRIMARY KEY,
   delete_set_null STRING REFERENCES a ON DELETE SET NULL,
-  FAMILY (id, delete_set_null)
 );
 CREATE TABLE b2 (
   id STRING PRIMARY KEY,
   delete_set_null STRING REFERENCES a ON DELETE SET NULL,
-  FAMILY (id, delete_set_null)
 );
 CREATE TABLE b3 (
   id STRING PRIMARY KEY,
   delete_set_null STRING REFERENCES a ON DELETE SET NULL,
-  FAMILY (id, delete_set_null)
 );
 CREATE TABLE b4 (
   id STRING PRIMARY KEY,
   delete_set_null STRING REFERENCES a ON DELETE SET NULL,
-  FAMILY (id, delete_set_null)
 );
 
 statement ok
@@ -262,27 +250,22 @@ CREATE TABLE a (
 CREATE TABLE b1 (
   id STRING PRIMARY KEY,
   delete_cascade STRING NOT NULL REFERENCES a ON DELETE CASCADE,
-  FAMILY (id, delete_cascade)
 );
 CREATE TABLE b2 (
   id STRING PRIMARY KEY,
   delete_cascade STRING NOT NULL REFERENCES a ON DELETE CASCADE,
-  FAMILY (id, delete_cascade)
 );
 CREATE TABLE c1 (
   id STRING PRIMARY KEY,
   delete_set_null STRING REFERENCES b1 ON DELETE SET NULL,
-  FAMILY (id, delete_set_null)
 );
 CREATE TABLE c2 (
   id STRING PRIMARY KEY,
   delete_set_null STRING REFERENCES b1 ON DELETE SET NULL,
-  FAMILY (id, delete_set_null)
 );
 CREATE TABLE c3 (
   id STRING PRIMARY KEY,
   delete_set_null STRING REFERENCES b2 ON DELETE SET NULL,
-  FAMILY (id, delete_set_null)
 );
 
 statement ok
@@ -344,22 +327,18 @@ CREATE TABLE a (
 CREATE TABLE b1 (
   id STRING PRIMARY KEY,
   update_set_null STRING REFERENCES a ON UPDATE SET NULL,
-  FAMILY (id, update_set_null)
 );
 CREATE TABLE b2 (
   id STRING PRIMARY KEY,
   update_set_null STRING REFERENCES a ON UPDATE SET NULL,
-  FAMILY (id, update_set_null)
 );
 CREATE TABLE b3 (
   id STRING PRIMARY KEY,
   update_set_null STRING REFERENCES a ON UPDATE SET NULL,
-  FAMILY (id, update_set_null)
 );
 CREATE TABLE b4 (
   id STRING PRIMARY KEY,
   update_set_null STRING REFERENCES a ON UPDATE SET NULL,
-  FAMILY (id, update_set_null)
 );
 
 statement ok
@@ -404,27 +383,22 @@ CREATE TABLE a (
 CREATE TABLE b1 (
   id STRING PRIMARY KEY,
   update_cascade STRING UNIQUE NOT NULL REFERENCES a ON UPDATE CASCADE,
-  FAMILY (id, update_cascade)
 );
 CREATE TABLE b2 (
   id STRING PRIMARY KEY,
   update_cascade STRING UNIQUE NOT NULL REFERENCES a ON UPDATE CASCADE,
-  FAMILY (id, update_cascade)
 );
 CREATE TABLE c1 (
   id STRING PRIMARY KEY,
   update_set_null STRING REFERENCES b1(update_cascade) ON UPDATE SET NULL,
-  FAMILY (id, update_set_null)
 );
 CREATE TABLE c2 (
   id STRING PRIMARY KEY,
   update_set_null STRING REFERENCES b1(update_cascade) ON UPDATE SET NULL,
-  FAMILY (id, update_set_null)
 );
 CREATE TABLE c3 (
   id STRING PRIMARY KEY,
   update_set_null STRING REFERENCES b2(update_cascade) ON UPDATE SET NULL,
-  FAMILY (id, update_set_null)
 );
 
 statement ok
@@ -491,22 +465,18 @@ CREATE TABLE a (
 CREATE TABLE b1 (
   id STRING PRIMARY KEY,
   delete_set_default STRING DEFAULT 'b1-default' REFERENCES a ON DELETE SET DEFAULT,
-  FAMILY (id, delete_set_default)
 );
 CREATE TABLE b2 (
   id STRING PRIMARY KEY,
   delete_set_default STRING DEFAULT 'b2-default' REFERENCES a ON DELETE SET DEFAULT,
-  FAMILY (id, delete_set_default)
 );
 CREATE TABLE b3 (
   id STRING PRIMARY KEY,
   delete_set_default STRING DEFAULT 'b3-default' REFERENCES a ON DELETE SET DEFAULT,
-  FAMILY (id, delete_set_default)
 );
 CREATE TABLE b4 (
   id STRING PRIMARY KEY,
   delete_set_default STRING DEFAULT 'b4-default' REFERENCES a ON DELETE SET DEFAULT,
-  FAMILY (id, delete_set_default)
 );
 
 statement ok
@@ -550,27 +520,22 @@ CREATE TABLE a (
 CREATE TABLE b1 (
   id STRING PRIMARY KEY,
   delete_cascade STRING NOT NULL REFERENCES a ON DELETE CASCADE,
-  FAMILY (id, delete_cascade)
 );
 CREATE TABLE b2 (
   id STRING PRIMARY KEY,
   delete_cascade STRING NOT NULL REFERENCES a ON DELETE CASCADE,
-  FAMILY (id, delete_cascade)
 );
 CREATE TABLE c1 (
   id STRING PRIMARY KEY,
   delete_set_default STRING DEFAULT 'b1-default' REFERENCES b1 ON DELETE SET DEFAULT,
-  FAMILY (id, delete_set_default)
 );
 CREATE TABLE c2 (
   id STRING PRIMARY KEY,
   delete_set_default STRING DEFAULT 'b1-default' REFERENCES b1 ON DELETE SET DEFAULT,
-  FAMILY (id, delete_set_default)
 );
 CREATE TABLE c3 (
   id STRING PRIMARY KEY,
   delete_set_default STRING DEFAULT 'b2-default' REFERENCES b2 ON DELETE SET DEFAULT,
-  FAMILY (id, delete_set_default)
 );
 
 statement ok
@@ -632,22 +597,18 @@ CREATE TABLE a (
 CREATE TABLE b1 (
   id STRING PRIMARY KEY,
   update_set_null STRING DEFAULT 'b1-default' REFERENCES a ON UPDATE SET DEFAULT,
-  FAMILY (id, update_set_null)
 );
 CREATE TABLE b2 (
   id STRING PRIMARY KEY,
   update_set_null STRING DEFAULT 'b2-default' REFERENCES a ON UPDATE SET DEFAULT,
-  FAMILY (id, update_set_null)
 );
 CREATE TABLE b3 (
   id STRING PRIMARY KEY,
   update_set_null STRING DEFAULT 'b3-default' REFERENCES a ON UPDATE SET DEFAULT,
-  FAMILY (id, update_set_null)
 );
 CREATE TABLE b4 (
   id STRING PRIMARY KEY,
   update_set_null STRING DEFAULT 'b4-default' REFERENCES a ON UPDATE SET DEFAULT,
-  FAMILY (id, update_set_null)
 );
 
 statement ok
@@ -692,27 +653,22 @@ CREATE TABLE a (
 CREATE TABLE b1 (
   id STRING PRIMARY KEY,
   update_cascade STRING UNIQUE NOT NULL REFERENCES a ON UPDATE CASCADE,
-  FAMILY (id, update_cascade)
 );
 CREATE TABLE b2 (
   id STRING PRIMARY KEY,
   update_cascade STRING UNIQUE NOT NULL REFERENCES a ON UPDATE CASCADE,
-  FAMILY (id, update_cascade)
 );
 CREATE TABLE c1 (
   id STRING PRIMARY KEY,
   update_set_null STRING DEFAULT 'b1-default' REFERENCES b1(update_cascade) ON UPDATE SET DEFAULT,
-  FAMILY (id, update_set_null)
 );
 CREATE TABLE c2 (
   id STRING PRIMARY KEY,
   update_set_null STRING DEFAULT 'b1-default' REFERENCES b1(update_cascade) ON UPDATE SET DEFAULT,
-  FAMILY (id, update_set_null)
 );
 CREATE TABLE c3 (
   id STRING PRIMARY KEY,
   update_set_null STRING DEFAULT 'b2-default' REFERENCES b2(update_cascade) ON UPDATE SET DEFAULT,
-  FAMILY (id, update_set_null)
 );
 
 statement ok
@@ -770,12 +726,10 @@ CREATE TABLE parent (x INT PRIMARY KEY);
 CREATE TABLE child1 (
   id INT PRIMARY KEY,
   x INT REFERENCES parent (x) ON DELETE CASCADE,
-  FAMILY (id, x)
 );
 CREATE TABLE child2 (
   id INT PRIMARY KEY,
   x INT REFERENCES parent (x) ON DELETE SET NULL,
-  FAMILY (id, x)
 );
 INSERT INTO parent VALUES (1), (2);
 INSERT INTO child1 VALUES (1, 1), (2, 1);

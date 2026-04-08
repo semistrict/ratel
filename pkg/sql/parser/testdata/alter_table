@@ -274,46 +274,46 @@ ALTER TABLE IF EXISTS a ADD COLUMN IF NOT EXISTS b INT8, ADD CONSTRAINT a_idx UN
 ALTER TABLE IF EXISTS a ADD COLUMN IF NOT EXISTS b INT8, ADD CONSTRAINT a_idx UNIQUE (a) -- literals removed
 ALTER TABLE IF EXISTS _ ADD COLUMN IF NOT EXISTS _ INT8, ADD CONSTRAINT _ UNIQUE (_) -- identifiers removed
 
-parse
+error
 ALTER TABLE a ADD COLUMN b INT8 FAMILY fam_a
 ----
+at or near "family": syntax error
+DETAIL: source SQL:
 ALTER TABLE a ADD COLUMN b INT8 FAMILY fam_a
-ALTER TABLE a ADD COLUMN b INT8 FAMILY fam_a -- fully parenthesized
-ALTER TABLE a ADD COLUMN b INT8 FAMILY fam_a -- literals removed
-ALTER TABLE _ ADD COLUMN _ INT8 FAMILY _ -- identifiers removed
+                                ^
 
-parse
+error
 ALTER TABLE a ADD b INT8 FAMILY fam_a
 ----
-ALTER TABLE a ADD COLUMN b INT8 FAMILY fam_a -- normalized!
-ALTER TABLE a ADD COLUMN b INT8 FAMILY fam_a -- fully parenthesized
-ALTER TABLE a ADD COLUMN b INT8 FAMILY fam_a -- literals removed
-ALTER TABLE _ ADD COLUMN _ INT8 FAMILY _ -- identifiers removed
+at or near "family": syntax error
+DETAIL: source SQL:
+ALTER TABLE a ADD b INT8 FAMILY fam_a
+                         ^
 
 
-parse
+error
 ALTER TABLE a ADD COLUMN b INT8 CREATE FAMILY
 ----
+at or near "create": syntax error
+DETAIL: source SQL:
 ALTER TABLE a ADD COLUMN b INT8 CREATE FAMILY
-ALTER TABLE a ADD COLUMN b INT8 CREATE FAMILY -- fully parenthesized
-ALTER TABLE a ADD COLUMN b INT8 CREATE FAMILY -- literals removed
-ALTER TABLE _ ADD COLUMN _ INT8 CREATE FAMILY -- identifiers removed
+                                ^
 
-parse
+error
 ALTER TABLE a ADD COLUMN b INT8 CREATE FAMILY fam_b
 ----
+at or near "create": syntax error
+DETAIL: source SQL:
 ALTER TABLE a ADD COLUMN b INT8 CREATE FAMILY fam_b
-ALTER TABLE a ADD COLUMN b INT8 CREATE FAMILY fam_b -- fully parenthesized
-ALTER TABLE a ADD COLUMN b INT8 CREATE FAMILY fam_b -- literals removed
-ALTER TABLE _ ADD COLUMN _ INT8 CREATE FAMILY _ -- identifiers removed
+                                ^
 
-parse
+error
 ALTER TABLE a ADD COLUMN b INT8 CREATE IF NOT EXISTS FAMILY fam_b
 ----
+at or near "create": syntax error
+DETAIL: source SQL:
 ALTER TABLE a ADD COLUMN b INT8 CREATE IF NOT EXISTS FAMILY fam_b
-ALTER TABLE a ADD COLUMN b INT8 CREATE IF NOT EXISTS FAMILY fam_b -- fully parenthesized
-ALTER TABLE a ADD COLUMN b INT8 CREATE IF NOT EXISTS FAMILY fam_b -- literals removed
-ALTER TABLE _ ADD COLUMN _ INT8 CREATE IF NOT EXISTS FAMILY _ -- identifiers removed
+                                ^
 
 parse
 ALTER TABLE a ADD COLUMN b INT GENERATED ALWAYS AS IDENTITY

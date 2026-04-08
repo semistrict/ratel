@@ -64,7 +64,7 @@ type options struct {
 	}
 }
 
-var sqlMutators = []randgen.Mutator{randgen.ColumnFamilyMutator}
+var sqlMutators []randgen.Mutator
 
 func enableMutations(shouldEnable bool, mutations []randgen.Mutator) []randgen.Mutator {
 	if shouldEnable {

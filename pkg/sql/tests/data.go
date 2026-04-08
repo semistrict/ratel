@@ -95,11 +95,9 @@ func CheckKeyCountIncludingTombstonedE(
 // CreateKVTable creates a basic table named t.<name> that stores key/value
 // pairs with numRows of arbitrary data.
 func CreateKVTable(sqlDB *gosql.DB, name string, numRows int) error {
-	// Fix the column families so the key counts don't change if the family
-	// heuristics are updated.
 	schemaStmts := []string{
 		`CREATE DATABASE IF NOT EXISTS t;`,
-		fmt.Sprintf(`CREATE TABLE t.%s (k INT PRIMARY KEY, v INT, FAMILY (k), FAMILY (v));`, name),
+		fmt.Sprintf(`CREATE TABLE t.%s (k INT PRIMARY KEY, v INT);`, name),
 		fmt.Sprintf(`CREATE INDEX foo on t.%s (v);`, name),
 	}
 

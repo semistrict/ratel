@@ -237,11 +237,6 @@ func RandCreateTableWithColumnIndexNumberGeneratorAndName(
 		Defs:  defs,
 	}
 
-	// Create some random column families.
-	if rng.Intn(2) == 0 {
-		ColumnFamilyMutator(rng, ret)
-	}
-
 	// Maybe add some storing columns.
 	res, _ := IndexStoringMutator(rng, []tree.Statement{ret})
 	return res[0].(*tree.CreateTable)

@@ -55,7 +55,7 @@ func (sv *ScalarVars) Init(md *opt.Metadata, vars []string) error {
 			return errors.Newf("invalid vars definition '%s'", varDef)
 		}
 		if cd.PrimaryKey.IsPrimaryKey || cd.Unique.IsUnique || cd.DefaultExpr.Expr != nil ||
-			len(cd.CheckExprs) > 0 || cd.References.Table != nil || cd.Family.Name != "" {
+			len(cd.CheckExprs) > 0 || cd.References.Table != nil {
 			return errors.Newf("invalid vars definition '%s'", varDef)
 		}
 		typ := tree.MustBeStaticallyKnownType(cd.Type)

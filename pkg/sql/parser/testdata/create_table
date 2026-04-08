@@ -1608,21 +1608,23 @@ CREATE TABLE a (b INT8, c STRING, INDEX (b ASC, c DESC) STORING (c)) -- fully pa
 CREATE TABLE a (b INT8, c STRING, INDEX (b ASC, c DESC) STORING (c)) -- literals removed
 CREATE TABLE _ (_ INT8, _ STRING, INDEX (_ ASC, _ DESC) STORING (_)) -- identifiers removed
 
-parse
+error
 CREATE TABLE a (b INT8, FAMILY (b))
 ----
+at or near "family": syntax error
+DETAIL: source SQL:
 CREATE TABLE a (b INT8, FAMILY (b))
-CREATE TABLE a (b INT8, FAMILY (b)) -- fully parenthesized
-CREATE TABLE a (b INT8, FAMILY (b)) -- literals removed
-CREATE TABLE _ (_ INT8, FAMILY (_)) -- identifiers removed
+                        ^
+HINT: try \h CREATE TABLE
 
-parse
+error
 CREATE TABLE a (b INT8, c STRING, FAMILY foo (b), FAMILY (c))
 ----
+at or near "family": syntax error
+DETAIL: source SQL:
 CREATE TABLE a (b INT8, c STRING, FAMILY foo (b), FAMILY (c))
-CREATE TABLE a (b INT8, c STRING, FAMILY foo (b), FAMILY (c)) -- fully parenthesized
-CREATE TABLE a (b INT8, c STRING, FAMILY foo (b), FAMILY (c)) -- literals removed
-CREATE TABLE _ (_ INT8, _ STRING, FAMILY _ (_), FAMILY (_)) -- identifiers removed
+                                  ^
+HINT: try \h CREATE TABLE
 
 parse
 CREATE TABLE a.b (b INT8)
@@ -2030,37 +2032,41 @@ CREATE TABLE IF NOT EXISTS a (x, y, z, PRIMARY KEY (x, y, z)) AS SELECT (*) FROM
 CREATE TABLE IF NOT EXISTS a (x, y, z, PRIMARY KEY (x, y, z)) AS SELECT * FROM b -- literals removed
 CREATE TABLE IF NOT EXISTS _ (_, _, _, PRIMARY KEY (_, _, _)) AS SELECT * FROM _ -- identifiers removed
 
-parse
+error
 CREATE TABLE a (x, FAMILY (x)) AS SELECT * FROM b
 ----
+at or near "family": syntax error
+DETAIL: source SQL:
 CREATE TABLE a (x, FAMILY (x)) AS SELECT * FROM b
-CREATE TABLE a (x, FAMILY (x)) AS SELECT (*) FROM b -- fully parenthesized
-CREATE TABLE a (x, FAMILY (x)) AS SELECT * FROM b -- literals removed
-CREATE TABLE _ (_, FAMILY (_)) AS SELECT * FROM _ -- identifiers removed
+                   ^
+HINT: try \h CREATE TABLE
 
-parse
+error
 CREATE TABLE IF NOT EXISTS a (x, FAMILY (x)) AS SELECT * FROM b
 ----
+at or near "family": syntax error
+DETAIL: source SQL:
 CREATE TABLE IF NOT EXISTS a (x, FAMILY (x)) AS SELECT * FROM b
-CREATE TABLE IF NOT EXISTS a (x, FAMILY (x)) AS SELECT (*) FROM b -- fully parenthesized
-CREATE TABLE IF NOT EXISTS a (x, FAMILY (x)) AS SELECT * FROM b -- literals removed
-CREATE TABLE IF NOT EXISTS _ (_, FAMILY (_)) AS SELECT * FROM _ -- identifiers removed
+                                 ^
+HINT: try \h CREATE TABLE
 
-parse
+error
 CREATE TABLE a (x, y FAMILY f1) AS SELECT * FROM b
 ----
+at or near "family": syntax error
+DETAIL: source SQL:
 CREATE TABLE a (x, y FAMILY f1) AS SELECT * FROM b
-CREATE TABLE a (x, y FAMILY f1) AS SELECT (*) FROM b -- fully parenthesized
-CREATE TABLE a (x, y FAMILY f1) AS SELECT * FROM b -- literals removed
-CREATE TABLE _ (_, _ FAMILY _) AS SELECT * FROM _ -- identifiers removed
+                     ^
+HINT: try \h CREATE TABLE
 
-parse
+error
 CREATE TABLE IF NOT EXISTS a (x, y FAMILY f1) AS SELECT * FROM b
 ----
+at or near "family": syntax error
+DETAIL: source SQL:
 CREATE TABLE IF NOT EXISTS a (x, y FAMILY f1) AS SELECT * FROM b
-CREATE TABLE IF NOT EXISTS a (x, y FAMILY f1) AS SELECT (*) FROM b -- fully parenthesized
-CREATE TABLE IF NOT EXISTS a (x, y FAMILY f1) AS SELECT * FROM b -- literals removed
-CREATE TABLE IF NOT EXISTS _ (_, _ FAMILY _) AS SELECT * FROM _ -- identifiers removed
+                                   ^
+HINT: try \h CREATE TABLE
 
 parse
 CREATE TABLE a WITH (fillfactor=100) AS SELECT * FROM b
@@ -2075,12 +2081,12 @@ CREATE TABLE test (
   foo INT8 FAMILY a FAMILY b
 )
 ----
-at or near ")": syntax error: multiple column families specified for column "foo"
+at or near "family": syntax error
 DETAIL: source SQL:
 CREATE TABLE test (
   foo INT8 FAMILY a FAMILY b
-)
-^
+           ^
+HINT: try \h CREATE TABLE
 
 parse
 CREATE TABLE a (b STRING COLLATE de)

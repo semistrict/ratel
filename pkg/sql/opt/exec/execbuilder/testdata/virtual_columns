@@ -4,9 +4,7 @@ statement ok
 CREATE TABLE t (
   a INT PRIMARY KEY,
   b INT,
-  v INT AS (a+b) VIRTUAL,
-  FAMILY (a),
-  FAMILY (b)
+  v INT AS (a+b) VIRTUAL
 )
 
 statement ok
@@ -17,10 +15,7 @@ CREATE TABLE t_idx (
   v INT AS (a+b) VIRTUAL,
   w INT AS (c+1) VIRTUAL,
   INDEX (v),
-  UNIQUE (w),
-  FAMILY (a),
-  FAMILY (b),
-  FAMILY (c)
+  UNIQUE (w)
 )
 
 query TT
@@ -30,9 +25,7 @@ t  CREATE TABLE public.t (
    a INT8 NOT NULL,
    b INT8 NULL,
    v INT8 NULL AS (a + b) VIRTUAL,
-   CONSTRAINT t_pkey PRIMARY KEY (a ASC),
-   FAMILY fam_0_a (a),
-   FAMILY fam_1_b (b)
+   CONSTRAINT t_pkey PRIMARY KEY (a ASC)
 )
 
 query TT
@@ -46,10 +39,7 @@ t_idx  CREATE TABLE public.t_idx (
        w INT8 NULL AS (c + 1:::INT8) VIRTUAL,
        CONSTRAINT t_idx_pkey PRIMARY KEY (a ASC),
        INDEX t_idx_v_idx (v ASC),
-       UNIQUE INDEX t_idx_w_key (w ASC),
-       FAMILY fam_0_a (a),
-       FAMILY fam_1_b (b),
-       FAMILY fam_2_c (c)
+       UNIQUE INDEX t_idx_w_key (w ASC)
 )
 
 subtest Select
@@ -64,8 +54,6 @@ TABLE t
  ├── v int as (a + b) virtual
  ├── crdb_internal_mvcc_timestamp decimal [hidden] [system]
  ├── tableoid oid [hidden] [system]
- ├── FAMILY fam_0_a (a)
- ├── FAMILY fam_1_b (b)
  └── PRIMARY INDEX t_pkey
       └── a int not null
 project

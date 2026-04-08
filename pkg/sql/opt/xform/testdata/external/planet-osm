@@ -72,8 +72,7 @@ CREATE TABLE planet_osm_point (
 	wood STRING NULL,
 	z_order INT8 NULL,
 	way GEOMETRY(POINT,3857) NULL,
-	INVERTED INDEX planet_osm_point_way_idx (way),
-	FAMILY "primary" (osm_id, access, "addr:housename", "addr:housenumber", "addr:interpolation", admin_level, aerialway, aeroway, amenity, area, barrier, bicycle, brand, bridge, boundary, building, capital, construction, covered, culvert, cutting, denomination, disused, ele, embankment, foot, "generator:source", harbor, highway, historic, horse, intermittent, junction, landuse, layer, leisure, lock, man_made, military, motorcar, name, "natural", office, oneway, operator, place, population, power, power_source, public_transport, railway, ref, religion, route, service, shop, sport, surface, toll, tourism, "tower:type", tunnel, water, waterway, wetland, width, wood, z_order, way, rowid)
+	INVERTED INDEX planet_osm_point_way_idx (way)
 )
 ----
 
@@ -923,8 +922,7 @@ CREATE TABLE planet_osm_line (
 	z_order INT8 NULL,
 	way_area FLOAT4 NULL,
 	way GEOMETRY(LINESTRING,3857) NULL,
-	INVERTED INDEX planet_osm_line_way_idx (way),
-	FAMILY "primary" (osm_id, access, "addr:housename", "addr:housenumber", "addr:interpolation", admin_level, aerialway, aeroway, amenity, area, barrier, bicycle, brand, bridge, boundary, building, construction, covered, culvert, cutting, denomination, disused, embankment, foot, "generator:source", harbor, highway, historic, horse, intermittent, junction, landuse, layer, leisure, lock, man_made, military, motorcar, name, "natural", office, oneway, operator, place, population, power, power_source, public_transport, railway, ref, religion, route, service, shop, sport, surface, toll, tourism, "tower:type", tracktype, tunnel, water, waterway, wetland, width, wood, z_order, way_area, way, rowid)
+	INVERTED INDEX planet_osm_line_way_idx (way)
 )
 ----
 

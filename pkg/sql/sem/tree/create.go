@@ -415,7 +415,6 @@ type TableDef interface {
 
 func (*ColumnTableDef) tableDef()               {}
 func (*IndexTableDef) tableDef()                {}
-func (*FamilyTableDef) tableDef()               {}
 func (*ForeignKeyConstraintTableDef) tableDef() {}
 func (*CheckConstraintTableDef) tableDef()      {}
 func (*LikeTableDef) tableDef()                 {}
@@ -515,11 +514,6 @@ type ColumnTableDef struct {
 		Computed bool
 		Expr     Expr
 		Virtual  bool
-	}
-	Family struct {
-		Name        Name
-		Create      bool
-		IfNotExists bool
 	}
 }
 
@@ -701,14 +695,6 @@ func NewColumnTableDef(
 			d.Computed.Computed = true
 			d.Computed.Expr = t.Expr
 			d.Computed.Virtual = t.Virtual
-		case *ColumnFamilyConstraint:
-			if d.HasColumnFamily() {
-				return nil, pgerror.Newf(pgcode.InvalidTableDefinition,
-					"multiple column families specified for column %q", name)
-			}
-			d.Family.Name = t.Family
-			d.Family.Create = t.Create
-			d.Family.IfNotExists = t.IfNotExists
 		default:
 			return nil, errors.AssertionFailedf("unexpected column qualification: %T", c)
 		}
@@ -740,11 +726,6 @@ func (node *ColumnTableDef) IsComputed() bool {
 // IsVirtual returns if the ColumnTableDef is a virtual column.
 func (node *ColumnTableDef) IsVirtual() bool {
 	return node.Computed.Virtual
-}
-
-// HasColumnFamily returns if the ColumnTableDef has a column family.
-func (node *ColumnTableDef) HasColumnFamily() bool {
-	return node.Family.Name != "" || node.Family.Create
 }
 
 // Format implements the NodeFormatter interface.
@@ -873,19 +854,6 @@ func (node *ColumnTableDef) Format(ctx *FmtCtx) {
 			ctx.WriteString(") STORED")
 		}
 	}
-	if node.HasColumnFamily() {
-		if node.Family.Create {
-			ctx.WriteString(" CREATE")
-			if node.Family.IfNotExists {
-				ctx.WriteString(" IF NOT EXISTS")
-			}
-		}
-		ctx.WriteString(" FAMILY")
-		if len(node.Family.Name) > 0 {
-			ctx.WriteByte(' ')
-			ctx.FormatNode(&node.Family.Name)
-		}
-	}
 }
 
 func (node *ColumnTableDef) formatColumnType(ctx *FmtCtx) {
@@ -940,7 +908,6 @@ func (UniqueConstraint) columnQualification()            {}
 func (*ColumnCheckConstraint) columnQualification()      {}
 func (*ColumnComputedDef) columnQualification()          {}
 func (*ColumnFKConstraint) columnQualification()         {}
-func (*ColumnFamilyConstraint) columnQualification()     {}
 func (*GeneratedAlwaysAsIdentity) columnQualification()  {}
 func (*GeneratedByDefAsIdentity) columnQualification()   {}
 
@@ -1011,13 +978,6 @@ type ColumnFKConstraint struct {
 type ColumnComputedDef struct {
 	Expr    Expr
 	Virtual bool
-}
-
-// ColumnFamilyConstraint represents FAMILY on a column.
-type ColumnFamilyConstraint struct {
-	Family      Name
-	Create      bool
-	IfNotExists bool
 }
 
 // IndexTableDef represents an index definition within a CREATE TABLE
@@ -1234,25 +1194,6 @@ func (node *CheckConstraintTableDef) Format(ctx *FmtCtx) {
 	}
 	ctx.WriteString("CHECK (")
 	ctx.FormatNode(node.Expr)
-	ctx.WriteByte(')')
-}
-
-// FamilyTableDef represents a family definition within a CREATE TABLE
-// statement.
-type FamilyTableDef struct {
-	Name    Name
-	Columns NameList
-}
-
-// Format implements the NodeFormatter interface.
-func (node *FamilyTableDef) Format(ctx *FmtCtx) {
-	ctx.WriteString("FAMILY ")
-	if node.Name != "" {
-		ctx.FormatNode(&node.Name)
-		ctx.WriteByte(' ')
-	}
-	ctx.WriteByte('(')
-	ctx.FormatNode(&node.Columns)
 	ctx.WriteByte(')')
 }
 

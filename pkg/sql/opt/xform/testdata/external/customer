@@ -15,8 +15,7 @@ exec-ddl
 CREATE TABLE nodes (
 	id INT NOT NULL,
 	payload STRING NULL,
-	CONSTRAINT "primary" PRIMARY KEY (id ASC),
-	FAMILY "primary" (id, payload)
+	CONSTRAINT "primary" PRIMARY KEY (id ASC)
 )
 ----
 
@@ -28,8 +27,7 @@ CREATE TABLE edges (
 	CONSTRAINT "primary" PRIMARY KEY (src ASC, dst ASC),
 	CONSTRAINT fk_dst_ref_nodes FOREIGN KEY (dst) REFERENCES nodes (id),
 	INDEX edges_auto_index_fk_dst_ref_nodes (dst ASC),
-	CONSTRAINT fk_src_ref_nodes FOREIGN KEY (src) REFERENCES nodes (id),
-	FAMILY "primary" (src, dst, payload)
+	CONSTRAINT fk_src_ref_nodes FOREIGN KEY (src) REFERENCES nodes (id)
 )
 ----
 
@@ -70,8 +68,7 @@ CREATE TABLE article (
 	CONSTRAINT "primary" PRIMARY KEY (folder ASC, feed ASC, id ASC),
 	UNIQUE INDEX article_id_key (id ASC),
 	UNIQUE INDEX article_hash_key (hash ASC),
-	UNIQUE INDEX article_idx_read_key (id ASC) STORING (read),
-	FAMILY "primary" (id, feed, folder, hash, title, summary, content, link, read, date, retrieved)
+	UNIQUE INDEX article_idx_read_key (id ASC) STORING (read)
 )
 ----
 
@@ -259,9 +256,7 @@ CREATE TABLE rides (
     end_time TIMESTAMP NULL,
     revenue FLOAT NULL,
     CONSTRAINT "primary" PRIMARY KEY (id ASC),
-    INDEX rides_vehicle_id_idx (vehicle_id ASC),
-    FAMILY "primary" (id, rider_id, vehicle_id, start_address,
-    end_address, start_time, end_time, revenue)
+    INDEX rides_vehicle_id_idx (vehicle_id ASC)
 )
 ----
 
@@ -275,8 +270,7 @@ CREATE TABLE vehicles (
     status STRING NULL,
     ext JSON NULL,
     CONSTRAINT "primary" PRIMARY KEY (city ASC, id ASC),
-    INDEX vehicles_id_idx (id ASC) STORING (owner_id),
-    FAMILY "primary" (id, type, city, owner_id, creation_time, status, ext)
+    INDEX vehicles_id_idx (id ASC) STORING (owner_id)
 )
 ----
 
@@ -361,8 +355,6 @@ CREATE TABLE t_sync_data (
     CONSTRAINT “primary” PRIMARY KEY (remote_id ASC),
     INDEX t_sync_data_user_id_data_type_idx (user_id ASC, data_type ASC),
     INDEX t_sync_data_last_sync_id_idx (last_sync_id ASC),
-    FAMILY f_meta (remote_id, conflict_remote_id, user_id, last_sync_id, data_type, deleted, create_device_id, original_data_id, create_time, last_update_time),
-    FAMILY f_data (sync_data),
     INDEX index1 (last_sync_id, user_id, data_type),
     INDEX index2 (user_id, data_type),
     INDEX index3 (last_sync_id)
@@ -411,8 +403,7 @@ CREATE TABLE test (
     midname STRING NULL,
     name STRING NULL,
     CONSTRAINT "primary" PRIMARY KEY (id ASC),
-    INDEX test_name_idx (name ASC),
-    FAMILY "primary" (id, midname, name)
+    INDEX test_name_idx (name ASC)
 )
 ----
 
@@ -451,8 +442,7 @@ CREATE TABLE orders (
     o_comment STRING(79) NOT NULL,
     UNIQUE INDEX o_ok (o_orderkey ASC),
     INDEX o_ck (o_custkey ASC),
-    INDEX o_od (o_orderdate ASC),
-    FAMILY "primary" (o_orderkey, o_custkey, o_orderstatus, o_totalprice, o_orderdate, o_orderpriority, o_clerk, o_shippriority, o_comment, rowid)
+    INDEX o_od (o_orderdate ASC)
 )
 ----
 
@@ -481,8 +471,7 @@ CREATE TABLE lineitem (
     INDEX l_cd (l_commitdate ASC),
     INDEX l_rd (l_receiptdate ASC),
     INDEX l_pk_sk (l_partkey ASC, l_suppkey ASC),
-    INDEX l_sk_pk (l_suppkey ASC, l_partkey ASC),
-    FAMILY "primary" (l_orderkey, l_partkey, l_suppkey, l_linenumber, l_quantity, l_extendedprice, l_discount, l_tax, l_returnflag, l_linestatus, l_shipdate, l_commitdate, l_receiptdate, l_shipinstruct, l_shipmode, l_comment, rowid)
+    INDEX l_sk_pk (l_suppkey ASC, l_partkey ASC)
 )
 ----
 

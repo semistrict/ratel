@@ -1011,8 +1011,7 @@ func (u *sqlSymUnion) beginTransaction() *tree.BeginTransaction {
 // NOT, at least with respect to their left-hand subexpression.
 // - WITH_LA is needed to make the grammar LALR(1).
 // - GENERATED_ALWAYS is needed to support the Postgres syntax for computed
-// columns along with our family related extensions (CREATE FAMILY/CREATE FAMILY
-// family_name).
+// columns.
 // - RESET_ALL is used to differentiate `RESET var` from `RESET ALL`.
 // - ROLE_ALL and USER_ALL are used in ALTER ROLE statements that affect all
 // roles.
@@ -1579,7 +1578,6 @@ func (u *sqlSymUnion) beginTransaction() *tree.BeginTransaction {
 
 %type <tree.ConstraintTableDef> table_constraint constraint_elem create_as_constraint_def create_as_constraint_elem
 %type <tree.TableDef> index_def
-%type <tree.TableDef> family_def
 %type <[]tree.NamedColumnQualification> col_qual_list create_as_col_qual_list
 %type <tree.NamedColumnQualification> col_qualification create_as_col_qualification
 %type <tree.ColumnQualification> col_qualification_elem create_as_col_qualification_elem
@@ -1837,7 +1835,6 @@ alter_ddl_stmt:
 //
 // Column qualifiers:
 //   [CONSTRAINT <constraintname>] {NULL | NOT NULL | UNIQUE | PRIMARY KEY | CHECK (<expr>) | DEFAULT <expr>}
-//   FAMILY <familyname>, CREATE [IF NOT EXISTS] FAMILY [<familyname>]
 //   REFERENCES <tablename> [( <colnames...> )]
 //   COLLATE <collationname>
 //
@@ -9189,7 +9186,6 @@ alter_schema_stmt:
 //    <name> <type> [<qualifiers...>]
 //    [UNIQUE | INVERTED] INDEX [<name>] ( <colname> [ASC | DESC] [, ...] )
 //                            [USING HASH] [{STORING | INCLUDE | COVERING} ( <colnames...> )]
-//    FAMILY [<name>] ( <colnames...> )
 //    [CONSTRAINT <name>] <constraint>
 //
 // Table constraints:
@@ -9200,7 +9196,6 @@ alter_schema_stmt:
 //
 // Column qualifiers:
 //   [CONSTRAINT <constraintname>] {NULL | NOT NULL | NOT VISIBLE | UNIQUE | PRIMARY KEY | CHECK (<expr>) | DEFAULT <expr> | ON UPDATE <expr> | GENERATED { ALWAYS | BY DEFAULT } AS IDENTITY [( <opt_sequence_option_list> )]}
-//   FAMILY <familyname>, CREATE [IF NOT EXISTS] FAMILY [<familyname>]
 //   REFERENCES <tablename> [( <colnames...> )] [ON DELETE {NO ACTION | RESTRICT}] [ON UPDATE {NO ACTION | RESTRICT}]
 //   COLLATE <collationname>
 //   AS ( <expr> ) { STORED | VIRTUAL }
@@ -9417,7 +9412,6 @@ table_elem:
     $$.val = $1.colTableDef()
   }
 | index_def
-| family_def
 | table_constraint opt_validate_behavior
   {
     def := $1.constraintDef()
@@ -9633,23 +9627,6 @@ col_qualification:
   {
     $$.val = tree.NamedColumnQualification{Qualification: tree.ColumnCollation($2)}
   }
-| FAMILY family_name
-  {
-    $$.val = tree.NamedColumnQualification{Qualification: &tree.ColumnFamilyConstraint{Family: tree.Name($2)}}
-  }
-| CREATE FAMILY family_name
-  {
-    $$.val = tree.NamedColumnQualification{Qualification: &tree.ColumnFamilyConstraint{Family: tree.Name($3), Create: true}}
-  }
-| CREATE FAMILY
-  {
-    $$.val = tree.NamedColumnQualification{Qualification: &tree.ColumnFamilyConstraint{Create: true}}
-  }
-| CREATE IF NOT EXISTS FAMILY family_name
-  {
-    $$.val = tree.NamedColumnQualification{Qualification: &tree.ColumnFamilyConstraint{Family: tree.Name($6), Create: true, IfNotExists: true}}
-  }
-
 // DEFAULT NULL is already the default for Postgres. But define it here and
 // carry it forward into the system to make it explicit.
 // - thomas 1998-09-13
@@ -9839,15 +9816,6 @@ index_def:
     }
   }
 
-family_def:
-  FAMILY opt_family_name '(' name_list ')'
-  {
-    $$.val = &tree.FamilyTableDef{
-      Name: tree.Name($2),
-      Columns: $4.nameList(),
-    }
-  }
-
 // constraint_elem specifies constraint syntax which is not embedded into a
 // column definition. col_qualification_elem specifies the embedded form.
 // - thomas 1997-12-03
@@ -9943,10 +9911,6 @@ create_as_table_defs:
 
     $$.val = append($1.tblDefs(), colToTableDef)
   }
-| create_as_table_defs ',' family_def
-  {
-    $$.val = append($1.tblDefs(), $3.tblDef())
-  }
 | create_as_table_defs ',' create_as_constraint_def
 {
   var constraintToTableDef tree.TableDef = $3.constraintDef()
@@ -10001,10 +9965,6 @@ create_as_col_qualification:
   create_as_col_qualification_elem
   {
     $$.val = tree.NamedColumnQualification{Qualification: $1.colQualElem()}
-  }
-| FAMILY family_name
-  {
-    $$.val = tree.NamedColumnQualification{Qualification: &tree.ColumnFamilyConstraint{Family: tree.Name($2)}}
   }
 
 create_as_col_qualification_elem:

@@ -55,13 +55,7 @@ func InitIndexFetchSpec(
 		encoding.EncodedLengthUvarintAscending(uint64(index.GetID())))
 
 	s.FamilyDefaultColumns = table.FamilyDefaultColumns()
-
-	families := table.GetFamilies()
-	for i := range families {
-		if id := families[i].ID; id > s.MaxFamilyID {
-			s.MaxFamilyID = id
-		}
-	}
+	s.MaxFamilyID = 0
 
 	s.KeyAndSuffixColumns = table.IndexFetchSpecKeyAndSuffixColumns(index)
 

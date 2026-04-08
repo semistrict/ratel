@@ -51,11 +51,10 @@ type tpcc struct {
 	// is the value of C for the item id generator. See 2.1.6.
 	cLoad, cCustomerID, cItemID int
 
-	mix                    string
-	waitFraction           float64
-	workers                int
-	fks                    bool
-	separateColumnFamilies bool
+	mix          string
+	waitFraction float64
+	workers      int
+	fks          bool
 	// deprecatedFKIndexes adds in foreign key indexes that are no longer needed
 	// due to origin index restrictions being lifted.
 	deprecatedFkIndexes bool
@@ -217,7 +216,6 @@ var tpccMeta = workload.Meta{
 		g.flags.BoolVar(&g.serializable, `serializable`, false, `Force serializable mode`)
 		g.flags.BoolVar(&g.split, `split`, false, `Split tables`)
 		g.flags.BoolVar(&g.expensiveChecks, `expensive-checks`, false, `Run expensive checks`)
-		g.flags.BoolVar(&g.separateColumnFamilies, `families`, false, `Use separate column families for dynamic and static columns`)
 		g.flags.BoolVar(&g.replicateStaticColumns, `replicate-static-columns`, false, "Create duplicate indexes for all static columns in district, items and warehouse tables, such that each zone or rack has them locally.")
 		g.flags.BoolVar(&g.localWarehouses, `local-warehouses`, false, `Force transactions to use a local warehouse in all cases (in violation of the TPC-C specification)`)
 		RandomSeed.AddFlag(&g.flags)
@@ -571,10 +569,6 @@ func (w *tpcc) Tables() []workload.Table {
 		Schema: makeSchema(
 			tpccWarehouseSchema,
 			maybeAddLocalityRegionalByRow(w.multiRegionCfg, `w_id`),
-			maybeAddColumnFamiliesSuffix(
-				w.separateColumnFamilies,
-				tpccWarehouseColumnFamiliesSuffix,
-			),
 		),
 		InitialRows: workload.BatchedTuples{
 			NumBatches: w.warehouses,
@@ -592,10 +586,6 @@ func (w *tpcc) Tables() []workload.Table {
 		Name: `district`,
 		Schema: makeSchema(
 			tpccDistrictSchemaBase,
-			maybeAddColumnFamiliesSuffix(
-				w.separateColumnFamilies,
-				tpccDistrictColumnFamiliesSuffix,
-			),
 			maybeAddLocalityRegionalByRow(w.multiRegionCfg, `d_w_id`),
 		),
 		InitialRows: workload.BatchedTuples{
@@ -614,10 +604,6 @@ func (w *tpcc) Tables() []workload.Table {
 		Name: `customer`,
 		Schema: makeSchema(
 			tpccCustomerSchemaBase,
-			maybeAddColumnFamiliesSuffix(
-				w.separateColumnFamilies,
-				tpccCustomerColumnFamiliesSuffix,
-			),
 			maybeAddLocalityRegionalByRow(w.multiRegionCfg, `c_w_id`),
 		),
 		InitialRows: workload.BatchedTuples{

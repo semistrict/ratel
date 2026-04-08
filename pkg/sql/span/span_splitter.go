@@ -1,23 +1,25 @@
 // Copyright 2022 The Cockroach Authors.
 //
-// Use of this software is governed by the Business Source License
-// included in the file licenses/BSL.txt.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// As of the Change Date specified in that file, in accordance with
-// the Business Source License, use of this software will be governed
-// by the Apache License, Version 2.0, included in the file
-// licenses/APL.txt.
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// permissions and limitations under the License.
 
 package span
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/keys"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/rowenc"
-	"github.com/cockroachdb/cockroach/pkg/util/intsets"
-	"github.com/cockroachdb/errors"
+	"github.com/cockroachdb/cockroach/pkg/util"
 )
 
 // Splitter is a helper for splitting single-row spans into more specific spans
@@ -44,20 +46,8 @@ func NoopSplitter() Splitter {
 // MakeSplitter returns a Splitter that splits spans into more specific spans
 // for the needed families. If span splitting is not possible/useful, returns
 // the NoopSplitter (which never splits).
-// Note: this splitter should **not** be used for deletes.
 func MakeSplitter(
-	table catalog.TableDescriptor, index catalog.Index, neededColOrdinals intsets.Fast,
-) Splitter {
-	return MakeSplitterForDelete(table, index, neededColOrdinals, false /* forDelete */)
-}
-
-// MakeSplitterForDelete is the same as MakeSplitter but additionally specifies
-// whether the splitter will be used for deletes.
-func MakeSplitterForDelete(
-	table catalog.TableDescriptor,
-	index catalog.Index,
-	neededColOrdinals intsets.Fast,
-	forDelete bool,
+	table catalog.TableDescriptor, index catalog.Index, neededColOrdinals util.FastIntSet,
 ) Splitter {
 	// We can only split a span into separate family specific point lookups if:
 	//
@@ -87,27 +77,7 @@ func MakeSplitterForDelete(
 	}
 
 	neededFamilies := rowenc.NeededColumnFamilyIDs(neededColOrdinals, table, index)
-
-	// Sanity check.
-	for i := range neededFamilies[1:] {
-		if neededFamilies[i] >= neededFamilies[i+1] {
-			panic(errors.AssertionFailedf("family IDs not increasing"))
-		}
-	}
-
-	// * The index either has just 1 family (so we'll make a GetRequest) or we
-	//   need fewer than every column family in the table (otherwise we'd just
-	//   make a big ScanRequest).
-	// TODO(radu): should we be using IndexKeysPerRow() instead?
-	numFamilies := len(table.GetFamilies())
-	if numFamilies > 1 && len(neededFamilies) == numFamilies {
-		return NoopSplitter()
-	}
-
-	// * If we're performing a delete, the table must have just one column
-	//   family, since we need to delete all column families during delete
-	//   operations.
-	if forDelete && numFamilies > 1 {
+	if len(neededFamilies) <= 1 {
 		return NoopSplitter()
 	}
 
@@ -125,15 +95,8 @@ func MakeSplitterForDelete(
 // This should only be used when the conditions checked by MakeSplitter are
 // already known to be satisfied.
 func MakeSplitterWithFamilyIDs(numKeyColumns int, familyIDs []descpb.FamilyID) Splitter {
-	if len(familyIDs) == 0 {
+	if len(familyIDs) <= 1 {
 		return NoopSplitter()
-	}
-
-	// Sanity check.
-	for i := range familyIDs[1:] {
-		if familyIDs[i] >= familyIDs[i+1] {
-			panic(errors.AssertionFailedf("family IDs not increasing"))
-		}
 	}
 	return Splitter{
 		numKeyColumns:  numKeyColumns,
@@ -198,12 +161,5 @@ func (s *Splitter) CanSplitSpanIntoFamilySpans(prefixLen int, containsNull bool)
 func (s *Splitter) ExistenceCheckSpan(
 	span roachpb.Span, prefixLen int, containsNull bool,
 ) roachpb.Span {
-	if s.CanSplitSpanIntoFamilySpans(prefixLen, containsNull) {
-		// If it is safe to split this lookup into multiple families, generate a
-		// point lookup for family 0. Because we are just checking for existence, we
-		// only need family 0.
-		key := keys.MakeFamilyKey(span.Key, 0 /* famID */)
-		return roachpb.Span{Key: key, EndKey: roachpb.Key(key).PrefixEnd()}
-	}
 	return span
 }

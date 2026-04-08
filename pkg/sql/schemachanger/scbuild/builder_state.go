@@ -350,26 +350,6 @@ func (b *builderState) NextTableColumnID(table *scpb.Table) (ret catid.ColumnID)
 	return ret
 }
 
-// NextColumnFamilyID implements the scbuildstmt.TableHelpers interface.
-func (b *builderState) NextColumnFamilyID(table *scpb.Table) (ret catid.FamilyID) {
-	{
-		b.ensureDescriptor(table.TableID)
-		desc := b.descCache[table.TableID].desc
-		tbl, ok := desc.(catalog.TableDescriptor)
-		if !ok {
-			panic(errors.AssertionFailedf("Expected table descriptor for ID %d, instead got %s",
-				desc.GetID(), desc.DescriptorType()))
-		}
-		ret = tbl.GetNextFamilyID()
-	}
-	scpb.ForEachColumnFamily(b, func(_ scpb.Status, _ scpb.TargetStatus, cf *scpb.ColumnFamily) {
-		if cf.TableID == table.TableID && cf.FamilyID >= ret {
-			ret = cf.FamilyID + 1
-		}
-	})
-	return ret
-}
-
 // NextTableIndexID implements the scbuildstmt.TableHelpers interface.
 func (b *builderState) NextTableIndexID(table *scpb.Table) (ret catid.IndexID) {
 	return b.nextIndexID(table.TableID)

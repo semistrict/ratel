@@ -154,11 +154,6 @@ var elementSchemaOptions = []rel.SchemaOption{
 		rel.EntityAttr(DescID, "TableID"),
 	),
 	// Relation elements.
-	rel.EntityMapping(t((*scpb.ColumnFamily)(nil)),
-		rel.EntityAttr(DescID, "TableID"),
-		rel.EntityAttr(ColumnFamilyID, "FamilyID"),
-		rel.EntityAttr(Name, "Name"),
-	),
 	rel.EntityMapping(t((*scpb.Column)(nil)),
 		rel.EntityAttr(DescID, "TableID"),
 		rel.EntityAttr(ColumnID, "ColumnID"),

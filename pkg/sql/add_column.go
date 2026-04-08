@@ -128,15 +128,6 @@ func (p *planner) addColumnImpl(
 			return err
 		}
 	}
-	if d.HasColumnFamily() {
-		err := n.tableDesc.AddColumnToFamilyMaybeCreate(
-			col.Name, string(d.Family.Name), d.Family.Create,
-			d.Family.IfNotExists)
-		if err != nil {
-			return err
-		}
-	}
-
 	if d.IsComputed() {
 		serializedExpr, _, err := schemaexpr.ValidateComputedColumnExpression(
 			params.ctx, n.tableDesc, d, tn, tree.ComputedColumnExprContext(d.IsVirtual()), params.p.SemaCtx(),

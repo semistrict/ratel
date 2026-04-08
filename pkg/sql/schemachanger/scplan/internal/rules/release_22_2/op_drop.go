@@ -230,7 +230,6 @@ func init() {
 		screl.MustQuery(
 			desc.TypeFilter(rulesVersionKey, isDescriptor),
 			dep.Type(
-				(*scpb.ColumnFamily)(nil),
 				(*scpb.Owner)(nil),
 				(*scpb.UserPrivileges)(nil),
 				(*scpb.EnumTypeValue)(nil),

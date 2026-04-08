@@ -215,7 +215,7 @@ statement ok
 DROP TABLE IF EXISTS t;
 
 statement ok
-CREATE TABLE t (rowid INT PRIMARY KEY, y INT NOT NULL, FAMILY (rowid, y));
+CREATE TABLE t (rowid INT PRIMARY KEY, y INT NOT NULL);
 
 statement ok
 ALTER TABLE t ALTER PRIMARY KEY USING COLUMNS (y)
@@ -227,8 +227,7 @@ t  CREATE TABLE public.t (
      rowid INT8 NOT NULL,
      y INT8 NOT NULL,
      CONSTRAINT t_pkey PRIMARY KEY (y ASC),
-     UNIQUE INDEX t_rowid_key (rowid ASC),
-     FAMILY fam_0_rowid_y (rowid, y)
+     UNIQUE INDEX t_rowid_key (rowid ASC)
    )
 
 subtest index_rewrites
@@ -249,8 +248,7 @@ CREATE TABLE t (
   UNIQUE INDEX i4 (z), -- will be rewritten.
   UNIQUE INDEX i5 (w) STORING (y), -- will be rewritten.
   INVERTED INDEX i6 (v), -- will be rewritten.
-  INDEX i7 (z) USING HASH WITH (bucket_count=4), -- will be rewritten.
-  FAMILY (x, y, z, w, v)
+  INDEX i7 (z) USING HASH WITH (bucket_count=4) -- will be rewritten.
 );
 
 statement ok
@@ -277,8 +275,7 @@ t  CREATE TABLE public.t (
      UNIQUE INDEX i4 (z ASC),
      UNIQUE INDEX i5 (w ASC) STORING (y),
      INVERTED INDEX i6 (v),
-     INDEX i7 (z ASC) USING HASH WITH (bucket_count=4),
-     FAMILY fam_0_x_y_z_w_v (x, y, z, w, v)
+     INDEX i7 (z ASC) USING HASH WITH (bucket_count=4)
    )
 
 # Test that the indexes we expect got rewritten. All but i3 should have been rewritten,
@@ -411,8 +408,7 @@ CREATE TABLE t (
   x INT PRIMARY KEY,
   y INT NOT NULL,
   z INT,
-  INDEX i1 (z) USING HASH WITH (bucket_count=5),
-  FAMILY (x, y, z)
+  INDEX i1 (z) USING HASH WITH (bucket_count=5)
 );
 
 statement ok
@@ -432,8 +428,7 @@ t  CREATE TABLE public.t (
      crdb_internal_y_shard_10 INT8 NOT VISIBLE NOT NULL AS (mod(fnv32(crdb_internal.datums_to_bytes(y)), 10:::INT8)) VIRTUAL,
      CONSTRAINT t_pkey PRIMARY KEY (y ASC) USING HASH WITH (bucket_count=10),
      UNIQUE INDEX t_x_key (x ASC),
-     INDEX i1 (z ASC) USING HASH WITH (bucket_count=5),
-     FAMILY fam_0_x_y_z (x, y, z)
+     INDEX i1 (z ASC) USING HASH WITH (bucket_count=5)
    )
 
 query T
@@ -477,8 +472,7 @@ CREATE TABLE t (
   x INT PRIMARY KEY USING HASH WITH (bucket_count=5),
   y INT NOT NULL,
   z INT,
-  INDEX i (z),
-  FAMILY (x, y, z)
+  INDEX i (z)
 );
 
 statement ok
@@ -497,8 +491,7 @@ t  CREATE TABLE public.t (
      z INT8 NULL,
      CONSTRAINT t_pkey PRIMARY KEY (y ASC),
      UNIQUE INDEX t_x_key (x ASC) USING HASH WITH (bucket_count=5),
-     INDEX i (z ASC),
-     FAMILY fam_0_x_y_z (x, y, z)
+     INDEX i (z ASC)
    )
 
 query III
@@ -549,7 +542,7 @@ statement ok
 DROP TABLE IF EXISTS t;
 
 statement ok
-CREATE TABLE t (x INT PRIMARY KEY, y INT NOT NULL, z INT NOT NULL, FAMILY (x, y, z));
+CREATE TABLE t (x INT PRIMARY KEY, y INT NOT NULL, z INT NOT NULL);
 
 statement ok
 INSERT INTO t VALUES (1, 2, 3);
@@ -715,7 +708,7 @@ statement ok
 DROP TABLE IF EXISTS t;
 
 statement ok
-CREATE TABLE t (x INT PRIMARY KEY, y INT NOT NULL, FAMILY (x), FAMILY (y))
+CREATE TABLE t (x INT PRIMARY KEY, y INT NOT NULL)
 
 statement error pq: relation "t" \([0-9]+\): unimplemented: primary key dropped without subsequent addition of new primary key in same transaction
 ALTER TABLE t DROP CONSTRAINT "t_pkey"
@@ -738,9 +731,7 @@ SHOW CREATE t
 t  CREATE TABLE public.t (
      x INT8 NOT NULL,
      y INT8 NOT NULL,
-     CONSTRAINT t_pkey_v2 PRIMARY KEY (y ASC),
-     FAMILY fam_0_x (x),
-     FAMILY fam_1_y (y)
+     CONSTRAINT t_pkey_v2 PRIMARY KEY (y ASC)
    )
 
 statement ok
@@ -752,7 +743,7 @@ statement ok
 DROP TABLE t;
 
 statement ok
-CREATE TABLE t (x INT PRIMARY KEY, y INT NOT NULL, FAMILY (x), FAMILY (y))
+CREATE TABLE t (x INT PRIMARY KEY, y INT NOT NULL)
 
 statement ok
 BEGIN
@@ -770,7 +761,7 @@ statement ok
 DROP TABLE t;
 
 statement ok
-CREATE TABLE t (x INT PRIMARY KEY, y INT NOT NULL, FAMILY (x), FAMILY (y))
+CREATE TABLE t (x INT PRIMARY KEY, y INT NOT NULL)
 
 statement ok
 BEGIN
@@ -790,9 +781,7 @@ SHOW CREATE t
 t  CREATE TABLE public.t (
      x INT8 NOT NULL,
      y INT8 NOT NULL,
-     CONSTRAINT t_pkey_v2 PRIMARY KEY (y ASC),
-     FAMILY fam_0_x (x),
-     FAMILY fam_1_y (y)
+     CONSTRAINT t_pkey_v2 PRIMARY KEY (y ASC)
    )
 
 # Ensure that we can't use a table with a dropped primary key
@@ -936,7 +925,7 @@ statement ok
 BEGIN
 
 statement ok
-CREATE TABLE t (x INT NOT NULL, y INT, FAMILY (x, y), INDEX (y))
+CREATE TABLE t (x INT NOT NULL, y INT, INDEX (y))
 
 statement ok
 ALTER TABLE t ADD PRIMARY KEY (x)
@@ -952,8 +941,7 @@ t  CREATE TABLE public.t (
      y INT8 NULL,
      rowid INT8 NOT VISIBLE NOT NULL DEFAULT unique_rowid(),
      CONSTRAINT t_pkey PRIMARY KEY (x ASC),
-     INDEX t_y_idx (y ASC),
-     FAMILY fam_0_x_y_rowid (x, y, rowid)
+     INDEX t_y_idx (y ASC)
    )
 
 # Ensure that index y got rewritten. If it was not rewritten,
@@ -973,7 +961,7 @@ statement ok
 BEGIN
 
 statement ok
-CREATE TABLE t (x INT NOT NULL, y INT, FAMILY (x, y), INDEX (y))
+CREATE TABLE t (x INT NOT NULL, y INT, INDEX (y))
 
 statement ok
 ALTER TABLE t ALTER PRIMARY KEY USING COLUMNS (x)
@@ -989,8 +977,7 @@ t  CREATE TABLE public.t (
      y INT8 NULL,
      rowid INT8 NOT VISIBLE NOT NULL DEFAULT unique_rowid(),
      CONSTRAINT t_pkey PRIMARY KEY (x ASC),
-     INDEX t_y_idx (y ASC),
-     FAMILY fam_0_x_y_rowid (x, y, rowid)
+     INDEX t_y_idx (y ASC)
    )
 
 # Ensure that index y got rewritten. If it was not rewritten,
@@ -1012,8 +999,7 @@ statement ok
 CREATE TABLE t (
   x INT NOT NULL, y INT, z INT, w INT,
   INDEX i1 (y), UNIQUE INDEX i2 (z),
-  INDEX i3 (w) STORING (y, z),
-  FAMILY (x, y, z, w)
+  INDEX i3 (w) STORING (y, z)
 )
 
 statement ok
@@ -1034,8 +1020,7 @@ t  CREATE TABLE public.t (
      CONSTRAINT t_pkey PRIMARY KEY (x ASC),
      INDEX i1 (y ASC),
      UNIQUE INDEX i2 (z ASC),
-     INDEX i3 (w ASC) STORING (y, z),
-     FAMILY fam_0_x_y_z_w_rowid (x, y, z, w, rowid)
+     INDEX i3 (w ASC) STORING (y, z)
    )
 
 # All index id's should be larger than 4.
@@ -1075,7 +1060,7 @@ statement ok
 DROP TABLE t;
 
 statement ok
-CREATE TABLE t (x INT PRIMARY KEY USING HASH WITH (bucket_count=2), y INT NOT NULL, FAMILY (x, y));
+CREATE TABLE t (x INT PRIMARY KEY USING HASH WITH (bucket_count=2), y INT NOT NULL);
 
 statement ok
 ALTER TABLE t ALTER PRIMARY KEY USING COLUMNS (y) USING HASH WITH (bucket_count=2)
@@ -1089,8 +1074,7 @@ t  CREATE TABLE public.t (
      y INT8 NOT NULL,
      crdb_internal_y_shard_2 INT8 NOT VISIBLE NOT NULL AS (mod(fnv32(crdb_internal.datums_to_bytes(y)), 2:::INT8)) VIRTUAL,
      CONSTRAINT t_pkey PRIMARY KEY (y ASC) USING HASH WITH (bucket_count=2),
-     UNIQUE INDEX t_x_key (x ASC) USING HASH WITH (bucket_count=2),
-     FAMILY fam_0_x_y (x, y)
+     UNIQUE INDEX t_x_key (x ASC) USING HASH WITH (bucket_count=2)
    )
 
 # Regression for #49079.
@@ -1275,8 +1259,7 @@ statement ok
 CREATE TABLE table_with_virtual_cols (
   id INT PRIMARY KEY,
   new_pk INT NOT NULL,
-  virtual_col INT AS (1::int) VIRTUAL,
-  FAMILY (id, new_pk)
+  virtual_col INT AS (1::int) VIRTUAL
 );
 ALTER TABLE table_with_virtual_cols ALTER PRIMARY KEY USING COLUMNS (new_pk)
 
@@ -1288,8 +1271,7 @@ table_with_virtual_cols  CREATE TABLE public.table_with_virtual_cols (
                            new_pk INT8 NOT NULL,
                            virtual_col INT8 NULL AS (1:::INT8) VIRTUAL,
                            CONSTRAINT table_with_virtual_cols_pkey PRIMARY KEY (new_pk ASC),
-                           UNIQUE INDEX table_with_virtual_cols_id_key (id ASC),
-                           FAMILY fam_0_id_new_pk (id, new_pk)
+                           UNIQUE INDEX table_with_virtual_cols_id_key (id ASC)
                          )
 
 # Test that we do not create new indexes for the old primary key when going
@@ -1371,8 +1353,7 @@ CREATE TABLE t (
   b INT NOT NULL,
   k INT NOT NULL AS (a+b) VIRTUAL,
   PRIMARY KEY (a),
-  INDEX t_idx_b_k (b, k),
-  FAMILY "primary" (a, b)
+  INDEX t_idx_b_k (b, k)
 );
 
 statement ok
@@ -1574,8 +1555,7 @@ subtest test_storage_params_validation
 statement ok
 CREATE TABLE t_test_param (
   a INT PRIMARY KEY,
-  b INT NOT NULL,
-  FAMILY fam_0_a_b (a, b)
+  b INT NOT NULL
 );
 
 statement error pq: invalid storage param "s2_max_level" on primary key
@@ -1602,8 +1582,7 @@ CREATE TABLE public.t_test_param (
   b INT8 NOT NULL,
   crdb_internal_b_shard_5 INT8 NOT VISIBLE NOT NULL AS (mod(fnv32(crdb_internal.datums_to_bytes(b)), 5:::INT8)) VIRTUAL,
   CONSTRAINT t_test_param_pkey PRIMARY KEY (b ASC) USING HASH WITH (bucket_count=5),
-  UNIQUE INDEX t_test_param_a_key (a ASC),
-  FAMILY fam_0_a_b (a, b)
+  UNIQUE INDEX t_test_param_a_key (a ASC)
 )
 
 subtest pkey-comment-carry-over

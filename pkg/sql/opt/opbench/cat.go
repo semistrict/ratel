@@ -30,8 +30,7 @@ CREATE TABLE region (
 	r_regionkey INT8 NOT NULL,
 	r_name CHAR(25) NOT NULL,
 	r_comment VARCHAR(152) NULL,
-	CONSTRAINT "primary" PRIMARY KEY (r_regionkey ASC),
-	FAMILY "primary" (r_regionkey, r_name, r_comment)
+	CONSTRAINT "primary" PRIMARY KEY (r_regionkey ASC)
 );
 
 ALTER TABLE region INJECT STATISTICS '[
@@ -77,8 +76,7 @@ CREATE TABLE nation (
 	n_comment VARCHAR(152) NULL,
 	CONSTRAINT "primary" PRIMARY KEY (n_nationkey ASC),
 	CONSTRAINT nation_fkey_region FOREIGN KEY (n_regionkey) REFERENCES region(r_regionkey) NOT VALID,
-	INDEX n_rk (n_regionkey ASC),
-	FAMILY "primary" (n_nationkey, n_name, n_regionkey, n_comment)
+	INDEX n_rk (n_regionkey ASC)
 );
 
 ALTER TABLE nation INJECT STATISTICS '[
@@ -139,8 +137,7 @@ CREATE TABLE customer (
 	c_comment VARCHAR(117) NOT NULL,
 	CONSTRAINT "primary" PRIMARY KEY (c_custkey ASC),
 	CONSTRAINT customer_fkey_nation FOREIGN KEY (c_nationkey) REFERENCES nation(n_nationkey) NOT VALID,
-	INDEX c_nk (c_nationkey ASC),
-	FAMILY "primary" (c_custkey, c_name, c_address, c_nationkey, c_phone, c_acctbal, c_mktsegment, c_comment)
+	INDEX c_nk (c_nationkey ASC)
 );
 
 ALTER TABLE customer INJECT STATISTICS '[
@@ -247,8 +244,7 @@ CREATE TABLE orders (
 	CONSTRAINT "primary" PRIMARY KEY (o_orderkey ASC),
 	CONSTRAINT orders_fkey_customer FOREIGN KEY (o_custkey) REFERENCES customer(c_custkey) NOT VALID,
 	INDEX o_ck (o_custkey ASC),
-	INDEX o_od (o_orderdate ASC),
-	FAMILY "primary" (o_orderkey, o_custkey, o_orderstatus, o_totalprice, o_orderdate, o_orderpriority, o_clerk, o_shippriority, o_comment)
+	INDEX o_od (o_orderdate ASC)
 );
 
 ALTER TABLE orders INJECT STATISTICS '[
@@ -363,8 +359,7 @@ CREATE TABLE part (
 	p_container CHAR(10) NOT NULL,
 	p_retailprice FLOAT8 NOT NULL,
 	p_comment VARCHAR(23) NOT NULL,
-	CONSTRAINT "primary" PRIMARY KEY (p_partkey ASC),
-	FAMILY "primary" (p_partkey, p_name, p_mfgr, p_brand, p_type, p_size, p_container, p_retailprice, p_comment)
+	CONSTRAINT "primary" PRIMARY KEY (p_partkey ASC)
 );
 
 ALTER TABLE part INJECT STATISTICS '[
@@ -479,8 +474,7 @@ CREATE TABLE supplier (
 	s_comment VARCHAR(101) NOT NULL,
 	CONSTRAINT "primary" PRIMARY KEY (s_suppkey ASC),
 	CONSTRAINT supplier_fkey_nation FOREIGN KEY (s_nationkey) REFERENCES nation(n_nationkey) NOT VALID,
-	INDEX s_nk (s_nationkey ASC),
-	FAMILY "primary" (s_suppkey, s_name, s_address, s_nationkey, s_phone, s_acctbal, s_comment)
+	INDEX s_nk (s_nationkey ASC)
 );
 
 ALTER TABLE supplier INJECT STATISTICS '[
@@ -572,8 +566,7 @@ CREATE TABLE partsupp (
 	CONSTRAINT "primary" PRIMARY KEY (ps_partkey ASC, ps_suppkey ASC),
 	CONSTRAINT partsupp_fkey_part FOREIGN KEY (ps_partkey) REFERENCES part(p_partkey) NOT VALID,
 	CONSTRAINT partsupp_fkey_supplier FOREIGN KEY (ps_suppkey) REFERENCES supplier(s_suppkey) NOT VALID,
-	INDEX ps_sk (ps_suppkey ASC),
-	FAMILY "primary" (ps_partkey, ps_suppkey, ps_availqty, ps_supplycost, ps_comment)
+	INDEX ps_sk (ps_suppkey ASC)
 );
 
 ALTER TABLE partsupp INJECT STATISTICS '[
@@ -674,8 +667,7 @@ CREATE TABLE lineitem (
 	INDEX l_cd (l_commitdate ASC),
 	INDEX l_rd (l_receiptdate ASC),
 	INDEX l_pk_sk (l_partkey ASC, l_suppkey ASC),
-	INDEX l_sk_pk (l_suppkey ASC, l_partkey ASC),
-	FAMILY "primary" (l_orderkey, l_partkey, l_suppkey, l_linenumber, l_quantity, l_extendedprice, l_discount, l_tax, l_returnflag, l_linestatus, l_shipdate, l_commitdate, l_receiptdate, l_shipinstruct, l_shipmode, l_comment)
+	INDEX l_sk_pk (l_suppkey ASC, l_partkey ASC)
 );
 
 ALTER TABLE lineitem INJECT STATISTICS '[

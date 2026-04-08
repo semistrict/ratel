@@ -174,8 +174,7 @@ func ShowCreateTable(
 		f.WriteString(idxStr)
 	}
 
-	// Create the FAMILY and CONSTRAINTs of the CREATE statement
-	showFamilyClause(desc, f)
+	// Create the remaining table clauses and constraints of the CREATE statement.
 	if err := showConstraintClause(ctx, desc, &p.RunParams(ctx).p.semaCtx, p.RunParams(ctx).p.SessionData(), f); err != nil {
 		return "", err
 	}

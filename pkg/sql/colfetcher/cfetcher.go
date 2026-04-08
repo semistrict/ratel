@@ -1058,11 +1058,6 @@ func (cf *cFetcher) processValue(ctx context.Context, familyID descpb.FamilyID) 
 			prettyKey, prettyValue, err = cf.processValueBytes(ctx, table, tupleBytes, prettyKey)
 
 		default:
-			// If familyID is 0, this is the row sentinel (in the legacy pre-family format),
-			// and a value is not expected, so we're done.
-			if familyID == 0 {
-				break
-			}
 			// Find the default column ID for the family.
 			var defaultColumnID descpb.ColumnID
 			for _, f := range table.spec.FamilyDefaultColumns {
@@ -1072,6 +1067,10 @@ func (cf *cFetcher) processValue(ctx context.Context, familyID descpb.FamilyID) 
 				}
 			}
 			if defaultColumnID == 0 {
+				if familyID == 0 {
+					// Family 0 without a default column remains the legacy row sentinel.
+					break
+				}
 				return scrub.WrapError(
 					scrub.IndexKeyDecodingError,
 					errors.Errorf("single entry value with no default column id"),

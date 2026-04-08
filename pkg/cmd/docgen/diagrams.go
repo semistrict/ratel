@@ -1025,10 +1025,6 @@ var specs = []stmtSpec{
 		unlink: []string{"CSV", "file_location"},
 	},
 	{
-		name:   "family_def",
-		inline: []string{"name_list"},
-	},
-	{
 		name:   "grant_stmt",
 		inline: []string{"privileges", "opt_privileges_clause", "opt_with_grant_option"},
 	},

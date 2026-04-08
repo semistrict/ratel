@@ -1,12 +1,16 @@
 // Copyright 2020 The Cockroach Authors.
 //
-// Use of this software is governed by the Business Source License
-// included in the file licenses/BSL.txt.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// As of the Change Date specified in that file, in accordance with
-// the Business Source License, use of this software will be governed
-// by the Apache License, Version 2.0, included in the file
-// licenses/APL.txt.
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// permissions and limitations under the License.
 
 // "make test" would normally test this file, but it should only be tested
 // within docker compose.
@@ -19,22 +23,17 @@ package compare
 import (
 	"context"
 	"flag"
-	"fmt"
-	"os"
-	"path"
+	"io/ioutil"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/cockroachdb/cockroach/pkg/cmd/cmpconn"
-	"github.com/cockroachdb/cockroach/pkg/geo/geos"
 	"github.com/cockroachdb/cockroach/pkg/internal/sqlsmith"
 	"github.com/cockroachdb/cockroach/pkg/sql/randgen"
 	"github.com/cockroachdb/cockroach/pkg/testutils"
-	"github.com/cockroachdb/cockroach/pkg/util/envutil"
 	"github.com/cockroachdb/cockroach/pkg/util/randutil"
 	"github.com/jackc/pgx/v4"
-	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -43,31 +42,23 @@ var (
 )
 
 func TestCompare(t *testing.T) {
-	// N.B. randomized SQL workload performed by this test may require CCL
-	var license = envutil.EnvOrDefaultString("COCKROACH_DEV_LICENSE", "")
-	require.NotEmptyf(t, license, "COCKROACH_DEV_LICENSE must be set")
-
-	// Initialize GEOS libraries so that the test can use geospatial types.
-	workingDir, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = geos.EnsureInit(geos.EnsureInitErrorDisplayPrivate, path.Join(workingDir, "lib"))
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	uris := map[string]struct {
 		addr string
 		init []string
 	}{
+		"postgres": {
+			addr: "postgresql://postgres@postgres:5432/postgres",
+			init: []string{
+				"drop schema if exists public cascade",
+				"create schema public",
+				"CREATE EXTENSION IF NOT EXISTS postgis",
+				"CREATE EXTENSION IF NOT EXISTS postgis_topology",
+				"CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;",
+			},
+		},
 		"cockroach1": {
 			addr: "postgresql://root@cockroach1:26257/postgres?sslmode=disable",
 			init: []string{
-				"SET CLUSTER SETTING cluster.organization = 'Cockroach Labs - Production Testing'",
-				"SET extra_float_digits = 0",   // For Postgres Compat when casting floats to strings.
-				"SET null_ordered_last = true", // For Postgres Compat, see https://www.cockroachlabs.com/docs/stable/order-by#parameters
-				fmt.Sprintf("SET CLUSTER SETTING enterprise.license = '%s'", license),
 				"drop database if exists postgres",
 				"create database postgres",
 			},
@@ -75,16 +66,28 @@ func TestCompare(t *testing.T) {
 		"cockroach2": {
 			addr: "postgresql://root@cockroach2:26257/postgres?sslmode=disable",
 			init: []string{
-				"SET CLUSTER SETTING cluster.organization = 'Cockroach Labs - Production Testing'",
-				"SET extra_float_digits = 0",   // For Postgres Compat when casting floats to strings.
-				"SET null_ordered_last = true", // For Postgres Compat https://www.cockroachlabs.com/docs/stable/order-by#parameters
-				fmt.Sprintf("SET CLUSTER SETTING enterprise.license = '%s'", license),
 				"drop database if exists postgres",
 				"create database postgres",
 			},
 		},
 	}
 	configs := map[string]testConfig{
+		"postgres": {
+			setup:           sqlsmith.Setups[sqlsmith.RandTableSetupName],
+			setupMutators:   []randgen.Mutator{randgen.PostgresCreateTableMutator},
+			opts:            []sqlsmith.SmitherOption{sqlsmith.PostgresMode()},
+			ignoreSQLErrors: true,
+			conns: []testConn{
+				{
+					name:     "cockroach1",
+					mutators: []randgen.Mutator{},
+				},
+				{
+					name:     "postgres",
+					mutators: []randgen.Mutator{randgen.PostgresMutator},
+				},
+			},
+		},
 		"mutators": {
 			setup:           sqlsmith.Setups[sqlsmith.RandTableSetupName],
 			opts:            []sqlsmith.SmitherOption{sqlsmith.CompareMode()},
@@ -97,8 +100,9 @@ func TestCompare(t *testing.T) {
 				{
 					name: "cockroach2",
 					mutators: []randgen.Mutator{
+						randgen.StatisticsMutator,
 						randgen.ForeignKeyMutator,
-						randgen.ColumnFamilyMutator,
+						randgen.StatisticsMutator,
 						randgen.IndexStoringMutator,
 						randgen.PartialIndexMutator,
 					},
@@ -181,7 +185,7 @@ func TestCompare(t *testing.T) {
 					ctx, time.Second*30, conns, "" /* prep */, query, config.ignoreSQLErrors,
 				); err != nil {
 					path := filepath.Join(*flagArtifacts, confName+".log")
-					if err := os.WriteFile(path, []byte(err.Error()), 0666); err != nil {
+					if err := ioutil.WriteFile(path, []byte(err.Error()), 0666); err != nil {
 						t.Log(err)
 					}
 					t.Fatal(err)

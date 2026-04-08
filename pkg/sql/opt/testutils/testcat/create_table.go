@@ -370,9 +370,6 @@ func (tc *Catalog) CreateTable(stmt *tree.CreateTable) *Table {
 		case *tree.IndexTableDef:
 			tab.addIndex(def, nonUniqueIndex)
 
-		case *tree.FamilyTableDef:
-			tab.addFamily(def)
-
 		case *tree.ColumnTableDef:
 			if def.Unique.IsUnique {
 				if def.Unique.WithoutIndex {
@@ -1153,29 +1150,6 @@ func (tt *Table) makeUniqueConstraintName(defName tree.Name, columns tree.IndexE
 		name = buf.String()
 	}
 	return name
-}
-
-func (tt *Table) addFamily(def *tree.FamilyTableDef) {
-	// Synthesize name if one was not provided.
-	name := string(def.Name)
-	if name == "" {
-		name = fmt.Sprintf("family%d", len(tt.Families)+1)
-	}
-
-	family := &Family{
-		FamName: name,
-		Ordinal: tt.FamilyCount(),
-		table:   tt,
-	}
-
-	// Add columns to family.
-	for _, defCol := range def.Columns {
-		ord := tt.FindOrdinal(string(defCol))
-		col := tt.Column(ord)
-		family.Columns = append(family.Columns, cat.FamilyColumn{Column: col, Ordinal: ord})
-	}
-
-	tt.Families = append(tt.Families, family)
 }
 
 // addColumn adds a column to the index. If necessary, creates a virtual column

@@ -1,22 +1,18 @@
 statement ok
 CREATE TABLE t (
-  a INT REFERENCES t,
-  FAMILY "primary" (a, rowid)
+  a INT REFERENCES t
 )
 
 statement ok
 CREATE TABLE v (
-  "'" INT REFERENCES t, s STRING UNIQUE REFERENCES v (s),
-  FAMILY "primary" ("'", s, rowid)
+  "'" INT REFERENCES t, s STRING UNIQUE REFERENCES v (s)
 )
 
 statement ok
 CREATE TABLE c (
 	a INT NOT NULL,
 	b INT NULL,
-	INDEX c_a_b_idx (a ASC, b ASC),
-	FAMILY fam_0_a_rowid (a, rowid),
-	FAMILY fam_1_b (b)
+	INDEX c_a_b_idx (a ASC, b ASC)
 )
 
 statement ok

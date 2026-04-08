@@ -221,10 +221,6 @@ type TableHelpers interface {
 	// added to this table.
 	NextTableColumnID(table *scpb.Table) catid.ColumnID
 
-	// NextColumnFamilyID returns the ID that should be used for any new column
-	// family added to this table.
-	NextColumnFamilyID(table *scpb.Table) catid.FamilyID
-
 	// NextTableIndexID returns the ID that should be used for any new index added
 	// to this table.
 	NextTableIndexID(table *scpb.Table) catid.IndexID

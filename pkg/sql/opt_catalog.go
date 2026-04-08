@@ -1,12 +1,16 @@
 // Copyright 2018 The Cockroach Authors.
 //
-// Use of this software is governed by the Business Source License
-// included in the file licenses/BSL.txt.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// As of the Change Date specified in that file, in accordance with
-// the Business Source License, use of this software will be governed
-// by the Apache License, Version 2.0, included in the file
-// licenses/APL.txt.
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// permissions and limitations under the License.
 
 package sql
 
@@ -15,14 +19,14 @@ import (
 	"math"
 	"time"
 
+	"github.com/cockroachdb/cockroach/pkg/clusterversion"
 	"github.com/cockroachdb/cockroach/pkg/config"
 	"github.com/cockroachdb/cockroach/pkg/geo/geoindex"
 	"github.com/cockroachdb/cockroach/pkg/keys"
 	"github.com/cockroachdb/cockroach/pkg/kv"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/security/username"
+	"github.com/cockroachdb/cockroach/pkg/security"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catenumpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/resolver"
@@ -35,14 +39,10 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/privilege"
 	"github.com/cockroachdb/cockroach/pkg/sql/roleoption"
 	"github.com/cockroachdb/cockroach/pkg/sql/rowenc"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/catconstants"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/catid"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/eval"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree/treecmp"
 	"github.com/cockroachdb/cockroach/pkg/sql/sqlerrors"
 	"github.com/cockroachdb/cockroach/pkg/sql/stats"
-	"github.com/cockroachdb/cockroach/pkg/sql/syntheticprivilege"
 	"github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/errors"
@@ -71,18 +71,7 @@ type optCatalog struct {
 	tn tree.TableName
 }
 
-var _ cat.Catalog = (*optCatalog)(nil)
-
-// optPlanningCatalog is a thin wrapper over cat.Catalog
-// with few additional planner specific methods.
-type optPlanningCatalog interface {
-	cat.Catalog
-	init(planner *planner)
-	reset()
-	fullyQualifiedNameWithTxn(
-		ctx context.Context, ds cat.DataSource, txn *kv.Txn,
-	) (cat.DataSourceName, error)
-}
+var _ cat.Catalog = &optCatalog{}
 
 // init initializes an optCatalog instance (which the caller can pre-allocate).
 // The instance can be used across multiple queries, but reset() should be
@@ -117,21 +106,21 @@ type optSchema struct {
 
 // ID is part of the cat.Object interface.
 func (os *optSchema) ID() cat.StableID {
-	return cat.StableID(os.PostgresDescriptorID())
-}
-
-// PostgresDescriptorID is part of the cat.Object interface.
-func (os *optSchema) PostgresDescriptorID() catid.DescID {
 	switch os.schema.SchemaKind() {
 	case catalog.SchemaUserDefined, catalog.SchemaTemporary:
 		// User defined schemas and the temporary schema have real ID's, so use
 		// them here.
-		return os.schema.GetID()
+		return cat.StableID(os.schema.GetID())
 	default:
 		// Virtual schemas and the public schema don't, so just fall back to the
 		// parent database's ID.
-		return os.database.GetID()
+		return cat.StableID(os.database.GetID())
 	}
+}
+
+// PostgresDescriptorID is part of the cat.Object interface.
+func (os *optSchema) PostgresDescriptorID() cat.StableID {
+	return os.ID()
 }
 
 // Equals is part of the cat.Object interface.
@@ -149,7 +138,15 @@ func (os *optSchema) Name() *cat.SchemaName {
 func (os *optSchema) GetDataSourceNames(
 	ctx context.Context,
 ) ([]cat.DataSourceName, descpb.IDs, error) {
-	return os.planner.GetObjectNamesAndIDs(ctx, os.database, os.schema)
+	return resolver.GetObjectNamesAndIDs(
+		ctx,
+		os.planner.Txn(),
+		os.planner,
+		os.planner.ExecCfg().Codec,
+		os.database,
+		os.name.Schema(),
+		true, /* explicitPrefix */
+	)
 }
 
 func (os *optSchema) getDescriptorForPermissionsCheck() catalog.Descriptor {
@@ -161,34 +158,15 @@ func (os *optSchema) getDescriptorForPermissionsCheck() catalog.Descriptor {
 	return os.database
 }
 
-// LookupDatabaseName implements the cat.Catalog interface.
-func (oc *optCatalog) LookupDatabaseName(
-	ctx context.Context, flags cat.Flags, name string,
-) (tree.Name, error) {
-	if flags.AvoidDescriptorCaches {
-		defer func(prev bool) {
-			oc.planner.skipDescriptorCache = prev
-		}(oc.planner.skipDescriptorCache)
-		oc.planner.skipDescriptorCache = true
-	}
-	if name == "" {
-		name = oc.planner.CurrentDatabase()
-	}
-	if err := oc.planner.LookupDatabase(ctx, name); err != nil {
-		return "", err
-	}
-	return tree.Name(name), nil
-}
-
 // ResolveSchema is part of the cat.Catalog interface.
 func (oc *optCatalog) ResolveSchema(
 	ctx context.Context, flags cat.Flags, name *cat.SchemaName,
 ) (cat.Schema, cat.SchemaName, error) {
 	if flags.AvoidDescriptorCaches {
 		defer func(prev bool) {
-			oc.planner.skipDescriptorCache = prev
-		}(oc.planner.skipDescriptorCache)
-		oc.planner.skipDescriptorCache = true
+			oc.planner.avoidLeasedDescriptors = prev
+		}(oc.planner.avoidLeasedDescriptors)
+		oc.planner.avoidLeasedDescriptors = true
 	}
 
 	oc.tn.ObjectNamePrefix = *name
@@ -218,44 +196,19 @@ func (oc *optCatalog) ResolveSchema(
 	}, oc.tn.ObjectNamePrefix, nil
 }
 
-// GetAllSchemaNamesForDB is part of the cat.Catalog interface.
-func (oc *optCatalog) GetAllSchemaNamesForDB(
-	ctx context.Context, dbName string,
-) ([]cat.SchemaName, error) {
-	schemas, err := oc.planner.GetSchemasForDB(ctx, dbName)
-	if err != nil {
-		return nil, err
-	}
-
-	var schemaNames []cat.SchemaName
-	for _, name := range schemas {
-		var scName cat.SchemaName
-		scName.SchemaName = tree.Name(name)
-		scName.ExplicitSchema = true
-		scName.CatalogName = tree.Name(dbName)
-		scName.ExplicitCatalog = true
-		schemaNames = append(schemaNames, scName)
-	}
-
-	return schemaNames, nil
-}
-
 // ResolveDataSource is part of the cat.Catalog interface.
 func (oc *optCatalog) ResolveDataSource(
 	ctx context.Context, flags cat.Flags, name *cat.DataSourceName,
 ) (cat.DataSource, cat.DataSourceName, error) {
 	if flags.AvoidDescriptorCaches {
 		defer func(prev bool) {
-			oc.planner.skipDescriptorCache = prev
-		}(oc.planner.skipDescriptorCache)
-		oc.planner.skipDescriptorCache = true
+			oc.planner.avoidLeasedDescriptors = prev
+		}(oc.planner.avoidLeasedDescriptors)
+		oc.planner.avoidLeasedDescriptors = true
 	}
 
 	oc.tn = *name
-	lflags := tree.ObjectLookupFlags{
-		Required:          true,
-		DesiredObjectKind: tree.TableObject,
-	}
+	lflags := tree.ObjectLookupFlagsWithRequiredTableKind(tree.ResolveAnyTableKind)
 	prefix, desc, err := resolver.ResolveExistingTableObject(ctx, oc.planner, &oc.tn, lflags)
 	if err != nil {
 		return nil, cat.DataSourceName{}, err
@@ -273,66 +226,21 @@ func (oc *optCatalog) ResolveDataSource(
 	return ds, oc.tn, nil
 }
 
-// ResolveIndex is part of the cat.Catalog interface.
-func (oc *optCatalog) ResolveIndex(
-	ctx context.Context, flags cat.Flags, name *tree.TableIndexName,
-) (cat.Index, cat.DataSourceName, error) {
-	var prefix catalog.ResolvedObjectPrefix
-	var tbl catalog.TableDescriptor
-	var idx catalog.Index
-	var err error
-	oc.planner.runWithOptions(resolveFlags{skipCache: flags.AvoidDescriptorCaches}, func() {
-		_, prefix, tbl, idx, err = resolver.ResolveIndex(
-			ctx,
-			oc.planner,
-			name,
-			tree.IndexLookupFlags{
-				Required:              true,
-				IncludeNonActiveIndex: flags.IncludeNonActiveIndexes,
-				IncludeOfflineTable:   flags.IncludeOfflineTables,
-			},
-		)
-	})
-	if err != nil {
-		return nil, cat.DataSourceName{}, err
-	}
-	if err := oc.planner.canResolveDescUnderSchema(ctx, prefix.Schema, tbl); err != nil {
-		return nil, cat.DataSourceName{}, err
-	}
-
-	namePrefix := prefix.NamePrefix()
-	oc.tn = tree.MakeTableNameWithSchema(namePrefix.CatalogName, namePrefix.SchemaName, tree.Name(tbl.GetName()))
-
-	ds, err := oc.dataSourceForDesc(ctx, flags, tbl, &oc.tn)
-	if err != nil {
-		return nil, cat.DataSourceName{}, err
-	}
-
-	table, ok := ds.(cat.Table)
-	if !ok {
-		return nil, cat.DataSourceName{}, pgerror.Newf(
-			pgcode.InvalidParameterValue, "%q is not a table or materialized view", ds.Name(),
-		)
-	}
-
-	return table.Index(idx.Ordinal()), oc.tn, nil
-}
-
 // ResolveDataSourceByID is part of the cat.Catalog interface.
 func (oc *optCatalog) ResolveDataSourceByID(
 	ctx context.Context, flags cat.Flags, dataSourceID cat.StableID,
 ) (_ cat.DataSource, isAdding bool, _ error) {
 	if flags.AvoidDescriptorCaches {
 		defer func(prev bool) {
-			oc.planner.skipDescriptorCache = prev
-		}(oc.planner.skipDescriptorCache)
-		oc.planner.skipDescriptorCache = true
+			oc.planner.avoidLeasedDescriptors = prev
+		}(oc.planner.avoidLeasedDescriptors)
+		oc.planner.avoidLeasedDescriptors = true
 	}
 
 	tableLookup, err := oc.planner.LookupTableByID(ctx, descpb.ID(dataSourceID))
 
 	if err != nil {
-		isAdding := catalog.HasAddingDescriptorError(err)
+		isAdding := catalog.HasAddingTableError(err)
 		if errors.Is(err, catalog.ErrDescriptorNotFound) || isAdding {
 			return nil, isAdding, sqlerrors.NewUndefinedRelationError(&tree.TableRef{TableID: int64(dataSourceID)})
 		}
@@ -354,19 +262,6 @@ func (oc *optCatalog) ResolveType(
 	ctx context.Context, name *tree.UnresolvedObjectName,
 ) (*types.T, error) {
 	return oc.planner.ResolveType(ctx, name)
-}
-
-// ResolveFunction is part of the cat.Catalog interface.
-func (oc *optCatalog) ResolveFunction(
-	ctx context.Context, name *tree.UnresolvedName, path tree.SearchPath,
-) (*tree.ResolvedFunctionDefinition, error) {
-	return oc.planner.ResolveFunction(ctx, name, path)
-}
-
-func (oc *optCatalog) ResolveFunctionByOID(
-	ctx context.Context, oid oid.Oid,
-) (*tree.FunctionName, *tree.Overload, error) {
-	return oc.planner.ResolveFunctionByOID(ctx, oid)
 }
 
 func getDescFromCatalogObjectForPermissions(o cat.Object) (catalog.Descriptor, error) {
@@ -403,9 +298,6 @@ func getDescForDataSource(o cat.DataSource) (catalog.TableDescriptor, error) {
 
 // CheckPrivilege is part of the cat.Catalog interface.
 func (oc *optCatalog) CheckPrivilege(ctx context.Context, o cat.Object, priv privilege.Kind) error {
-	if o.ID() == 0 {
-		return oc.planner.CheckPrivilege(ctx, syntheticprivilege.GlobalPrivilegeObject, priv)
-	}
 	desc, err := getDescFromCatalogObjectForPermissions(o)
 	if err != nil {
 		return err
@@ -425,6 +317,11 @@ func (oc *optCatalog) CheckAnyPrivilege(ctx context.Context, o cat.Object) error
 // HasAdminRole is part of the cat.Catalog interface.
 func (oc *optCatalog) HasAdminRole(ctx context.Context) (bool, error) {
 	return oc.planner.HasAdminRole(ctx)
+}
+
+// RequireAdminRole is part of the cat.Catalog interface.
+func (oc *optCatalog) RequireAdminRole(ctx context.Context, action string) error {
+	return oc.planner.RequireAdminRole(ctx, action)
 }
 
 // HasRoleOption is part of the cat.Catalog interface.
@@ -456,7 +353,7 @@ func (oc *optCatalog) fullyQualifiedNameWithTxn(
 	}
 
 	dbID := desc.GetParentID()
-	dbDesc, err := oc.planner.Descriptors().ByID(txn).WithoutNonPublic().Get().Database(ctx, dbID)
+	dbDesc, err := oc.planner.Descriptors().Direct().MustGetDatabaseDescByID(ctx, txn, dbID)
 	if err != nil {
 		return cat.DataSourceName{}, err
 	}
@@ -464,9 +361,9 @@ func (oc *optCatalog) fullyQualifiedNameWithTxn(
 	var scName tree.Name
 	// TODO(richardjcai): Remove this in 22.2.
 	if scID == keys.PublicSchemaID {
-		scName = catconstants.PublicSchemaName
+		scName = tree.PublicSchemaName
 	} else {
-		scDesc, err := oc.planner.Descriptors().ByID(txn).WithoutNonPublic().Get().Schema(ctx, scID)
+		scDesc, err := oc.planner.Descriptors().Direct().MustGetSchemaDescByID(ctx, txn, scID)
 		if err != nil {
 			return cat.DataSourceName{}, err
 		}
@@ -481,17 +378,8 @@ func (oc *optCatalog) fullyQualifiedNameWithTxn(
 }
 
 // RoleExists is part of the cat.Catalog interface.
-func (oc *optCatalog) RoleExists(ctx context.Context, role username.SQLUsername) (bool, error) {
-	return RoleExists(ctx, oc.planner.InternalSQLTxn(), role)
-}
-
-// Optimizer is part of the cat.Catalog interface.
-func (oc *optCatalog) Optimizer() interface{} {
-	if oc.planner == nil {
-		return nil
-	}
-	plannerInterface := eval.Planner(oc.planner)
-	return plannerInterface.Optimizer()
+func (oc *optCatalog) RoleExists(ctx context.Context, role security.SQLUsername) (bool, error) {
+	return RoleExists(ctx, oc.planner.ExecCfg(), oc.planner.Txn(), role)
 }
 
 // dataSourceForDesc returns a data source wrapper for the given descriptor.
@@ -585,7 +473,7 @@ func (oc *optCatalog) getZoneConfig(desc catalog.TableDescriptor) (cat.Zone, err
 		return emptyZoneConfig, nil
 	}
 	zone, err := oc.cfg.GetZoneConfigForObject(
-		oc.codec(), config.ObjectID(desc.GetID()),
+		oc.codec(), oc.version(), config.ObjectID(desc.GetID()),
 	)
 	if err != nil {
 		return nil, err
@@ -599,6 +487,12 @@ func (oc *optCatalog) getZoneConfig(desc catalog.TableDescriptor) (cat.Zone, err
 
 func (oc *optCatalog) codec() keys.SQLCodec {
 	return oc.planner.ExecCfg().Codec
+}
+
+func (oc *optCatalog) version() clusterversion.ClusterVersion {
+	return oc.planner.ExecCfg().Settings.Version.ActiveVersionOrEmpty(
+		oc.planner.EvalContext().Context,
+	)
 }
 
 // optView is a wrapper around catalog.TableDescriptor that implements
@@ -619,8 +513,8 @@ func (ov *optView) ID() cat.StableID {
 }
 
 // PostgresDescriptorID is part of the cat.Object interface.
-func (ov *optView) PostgresDescriptorID() catid.DescID {
-	return ov.desc.GetID()
+func (ov *optView) PostgresDescriptorID() cat.StableID {
+	return cat.StableID(ov.desc.GetID())
 }
 
 // Equals is part of the cat.Object interface.
@@ -682,8 +576,8 @@ func (os *optSequence) ID() cat.StableID {
 }
 
 // PostgresDescriptorID is part of the cat.Object interface.
-func (os *optSequence) PostgresDescriptorID() catid.DescID {
-	return os.desc.GetID()
+func (os *optSequence) PostgresDescriptorID() cat.StableID {
+	return cat.StableID(os.desc.GetID())
 }
 
 // Equals is part of the cat.Object interface.
@@ -737,16 +631,8 @@ type optTable struct {
 
 	zone cat.Zone
 
-	// family is the inlined wrapper for the table's primary family. The primary
-	// family is the first family explicitly specified by the user. If no families
-	// were explicitly specified, then the primary family is synthesized.
+	// family is the inlined wrapper for the table's sole family.
 	primaryFamily optFamily
-
-	// families are the inlined wrappers for the table's non-primary families,
-	// which are all the families specified by the user after the first. The
-	// primary family is kept separate since the common case is that there's just
-	// one family.
-	families []optFamily
 
 	uniqueConstraints []optUniqueConstraint
 
@@ -815,7 +701,6 @@ func newOptTable(
 		// "stored" from the perspective of the optimizer because they are
 		// written to the primary index and all secondary indexes.
 		if !col.IsVirtual() || pkCols.Contains(col.GetID()) {
-			cd := col.ColumnDesc()
 			ot.columns[col.Ordinal()].Init(
 				col.Ordinal(),
 				cat.StableID(col.GetID()),
@@ -824,23 +709,20 @@ func newOptTable(
 				col.GetType(),
 				col.IsNullable(),
 				visibility,
-				cd.DefaultExpr,
-				cd.ComputeExpr,
-				cd.OnUpdateExpr,
+				col.ColumnDesc().DefaultExpr,
+				col.ColumnDesc().ComputeExpr,
+				col.ColumnDesc().OnUpdateExpr,
 				mapGeneratedAsIdentityType(col.GetGeneratedAsIdentityType()),
-				cd.GeneratedAsIdentitySequenceOption,
+				col.ColumnDesc().GeneratedAsIdentitySequenceOption,
 			)
 		} else {
-			// We need to propagate the mutation state for computed columns, so that
-			// the optimizer can correctly determine if these columns should be
-			// accessible. We need this to be propagated since virtual columns may
-			// depend on other columns, and in cascaded drop operations their accessibility
-			// will be impacted.
+			// Note: a WriteOnly or DeleteOnly mutation column doesn't require any
+			// special treatment inside the optimizer, other than having the correct
+			// visibility.
 			ot.columns[col.Ordinal()].InitVirtualComputed(
 				col.Ordinal(),
 				cat.StableID(col.GetID()),
 				col.ColName(),
-				kind,
 				col.GetType(),
 				col.IsNullable(),
 				visibility,
@@ -857,13 +739,12 @@ func newOptTable(
 
 	// Set up any registered system columns. However, we won't add the column
 	// in case a non-system column with the same name already exists in the table.
-	// This check is done for upgrade purposes. We need to avoid adding the
+	// This check is done for migration purposes. We need to avoid adding the
 	// system column if the table has a column with this name for some reason.
 	for _, sysCol := range ot.desc.SystemColumns() {
-		found := catalog.FindColumnByTreeName(desc, sysCol.ColName())
+		found, _ := desc.FindColumnWithName(sysCol.ColName())
 		if found == nil || found.IsSystemColumn() {
 			col, ord := newColumn()
-			cd := sysCol.ColumnDesc()
 			col.Init(
 				ord,
 				cat.StableID(sysCol.GetID()),
@@ -872,11 +753,11 @@ func newOptTable(
 				sysCol.GetType(),
 				sysCol.IsNullable(),
 				cat.MaybeHidden(sysCol.IsHidden()),
-				cd.DefaultExpr,
-				cd.ComputeExpr,
-				cd.OnUpdateExpr,
+				sysCol.ColumnDesc().DefaultExpr,
+				sysCol.ColumnDesc().ComputeExpr,
+				sysCol.ColumnDesc().OnUpdateExpr,
 				mapGeneratedAsIdentityType(sysCol.GetGeneratedAsIdentityType()),
-				cd.GeneratedAsIdentitySequenceOption,
+				sysCol.ColumnDesc().GeneratedAsIdentitySequenceOption,
 			)
 		}
 	}
@@ -888,22 +769,21 @@ func newOptTable(
 
 	// Add unique without index constraints. Constraints for implicitly
 	// partitioned unique indexes will be added below.
-	ot.uniqueConstraints = make([]optUniqueConstraint, len(ot.desc.EnforcedUniqueConstraintsWithoutIndex()))
-	for i, u := range ot.desc.EnforcedUniqueConstraintsWithoutIndex() {
-		ot.uniqueConstraints[i] = optUniqueConstraint{
-			name:         u.GetName(),
+	ot.uniqueConstraints = make([]optUniqueConstraint, 0, len(ot.desc.GetUniqueWithoutIndexConstraints()))
+	for i := range ot.desc.GetUniqueWithoutIndexConstraints() {
+		u := &ot.desc.GetUniqueWithoutIndexConstraints()[i]
+		ot.uniqueConstraints = append(ot.uniqueConstraints, optUniqueConstraint{
+			name:         u.Name,
 			table:        ot.ID(),
-			columns:      u.CollectKeyColumnIDs().Ordered(),
-			predicate:    u.GetPredicate(),
+			columns:      u.ColumnIDs,
+			predicate:    u.Predicate,
 			withoutIndex: true,
-			validity:     u.GetConstraintValidity(),
-		}
+			validity:     u.Validity,
+		})
 	}
 
 	// Build the indexes.
 	ot.indexes = make([]optIndex, 1+len(secondaryIndexes))
-	// partZones is allocated lazily and is reused for all indexes.
-	var partZones map[string]cat.Zone
 
 	for i := range ot.indexes {
 		var idx catalog.Index
@@ -917,9 +797,7 @@ func newOptTable(
 		// use the table zone. Save subzones that apply to partitions, since we will
 		// use those later when initializing partitions in the index.
 		idxZone := tblZone
-		for k := range partZones {
-			delete(partZones, k)
-		}
+		partZones := make(map[string]cat.Zone)
 		for j := 0; j < tblZone.SubzoneCount(); j++ {
 			subzone := tblZone.Subzone(j)
 			if subzone.Index() == cat.StableID(idx.GetID()) {
@@ -929,9 +807,6 @@ func newOptTable(
 					idxZone = copyZone
 				} else {
 					// Subzone applies to a partition.
-					if partZones == nil {
-						partZones = make(map[string]cat.Zone)
-					}
 					partZones[subzone.Partition()] = copyZone
 				}
 			}
@@ -948,8 +823,10 @@ func newOptTable(
 
 			invertedSourceColOrdinal, _ := ot.lookupColumnOrdinal(invertedColumnID)
 
-			// Add an inverted column that refers to the inverted index key.
+			// Add a inverted column that refers to the inverted index key.
 			invertedCol, invertedColOrd := newColumn()
+
+			// All inverted columns have type bytes.
 			invertedCol.InitInverted(
 				invertedColOrd,
 				tree.Name(invertedColumnName+"_inverted_key"),
@@ -963,7 +840,7 @@ func newOptTable(
 		}
 
 		if idx.IsUnique() {
-			if idx.ImplicitPartitioningColumnCount() > 0 {
+			if idx.GetPartitioning().NumImplicitColumns() > 0 {
 				// Add unique constraints for implicitly partitioned unique indexes.
 				ot.uniqueConstraints = append(ot.uniqueConstraints, optUniqueConstraint{
 					name:         idx.GetName(),
@@ -990,35 +867,36 @@ func newOptTable(
 		}
 	}
 
-	for _, fk := range ot.desc.OutboundForeignKeys() {
+	_ = ot.desc.ForeachOutboundFK(func(fk *descpb.ForeignKeyConstraint) error {
 		ot.outboundFKs = append(ot.outboundFKs, optForeignKeyConstraint{
-			name:              fk.GetName(),
+			name:              fk.Name,
 			originTable:       ot.ID(),
-			originColumns:     fk.ForeignKeyDesc().OriginColumnIDs,
-			referencedTable:   cat.StableID(fk.GetReferencedTableID()),
-			referencedColumns: fk.ForeignKeyDesc().ReferencedColumnIDs,
-			validity:          fk.GetConstraintValidity(),
-			match:             tree.CompositeKeyMatchMethodType[fk.Match()],
-			deleteAction:      tree.ForeignKeyReferenceActionType[fk.OnDelete()],
-			updateAction:      tree.ForeignKeyReferenceActionType[fk.OnUpdate()],
+			originColumns:     fk.OriginColumnIDs,
+			referencedTable:   cat.StableID(fk.ReferencedTableID),
+			referencedColumns: fk.ReferencedColumnIDs,
+			validity:          fk.Validity,
+			match:             fk.Match,
+			deleteAction:      fk.OnDelete,
+			updateAction:      fk.OnUpdate,
 		})
-	}
-	for _, fk := range ot.desc.InboundForeignKeys() {
+		return nil
+	})
+	_ = ot.desc.ForeachInboundFK(func(fk *descpb.ForeignKeyConstraint) error {
 		ot.inboundFKs = append(ot.inboundFKs, optForeignKeyConstraint{
-			name:              fk.GetName(),
-			originTable:       cat.StableID(fk.GetOriginTableID()),
-			originColumns:     fk.ForeignKeyDesc().OriginColumnIDs,
+			name:              fk.Name,
+			originTable:       cat.StableID(fk.OriginTableID),
+			originColumns:     fk.OriginColumnIDs,
 			referencedTable:   ot.ID(),
-			referencedColumns: fk.ForeignKeyDesc().ReferencedColumnIDs,
-			validity:          fk.GetConstraintValidity(),
-			match:             tree.CompositeKeyMatchMethodType[fk.Match()],
-			deleteAction:      tree.ForeignKeyReferenceActionType[fk.OnDelete()],
-			updateAction:      tree.ForeignKeyReferenceActionType[fk.OnUpdate()],
+			referencedColumns: fk.ReferencedColumnIDs,
+			validity:          fk.Validity,
+			match:             fk.Match,
+			deleteAction:      fk.OnDelete,
+			updateAction:      fk.OnUpdate,
 		})
-	}
+		return nil
+	})
 
-	ot.primaryFamily.init(ot, &desc.GetFamilies()[0])
-	ot.families = nil
+	ot.primaryFamily.init(ot, &desc.GetRowGroups()[0])
 
 	// Synthesize any check constraints for user defined types.
 	var synthesizedChecks []cat.CheckConstraint
@@ -1046,12 +924,12 @@ func newOptTable(
 		}
 	}
 	// Move all existing and synthesized checks into the opt table.
-	activeChecks := desc.EnforcedCheckConstraints()
+	activeChecks := desc.ActiveChecks()
 	ot.checkConstraints = make([]cat.CheckConstraint, 0, len(activeChecks)+len(synthesizedChecks))
 	for i := range activeChecks {
 		ot.checkConstraints = append(ot.checkConstraints, cat.CheckConstraint{
-			Constraint: activeChecks[i].GetExpr(),
-			Validated:  activeChecks[i].GetConstraintValidity() == descpb.ConstraintValidity_Validated,
+			Constraint: activeChecks[i].Expr,
+			Validated:  activeChecks[i].Validity == descpb.ConstraintValidity_Validated,
 		})
 	}
 	ot.checkConstraints = append(ot.checkConstraints, synthesizedChecks...)
@@ -1080,8 +958,8 @@ func (ot *optTable) ID() cat.StableID {
 }
 
 // PostgresDescriptorID is part of the cat.Object interface.
-func (ot *optTable) PostgresDescriptorID() catid.DescID {
-	return ot.desc.GetID()
+func (ot *optTable) PostgresDescriptorID() cat.StableID {
+	return cat.StableID(ot.desc.GetID())
 }
 
 // isStale checks if the optTable object needs to be refreshed because the stats,
@@ -1240,15 +1118,15 @@ func (ot *optTable) Check(i int) cat.CheckConstraint {
 
 // FamilyCount is part of the cat.Table interface.
 func (ot *optTable) FamilyCount() int {
-	return 1 + len(ot.families)
+	return 1
 }
 
 // Family is part of the cat.Table interface.
 func (ot *optTable) Family(i int) cat.Family {
-	if i == 0 {
-		return &ot.primaryFamily
+	if i != 0 {
+		panic(errors.AssertionFailedf("family ordinal %d out of range", i))
 	}
-	return &ot.families[i-1]
+	return &ot.primaryFamily
 }
 
 // OutboundForeignKeyCount is part of the cat.Table interface.
@@ -1291,76 +1169,6 @@ func (ot *optTable) IsPartitionAllBy() bool {
 	return ot.desc.IsPartitionAllBy()
 }
 
-// HomeRegion is part of the cat.Table interface.
-func (ot *optTable) HomeRegion() (region string, ok bool) {
-	localityConfig := ot.desc.GetLocalityConfig()
-	if localityConfig == nil {
-		return "", false
-	}
-	regionalByTable := localityConfig.GetRegionalByTable()
-	if regionalByTable == nil {
-		return "", false
-	}
-	if regionalByTable.Region != nil {
-		return regionalByTable.Region.String(), true
-	}
-	if ot.zone.LeasePreferenceCount() != 1 {
-		return "", false
-	}
-	if ot.zone.LeasePreference(0).ConstraintCount() != 1 {
-		return "", false
-	}
-	if ot.zone.LeasePreference(0).Constraint(0).GetKey() != "region" {
-		return "", false
-	}
-	return ot.zone.LeasePreference(0).Constraint(0).GetValue(), true
-}
-
-// IsGlobalTable is part of the cat.Table interface.
-func (ot *optTable) IsGlobalTable() bool {
-	localityConfig := ot.desc.GetLocalityConfig()
-	if localityConfig == nil {
-		return false
-	}
-	return localityConfig.GetGlobal() != nil
-}
-
-// IsRegionalByRow is part of the cat.Table interface.
-func (ot *optTable) IsRegionalByRow() bool {
-	localityConfig := ot.desc.GetLocalityConfig()
-	if localityConfig == nil {
-		return false
-	}
-	return localityConfig.GetRegionalByRow() != nil
-}
-
-// IsMultiregion is part of the cat.Table interface.
-func (ot *optTable) IsMultiregion() bool {
-	localityConfig := ot.desc.GetLocalityConfig()
-	return localityConfig != nil
-}
-
-// HomeRegionColName is part of the cat.Table interface.
-func (ot *optTable) HomeRegionColName() (colName string, ok bool) {
-	localityConfig := ot.desc.GetLocalityConfig()
-	if localityConfig == nil {
-		return "", false
-	}
-	regionalByRowConfig := localityConfig.GetRegionalByRow()
-	if regionalByRowConfig == nil {
-		return "", false
-	}
-	if regionalByRowConfig.As == nil {
-		return "crdb_region", true
-	}
-	return *regionalByRowConfig.As, true
-}
-
-// GetDatabaseID is part of the cat.Table interface.
-func (ot *optTable) GetDatabaseID() descpb.ID {
-	return ot.desc.GetParentID()
-}
-
 // lookupColumnOrdinal returns the ordinal of the column with the given ID. A
 // cache makes the lookup O(1).
 func (ot *optTable) lookupColumnOrdinal(colID descpb.ColumnID) (int, error) {
@@ -1389,11 +1197,6 @@ func convertTableToOptTable(tab cat.Table) *optTable {
 func (ot *optTable) CollectTypes(ord int) (descpb.IDs, error) {
 	col := ot.desc.AllColumns()[ord]
 	return collectTypes(col)
-}
-
-// IsRefreshViewRequired is part of the cat.Table interface.
-func (ot *optTable) IsRefreshViewRequired() bool {
-	return ot.desc.IsRefreshViewRequired()
 }
 
 // optIndex is a wrapper around catalog.Index that caches some
@@ -1429,7 +1232,6 @@ var _ cat.Index = &optIndex{}
 
 // init can be used instead of newOptIndex when we have a pre-allocated instance
 // (e.g. as part of a bigger struct).
-// partZones can be nil when no partition zone information is present.
 func (oi *optIndex) init(
 	tab *optTable,
 	indexOrdinal int,
@@ -1473,10 +1275,8 @@ func (oi *optIndex) init(
 		}
 
 		// Get the zone.
-		if partZones != nil {
-			if zone, ok := partZones[name]; ok {
-				op.zone = zone
-			}
+		if zone, ok := partZones[name]; ok {
+			op.zone = zone
 		}
 
 		// Get the partition values.
@@ -1572,11 +1372,6 @@ func (oi *optIndex) IsInverted() bool {
 	return oi.idx.GetType() == descpb.IndexDescriptor_INVERTED
 }
 
-// IsNotVisible is part of the cat.Index interface.
-func (oi *optIndex) IsNotVisible() bool {
-	return oi.idx.IsNotVisible()
-}
-
 // ColumnCount is part of the cat.Index interface.
 func (oi *optIndex) ColumnCount() int {
 	return oi.numCols
@@ -1609,7 +1404,7 @@ func (oi *optIndex) NonInvertedPrefixColumnCount() int {
 func (oi *optIndex) Column(i int) cat.IndexColumn {
 	ord := oi.columnOrds[i]
 	// Only key columns have a direction.
-	descending := i < oi.idx.NumKeyColumns() && oi.idx.GetKeyColumnDirection(i) == catenumpb.IndexColumn_DESC
+	descending := i < oi.idx.NumKeyColumns() && oi.idx.GetKeyColumnDirection(i) == descpb.IndexDescriptor_DESC
 	return cat.IndexColumn{
 		Column:     oi.tab.Column(ord),
 		Descending: descending,
@@ -1640,6 +1435,11 @@ func (oi *optIndex) Zone() cat.Zone {
 // Span is part of the cat.Index interface.
 func (oi *optIndex) Span() roachpb.Span {
 	desc := oi.tab.desc
+	// Tables up to MaxSystemConfigDescID are grouped in a single system config
+	// span.
+	if desc.GetID() <= keys.MaxSystemConfigDescID {
+		return keys.SystemConfigSpan
+	}
 	return desc.IndexSpan(oi.tab.codec, oi.idx.GetID())
 }
 
@@ -1649,13 +1449,13 @@ func (oi *optIndex) Table() cat.Table {
 }
 
 // Ordinal is part of the cat.Index interface.
-func (oi *optIndex) Ordinal() cat.IndexOrdinal {
+func (oi *optIndex) Ordinal() int {
 	return oi.indexOrdinal
 }
 
 // ImplicitColumnCount is part of the cat.Index interface.
 func (oi *optIndex) ImplicitColumnCount() int {
-	implicitColCnt := oi.idx.ImplicitPartitioningColumnCount()
+	implicitColCnt := oi.idx.GetPartitioning().NumImplicitColumns()
 	if oi.idx.IsSharded() {
 		implicitColCnt++
 	}
@@ -1664,12 +1464,12 @@ func (oi *optIndex) ImplicitColumnCount() int {
 
 // ImplicitPartitioningColumnCount is part of the cat.Index interface.
 func (oi *optIndex) ImplicitPartitioningColumnCount() int {
-	return oi.idx.ImplicitPartitioningColumnCount()
+	return oi.idx.GetPartitioning().NumImplicitColumns()
 }
 
 // GeoConfig is part of the cat.Index interface.
-func (oi *optIndex) GeoConfig() geoindex.Config {
-	return oi.idx.IndexDesc().GeoConfig
+func (oi *optIndex) GeoConfig() *geoindex.Config {
+	return &oi.idx.IndexDesc().GeoConfig
 }
 
 // Version is part of the cat.Index interface.
@@ -1789,43 +1589,18 @@ func (os *optTableStat) Histogram() []cat.HistogramBucket {
 	return os.stat.Histogram
 }
 
-// HistogramType is part of the cat.TableStatistic interface.
-func (os *optTableStat) HistogramType() *types.T {
-	return os.stat.HistogramData.ColumnType
-}
-
-// IsPartial is part of the cat.TableStatistic interface.
-func (os *optTableStat) IsPartial() bool {
-	return os.stat.IsPartial()
-}
-
-// IsMerged is part of the cat.TableStatistic interface.
-func (os *optTableStat) IsMerged() bool {
-	return os.stat.IsMerged()
-}
-
-// IsForecast is part of the cat.TableStatistic interface.
-func (os *optTableStat) IsForecast() bool {
-	return os.stat.IsForecast()
-}
-
-// IsAuto is part of the cat.TableStatistic interface.
-func (os *optTableStat) IsAuto() bool {
-	return os.stat.IsAuto()
-}
-
-// optFamily is a wrapper around descpb.ColumnFamilyDescriptor that keeps a
+// optFamily is a wrapper around descpb.RowGroupDescriptor that keeps a
 // reference to the table wrapper.
 type optFamily struct {
 	tab  *optTable
-	desc *descpb.ColumnFamilyDescriptor
+	desc *descpb.RowGroupDescriptor
 }
 
 var _ cat.Family = &optFamily{}
 
 // init can be used instead of newOptFamily when we have a pre-allocated
 // instance (e.g. as part of a bigger struct).
-func (oi *optFamily) init(tab *optTable, desc *descpb.ColumnFamilyDescriptor) {
+func (oi *optFamily) init(tab *optTable, desc *descpb.RowGroupDescriptor) {
 	oi.tab = tab
 	oi.desc = desc
 }
@@ -1938,9 +1713,9 @@ type optForeignKeyConstraint struct {
 	referencedColumns []descpb.ColumnID
 
 	validity     descpb.ConstraintValidity
-	match        tree.CompositeKeyMatchMethod
-	deleteAction tree.ReferenceAction
-	updateAction tree.ReferenceAction
+	match        descpb.ForeignKeyReference_Match
+	deleteAction catpb.ForeignKeyAction
+	updateAction catpb.ForeignKeyAction
 }
 
 var _ cat.ForeignKeyConstraint = &optForeignKeyConstraint{}
@@ -1999,17 +1774,17 @@ func (fk *optForeignKeyConstraint) Validated() bool {
 
 // MatchMethod is part of the cat.ForeignKeyConstraint interface.
 func (fk *optForeignKeyConstraint) MatchMethod() tree.CompositeKeyMatchMethod {
-	return fk.match
+	return descpb.ForeignKeyReferenceMatchValue[fk.match]
 }
 
 // DeleteReferenceAction is part of the cat.ForeignKeyConstraint interface.
 func (fk *optForeignKeyConstraint) DeleteReferenceAction() tree.ReferenceAction {
-	return fk.deleteAction
+	return descpb.ForeignKeyReferenceActionType[fk.deleteAction]
 }
 
 // UpdateReferenceAction is part of the cat.ForeignKeyConstraint interface.
 func (fk *optForeignKeyConstraint) UpdateReferenceAction() tree.ReferenceAction {
-	return fk.updateAction
+	return descpb.ForeignKeyReferenceActionType[fk.updateAction]
 }
 
 // optVirtualTable is similar to optTable but is used with virtual tables.
@@ -2042,7 +1817,7 @@ type optVirtualTable struct {
 	// synthesized primary index.
 	indexes []optVirtualIndex
 
-	// family is a synthesized primary family.
+	// family is a synthesized primary row-group.
 	family optVirtualFamily
 
 	// colMap is a mapping from unique ColumnID to column ordinal within the
@@ -2103,7 +1878,6 @@ func newOptVirtualTable(
 		nil, /* generatedAsIdentitySequenceOption */
 	)
 	for i, d := range desc.PublicColumns() {
-		cd := d.ColumnDesc()
 		ot.columns[i+1].Init(
 			i+1,
 			cat.StableID(d.GetID()),
@@ -2112,11 +1886,11 @@ func newOptVirtualTable(
 			d.GetType(),
 			d.IsNullable(),
 			cat.MaybeHidden(d.IsHidden()),
-			cd.DefaultExpr,
-			cd.ComputeExpr,
-			cd.OnUpdateExpr,
+			d.ColumnDesc().DefaultExpr,
+			d.ColumnDesc().ComputeExpr,
+			d.ColumnDesc().OnUpdateExpr,
 			mapGeneratedAsIdentityType(d.GetGeneratedAsIdentityType()),
-			cd.GeneratedAsIdentitySequenceOption,
+			d.ColumnDesc().GeneratedAsIdentitySequenceOption,
 		)
 	}
 
@@ -2164,8 +1938,8 @@ func (ot *optVirtualTable) ID() cat.StableID {
 }
 
 // PostgresDescriptorID is part of the cat.Object interface.
-func (ot *optVirtualTable) PostgresDescriptorID() catid.DescID {
-	return ot.desc.GetID()
+func (ot *optVirtualTable) PostgresDescriptorID() cat.StableID {
+	return cat.StableID(ot.desc.GetID())
 }
 
 // Equals is part of the cat.Object interface.
@@ -2258,15 +2032,15 @@ func (ot *optVirtualTable) Statistic(i int) cat.TableStatistic {
 
 // CheckCount is part of the cat.Table interface.
 func (ot *optVirtualTable) CheckCount() int {
-	return len(ot.desc.EnforcedCheckConstraints())
+	return len(ot.desc.ActiveChecks())
 }
 
 // Check is part of the cat.Table interface.
 func (ot *optVirtualTable) Check(i int) cat.CheckConstraint {
-	check := ot.desc.EnforcedCheckConstraints()[i]
+	check := ot.desc.ActiveChecks()[i]
 	return cat.CheckConstraint{
-		Constraint: check.GetExpr(),
-		Validated:  check.GetConstraintValidity() == descpb.ConstraintValidity_Validated,
+		Constraint: check.Expr,
+		Validated:  check.Validity == descpb.ConstraintValidity_Validated,
 	}
 }
 
@@ -2320,45 +2094,10 @@ func (ot *optVirtualTable) IsPartitionAllBy() bool {
 	return false
 }
 
-// HomeRegion is part of the cat.Table interface.
-func (ot *optVirtualTable) HomeRegion() (region string, ok bool) {
-	return "", false
-}
-
-// IsGlobalTable is part of the cat.Table interface.
-func (ot *optVirtualTable) IsGlobalTable() bool {
-	return false
-}
-
-// IsRegionalByRow is part of the cat.Table interface.
-func (ot *optVirtualTable) IsRegionalByRow() bool {
-	return false
-}
-
-// IsMultiregion is part of the cat.Table interface.
-func (ot *optVirtualTable) IsMultiregion() bool {
-	return false
-}
-
-// HomeRegionColName is part of the cat.Table interface.
-func (ot *optVirtualTable) HomeRegionColName() (colName string, ok bool) {
-	return "", false
-}
-
-// GetDatabaseID is part of the cat.Table interface.
-func (ot *optVirtualTable) GetDatabaseID() descpb.ID {
-	return 0
-}
-
 // CollectTypes is part of the cat.DataSource interface.
 func (ot *optVirtualTable) CollectTypes(ord int) (descpb.IDs, error) {
 	col := ot.desc.AllColumns()[ord]
 	return collectTypes(col)
-}
-
-// IsRefreshViewRequired is part of the cat.Table interface.
-func (ot *optVirtualTable) IsRefreshViewRequired() bool {
-	return false
 }
 
 // optVirtualIndex is a dummy implementation of cat.Index for the indexes
@@ -2404,11 +2143,6 @@ func (oi *optVirtualIndex) IsUnique() bool {
 
 // IsInverted is part of the cat.Index interface.
 func (oi *optVirtualIndex) IsInverted() bool {
-	return false
-}
-
-// IsNotVisible is part of the cat.Index interface.
-func (oi *optVirtualIndex) IsNotVisible() bool {
 	return false
 }
 
@@ -2487,11 +2221,7 @@ func (oi *optVirtualIndex) InvertedColumn() cat.IndexColumn {
 
 // Predicate is part of the cat.Index interface.
 func (oi *optVirtualIndex) Predicate() (string, bool) {
-	if oi.idx == nil {
-		return "", false
-	}
-	pred := oi.idx.GetPredicate()
-	return pred, pred != ""
+	return "", false
 }
 
 // Zone is part of the cat.Index interface.
@@ -2510,7 +2240,7 @@ func (oi *optVirtualIndex) Table() cat.Table {
 }
 
 // Ordinal is part of the cat.Index interface.
-func (oi *optVirtualIndex) Ordinal() cat.IndexOrdinal {
+func (oi *optVirtualIndex) Ordinal() int {
 	return oi.indexOrdinal
 }
 
@@ -2525,8 +2255,8 @@ func (oi *optVirtualIndex) ImplicitPartitioningColumnCount() int {
 }
 
 // GeoConfig is part of the cat.Index interface.
-func (oi *optVirtualIndex) GeoConfig() geoindex.Config {
-	return geoindex.Config{}
+func (oi *optVirtualIndex) GeoConfig() *geoindex.Config {
+	return nil
 }
 
 // Version is part of the cat.Index interface.
@@ -2623,7 +2353,10 @@ func collectTypes(col catalog.Column) (descpb.IDs, error) {
 
 	ids := make(descpb.IDs, 0, len(visitor.OIDs))
 	for collectedOid := range visitor.OIDs {
-		id := typedesc.UserDefinedTypeOIDToID(collectedOid)
+		id, err := typedesc.UserDefinedTypeOIDToID(collectedOid)
+		if err != nil {
+			return nil, err
+		}
 		ids = append(ids, id)
 	}
 	return ids, nil

@@ -51,8 +51,7 @@ import (
 // is that it should be used only by an administrator in the most dire of
 // circumstances. It exists for two practical but perhaps unfortunate reasons.
 // Firstly, the sql schema of the descriptor table does not match the way the
-// table is actually modified. Specifically, only one column family is every
-// populated and code elsewhere assumes that this is the case. Secondly, we
+// table is actually modified. Secondly, we
 // don't generally want users writing to that table.
 //
 // This method will perform *some* validation of the descriptor. Namely, it
@@ -396,8 +395,7 @@ func logOwnerEvents(
 // idea is that it should be used only by an administrator in the most dire of
 // circumstances. It exists for two practical but perhaps unfortunate reasons.
 // Firstly, the sql schema of the namespace table does not match the way the
-// table is actually modified. Specifically, only one column family is every
-// populated and code elsewhere assumes that this is the case. Secondly, we
+// table is actually modified. Secondly, we
 // don't generally want users writing to that table.
 //
 // If force is true, most validation will be attached to the event log entry but

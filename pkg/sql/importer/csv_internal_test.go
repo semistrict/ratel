@@ -65,8 +65,7 @@ func TestMakeSimpleTableDescriptorErrors(t *testing.T) {
 				constraint a check (i < 0),
 				primary key (i),
 				unique index (i),
-				index (i),
-				family (i)
+				index (i)
 			)`,
 		},
 	}

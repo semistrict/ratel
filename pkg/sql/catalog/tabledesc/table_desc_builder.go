@@ -630,16 +630,16 @@ func maybeUpgradeFormatVersion(desc *descpb.TableDescriptor) (wasUpgraded bool) 
 const FamilyPrimaryName = "primary"
 
 func upgradeToFamilyFormatVersion(desc *descpb.TableDescriptor) {
-	desc.Families = []descpb.ColumnFamilyDescriptor{
+	desc.RowGroups = []descpb.RowGroupDescriptor{
 		{ID: 0, Name: FamilyPrimaryName},
 	}
-	desc.NextFamilyID = desc.Families[0].ID + 1
+	desc.NextRowGroupID = desc.RowGroups[0].ID + 1
 	addCol := func(col *descpb.ColumnDescriptor) {
 		if col.Virtual {
 			return
 		}
-		desc.Families[0].ColumnNames = append(desc.Families[0].ColumnNames, col.Name)
-		desc.Families[0].ColumnIDs = append(desc.Families[0].ColumnIDs, col.ID)
+		desc.RowGroups[0].ColumnNames = append(desc.RowGroups[0].ColumnNames, col.Name)
+		desc.RowGroups[0].ColumnIDs = append(desc.RowGroups[0].ColumnIDs, col.ID)
 	}
 
 	for i := range desc.Columns {

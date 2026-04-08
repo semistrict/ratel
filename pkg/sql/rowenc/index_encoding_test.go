@@ -180,7 +180,7 @@ func TestIndexKey(t *testing.T) {
 		evalCtx := eval.NewTestingEvalContext(cluster.MakeTestingClusterSettings())
 		defer evalCtx.Stop(context.Background())
 		tableDesc, colMap := makeTableDescForTest(test)
-		// Add the default family to each test, since secondary indexes support column families.
+		// Add the default family metadata expected by the single-family layout.
 		var (
 			colNames []string
 			colIDs   descpb.ColumnIDs
@@ -189,7 +189,7 @@ func TestIndexKey(t *testing.T) {
 			colNames = append(colNames, c.GetName())
 			colIDs = append(colIDs, c.GetID())
 		}
-		tableDesc.TableDesc().Families = []descpb.ColumnFamilyDescriptor{{
+		tableDesc.TableDesc().RowGroups = []descpb.RowGroupDescriptor{{
 			Name:            "defaultFamily",
 			ID:              0,
 			ColumnNames:     colNames,

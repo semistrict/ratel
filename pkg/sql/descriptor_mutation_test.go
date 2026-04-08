@@ -239,11 +239,11 @@ func TestOperationsWithColumnMutation(t *testing.T) {
 	defer server.Stopper().Stop(ctx)
 	sqlRunner := sqlutils.MakeSQLRunner(sqlDB)
 
-	// Fix the column families so the key counts below don't change if the
-	// family heuristics are updated.
+	// Keep the single-family row layout stable so the key counts below stay
+	// tied to the schema change under test.
 	// Add an index so that we test adding a column when a table has an index.
 	sqlRunner.Exec(t, `CREATE DATABASE t;`)
-	sqlRunner.Exec(t, `CREATE TABLE t.test (k VARCHAR PRIMARY KEY DEFAULT 'default', v VARCHAR, i VARCHAR DEFAULT 'i',FAMILY (k), FAMILY (v), FAMILY (i));`)
+	sqlRunner.Exec(t, `CREATE TABLE t.test (k VARCHAR PRIMARY KEY DEFAULT 'default', v VARCHAR, i VARCHAR DEFAULT 'i');`)
 	sqlRunner.Exec(t, `CREATE INDEX allidx ON t.test (k, v);`)
 
 	// read table descriptor
@@ -262,7 +262,7 @@ func TestOperationsWithColumnMutation(t *testing.T) {
 
 					// Init table to start state.
 					sqlRunner.Exec(t, `DROP TABLE t.test;`)
-					sqlRunner.Exec(t, `CREATE TABLE t.test (k VARCHAR PRIMARY KEY DEFAULT 'default', v VARCHAR,i VARCHAR DEFAULT 'i', FAMILY (k), FAMILY (v), FAMILY (i));`)
+					sqlRunner.Exec(t, `CREATE TABLE t.test (k VARCHAR PRIMARY KEY DEFAULT 'default', v VARCHAR,i VARCHAR DEFAULT 'i');`)
 					sqlRunner.Exec(t, `CREATE INDEX allidx ON t.test (k, v);`)
 
 					// read table descriptor
@@ -342,7 +342,7 @@ func TestOperationsWithColumnMutation(t *testing.T) {
 						afterPKUpdate = [][]string{{"a", "u", "q"}, {"d", "x", "NULL"}}
 						// Delete also deletes column "i".
 						afterDelete = [][]string{{"d", "x", "NULL"}}
-						afterDeleteKeys = 3
+						afterDeleteKeys = 2
 					} else {
 						// The default value of "i" for column "i" is written.
 						afterDefaultInsert = [][]string{{"a", "z", "q"}, {"default", "NULL", "i"}}
@@ -353,7 +353,7 @@ func TestOperationsWithColumnMutation(t *testing.T) {
 						afterPKUpdate = [][]string{{"a", "u", "i"}, {"d", "x", "i"}}
 						// Delete also deletes column "i".
 						afterDelete = [][]string{{"d", "x", "i"}}
-						afterDeleteKeys = 4
+						afterDeleteKeys = 2
 					}
 					// Make column "i" a mutation.
 					mTest.writeColumnMutation(ctx, "i", descpb.DescriptorMutation{State: state})
@@ -678,7 +678,7 @@ func TestOperationsWithColumnAndIndexMutation(t *testing.T) {
 	// are updated.
 	// Add an index so that we test adding a column when a table has an index.
 	sqlRunner.Exec(t, `CREATE DATABASE t;`)
-	sqlRunner.Exec(t, `CREATE TABLE t.test (k CHAR PRIMARY KEY, v CHAR, i CHAR, INDEX foo (i, v), FAMILY (k),FAMILY (v), FAMILY (i));`)
+	sqlRunner.Exec(t, `CREATE TABLE t.test (k CHAR PRIMARY KEY, v CHAR, i CHAR, INDEX foo (i, v));`)
 	sqlRunner.Exec(t, `CREATE INDEX allidx ON t.test (k, v);`)
 
 	// read table descriptor
@@ -708,7 +708,7 @@ func TestOperationsWithColumnAndIndexMutation(t *testing.T) {
 				}
 				// Init table to start state.
 				sqlRunner.Exec(t, `DROP TABLE t.test;`)
-				sqlRunner.Exec(t, `CREATE TABLE t.test (k CHAR PRIMARY KEY, v CHAR, i CHAR, INDEX foo (i, v), FAMILY (k),FAMILY (v), FAMILY (i));`)
+				sqlRunner.Exec(t, `CREATE TABLE t.test (k CHAR PRIMARY KEY, v CHAR, i CHAR, INDEX foo (i, v));`)
 				sqlRunner.Exec(t, `CREATE INDEX allidx ON t.test (k, v);`)
 				if _, err := sqlDB.Exec(`TRUNCATE TABLE t.test`); err != nil {
 					t.Fatal(err)
@@ -838,12 +838,14 @@ func TestOperationsWithColumnAndIndexMutation(t *testing.T) {
 					mTest.CheckQueryResults(t, starQuery, [][]string{{"a", "u", "NULL"}, {"c", "x", "NULL"}})
 				}
 
-				// numKVs is the number of expected key-values. We start with the number
-				// of non-NULL values above.
-				numKVs := 6
+				// numKVs is the number of expected key-values. With a single-family
+				// layout, we always have one primary KV per row plus the secondary
+				// index entries below.
+				numKVs := 4
 				if state == descpb.DescriptorMutation_DELETE_ONLY {
 					// In DELETE_ONLY case, the "q" value is not set to NULL above.
-					numKVs++
+					// That changes SQL-visible contents, but not the single-family KV
+					// count.
 				}
 
 				switch idxState {

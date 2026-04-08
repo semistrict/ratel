@@ -193,8 +193,7 @@ func generateScanSpans(
 	if params.InvertedConstraint != nil {
 		return sb.SpansFromInvertedSpans(params.InvertedConstraint, params.IndexConstraint, nil /* scratch */)
 	}
-	splitter := span.MakeSplitter(tabDesc, index, params.NeededCols)
-	return sb.SpansFromConstraint(params.IndexConstraint, splitter)
+	return sb.SpansFromConstraint(params.IndexConstraint, span.NoopSplitter())
 }
 
 func (ef *execFactory) constructVirtualScan(

@@ -121,7 +121,7 @@ message SlowQuery {
 message CommonLargeRowDetails {
   uint32 row_size = 1 [(gogoproto.jsontag) = ",omitempty"];
   uint32 table_id = 2 [(gogoproto.customname) = "TableID", (gogoproto.jsontag) = ",omitempty"];
-  uint32 family_id = 3 [(gogoproto.customname) = "FamilyID", (gogoproto.jsontag) = ",omitempty"];
+  uint32 row_group_id = 3 [(gogoproto.customname) = "RowGroupID", (gogoproto.jsontag) = ",omitempty"];
   string primary_key = 4 [(gogoproto.jsontag) = ",omitempty"];
 }
 

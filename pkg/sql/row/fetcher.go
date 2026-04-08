@@ -23,19 +23,20 @@ import (
 
 	"github.com/cockroachdb/cockroach/pkg/keys"
 	"github.com/cockroachdb/cockroach/pkg/kv"
+	"github.com/cockroachdb/cockroach/pkg/multitenant"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/rowenc"
-	"github.com/cockroachdb/cockroach/pkg/sql/rowenc/keyside"
 	"github.com/cockroachdb/cockroach/pkg/sql/rowenc/valueside"
 	"github.com/cockroachdb/cockroach/pkg/sql/rowinfra"
 	"github.com/cockroachdb/cockroach/pkg/sql/scrub"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/sessiondatapb"
 	"github.com/cockroachdb/cockroach/pkg/util"
+	"github.com/cockroachdb/cockroach/pkg/util/admission"
 	"github.com/cockroachdb/cockroach/pkg/util/encoding"
 	"github.com/cockroachdb/cockroach/pkg/util/hlc"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
@@ -51,6 +52,20 @@ const DebugRowFetch = false
 // noOutputColumn is a sentinel value to denote that a system column is not
 // part of the output.
 const noOutputColumn = -1
+
+func newTxnWithSteppingEnabled(
+	ctx context.Context, db *kv.DB, gatewayNodeID roachpb.NodeID, qualityOfService sessiondatapb.QoSLevel,
+) *kv.Txn {
+	source := roachpb.AdmissionHeader_FROM_SQL
+	if multitenant.HasTenantCostControlExemption(ctx) {
+		source = roachpb.AdmissionHeader_OTHER
+	}
+	txn := kv.NewTxnWithAdmissionControl(
+		ctx, db, gatewayNodeID, source, admission.WorkPriority(qualityOfService),
+	)
+	_ = txn.ConfigureStepping(ctx, kv.SteppingEnabled)
+	return txn
+}
 
 // KVBatchFetcher abstracts the logic of fetching KVs in batches.
 type KVBatchFetcher interface {
@@ -424,7 +439,7 @@ func (rf *Fetcher) StartInconsistentScan(
 			maxTimestampAge,
 		)
 	}
-	txn := kv.NewTxnWithSteppingEnabled(ctx, db, 0 /* gatewayNodeID */, qualityOfService)
+	txn := newTxnWithSteppingEnabled(ctx, db, 0 /* gatewayNodeID */, qualityOfService)
 	if err := txn.SetFixedTimestamp(ctx, txnTimestamp); err != nil {
 		return err
 	}
@@ -441,7 +456,7 @@ func (rf *Fetcher) StartInconsistentScan(
 			// Advance the timestamp by the time that passed.
 			txnTimestamp = txnTimestamp.Add(now.Sub(txnStartTime).Nanoseconds(), 0 /* logical */)
 			txnStartTime = now
-			txn = kv.NewTxnWithSteppingEnabled(ctx, db, 0 /* gatewayNodeID */, qualityOfService)
+			txn = newTxnWithSteppingEnabled(ctx, db, 0 /* gatewayNodeID */, qualityOfService)
 			if err := txn.SetFixedTimestamp(ctx, txnTimestamp); err != nil {
 				return nil, err
 			}
@@ -538,8 +553,8 @@ func (rf *Fetcher) setNextKV(kv roachpb.KeyValue, needsCopy bool) {
 	rf.kv = kvCopy
 }
 
-// nextKey retrieves the next key/value and sets kv/kvEnd. Returns whether the
-// key indicates a new row (as opposed to another family for the current row).
+// nextKey retrieves the next key/value and sets kv/kvEnd. In the single-family
+// layout every KV begins a new row.
 func (rf *Fetcher) nextKey(ctx context.Context) (newRow bool, _ error) {
 	ok, kv, finalReferenceToBatch, err := rf.kvFetcher.NextKV(ctx, rf.mvccDecodeStrategy)
 	if err != nil {
@@ -553,54 +568,13 @@ func (rf *Fetcher) nextKey(ctx context.Context) (newRow bool, _ error) {
 		return true, nil
 	}
 
-	// unchangedPrefix will be set to true if the current KV belongs to the same
-	// row as the previous KV (i.e. the last and current keys have identical
-	// prefix). In this case, we can skip decoding the index key completely.
-	unchangedPrefix := rf.table.spec.MaxKeysPerRow > 1 && rf.indexKey != nil && bytes.HasPrefix(rf.kv.Key, rf.indexKey)
-	if unchangedPrefix {
-		// Skip decoding!
-		rf.keyRemainingBytes = rf.kv.Key[len(rf.indexKey):]
-		return false, nil
-	}
-
-	// The current key belongs to a new row.
 	if rf.mustDecodeIndexKey {
-		var foundNull bool
-		rf.keyRemainingBytes, foundNull, err = rf.DecodeIndexKey(rf.kv.Key)
+		rf.keyRemainingBytes, _, err = rf.DecodeIndexKey(rf.kv.Key)
 		if err != nil {
 			return false, err
 		}
-		// For unique secondary indexes, the index-key does not distinguish one row
-		// from the next if both rows contain identical values along with a NULL.
-		// Consider the keys:
-		//
-		//   /test/unique_idx/NULL/0
-		//   /test/unique_idx/NULL/1
-		//
-		// The index-key extracted from the above keys is /test/unique_idx/NULL. The
-		// trailing /0 and /1 are the primary key used to unique-ify the keys when a
-		// NULL is present. When a null is present in the index key, we cut off more
-		// of the index key so that the prefix includes the primary key columns.
-		//
-		// Note that we do not need to do this for non-unique secondary indexes because
-		// the extra columns in the primary key will _always_ be there, so we can decode
-		// them when processing the index. The difference with unique secondary indexes
-		// is that the extra columns are not always there, and are used to unique-ify
-		// the index key, rather than provide the primary key column values.
-		if foundNull && rf.table.spec.IsSecondaryIndex && rf.table.spec.IsUniqueIndex && rf.table.spec.MaxKeysPerRow > 1 {
-			for i := 0; i < int(rf.table.spec.NumKeySuffixColumns); i++ {
-				var err error
-				// Slice off an extra encoded column from rf.keyRemainingBytes.
-				rf.keyRemainingBytes, err = keyside.Skip(rf.keyRemainingBytes)
-				if err != nil {
-					return false, err
-				}
-			}
-		}
 	} else {
-		// We still need to consume the key until the family
-		// id, so processKV can know whether we've finished a
-		// row or not.
+		// Consume the key suffix after the row prefix before decoding the value.
 		prefixLen, err := keys.GetRowPrefixLength(rf.kv.Key)
 		if err != nil {
 			return false, err
@@ -682,10 +656,9 @@ func (rf *Fetcher) processKV(
 		// As kvs are iterated for this row, it keeps track of the greatest
 		// timestamp seen.
 		table.rowLastModified = hlc.Timestamp{}
-		// All row encodings (both before and after column families) have a
-		// sentinel kv (column family 0) that is always present when a row is
-		// present, even if that row is all NULLs. Thus, a row is deleted if and
-		// only if the first kv in it a tombstone (RawBytes is empty).
+		// A row is present if its primary-family KV is present, even if the row
+		// is otherwise all NULLs. Thus, a row is deleted if and only if the first
+		// KV in it is a tombstone (RawBytes is empty).
 		table.rowIsDeleted = len(kv.Value.RawBytes) == 0
 	}
 
@@ -704,21 +677,20 @@ func (rf *Fetcher) processKV(
 	// For covering secondary indexes, allow for decoding as a primary key.
 	if table.spec.EncodingType == descpb.PrimaryIndexEncoding &&
 		len(rf.keyRemainingBytes) > 0 {
-		// If familyID is 0, kv.Value contains values for composite key columns.
-		// These columns already have a table.row value assigned above, but that value
-		// (obtained from the key encoding) might not be correct (e.g. for decimals,
-		// it might not contain the right number of trailing 0s; for collated
-		// strings, it is one of potentially many strings with the same collation
-		// key).
+		// kv.Value contains values for composite key columns. These columns
+		// already have a table.row value assigned above, but that value
+		// (obtained from the key encoding) might not be correct (e.g. for
+		// decimals, it might not contain the right number of trailing 0s; for
+		// collated strings, it is one of potentially many strings with the same
+		// collation key).
 		//
-		// In these cases, the correct value will be present in family 0 and the
+		// In these cases, the correct value is present in the row value and the
 		// table.row value gets overwritten.
 
 		switch kv.Value.GetTag() {
 		case roachpb.ValueType_TUPLE:
-			// In this case, we don't need to decode the column family ID, because
-			// the ValueType_TUPLE encoding includes the column id with every encoded
-			// column value.
+			// The ValueType_TUPLE encoding includes the column ID with every
+			// encoded column value.
 			var tupleBytes []byte
 			tupleBytes, err = kv.Value.GetTuple()
 			if err != nil {
@@ -726,32 +698,8 @@ func (rf *Fetcher) processKV(
 			}
 			prettyKey, prettyValue, err = rf.processValueBytes(ctx, table, kv, tupleBytes, prettyKey)
 		default:
-			var familyID uint64
-			_, familyID, err = encoding.DecodeUvarintAscending(rf.keyRemainingBytes)
-			if err != nil {
-				return "", "", scrub.WrapError(scrub.IndexKeyDecodingError, err)
-			}
-
-			// Find the default column ID for the family. In the single-family
-			// layout, family 0 can carry a real value when the descriptor
-			// declares a default column for it; otherwise, family 0 is just the
-			// legacy row sentinel.
-			var defaultColumnID descpb.ColumnID
-			for _, f := range table.spec.FamilyDefaultColumns {
-				if f.FamilyID == descpb.FamilyID(familyID) {
-					defaultColumnID = f.DefaultColumnID
-					break
-				}
-			}
-			if defaultColumnID == 0 {
-				if familyID == 0 || kv.Value.GetTag() == roachpb.ValueType_UNKNOWN {
-					// Legacy sentinel in family 0 or tombstone for a secondary column
-					// family, nothing needs to be decoded.
-				} else {
-					return "", "", errors.Errorf("single entry value with no default column id")
-				}
-			} else {
-				prettyKey, prettyValue, err = rf.processValueSingle(ctx, table, defaultColumnID, kv, prettyKey)
+			if table.spec.DefaultColumnID != 0 {
+				prettyKey, prettyValue, err = rf.processValueSingle(ctx, table, table.spec.DefaultColumnID, kv, prettyKey)
 			}
 		}
 		if err != nil {
@@ -762,9 +710,8 @@ func (rf *Fetcher) processKV(
 		var valueBytes []byte
 		switch tag {
 		case roachpb.ValueType_BYTES:
-			// If we have the ValueType_BYTES on a secondary index, then we know we
-			// are looking at column family 0. Column family 0 stores the extra primary
-			// key columns if they are present, so we decode them here.
+			// Secondary index ValueType_BYTES values store extra primary key
+			// columns when they are present, so decode them here.
 			valueBytes, err = kv.Value.GetBytes()
 			if err != nil {
 				return "", "", scrub.WrapError(scrub.IndexValueDecodingError, err)

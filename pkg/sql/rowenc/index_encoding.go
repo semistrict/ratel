@@ -32,7 +32,6 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/sqlerrors"
 	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/util"
 	"github.com/cockroachdb/cockroach/pkg/util/encoding"
 	"github.com/cockroachdb/cockroach/pkg/util/json"
 	"github.com/cockroachdb/cockroach/pkg/util/mon"
@@ -158,32 +157,14 @@ func MakeSpanFromEncDatums(
 	return roachpb.Span{Key: startKey, EndKey: startKey.PrefixEnd()}, containsNull, nil
 }
 
-// NeededColumnFamilyIDs returns the minimal set of column families required to
-// retrieve neededCols for the specified table and index. The returned descpb.FamilyIDs
-// are in sorted order.
-func NeededColumnFamilyIDs(
-	neededColOrdinals util.FastIntSet, table catalog.TableDescriptor, index catalog.Index,
-) []descpb.FamilyID {
-	return []descpb.FamilyID{0}
-}
-
-// SplitRowKeyIntoFamilySpans splits a key representing a single row point
-// lookup into separate disjoint spans that request only the particular column
-// families from neededFamilies instead of requesting all the families. It is up
-// to the client to ensure the requested span represents a single row lookup and
-// that the span splitting is appropriate (see CanSplitSpanIntoFamilySpans).
+// SplitRowKeyIntoRowSpans converts a single-row lookup into the corresponding
+// KV span in the single-family layout.
 //
 // The returned spans might or might not have EndKeys set. If they are for a
 // single key, they will not have EndKeys set.
 //
-// Note that this function will still return a family-specific span even if the
-// input span is for a table that has just a single column family, so that the
-// caller can have a precise key to send via a GetRequest if desired.
-//
 // The function accepts a slice of spans to append to.
-func SplitRowKeyIntoFamilySpans(
-	appendTo roachpb.Spans, key roachpb.Key, neededFamilies []descpb.FamilyID,
-) roachpb.Spans {
+func SplitRowKeyIntoRowSpans(appendTo roachpb.Spans, key roachpb.Key) roachpb.Spans {
 	appendTo = append(appendTo, roachpb.Span{Key: keys.MakeFamilyKey(key[:len(key):len(key)], 0)})
 	return appendTo
 }
@@ -346,7 +327,7 @@ type IndexEntry struct {
 	Key   roachpb.Key
 	Value roachpb.Value
 	// Only used for forward indexes.
-	Family descpb.FamilyID
+	RowGroup descpb.RowGroupID
 }
 
 // valueEncodedColumn represents a composite or stored column of a secondary
@@ -710,9 +691,9 @@ func EncodePrimaryIndex(
 		return nil, MakeNullPKError(tableDesc, index, colMap, values)
 	}
 	indexedColumns := index.CollectKeyColumnIDs()
-	family := tableDesc.GetFamilies()[0]
-	columnsToEncode := make([]valueEncodedColumn, 0, len(family.ColumnIDs))
-	for _, colID := range family.ColumnIDs {
+	rowGroup := tableDesc.GetRowGroups()[0]
+	columnsToEncode := make([]valueEncodedColumn, 0, len(rowGroup.ColumnIDs))
+	for _, colID := range rowGroup.ColumnIDs {
 		if !indexedColumns.Contains(colID) {
 			columnsToEncode = append(columnsToEncode, valueEncodedColumn{id: colID})
 			continue
@@ -727,7 +708,7 @@ func EncodePrimaryIndex(
 		return nil, err
 	}
 	indexEntries := make([]IndexEntry, 1)
-	indexEntries[0] = IndexEntry{Key: keys.MakeFamilyKey(indexKey, 0), Family: 0}
+	indexEntries[0] = IndexEntry{Key: keys.MakeFamilyKey(indexKey, 0), RowGroup: 0}
 	indexEntries[0].Value.SetTuple(entryValue)
 
 	if index.UseDeletePreservingEncoding() {
@@ -816,7 +797,7 @@ func EncodeSecondaryIndex(
 			key = append(key, extraKey...)
 		}
 
-		entry, err := encodeSecondaryIndexNoFamilies(secondaryIndex, colMap, key, values, extraKey)
+		entry, err := encodeSecondaryIndexValue(secondaryIndex, colMap, key, values, extraKey)
 		if err != nil {
 			return []IndexEntry{}, err
 		}
@@ -832,13 +813,10 @@ func EncodeSecondaryIndex(
 	return entries, nil
 }
 
-// encodeSecondaryIndexNoFamilies takes a mostly constructed
-// secondary index key (without the family/sentinel at
-// the end), and appends the 0 family sentinel to it, and
-// constructs the value portion of the index. This function
-// performs the index encoding version before column
-// families were introduced onto secondary indexes.
-func encodeSecondaryIndexNoFamilies(
+// encodeSecondaryIndexValue takes a mostly constructed secondary index key
+// (without the trailing row-group sentinel), appends the sentinel for row-group
+// 0, and constructs the value portion of the index.
+func encodeSecondaryIndexValue(
 	index catalog.Index,
 	colMap catalog.TableColMap,
 	key []byte,
@@ -849,7 +827,6 @@ func encodeSecondaryIndexNoFamilies(
 		value []byte
 		err   error
 	)
-	// If we aren't encoding index keys with families, all index keys use the sentinel family 0.
 	key = keys.MakeFamilyKey(key, 0)
 	if index.IsUnique() {
 		// Note that a unique secondary index that contains a NULL column value
@@ -864,7 +841,6 @@ func encodeSecondaryIndexNoFamilies(
 		value = []byte{}
 	}
 	var cols []valueEncodedColumn
-	// Since we aren't encoding data with families, we just encode all stored and composite columns in the value.
 	for i := 0; i < index.NumSecondaryStoredColumns(); i++ {
 		id := index.GetStoredColumnID(i)
 		cols = append(cols, valueEncodedColumn{id: id, isComposite: false})
@@ -883,7 +859,7 @@ func encodeSecondaryIndexNoFamilies(
 	if err != nil {
 		return IndexEntry{}, err
 	}
-	entry := IndexEntry{Key: key, Family: 0}
+	entry := IndexEntry{Key: key, RowGroup: 0}
 	entry.Value.SetBytes(value)
 	return entry, nil
 }
@@ -941,8 +917,7 @@ func EncodeSecondaryIndexes(
 			return secondaryIndexEntries, 0, err
 		}
 		// Normally, each index will have exactly one entry. However, inverted
-		// indexes can have 0 or >1 entries, as well as secondary indexes which
-		// store columns from multiple column families.
+		// indexes can have 0 or >1 entries.
 		//
 		// The memory monitor has already accounted for cap(secondaryIndexEntries).
 		// If the number of index entries are going to cause the

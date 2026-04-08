@@ -1,14 +1,18 @@
 // Copyright 2021 The Cockroach Authors.
 //
-// Use of this software is governed by the Business Source License
-// included in the file licenses/BSL.txt.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// As of the Change Date specified in that file, in accordance with
-// the Business Source License, use of this software will be governed
-// by the Apache License, Version 2.0, included in the file
-// licenses/APL.txt.
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// permissions and limitations under the License.
 
-package upgrades
+package migrations
 
 import (
 	"bytes"
@@ -17,11 +21,14 @@ import (
 	"strings"
 
 	"github.com/cockroachdb/cockroach/pkg/clusterversion"
+	"github.com/cockroachdb/cockroach/pkg/kv"
+	"github.com/cockroachdb/cockroach/pkg/migration"
+	"github.com/cockroachdb/cockroach/pkg/security"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descs"
+	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/sessiondata"
-	"github.com/cockroachdb/cockroach/pkg/upgrade"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
 	"github.com/cockroachdb/errors"
@@ -44,7 +51,7 @@ type operation struct {
 // complete.
 const waitForJobStatement = "SHOW JOBS WHEN COMPLETE VALUES ($1)"
 
-// migrateTable is run during an upgrade to a new version and changes an existing
+// migrateTable is run during a migration to a new version and changes an existing
 // table's schema based on schemaChangeQuery. The schema-change is ignored if the
 // table already has the required changes.
 //
@@ -62,7 +69,7 @@ const waitForJobStatement = "SHOW JOBS WHEN COMPLETE VALUES ($1)"
 func migrateTable(
 	ctx context.Context,
 	_ clusterversion.ClusterVersion,
-	d upgrade.TenantDeps,
+	d migration.TenantDeps,
 	op operation,
 	storedTableID descpb.ID,
 	expectedTable catalog.TableDescriptor,
@@ -70,14 +77,14 @@ func migrateTable(
 	for {
 		// - Fetch the table, reading its descriptor from storage.
 		// - Check if any mutation jobs exist for the table. These mutations can
-		//   belong to a previous upgrade attempt that failed.
+		//   belong to a previous migration attempt that failed.
 		// - If any mutation job exists:
 		//   - Wait for the ongoing mutations to complete.
 		// 	 - Continue to the beginning of the loop to cater for the mutations
 		//	   that may have started while waiting for existing mutations to complete.
 		// - Check if the intended schema-changes already exist.
 		//   - If the changes already exist, skip the schema-change and return as
-		//     the changes are already done in a previous upgrade attempt.
+		//     the changes are already done in a previous migration attempt.
 		//   - Otherwise, perform the schema-change and return.
 
 		log.Infof(ctx, "performing table migration operation %v", op.name)
@@ -126,7 +133,7 @@ func migrateTable(
 			ctx,
 			fmt.Sprintf("migration-alter-table-%d", storedTableID),
 			nil, /* txn */
-			sessiondata.NodeUserSessionDataOverride,
+			sessiondata.InternalExecutorOverride{User: security.NodeUserName()},
 			op.query); err != nil {
 			return err
 		}
@@ -135,14 +142,19 @@ func migrateTable(
 }
 
 func readTableDescriptor(
-	ctx context.Context, d upgrade.TenantDeps, tableID descpb.ID,
+	ctx context.Context, d migration.TenantDeps, tableID descpb.ID,
 ) (catalog.TableDescriptor, error) {
 	var t catalog.TableDescriptor
 
-	if err := d.DB.DescsTxn(ctx, func(
-		ctx context.Context, txn descs.Txn,
+	if err := d.CollectionFactory.Txn(ctx, d.InternalExecutor, d.DB, func(
+		ctx context.Context, txn *kv.Txn, descriptors *descs.Collection,
 	) (err error) {
-		t, err = txn.Descriptors().ByID(txn.KV()).WithoutNonPublic().Get().Table(ctx, tableID)
+		t, err = descriptors.GetImmutableTableByID(ctx, txn, tableID, tree.ObjectLookupFlags{
+			CommonLookupFlags: tree.CommonLookupFlags{
+				AvoidLeased: true,
+				Required:    true,
+			},
+		})
 		return err
 	}); err != nil {
 		return nil, err
@@ -177,12 +189,15 @@ func ensureProtoMessagesAreEqual(expected, found protoutil.Message) error {
 // expectedTable descriptor. The comparison is not strict as several descriptor
 // fields are ignored.
 func hasColumn(storedTable, expectedTable catalog.TableDescriptor, colName string) (bool, error) {
-	storedCol := catalog.FindColumnByName(storedTable, colName)
-	if storedCol == nil {
-		return false, nil
+	storedCol, err := storedTable.FindColumnWithName(tree.Name(colName))
+	if err != nil {
+		if strings.Contains(err.Error(), "does not exist") {
+			return false, nil
+		}
+		return false, err
 	}
 
-	expectedCol, err := catalog.MustFindColumnByName(expectedTable, colName)
+	expectedCol, err := expectedTable.FindColumnWithName(tree.Name(colName))
 	if err != nil {
 		return false, errors.Wrapf(err, "columns name %s is invalid.", colName)
 	}
@@ -199,54 +214,6 @@ func hasColumn(storedTable, expectedTable catalog.TableDescriptor, colName strin
 	return true, nil
 }
 
-// columnExists returns true if storedTable contains a column with the given
-// colName. Unlike hasColumn, it does not check that the column descriptor in
-// storedTable and expectedTable match.
-//
-// This weaker check should be used when a migration/multiple migrations
-// alter(s) the same column multiple times in order to ensure the migration(s)
-// remain(s) idempotent. Consider the following series of (sub)migrations:
-//  1. column C is first added to a table as nullable (NULL)
-//  2. column C is backfilled with non-NULL values
-//  3. column C is altered to be not nullable (NOT NULL)
-//
-// When we are deciding whether (sub)migration 1 should run, we can either
-// (a) compare it to the expected descriptor after the column has been added
-// but before it has been altered to be NOT NULL or (b) compare it to the
-// expected descriptor after the column has been altered to be NOT NULL.
-//
-// If we choose to do (a) and for some reason after (sub)migration 3 is
-// completed, we need to restart and run (sub)migration 1 again, hasColumn
-// would now return an error because the column exists and is NOT NULL but the
-// expected descriptor we have has it as NULL.
-//
-// If we choose to do (b) and for some reason after (sub)migration 1 is
-// completed but before (sub)migration 3 runs, we restart and try
-// (sub)migration 1 again, hasColumn would also now return an error because the
-// column exists and is NULL when the expected descriptor has it as NOT NULL.
-//
-// In either case, the cluster would enter an unrecoverable state where it will
-// repeatedly attempt to perform (sub)migration 1 and fail, preventing the
-// migration and any further migrations from running.
-func columnExists(
-	storedTable, expectedTable catalog.TableDescriptor, colName string,
-) (bool, error) {
-	return catalog.FindColumnByName(storedTable, colName) != nil, nil
-}
-
-// columnExistsAndIsNotNull returns true if storedTable contains a non-nullable
-// (NOT NULL) column with the given colName. Like columnExists, it does not
-// check that the column descriptor in storedTable and expectedTable match and
-// it should be used when a migration/multiple migrations alter(s) the same
-// column multiple times. See the comment for columnExists for the reasoning
-// behind this.
-func columnExistsAndIsNotNull(
-	storedTable, expectedTable catalog.TableDescriptor, colName string,
-) (bool, error) {
-	storedCol := catalog.FindColumnByName(storedTable, colName)
-	return storedCol != nil && !storedCol.IsNullable(), nil
-}
-
 // hasIndex returns true if storedTable already has the given index, comparing
 // with expectedTable.
 // storedTable descriptor must be read from system storage as compared to reading
@@ -256,146 +223,80 @@ func columnExistsAndIsNotNull(
 // expectedTable descriptor. The comparison is not strict as several descriptor
 // fields are ignored.
 func hasIndex(storedTable, expectedTable catalog.TableDescriptor, indexName string) (bool, error) {
-	storedIdx := catalog.FindIndexByName(storedTable, indexName)
-	if storedIdx == nil {
-		return false, nil
+	storedIdx, err := storedTable.FindIndexWithName(indexName)
+	if err != nil {
+		if strings.Contains(err.Error(), "does not exist") {
+			return false, nil
+		}
+		return false, err
 	}
-	expectedIdx, err := catalog.MustFindIndexByName(expectedTable, indexName)
+	expectedIdx, err := expectedTable.FindIndexWithName(indexName)
 	if err != nil {
 		return false, errors.Wrapf(err, "index name %s is invalid", indexName)
 	}
+	storedCopy := storedIdx.IndexDescDeepCopy()
+	expectedCopy := expectedIdx.IndexDescDeepCopy()
 	// Ignore the fields that don't matter in the comparison.
-	storedCopy := indexDescForComparison(storedIdx)
-	expectedCopy := indexDescForComparison(expectedIdx)
-	if err = ensureProtoMessagesAreEqual(expectedCopy, storedCopy); err != nil {
+	storedCopy.ID = 0
+	expectedCopy.ID = 0
+	storedCopy.Version = 0
+	expectedCopy.Version = 0
+	// CreatedExplicitly is an ignored field because there exists an inconsistency
+	// between CREATE TABLE (... INDEX) and CREATE INDEX.
+	// See https://github.com/cockroachdb/cockroach/issues/65929.
+	storedCopy.CreatedExplicitly = false
+	expectedCopy.CreatedExplicitly = false
+	storedCopy.StoreColumnNames = []string{}
+	expectedCopy.StoreColumnNames = []string{}
+	storedCopy.StoreColumnIDs = []descpb.ColumnID{0, 0, 0}
+	expectedCopy.StoreColumnIDs = []descpb.ColumnID{0, 0, 0}
+	storedCopy.CreatedAtNanos = 0
+	expectedCopy.CreatedAtNanos = 0
+
+	if err = ensureProtoMessagesAreEqual(&expectedCopy, &storedCopy); err != nil {
 		return false, err
 	}
 	return true, nil
 }
 
-// indexDescForComparison extracts an index descriptor from an index with
-// numerical fields zeroed so that the meaning can be compared directly even
-// if the numerical values differ.
-func indexDescForComparison(idx catalog.Index) *descpb.IndexDescriptor {
-	desc := idx.IndexDescDeepCopy()
-	desc.ID = 0
-	desc.Version = 0
-	desc.ConstraintID = 0
-	// CreatedExplicitly is an ignored field because there exists an inconsistency
-	// between CREATE TABLE (... INDEX) and CREATE INDEX.
-	// See https://github.com/cockroachdb/cockroach/issues/65929.
-	desc.CreatedExplicitly = false
-
-	// Clear out the column IDs, but retain their length. Column IDs may
-	// change. Note that we retain the name slices. Those should match.
-	for i := range desc.StoreColumnIDs {
-		desc.StoreColumnIDs[i] = 0
-	}
-	for i := range desc.KeyColumnIDs {
-		desc.KeyColumnIDs[i] = 0
-	}
-	for i := range desc.KeySuffixColumnIDs {
-		desc.KeySuffixColumnIDs[i] = 0
-	}
-	for i := range desc.CompositeColumnIDs {
-		desc.CompositeColumnIDs[i] = 0
-	}
-
-	desc.CreatedAtNanos = 0
-	return &desc
-}
-
-// doesNotHaveIndex returns true if storedTable does not have an index named indexName.
-func doesNotHaveIndex(
-	storedTable, expectedTable catalog.TableDescriptor, indexName string,
-) (bool, error) {
-	idx := catalog.FindIndexByName(storedTable, indexName)
-	return idx == nil, nil
-}
-
-// hasColumnFamily returns true if storedTable already has the given column
-// family, comparing with expectedTable. storedTable descriptor must be read
+// hasRowGroup returns true if storedTable already has the given row group,
+// comparing with expectedTable. storedTable descriptor must be read
 // from system storage as compared to reading from the systemschema package. On
 // the contrary, expectedTable must be accessed directly from systemschema
 // package. This function returns an error if the column doesn't exist in the
 // expectedTable descriptor.
-func hasColumnFamily(
-	storedTable, expectedTable catalog.TableDescriptor, colFamily string,
+func hasRowGroup(
+	storedTable, expectedTable catalog.TableDescriptor, rowGroupName string,
 ) (bool, error) {
-	var storedFamily, expectedFamily *descpb.ColumnFamilyDescriptor
-	for _, fam := range storedTable.GetFamilies() {
-		if fam.Name == colFamily {
-			storedFamily = &fam
+	var storedRowGroup, expectedRowGroup *descpb.RowGroupDescriptor
+	for _, rowGroup := range storedTable.GetRowGroups() {
+		if rowGroup.Name == rowGroupName {
+			storedRowGroup = &rowGroup
 			break
 		}
 	}
-	if storedFamily == nil {
+	if storedRowGroup == nil {
 		return false, nil
 	}
 
-	for _, fam := range expectedTable.GetFamilies() {
-		if fam.Name == colFamily {
-			expectedFamily = &fam
+	for _, rowGroup := range expectedTable.GetRowGroups() {
+		if rowGroup.Name == rowGroupName {
+			expectedRowGroup = &rowGroup
 			break
 		}
 	}
-	if expectedFamily == nil {
-		return false, errors.Errorf("column family %s does not exist", colFamily)
+	if expectedRowGroup == nil {
+		return false, errors.Errorf("row group %s does not exist", rowGroupName)
 	}
 
 	// Check that columns match.
-	storedFamilyCols := storedFamily.ColumnNames
-	expectedFamilyCols := expectedFamily.ColumnNames
-	if len(storedFamilyCols) != len(expectedFamilyCols) {
+	storedRowGroupCols := storedRowGroup.ColumnNames
+	expectedRowGroupCols := expectedRowGroup.ColumnNames
+	if len(storedRowGroupCols) != len(expectedRowGroupCols) {
 		return false, nil
 	}
-	for i, storedCol := range storedFamilyCols {
-		if storedCol != expectedFamilyCols[i] {
-			return false, nil
-		}
-	}
-	return true, nil
-}
-
-// onlyHasColumnFamily returns true if storedTable has only the given column
-// family, comparing with expectedTable. storedTable descriptor must be read
-// from system storage as compared to reading from the systemschema package. On
-// the contrary, expectedTable must be accessed directly from systemschema
-// package. This function returns an error if there is more than one column
-// family, or if the only column family does not match the provided family name.
-func onlyHasColumnFamily(
-	storedTable, expectedTable catalog.TableDescriptor, colFamily string,
-) (bool, error) {
-	var storedFamily, expectedFamily *descpb.ColumnFamilyDescriptor
-	storedFamilies := storedTable.GetFamilies()
-	if len(storedFamilies) > 1 {
-		return false, nil
-	}
-	if storedFamilies[0].Name == colFamily {
-		storedFamily = &storedFamilies[0]
-	}
-
-	if storedFamily == nil {
-		return false, nil
-	}
-
-	expectedFamilies := expectedTable.GetFamilies()
-	if expectedFamilies[0].Name == colFamily {
-		expectedFamily = &expectedFamilies[0]
-	}
-
-	if expectedFamily == nil {
-		return false, errors.Errorf("column family %s does not exist", colFamily)
-	}
-
-	// Check that columns match.
-	storedFamilyCols := storedFamily.ColumnNames
-	expectedFamilyCols := expectedFamily.ColumnNames
-	if len(storedFamilyCols) != len(expectedFamilyCols) {
-		return false, nil
-	}
-	for i, storedCol := range storedFamilyCols {
-		if storedCol != expectedFamilyCols[i] {
+	for i, storedCol := range storedRowGroupCols {
+		if storedCol != expectedRowGroupCols[i] {
 			return false, nil
 		}
 	}

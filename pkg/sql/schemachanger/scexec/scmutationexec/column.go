@@ -70,14 +70,12 @@ func (m *visitor) SetAddedColumnType(ctx context.Context, op scop.SetAddedColumn
 		col.UsesSequenceIds = ce.UsesSequenceIDs
 	}
 	if col.ComputeExpr == nil || !col.Virtual {
-		for i := range tbl.Families {
-			fam := &tbl.Families[i]
-			if fam.ID == op.ColumnType.FamilyID {
-				fam.ColumnIDs = append(fam.ColumnIDs, col.ID)
-				fam.ColumnNames = append(fam.ColumnNames, col.Name)
-				break
-			}
+		if len(tbl.RowGroups) == 0 {
+			return errors.AssertionFailedf("table %d has no primary row group", tbl.ID)
 		}
+		rowGroup := &tbl.RowGroups[0]
+		rowGroup.ColumnIDs = append(rowGroup.ColumnIDs, col.ID)
+		rowGroup.ColumnNames = append(rowGroup.ColumnNames, col.Name)
 	}
 	return nil
 }

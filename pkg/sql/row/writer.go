@@ -80,10 +80,9 @@ func ColMapping(fromCols, toCols []catalog.Column) []int {
 //     in preparation for this update.
 //   - values is the SQL-level row values that are being written.
 //   - marshaledValues contains the pre-encoded KV-level row values.
-//     marshaledValues is only used when writing single column families.
-//     Regardless of whether there are single column families,
-//     pre-encoding must occur prior to calling this function to check whether
-//     the encoding is _possible_ (i.e. values fit in the column types, etc).
+//     marshaledValues is only used for single-KV row writes. Pre-encoding must
+//     occur prior to calling this function to check whether the encoding is
+//     _possible_ (i.e. values fit in the column types, etc).
 //   - valColIDMapping/marshaledColIDMapping is the mapping from column
 //     IDs into positions of the slices values or marshaledValues.
 //   - kvKey and kvValues must be heap-allocated scratch buffers to write
@@ -109,16 +108,12 @@ func prepareInsertOrUpdateBatch(
 	putFn func(ctx context.Context, b putter, key *roachpb.Key, value *roachpb.Value, traceKV bool),
 	overwrite, traceKV bool,
 ) ([]byte, error) {
-	family := &helper.TableDesc.GetFamilies()[0]
+	rowGroup := &helper.TableDesc.GetRowGroups()[0]
 	*kvKey = keys.MakeFamilyKey(primaryIndexKey, 0)
 	rawValueBuf = rawValueBuf[:0]
 
 	var lastColID descpb.ColumnID
-	familySortedColumnIDs, ok := helper.sortedColumnFamily(family.ID)
-	if !ok {
-		return nil, errors.AssertionFailedf("invalid family sorted column id map")
-	}
-	for _, colID := range familySortedColumnIDs {
+	for _, colID := range helper.sortedPrimaryRowGroup() {
 		idx, ok := valColIDMapping.Get(colID)
 		if !ok || values[idx] == tree.DNull {
 			continue
@@ -142,7 +137,7 @@ func prepareInsertOrUpdateBatch(
 	}
 
 	kvValue.SetTuple(rawValueBuf)
-	if err := helper.checkRowSize(ctx, kvKey, kvValue, family.ID); err != nil {
+	if err := helper.checkRowSize(ctx, kvKey, kvValue, rowGroup.ID); err != nil {
 		return nil, err
 	}
 	putFn(ctx, batch, kvKey, kvValue, traceKV)

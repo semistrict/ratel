@@ -50,9 +50,7 @@ func TestShowCreateTable(t *testing.T) {
 	s STRING NULL,
 	v FLOAT NOT NULL,
 	t TIMESTAMP DEFAULT now():::TIMESTAMP,
-	CHECK (i > 0),
-	FAMILY "primary" (i, v, t, rowid),
-	FAMILY fam_1_s (s)
+	CHECK (i > 0)
 )`,
 			Expect: `CREATE TABLE public.%[1]s (
 	i INT8 NULL,
@@ -61,8 +59,6 @@ func TestShowCreateTable(t *testing.T) {
 	t TIMESTAMP NULL DEFAULT now():::TIMESTAMP,
 	rowid INT8 NOT VISIBLE NOT NULL DEFAULT unique_rowid(),
 	CONSTRAINT %[1]s_pkey PRIMARY KEY (rowid ASC),
-	FAMILY "primary" (i, v, t, rowid),
-	FAMILY fam_1_s (s),
 	CONSTRAINT check_i CHECK (i > 0:::INT8)
 )`,
 		},
@@ -71,9 +67,7 @@ func TestShowCreateTable(t *testing.T) {
 	i INT8 CHECK (i > 0),
 	s STRING NULL,
 	v FLOAT NOT NULL,
-	t TIMESTAMP DEFAULT now():::TIMESTAMP,
-	FAMILY "primary" (i, v, t, rowid),
-	FAMILY fam_1_s (s)
+	t TIMESTAMP DEFAULT now():::TIMESTAMP
 )`,
 			Expect: `CREATE TABLE public.%[1]s (
 	i INT8 NULL,
@@ -82,8 +76,6 @@ func TestShowCreateTable(t *testing.T) {
 	t TIMESTAMP NULL DEFAULT now():::TIMESTAMP,
 	rowid INT8 NOT VISIBLE NOT NULL DEFAULT unique_rowid(),
 	CONSTRAINT %[1]s_pkey PRIMARY KEY (rowid ASC),
-	FAMILY "primary" (i, v, t, rowid),
-	FAMILY fam_1_s (s),
 	CONSTRAINT check_i CHECK (i > 0:::INT8)
 )`,
 		},
@@ -91,17 +83,13 @@ func TestShowCreateTable(t *testing.T) {
 			CreateStatement: `CREATE TABLE %s (
 	i INT8 NULL,
 	s STRING NULL,
-	CONSTRAINT ck CHECK (i > 0),
-	FAMILY "primary" (i, rowid),
-	FAMILY fam_1_s (s)
+	CONSTRAINT ck CHECK (i > 0)
 )`,
 			Expect: `CREATE TABLE public.%[1]s (
 	i INT8 NULL,
 	s STRING NULL,
 	rowid INT8 NOT VISIBLE NOT NULL DEFAULT unique_rowid(),
 	CONSTRAINT %[1]s_pkey PRIMARY KEY (rowid ASC),
-	FAMILY "primary" (i, rowid),
-	FAMILY fam_1_s (s),
 	CONSTRAINT ck CHECK (i > 0:::INT8)
 )`,
 		},
@@ -116,9 +104,7 @@ func TestShowCreateTable(t *testing.T) {
 		},
 		{
 			CreateStatement: `
-				CREATE TABLE %s (i INT8, f FLOAT, s STRING, d DATE,
-				  FAMILY "primary" (i, f, d, rowid),
-				  FAMILY fam_1_s (s));
+				CREATE TABLE %s (i INT8, f FLOAT, s STRING, d DATE);
 				CREATE INDEX idx_if on %[1]s (f, i) STORING (s, d);
 				CREATE UNIQUE INDEX on %[1]s (d);
 			`,
@@ -130,9 +116,7 @@ func TestShowCreateTable(t *testing.T) {
 	rowid INT8 NOT VISIBLE NOT NULL DEFAULT unique_rowid(),
 	CONSTRAINT %[1]s_pkey PRIMARY KEY (rowid ASC),
 	INDEX idx_if (f ASC, i ASC) STORING (s, d),
-	UNIQUE INDEX %[1]s_d_key (d ASC),
-	FAMILY "primary" (i, f, d, rowid),
-	FAMILY fam_1_s (s)
+	UNIQUE INDEX %[1]s_d_key (d ASC)
 )`,
 		},
 		{

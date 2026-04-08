@@ -335,14 +335,14 @@ func TestPerfLogging(t *testing.T) {
 		{
 			query:       `INSERT INTO u VALUES (1, 1, repeat('x', 1024))`,
 			errRe:       ``,
-			logRe:       `"EventType":"large_row","RowSize":\d+,"TableID":\d+,"FamilyID":1,"PrimaryKey":"‹/Table/\d+/1/1/1/1›"`,
+			logRe:       `"EventType":"large_row","RowSize":\d+,"TableID":\d+,"RowGroupID":0,"PrimaryKey":"‹/Table/\d+/1/1/1/0›"`,
 			logExpected: true,
 			channel:     channel.SQL_PERF,
 		},
 		{
 			query:       `INSERT INTO u VALUES (2, 2, repeat('x', 2048))`,
-			errRe:       `pq: row larger than max row size: table \d+ family 1 primary key /Table/\d+/1/2/1/1 size \d+`,
-			logRe:       `"EventType":"large_row","RowSize":\d+,"TableID":\d+,"FamilyID":1,"PrimaryKey":"‹/Table/\d+/1/2/1/1›"`,
+			errRe:       `pq: row larger than max row size: table \d+ family 0 primary key /Table/\d+/1/2/1/0 size \d+`,
+			logRe:       `"EventType":"large_row","RowSize":\d+,"TableID":\d+,"RowGroupID":0,"PrimaryKey":"‹/Table/\d+/1/2/1/0›"`,
 			logExpected: true,
 			channel:     channel.SQL_PERF,
 		},
@@ -356,7 +356,7 @@ func TestPerfLogging(t *testing.T) {
 		{
 			query:       `UPDATE u SET i = i + 1 WHERE i = 1`,
 			errRe:       ``,
-			logRe:       `"EventType":"large_row","RowSize":\d+,"TableID":\d+,"FamilyID":1,"PrimaryKey":"‹/Table/\d+/1/2/1/1›"`,
+			logRe:       `"EventType":"large_row","RowSize":\d+,"TableID":\d+,"RowGroupID":0,"PrimaryKey":"‹/Table/\d+/1/2/1/0›"`,
 			logExpected: true,
 			channel:     channel.SQL_PERF,
 		},
@@ -369,15 +369,15 @@ func TestPerfLogging(t *testing.T) {
 		},
 		{
 			query:       `UPDATE u SET s = repeat('x', 2048) WHERE i = 2`,
-			errRe:       `pq: row larger than max row size: table \d+ family 1 primary key /Table/\d+/1/2/1/1 size \d+`,
-			logRe:       `"EventType":"large_row","RowSize":\d+,"TableID":\d+,"FamilyID":1,"PrimaryKey":"‹/Table/\d+/1/2/1/1›"`,
+			errRe:       `pq: row larger than max row size: table \d+ family 0 primary key /Table/\d+/1/2/1/0 size \d+`,
+			logRe:       `"EventType":"large_row","RowSize":\d+,"TableID":\d+,"RowGroupID":0,"PrimaryKey":"‹/Table/\d+/1/2/1/0›"`,
 			logExpected: true,
 			channel:     channel.SQL_PERF,
 		},
 		{
-			query:       `CREATE TABLE u2 (i, j, s, PRIMARY KEY (i), FAMILY f1 (i, j), FAMILY f2 (s)) AS SELECT i, j, repeat(s, 2048) FROM u`,
+			query:       `CREATE TABLE u2 (i, j, s, PRIMARY KEY (i)) AS SELECT i, j, repeat(s, 2048) FROM u`,
 			errRe:       ``,
-			logRe:       `"EventType":"large_row_internal","RowSize":\d+,"TableID":\d+,"FamilyID":1,"PrimaryKey":"‹/Table/\d+/1/2/1/1›"`,
+			logRe:       `"EventType":"large_row_internal","RowSize":\d+,"TableID":\d+,"RowGroupID":0,"PrimaryKey":"‹/Table/\d+/1/2/1/0›"`,
 			logExpected: true,
 			channel:     channel.SQL_INTERNAL_PERF,
 		},
@@ -390,8 +390,8 @@ func TestPerfLogging(t *testing.T) {
 		},
 		{
 			query:       `UPDATE u2 SET i = i + 1 WHERE i = 2`,
-			errRe:       `row larger than max row size: table \d+ family 1 primary key /Table/\d+/1/3/1/1 size \d+`,
-			logRe:       `"EventType":"large_row","RowSize":\d+,"TableID":\d+,"FamilyID":1,"PrimaryKey":"‹/Table/\d+/1/3/1/1›"`,
+			errRe:       `row larger than max row size: table \d+ family 0 primary key /Table/\d+/1/3/1/0 size \d+`,
+			logRe:       `"EventType":"large_row","RowSize":\d+,"TableID":\d+,"RowGroupID":0,"PrimaryKey":"‹/Table/\d+/1/3/1/0›"`,
 			logExpected: true,
 			channel:     channel.SQL_PERF,
 		},
@@ -713,7 +713,7 @@ func TestPerfLogging(t *testing.T) {
 
 	// Test schema.
 	db.Exec(t, `CREATE TABLE t (i INT PRIMARY KEY, b BOOL, s STRING)`)
-	db.Exec(t, `CREATE TABLE u (i INT PRIMARY KEY, j INT, s STRING, FAMILY f1 (i, j), FAMILY f2 (s))`)
+	db.Exec(t, `CREATE TABLE u (i INT PRIMARY KEY, j INT, s STRING)`)
 	defer db.Exec(t, `DROP TABLE t, u`)
 
 	for _, tc := range testCases {

@@ -67,8 +67,7 @@ func (s *Builder) InitWithFetchSpec(
 // SpanFromEncDatums encodes a span with len(values) constraint columns from the
 // index prefixed with the index key prefix that includes the table and index
 // ID. SpanFromEncDatums assumes that the EncDatums in values are in the order
-// of the index columns. It also returns whether the input values contain a null
-// value or not, which can be used as input for CanSplitSpanIntoFamilySpans.
+// of the index columns.
 func (s *Builder) SpanFromEncDatums(
 	values rowenc.EncDatumRow,
 ) (_ roachpb.Span, containsNull bool, _ error) {
@@ -192,20 +191,17 @@ func (s *Builder) SpanFromEncDatumsWithRange(
 }
 
 // SpanFromDatumRow generates an index span with prefixLen constraint columns from the index.
-// SpanFromDatumRow assumes that values is a valid table row for the Builder's table.
-// It also returns whether the input values contain a null value or not, which
-// can be used as input for CanSplitSpanIntoFamilySpans.
+// SpanFromDatumRow assumes that values is a valid table row for the Builder's
+// table.
 func (s *Builder) SpanFromDatumRow(
 	values tree.Datums, prefixLen int, colMap catalog.TableColMap,
 ) (_ roachpb.Span, containsNull bool, _ error) {
 	return rowenc.EncodePartialIndexSpan(s.keyAndPrefixCols[:prefixLen], colMap, values, s.KeyPrefix)
 }
 
-// SpanToPointSpan converts a span into a span that represents a point lookup on a
-// specific family. It is up to the caller to ensure that this is a safe operation,
-// by calling CanSplitSpanIntoFamilySpans before using it.
-func (s *Builder) SpanToPointSpan(span roachpb.Span, family descpb.FamilyID) roachpb.Span {
-	_ = family
+// SpanToPointSpan converts a row span into the corresponding row-group-0 point span.
+func (s *Builder) SpanToPointSpan(span roachpb.Span, rowGroup descpb.RowGroupID) roachpb.Span {
+	_ = rowGroup
 	key := keys.MakeFamilyKey(span.Key, 0)
 	return roachpb.Span{Key: key, EndKey: roachpb.Key(key).PrefixEnd()}
 }
@@ -268,8 +264,8 @@ func (s *Builder) UnconstrainedSpans() (roachpb.Spans, error) {
 
 // appendSpansFromConstraintSpan converts a constraint.Span to one or more
 // roachpb.Spans and appends them to the provided spans. It appends multiple
-// spans in the case that multiple, non-adjacent column families should be
-// scanned.
+// spans in the case that the splitter wants a more selective set of row KV
+// spans.
 func (s *Builder) appendSpansFromConstraintSpan(
 	appendTo roachpb.Spans, cs *constraint.Span, splitter Splitter,
 ) (roachpb.Spans, error) {
@@ -298,11 +294,9 @@ func (s *Builder) appendSpansFromConstraintSpan(
 		span.EndKey = append(span.EndKey, s.KeyPrefix...)
 	}
 
-	// Optimization: for single row lookups on a table with one or more column
-	// families, only scan the relevant column families, and use GetRequests
-	// instead of ScanRequests when doing the column family fetches.
-	if splitter.CanSplitSpanIntoFamilySpans(cs.StartKey().Length(), containsNull) && span.Key.Equal(span.EndKey) {
-		return rowenc.SplitRowKeyIntoFamilySpans(appendTo, span.Key, splitter.neededFamilies), nil
+	// Optimization: for single-row lookups, use the precise row KV span.
+	if splitter.IsNoop() && !containsNull && span.Key.Equal(span.EndKey) {
+		return rowenc.SplitRowKeyIntoRowSpans(appendTo, span.Key), nil
 	}
 
 	// We need to advance the end key if it is inclusive.

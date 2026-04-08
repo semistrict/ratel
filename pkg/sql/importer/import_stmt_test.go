@@ -208,9 +208,7 @@ ORDER BY table_name
 				b int8,
 				c int8,
 				index (s),
-				index (i, s),
-				family (i, b),
-				family (s, c)
+				index (i, s)
 			`,
 			with: `WITH sstsize = '1B'`,
 			typ:  "CSV",

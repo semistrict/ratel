@@ -208,31 +208,29 @@ message ColumnDescriptor {
   // Next id: 22
 }
 
-// ColumnFamilyDescriptor is set of columns stored together in one kv entry.
+// RowGroupDescriptor is the physical row-group metadata for a table row KV.
 // For more information, look at `docs/tech-notes/encoding.md#value-encoding`.
-message ColumnFamilyDescriptor {
+message RowGroupDescriptor {
   option (gogoproto.equal) = true;
   optional string name = 1 [(gogoproto.nullable) = false];
-  // Column family 0 is *always* included in k/v pairs for a row. This makes
-  // sure that rows will all NULL values still have a k/v pair. When performing
-  // optimizations involving column families, ensure that column family 0
-  // is scanned if the row may have nulls.
+  // Row-group 0 is *always* included in K/V pairs for a row. This makes sure
+  // that rows with all NULL values still have a K/V pair.
   optional uint32 id = 2 [(gogoproto.nullable) = false,
-      (gogoproto.customname) = "ID", (gogoproto.casttype) = "FamilyID"];
+      (gogoproto.customname) = "ID", (gogoproto.casttype) = "RowGroupID"];
 
-  // A list of column names of which the family is comprised. This list
+  // A list of column names contained in the row-group. This list
   // parallels the column_ids list. If duplicating the storage of the column
   // names here proves to be prohibitive, we could clear this field before
   // saving and reconstruct it after loading.
   repeated string column_names = 3;
-  // A list of column ids of which the family is comprised. This list parallels
+  // A list of column ids contained in the row-group. This list parallels
   // the column_names list.
   repeated uint32 column_ids = 4 [(gogoproto.customname) = "ColumnIDs",
       (gogoproto.casttype) = "ColumnID"];
 
   // If nonzero, the column involved in the single column optimization.
   //
-  // Families store columns in a ValueType_TUPLE as repeated <columnID><data>
+  // Row groups store columns in a ValueType_TUPLE as repeated <columnID><data>
   // entries. As a space optimization and for backward compatibility, a single
   // column is written without the column id prefix. Because more columns could
   // be added, it would be ambiguous which column was stored when read back in,
@@ -289,8 +287,7 @@ message InterleaveDescriptor {
 //     v INT NULL,        // column ID: 4
 //     w INT NULL,        // column ID: 5
 //     CONSTRAINT "primary" PRIMARY KEY (k1, k2),
-//     INDEX k1v (k1, v) STORING (w),
-//     FAMILY "primary" (k1, k2, u, v, w)
+//     INDEX k1v (k1, v) STORING (w)
 //   )
 //
 // Primary index:
@@ -881,13 +878,19 @@ message TableDescriptor {
   // next_column_id is used to ensure that deleted column ids are not reused.
   optional uint32 next_column_id = 9 [(gogoproto.nullable) = false,
       (gogoproto.customname) = "NextColumnID", (gogoproto.casttype) = "ColumnID"];
-  // families holds information about the column families of this table.
-  // This list has at least length 1, in which case all columns are stored in the same family.
-  // families is stored in sorted order by family ID.
-  repeated ColumnFamilyDescriptor families = 22 [(gogoproto.nullable) = false];
-  // next_family_id is used to ensure that deleted family ids are not reused.
-  optional uint32 next_family_id = 23 [(gogoproto.nullable) = false,
-      (gogoproto.customname) = "NextFamilyID", (gogoproto.casttype) = "FamilyID"];
+  // row_groups holds the physical row-group metadata for this table.
+  // This list has exactly one entry in the current layout.
+  // row_groups is stored in sorted order by ID.
+  repeated RowGroupDescriptor row_groups = 22 [
+    (gogoproto.nullable) = false,
+    (gogoproto.customname) = "RowGroups"
+  ];
+  // next_row_group_id is used to ensure that deleted row-group ids are not reused.
+  optional uint32 next_row_group_id = 23 [
+    (gogoproto.nullable) = false,
+    (gogoproto.customname) = "NextRowGroupID",
+    (gogoproto.casttype) = "RowGroupID"
+  ];
   optional IndexDescriptor primary_index = 10 [(gogoproto.nullable) = false];
   // indexes are all the secondary indexes.
   repeated IndexDescriptor indexes = 11 [(gogoproto.nullable) = false];

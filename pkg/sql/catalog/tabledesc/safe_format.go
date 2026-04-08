@@ -227,20 +227,20 @@ func formatSafeTableUniqueWithoutIndexConstraints(
 
 func formatSafeTableColumnFamilies(w *redact.StringBuilder, desc catalog.TableDescriptor) {
 	td := desc.TableDesc()
-	w.Printf(", NextFamilyID: %d", td.NextFamilyID)
-	for i := range td.Families {
+	w.Printf(", NextRowGroupID: %d", td.NextRowGroupID)
+	for i := range td.RowGroups {
 		w.Printf(", ")
 		if i == 0 {
-			w.Printf("Families: [")
+			w.Printf("RowGroups: [")
 		}
-		formatSafeTableColumnFamily(w, &td.Families[i])
+		formatSafeTableRowGroup(w, &td.RowGroups[i])
 	}
-	if len(td.Families) > 0 {
+	if len(td.RowGroups) > 0 {
 		w.Printf("]")
 	}
 }
 
-func formatSafeTableColumnFamily(w *redact.StringBuilder, f *descpb.ColumnFamilyDescriptor) {
+func formatSafeTableRowGroup(w *redact.StringBuilder, f *descpb.RowGroupDescriptor) {
 	w.Printf("{")
 	w.Printf("ID: %d", f.ID)
 	w.Printf(", Columns: ")

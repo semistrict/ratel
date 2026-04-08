@@ -290,8 +290,7 @@ func (kv *kvSQL) prep(rows int) error {
 	schema := `
 CREATE TABLE IF NOT EXISTS bench.kv (
   k STRING PRIMARY KEY,
-  v INT,
-  FAMILY (k, v)
+  v INT
 )
 `
 	if _, err := kv.db.Exec(schema); err != nil {

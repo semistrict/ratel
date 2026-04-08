@@ -320,7 +320,6 @@ func (w *walkCtx) walkColumn(tbl catalog.TableDescriptor, col catalog.Column) {
 			ColumnID:   col.GetID(),
 			IsNullable: col.IsNullable(),
 			IsVirtual:  col.IsVirtual(),
-			FamilyID:   0,
 		}
 		typeT, err := newTypeT(col.GetType())
 		onErrPanic(err)

@@ -24,8 +24,8 @@ var _ errors.SafeFormatter = &CommonLargeRowDetails{}
 // Error is part of the error interface, which CommonLargeRowDetails implements.
 func (r *CommonLargeRowDetails) Error() string {
 	return fmt.Sprintf(
-		"row larger than max row size: table %v family %v primary key %v size %v",
-		r.TableID, r.FamilyID, r.PrimaryKey, r.RowSize,
+		"row larger than max row size: table %v row group %v primary key %v size %v",
+		r.TableID, r.RowGroupID, r.PrimaryKey, r.RowSize,
 	)
 }
 
@@ -37,8 +37,8 @@ func (r *CommonLargeRowDetails) Format(s fmt.State, verb rune) { errors.FormatEr
 // CommonLargeRowDetails implements.
 func (r *CommonLargeRowDetails) SafeFormatError(p errors.Printer) (next error) {
 	p.Printf(
-		"row larger than max row size: table %v family %v size %v",
-		r.TableID, r.FamilyID, r.RowSize,
+		"row larger than max row size: table %v row group %v size %v",
+		r.TableID, r.RowGroupID, r.RowSize,
 	)
 	return nil
 }

@@ -36,7 +36,7 @@ func TestRecreateTables(t *testing.T) {
 	sqlRunner.Exec(t, `CREATE DATABASE test;`)
 	sqlRunner.Exec(t, `USE test;`)
 	sqlRunner.Exec(t, `CREATE TABLE foo(x INT primary key);`)
-	sqlRunner.Exec(t, `CREATE TABLE bar(x INT, y INT, z STRING, FAMILY f1(x, y, z))`)
+	sqlRunner.Exec(t, `CREATE TABLE bar(x INT, y INT, z STRING)`)
 
 	row := sqlRunner.QueryRow(t, "SELECT crdb_internal.show_create_all_tables('test')")
 	var recreateTablesStmt string

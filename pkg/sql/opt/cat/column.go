@@ -184,7 +184,7 @@ const (
 	// System columns are implicit columns that every physical table
 	// contains. These columns can only be read from and must not be included
 	// as part of mutations. They also cannot be part of the lax or key columns
-	// for indexes. System columns are not members of any column family.
+	// for indexes. System columns are not members of the table's physical row group.
 	System
 	// Inverted columns are implicit columns that represent the keys of inverted
 	// indexes.

@@ -10,67 +10,24 @@ func _() {
 	var x [1]struct{}
 	_ = x[DescID-1]
 	_ = x[IndexID-2]
-	_ = x[ColumnFamilyID-3]
-	_ = x[ColumnID-4]
-	_ = x[ConstraintID-5]
-	_ = x[Name-6]
-	_ = x[ReferencedDescID-7]
-	_ = x[Comment-8]
-	_ = x[TemporaryIndexID-9]
-	_ = x[SourceIndexID-10]
-	_ = x[RecreateSourceIndexID-11]
-	_ = x[TargetStatus-12]
-	_ = x[CurrentStatus-13]
-	_ = x[Element-14]
-	_ = x[Target-15]
-	_ = x[ReferencedTypeIDs-16]
-	_ = x[ReferencedSequenceIDs-17]
-	_ = x[ReferencedFunctionIDs-18]
-	_ = x[ReferencedColumnIDs-19]
-	_ = x[AttrMax-19]
+	_ = x[ColumnID-3]
+	_ = x[ConstraintID-4]
+	_ = x[Name-5]
+	_ = x[ReferencedDescID-6]
+	_ = x[TargetStatus-7]
+	_ = x[CurrentStatus-8]
+	_ = x[Element-9]
+	_ = x[Target-10]
 }
 
+const _Attr_name = "DescIDIndexIDColumnIDConstraintIDNameReferencedDescIDTargetStatusCurrentStatusElementTarget"
+
+var _Attr_index = [...]uint8{0, 6, 13, 21, 33, 37, 53, 65, 78, 85, 91}
+
 func (i Attr) String() string {
-	switch i {
-	case DescID:
-		return "DescID"
-	case IndexID:
-		return "IndexID"
-	case ColumnFamilyID:
-		return "ColumnFamilyID"
-	case ColumnID:
-		return "ColumnID"
-	case ConstraintID:
-		return "ConstraintID"
-	case Name:
-		return "Name"
-	case ReferencedDescID:
-		return "ReferencedDescID"
-	case Comment:
-		return "Comment"
-	case TemporaryIndexID:
-		return "TemporaryIndexID"
-	case SourceIndexID:
-		return "SourceIndexID"
-	case RecreateSourceIndexID:
-		return "RecreateSourceIndexID"
-	case TargetStatus:
-		return "TargetStatus"
-	case CurrentStatus:
-		return "CurrentStatus"
-	case Element:
-		return "Element"
-	case Target:
-		return "Target"
-	case ReferencedTypeIDs:
-		return "ReferencedTypeIDs"
-	case ReferencedSequenceIDs:
-		return "ReferencedSequenceIDs"
-	case ReferencedFunctionIDs:
-		return "ReferencedFunctionIDs"
-	case ReferencedColumnIDs:
-		return "ReferencedColumnIDs"
-	default:
-		return "Attr(" + strconv.FormatInt(int64(i), 10) + ")"
+	i -= 1
+	if i < 0 || i >= Attr(len(_Attr_index)-1) {
+		return "Attr(" + strconv.FormatInt(int64(i+1), 10) + ")"
 	}
+	return _Attr_name[_Attr_index[i]:_Attr_index[i+1]]
 }

@@ -1695,13 +1695,13 @@ func (m *CommonLargeRowDetails) AppendJSONFields(printComma bool, b redact.Redac
 		b = strconv.AppendUint(b, uint64(m.TableID), 10)
 	}
 
-	if m.FamilyID != 0 {
+	if m.RowGroupID != 0 {
 		if printComma {
 			b = append(b, ',')
 		}
 		printComma = true
-		b = append(b, "\"FamilyID\":"...)
-		b = strconv.AppendUint(b, uint64(m.FamilyID), 10)
+		b = append(b, "\"RowGroupID\":"...)
+		b = strconv.AppendUint(b, uint64(m.RowGroupID), 10)
 	}
 
 	if m.PrimaryKey != "" {

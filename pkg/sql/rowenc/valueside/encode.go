@@ -22,8 +22,7 @@ import (
 // Encode encodes `val` using value encoding and appends it to `appendTo`,
 // returning the new buffer.
 //
-// This is suitable for generating the value part of individual columns
-// in a column family.
+// This is suitable for generating the tuple-encoded row value payload.
 //
 // The encoded value is guaranteed to round trip and decode exactly to its
 // input, but is not lexicographically sortable.

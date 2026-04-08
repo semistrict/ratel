@@ -1,25 +1,43 @@
 // Copyright 2020 The Cockroach Authors.
 //
-// Use of this software is governed by the Business Source License
-// included in the file licenses/BSL.txt.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// As of the Change Date specified in that file, in accordance with
-// the Business Source License, use of this software will be governed
-// by the Apache License, Version 2.0, included in the file
-// licenses/APL.txt.
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// permissions and limitations under the License.
 
 package descpb
 
 import (
 	"github.com/cockroachdb/cockroach/pkg/keys"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catconstants"
 	"github.com/cockroachdb/cockroach/pkg/sql/protoreflect"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/catconstants"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/catid"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/util/intsets"
+	"github.com/cockroachdb/cockroach/pkg/util"
+	"github.com/cockroachdb/cockroach/pkg/util/encoding"
+	"github.com/cockroachdb/errors"
 )
 
-// ID, ColumnID, FamilyID, and IndexID are all uint32, but are each given a
+// ToEncodingDirection converts a direction from the proto to an encoding.Direction.
+func (dir IndexDescriptor_Direction) ToEncodingDirection() (encoding.Direction, error) {
+	switch dir {
+	case IndexDescriptor_ASC:
+		return encoding.Ascending, nil
+	case IndexDescriptor_DESC:
+		return encoding.Descending, nil
+	default:
+		return encoding.Ascending, errors.Errorf("invalid direction: %s", dir)
+	}
+}
+
+// ID, ColumnID, RowGroupID, and IndexID are all uint32, but are each given a
 // type alias to prevent accidental use of one of the types where
 // another is expected.
 
@@ -36,16 +54,6 @@ func (ids IDs) Len() int           { return len(ids) }
 func (ids IDs) Less(i, j int) bool { return ids[i] < ids[j] }
 func (ids IDs) Swap(i, j int)      { ids[i], ids[j] = ids[j], ids[i] }
 
-// Contains returns whether `ids` contains `targetID`.
-func (ids IDs) Contains(targetID ID) bool {
-	for _, id := range ids {
-		if id == targetID {
-			return true
-		}
-	}
-	return false
-}
-
 // FormatVersion is a custom type for TableDescriptor versions of the sql to
 // key:value mapping.
 //
@@ -57,7 +65,7 @@ const (
 	// BaseFormatVersion corresponds to the encoding described in
 	// https://www.cockroachlabs.com/blog/sql-in-cockroachdb-mapping-table-data-to-key-value-storage/.
 	BaseFormatVersion
-	// FamilyFormatVersion corresponds to the encoding described in
+	// FamilyFormatVersion corresponds to the row-group encoding described in
 	// https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20151214_sql_column_families.md
 	FamilyFormatVersion
 	// InterleavedFormatVersion corresponds to the encoding described in
@@ -65,8 +73,8 @@ const (
 	InterleavedFormatVersion
 )
 
-// FamilyID is a custom type for ColumnFamilyDescriptor IDs.
-type FamilyID = catid.FamilyID
+// RowGroupID is a custom type for physical row-group IDs.
+type RowGroupID = catid.RowGroupID
 
 // IndexID is a custom type for IndexDescriptor IDs.
 type IndexID = catid.IndexID
@@ -88,11 +96,11 @@ func (IndexDescriptorVersion) SafeValue() {}
 
 const (
 	// BaseIndexFormatVersion corresponds to the original encoding of secondary indexes that
-	// don't respect table level column family definitions. We allow the 0 value of the type to
+	// don't respect table-level row-group metadata. We allow the 0 value of the type to
 	// have a value so that existing index descriptors are denoted as having the base format.
 	BaseIndexFormatVersion IndexDescriptorVersion = iota
 	// SecondaryIndexFamilyFormatVersion corresponds to the encoding of secondary indexes that
-	// use table level column family definitions.
+	// use table-level row-group metadata.
 	SecondaryIndexFamilyFormatVersion
 	// EmptyArraysInInvertedIndexesVersion corresponds to the encoding of secondary indexes
 	// that is identical to SecondaryIndexFamilyFormatVersion, but also includes a key encoding
@@ -115,9 +123,6 @@ const (
 	// LatestIndexDescriptorVersion corresponds to the latest encoding version.
 	LatestIndexDescriptorVersion = PrimaryIndexWithStoredColumnsVersion
 )
-
-// PGAttributeNum is a custom type for ColumnDescriptor's PGAttributeNum field.
-type PGAttributeNum = catid.PGAttributeNum
 
 // ColumnID is a custom type for ColumnDescriptor IDs.
 type ColumnID = catid.ColumnID
@@ -158,12 +163,12 @@ func (c ColumnIDs) Equals(input ColumnIDs) bool {
 // PermutationOf returns true if this list and the input list contain the same
 // set of column IDs in any order. Duplicate ColumnIDs have no effect.
 func (c ColumnIDs) PermutationOf(input ColumnIDs) bool {
-	ourColsSet := intsets.MakeFast()
+	ourColsSet := util.MakeFastIntSet()
 	for _, col := range c {
 		ourColsSet.Add(int(col))
 	}
 
-	inputColsSet := intsets.MakeFast()
+	inputColsSet := util.MakeFastIntSet()
 	for _, inputCol := range input {
 		inputColsSet.Add(int(inputCol))
 	}
@@ -180,6 +185,23 @@ func (c ColumnIDs) Contains(i ColumnID) bool {
 	}
 	return false
 }
+
+// IndexDescriptorEncodingType is a custom type to represent different encoding types
+// for secondary indexes.
+type IndexDescriptorEncodingType uint32
+
+const (
+	// SecondaryIndexEncoding corresponds to the standard way of encoding secondary indexes
+	// as described in docs/tech-notes/encoding.md. We allow the 0 value of this type
+	// to have a value so that existing descriptors are encoding using this encoding.
+	SecondaryIndexEncoding IndexDescriptorEncodingType = iota
+	// PrimaryIndexEncoding corresponds to when a secondary index is encoded using the
+	// primary index encoding as described in docs/tech-notes/encoding.md.
+	PrimaryIndexEncoding
+)
+
+// Remove unused warning.
+var _ = SecondaryIndexEncoding
 
 // MutationID is a custom type for TableDescriptor mutations.
 type MutationID uint32
@@ -258,17 +280,6 @@ func (desc *TableDescriptor) Persistence() tree.Persistence {
 	return tree.PersistencePermanent
 }
 
-// ForEachPublicIndex is exported to provide low-overhead access to the set of
-// public indexes in a table descriptor for use in backup planning.
-//
-// Most users should prefer the methods provided by the catalog package.
-func (desc *TableDescriptor) ForEachPublicIndex(f func(*IndexDescriptor)) {
-	f(&desc.PrimaryIndex)
-	for i := range desc.Indexes {
-		f(&desc.Indexes[i])
-	}
-}
-
 // IsVirtualTable returns true if the TableDescriptor describes a
 // virtual Table (like the information_schema tables) and thus doesn't
 // need to be physically stored.
@@ -278,7 +289,7 @@ func IsVirtualTable(id ID) bool {
 
 // IsSystemConfigID returns whether this ID is for a system config object.
 func IsSystemConfigID(id ID) bool {
-	return id == keys.DescriptorTableID || id == keys.ZonesTableID
+	return id > 0 && id <= keys.MaxSystemConfigDescID
 }
 
 // AnonymousTable is the empty table name, used when a data source
@@ -317,6 +328,37 @@ func (DescriptorMutation_State) SafeValue() {}
 
 // SafeValue implements the redact.SafeValue interface.
 func (DescriptorState) SafeValue() {}
+
+// SafeValue implements the redact.SafeValue interface.
+func (ConstraintType) SafeValue() {}
+
+// UniqueConstraint is an interface for a unique constraint. It allows
+// both UNIQUE indexes and UNIQUE WITHOUT INDEX constraints to serve as
+// the referenced side of a foreign key constraint.
+type UniqueConstraint interface {
+	// IsValidReferencedUniqueConstraint returns whether the unique constraint can
+	// serve as a referenced unique constraint for a foreign key constraint with the
+	// provided set of referencedColumnIDs.
+	IsValidReferencedUniqueConstraint(referencedColIDs ColumnIDs) bool
+
+	// GetName returns the constraint name.
+	GetName() string
+}
+
+var _ UniqueConstraint = &UniqueWithoutIndexConstraint{}
+var _ UniqueConstraint = &IndexDescriptor{}
+
+// IsValidReferencedUniqueConstraint is part of the UniqueConstraint interface.
+func (u *UniqueWithoutIndexConstraint) IsValidReferencedUniqueConstraint(
+	referencedColIDs ColumnIDs,
+) bool {
+	return !u.IsPartial() && ColumnIDs(u.ColumnIDs).PermutationOf(referencedColIDs)
+}
+
+// GetName is part of the UniqueConstraint interface.
+func (u *UniqueWithoutIndexConstraint) GetName() string {
+	return u.Name
+}
 
 // IsPartial returns true if the constraint is a partial unique constraint.
 func (u *UniqueWithoutIndexConstraint) IsPartial() bool {

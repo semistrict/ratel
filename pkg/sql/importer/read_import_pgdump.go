@@ -493,8 +493,8 @@ func readPostgresCreateTable(
 	// instead of creating a full table descriptor first and adding indexes
 	// later because MakeSimpleTableDescriptor calls the sql package which calls
 	// AllocateIDs which adds the hidden rowid and default primary key. This means
-	// we'd have to delete the index and row and modify the column family. This
-	// is much easier and probably safer too.
+	// we'd have to delete and rebuild descriptor state after allocation. This is
+	// much easier and probably safer too.
 	schemaObjects := schemaParsingObjects{
 		createSchema: make(map[string]*tree.CreateSchema),
 		createTbl:    make(map[schemaAndTableName]*tree.CreateTable),

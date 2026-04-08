@@ -682,36 +682,49 @@ func systemTable(
 	name catconstants.SystemTableName,
 	id descpb.ID,
 	columns []descpb.ColumnDescriptor,
-	families []descpb.ColumnFamilyDescriptor,
+	rowGroups []descpb.RowGroupDescriptor,
 	indexes ...descpb.IndexDescriptor,
 ) descpb.TableDescriptor {
-	var defaultColumnID descpb.ColumnID
-	for _, family := range families {
-		if family.DefaultColumnID == 0 {
+	var historicalDefaultColumnID descpb.ColumnID
+	for _, rowGroup := range rowGroups {
+		if rowGroup.DefaultColumnID == 0 {
 			continue
 		}
-		if defaultColumnID == 0 {
-			defaultColumnID = family.DefaultColumnID
+		if historicalDefaultColumnID == 0 {
+			historicalDefaultColumnID = rowGroup.DefaultColumnID
 			continue
 		}
 		// Keep the single-family descriptor conservative when the historical
 		// layout had multiple family-local default columns.
-		defaultColumnID = 0
+		historicalDefaultColumnID = 0
 		break
 	}
-	primaryFamily := descpb.ColumnFamilyDescriptor{
+	primaryKeyColumns := make(map[descpb.ColumnID]struct{}, len(indexes[0].KeyColumnIDs))
+	for _, colID := range indexes[0].KeyColumnIDs {
+		primaryKeyColumns[colID] = struct{}{}
+	}
+	primaryFamily := descpb.RowGroupDescriptor{
 		ID:   0,
 		Name: tabledesc.FamilyPrimaryName,
 	}
+	var valueColumnCount int
 	for _, col := range columns {
 		if col.Virtual {
 			continue
 		}
 		primaryFamily.ColumnNames = append(primaryFamily.ColumnNames, col.Name)
 		primaryFamily.ColumnIDs = append(primaryFamily.ColumnIDs, col.ID)
+		if _, ok := primaryKeyColumns[col.ID]; ok {
+			continue
+		}
+		valueColumnCount++
 	}
-	primaryFamily.DefaultColumnID = defaultColumnID
-	families = []descpb.ColumnFamilyDescriptor{primaryFamily}
+	// A merged one-family descriptor can only retain a historical family default
+	// when there is still exactly one non-PK value column encoded in that family.
+	if historicalDefaultColumnID != 0 && valueColumnCount == 1 {
+		primaryFamily.DefaultColumnID = historicalDefaultColumnID
+	}
+	rowGroups = []descpb.RowGroupDescriptor{primaryFamily}
 
 	tbl := descpb.TableDescriptor{
 		Name:                    string(name),
@@ -720,7 +733,7 @@ func systemTable(
 		UnexposedParentSchemaID: keys.SystemPublicSchemaID,
 		Version:                 1,
 		Columns:                 columns,
-		Families:                families,
+		RowGroups:               rowGroups,
 		PrimaryIndex:            indexes[0],
 		Indexes:                 indexes[1:],
 		FormatVersion:           descpb.InterleavedFormatVersion,
@@ -734,9 +747,9 @@ func systemTable(
 			tbl.NextColumnID = col.ID + 1
 		}
 	}
-	for _, fam := range families {
-		if tbl.NextFamilyID <= fam.ID {
-			tbl.NextFamilyID = fam.ID + 1
+	for _, rowGroup := range rowGroups {
+		if tbl.NextRowGroupID <= rowGroup.ID {
+			tbl.NextRowGroupID = rowGroup.ID + 1
 		}
 	}
 	for i, idx := range indexes {
@@ -805,8 +818,7 @@ var (
 
 	// NamespaceTable is the descriptor for the namespace table. Note that this
 	// table should only be written to via KV puts, not via the SQL layer. Some
-	// code assumes that it only has KV entries for column family 4, not the
-	// "sentinel" column family 0 which would be written by SQL.
+	// low-level code still assumes the legacy namespace KV shape.
 	NamespaceTable = registerSystemTable(
 		NamespaceTableSchema,
 		systemTable(
@@ -818,9 +830,9 @@ var (
 				{Name: "name", ID: 3, Type: types.String},
 				{Name: "id", ID: 4, Type: types.Int, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{Name: "primary", ID: 0, ColumnNames: []string{"parentID", "parentSchemaID", "name"}, ColumnIDs: []descpb.ColumnID{1, 2, 3}},
-				{Name: "fam_4_id", ID: catconstants.NamespaceTableFamilyID, ColumnNames: []string{"id"}, ColumnIDs: []descpb.ColumnID{4}, DefaultColumnID: 4},
+				{Name: "fam_4_id", ID: catconstants.NamespaceTableRowGroupID, ColumnNames: []string{"id"}, ColumnIDs: []descpb.ColumnID{4}, DefaultColumnID: 4},
 			},
 			descpb.IndexDescriptor{
 				Name:                "primary",
@@ -842,7 +854,7 @@ var (
 				{Name: "id", ID: 1, Type: types.Int},
 				{Name: "descriptor", ID: keys.DescriptorTableDescriptorColID, Type: types.Bytes, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				// The id of the first col fam is hardcoded in keys.MakeDescMetadataKey().
 				{Name: "primary", ID: 0, ColumnNames: []string{"id"}, ColumnIDs: singleID1},
 				{
@@ -873,7 +885,7 @@ var (
 				{Name: "hashedPassword", ID: 2, Type: types.Bytes, Nullable: true},
 				{Name: "isRole", ID: 3, Type: types.Bool, DefaultExpr: &falseBoolString},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{Name: "primary", ID: 0, ColumnNames: []string{"username"}, ColumnIDs: singleID1},
 				{Name: "fam_2_hashedPassword", ID: 2, ColumnNames: []string{"hashedPassword"}, ColumnIDs: []descpb.ColumnID{2}, DefaultColumnID: 2},
 				{Name: "fam_3_isRole", ID: 3, ColumnNames: []string{"isRole"}, ColumnIDs: []descpb.ColumnID{3}, DefaultColumnID: 3},
@@ -891,7 +903,7 @@ var (
 				{Name: "id", ID: 1, Type: types.Int},
 				{Name: "config", ID: keys.ZonesTableConfigColumnID, Type: types.Bytes, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{Name: "primary", ID: 0, ColumnNames: []string{"id"}, ColumnIDs: singleID1},
 				{Name: "fam_2_config", ID: keys.ZonesTableConfigColFamID, ColumnNames: []string{"config"},
 					ColumnIDs: []descpb.ColumnID{keys.ZonesTableConfigColumnID}, DefaultColumnID: keys.ZonesTableConfigColumnID},
@@ -919,7 +931,7 @@ var (
 				{Name: "lastUpdated", ID: 3, Type: types.Timestamp, DefaultExpr: &nowString},
 				{Name: "valueType", ID: 4, Type: types.String, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:        "fam_0_name_value_lastUpdated_valueType",
 					ID:          0,
@@ -939,9 +951,9 @@ var (
 			[]descpb.ColumnDescriptor{
 				{Name: tabledesc.SequenceColumnName, ID: tabledesc.SequenceColumnID, Type: types.Int},
 			},
-			[]descpb.ColumnFamilyDescriptor{{
+			[]descpb.RowGroupDescriptor{{
 				Name:            "primary",
-				ID:              keys.SequenceColumnFamilyID,
+				ID:              keys.SequenceColumnRowGroupID,
 				ColumnNames:     []string{tabledesc.SequenceColumnName},
 				ColumnIDs:       []descpb.ColumnID{tabledesc.SequenceColumnID},
 				DefaultColumnID: tabledesc.SequenceColumnID,
@@ -963,7 +975,7 @@ var (
 				CacheSize: 1,
 			}
 			tbl.NextColumnID = 0
-			tbl.NextFamilyID = 0
+			tbl.NextRowGroupID = 0
 			tbl.NextIndexID = 0
 			tbl.NextMutationID = 0
 			// Sequences never exposed their internal constraints,
@@ -989,7 +1001,7 @@ var (
 				// tenant in a cluster back to the corresponding user ID in CC.
 				{Name: "info", ID: 3, Type: types.Bytes, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{{
+			[]descpb.RowGroupDescriptor{{
 				Name:        "primary",
 				ID:          0,
 				ColumnNames: []string{"id", "active", "info"},
@@ -1017,7 +1029,7 @@ var (
 				{Name: "nodeID", ID: 3, Type: types.Int},
 				{Name: "expiration", ID: 4, Type: types.Timestamp},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{Name: "primary", ID: 0, ColumnNames: []string{"descID", "version", "nodeID", "expiration"}, ColumnIDs: []descpb.ColumnID{1, 2, 3, 4}},
 			},
 			descpb.IndexDescriptor{
@@ -1049,7 +1061,7 @@ var (
 				{Name: "info", ID: 5, Type: types.String, Nullable: true},
 				{Name: "uniqueID", ID: 6, Type: types.Bytes, DefaultExpr: &uuidV4String},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{Name: "primary", ID: 0, ColumnNames: []string{"timestamp", "uniqueID"}, ColumnIDs: []descpb.ColumnID{1, 6}},
 				{Name: "fam_2_eventType", ID: 2, ColumnNames: []string{"eventType"}, ColumnIDs: []descpb.ColumnID{2}, DefaultColumnID: 2},
 				{Name: "fam_3_targetID", ID: 3, ColumnNames: []string{"targetID"}, ColumnIDs: []descpb.ColumnID{3}, DefaultColumnID: 3},
@@ -1083,7 +1095,7 @@ var (
 				{Name: "info", ID: 6, Type: types.String, Nullable: true},
 				{Name: "uniqueID", ID: 7, Type: types.Int, DefaultExpr: &uniqueRowIDString},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{Name: "primary", ID: 0, ColumnNames: []string{"timestamp", "uniqueID"}, ColumnIDs: []descpb.ColumnID{1, 7}},
 				{Name: "fam_2_rangeID", ID: 2, ColumnNames: []string{"rangeID"}, ColumnIDs: []descpb.ColumnID{2}, DefaultColumnID: 2},
 				{Name: "fam_3_storeID", ID: 3, ColumnNames: []string{"storeID"}, ColumnIDs: []descpb.ColumnID{3}, DefaultColumnID: 3},
@@ -1112,7 +1124,7 @@ var (
 				{Name: "value", ID: 2, Type: types.Bytes, Nullable: true},
 				{Name: "lastUpdated", ID: 3, Type: types.Timestamp},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{Name: "primary", ID: 0, ColumnNames: []string{"key"}, ColumnIDs: singleID1},
 				{Name: "fam_2_value", ID: 2, ColumnNames: []string{"value"}, ColumnIDs: []descpb.ColumnID{2}, DefaultColumnID: 2},
 				{Name: "fam_3_lastUpdated", ID: 3, ColumnNames: []string{"lastUpdated"}, ColumnIDs: []descpb.ColumnID{3}, DefaultColumnID: 3},
@@ -1141,7 +1153,7 @@ var (
 				{Name: "num_runs", ID: 10, Type: types.Int, Nullable: true},
 				{Name: "last_run", ID: 11, Type: types.Timestamp, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					// NB: We are using family name that existed prior to adding created_by_type and
 					// created_by_id columns.  This is done to minimize and simplify migration work
@@ -1219,7 +1231,7 @@ var (
 				{Name: "lastUsedAt", ID: 7, Type: types.Timestamp, DefaultExpr: &nowString},
 				{Name: "auditInfo", ID: 8, Type: types.String, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name: "fam_0_id_hashedSecret_username_createdAt_expiresAt_revokedAt_lastUsedAt_auditInfo",
 					ID:   0,
@@ -1297,7 +1309,7 @@ var (
 				{Name: "histogram", ID: 9, Type: types.Bytes, Nullable: true},
 				{Name: "avgSize", ID: 10, Type: types.Int, DefaultExpr: &zeroIntString},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name: "fam_0_tableID_statisticID_name_columnIDs_createdAt_rowCount_distinctCount_nullCount_histogram",
 					ID:   0,
@@ -1340,7 +1352,7 @@ var (
 				{Name: "latitude", ID: 3, Type: latLonDecimal},
 				{Name: "longitude", ID: 4, Type: latLonDecimal},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:        "fam_0_localityKey_localityValue_latitude_longitude",
 					ID:          0,
@@ -1369,7 +1381,7 @@ var (
 				{Name: "member", ID: 2, Type: types.String},
 				{Name: "isAdmin", ID: 3, Type: types.Bool},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:        "primary",
 					ID:          0,
@@ -1426,7 +1438,7 @@ var (
 				{Name: "sub_id", ID: 3, Type: types.Int},
 				{Name: "comment", ID: 4, Type: types.String},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{Name: "primary", ID: 0, ColumnNames: []string{"type", "object_id", "sub_id"}, ColumnIDs: []descpb.ColumnID{1, 2, 3}},
 				{Name: "fam_4_comment", ID: 4, ColumnNames: []string{"comment"}, ColumnIDs: []descpb.ColumnID{4}, DefaultColumnID: 4},
 			},
@@ -1460,7 +1472,7 @@ var (
 				{Name: "id", ID: 1, Type: types.Int},
 				{Name: "generated", ID: 2, Type: types.TimestampTZ},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:            "primary",
 					ID:              0,
@@ -1499,7 +1511,7 @@ var (
 				{Name: "violation_start", ID: 6, Type: types.TimestampTZ, Nullable: true},
 				{Name: "violating_ranges", ID: 7, Type: types.Int},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name: "primary",
 					ID:   0,
@@ -1542,7 +1554,7 @@ var (
 				{Name: "report_id", ID: 4, Type: types.Int},
 				{Name: "at_risk_ranges", ID: 5, Type: types.Int},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name: "primary",
 					ID:   0,
@@ -1586,7 +1598,7 @@ var (
 				{Name: "under_replicated_ranges", ID: 6, Type: types.Int},
 				{Name: "over_replicated_ranges", ID: 7, Type: types.Int},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name: "primary",
 					ID:   0,
@@ -1629,7 +1641,7 @@ var (
 				{Name: "num_spans", ID: 4, Type: types.Int},
 				{Name: "total_bytes", ID: 5, Type: types.Int},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:        "primary",
 					ColumnNames: []string{"singleton", "version", "num_records", "num_spans", "total_bytes"},
@@ -1674,7 +1686,7 @@ var (
 				// tenants or a schema objects (databases/tables).
 				{Name: "target", ID: 8, Type: types.Bytes, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:        "primary",
 					ColumnNames: []string{"id", "ts", "meta_type", "meta", "num_spans", "spans", "verified", "target"},
@@ -1704,7 +1716,7 @@ var (
 				{Name: "option", ID: 2, Type: types.String},
 				{Name: "value", ID: 3, Type: types.String, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:            "primary",
 					ColumnNames:     []string{"username", "option", "value"},
@@ -1732,7 +1744,7 @@ var (
 				{Name: "description", ID: 2, Type: types.String, Nullable: true},
 				{Name: "data", ID: 3, Type: types.Bytes},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:        "primary",
 					ColumnNames: []string{"id", "description", "data"},
@@ -1758,7 +1770,7 @@ var (
 				{Name: "min_execution_latency", ID: 6, Type: types.Interval, Nullable: true},
 				{Name: "expires_at", ID: 7, Type: types.TimestampTZ, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:        "primary",
 					ColumnNames: []string{"id", "completed", "statement_fingerprint", "statement_diagnostics_id", "requested_at", "min_execution_latency", "expires_at"},
@@ -1795,7 +1807,7 @@ var (
 				{Name: "bundle_chunks", ID: 6, Type: types.IntArray, Nullable: true},
 				{Name: "error", ID: 7, Type: types.String, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name: "primary",
 					ColumnNames: []string{"id", "statement_fingerprint", "statement",
@@ -1826,7 +1838,7 @@ var (
 				{Name: "executor_type", ID: 9, Type: types.String, Nullable: false},
 				{Name: "execution_args", ID: 10, Type: types.Bytes, Nullable: false},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:        "sched",
 					ID:          0,
@@ -1866,7 +1878,7 @@ var (
 				{Name: "session_id", ID: 1, Type: types.Bytes, Nullable: false},
 				{Name: "expiration", ID: 2, Type: types.Decimal, Nullable: false},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:            "fam0_session_id_expiration",
 					ID:              0,
@@ -1893,7 +1905,7 @@ var (
 				{Name: "internal", ID: 4, Type: types.Int, Nullable: false},
 				{Name: "completed_at", ID: 5, Type: types.TimestampTZ, Nullable: false},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:            "primary",
 					ID:              0,
@@ -1928,7 +1940,7 @@ var (
 				{Name: "secret", ID: 2, Type: types.Bytes, Nullable: false},
 				{Name: "expiration", ID: 3, Type: types.TimestampTZ, Nullable: false},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:            "primary",
 					ID:              0,
@@ -1976,7 +1988,7 @@ var (
 					Hidden:      true,
 				},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name: "primary",
 					ID:   0,
@@ -2080,7 +2092,7 @@ var (
 					Hidden:      true,
 				},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name: "primary",
 					ID:   0,
@@ -2168,7 +2180,7 @@ var (
 				{Name: "role_name", ID: 2, Type: types.String, Nullable: false},
 				{Name: "settings", ID: 3, Type: types.StringArray, Nullable: false},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:            "primary",
 					ID:              0,
@@ -2213,7 +2225,7 @@ var (
 				{Name: "instance_seq", ID: 11, Type: types.Int, Nullable: true},
 				{Name: "instance_shares", ID: 12, Type: types.Float, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name: "primary",
 					ID:   0,
@@ -2254,7 +2266,7 @@ var (
 				{Name: "addr", ID: 2, Type: types.String, Nullable: true},
 				{Name: "session_id", ID: 3, Type: types.Bytes, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:            "primary",
 					ID:              0,
@@ -2278,7 +2290,7 @@ var (
 				{Name: "end_key", ID: 2, Type: types.Bytes},
 				{Name: "config", ID: 3, Type: types.Bytes},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:        "primary",
 					ID:          0,
@@ -2319,7 +2331,7 @@ var (
 				{Name: "value_type", ID: 5, Type: types.String},
 				{Name: "reason", ID: 6, Type: types.String, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:        "fam_0_tenant_id_name_value_last_updated_value_type_reason",
 					ID:          0,
@@ -2361,7 +2373,7 @@ var (
 				{Name: "owner", ID: 11, Type: types.String},
 				{Name: "created_at", ID: 12, Type: types.Timestamp, DefaultExpr: &nowString},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:        "primary",
 					ID:          0,
@@ -2395,7 +2407,7 @@ var (
 				{Name: "singleton", ID: 1, Type: types.Bool, DefaultExpr: &trueBoolString},
 				{Name: "span_count", ID: 2, Type: types.Int},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:            "primary",
 					ID:              0,

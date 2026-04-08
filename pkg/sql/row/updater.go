@@ -385,10 +385,10 @@ func (ru *Updater) UpdateRow(
 			// insert that new k/v.
 			for oldIdx < len(oldEntries) && newIdx < len(newEntries) {
 				oldEntry, newEntry := &oldEntries[oldIdx], &newEntries[newIdx]
-				if oldEntry.Family == newEntry.Family {
+				if oldEntry.RowGroup == newEntry.RowGroup {
 					// If the families are equal, then check if the keys have changed. If so, delete the old key.
 					// Then, issue a CPut for the new value of the key if the value has changed.
-					// Because the indexes will always have a k/v for family 0, it suffices to only
+					// Because the indexes will always have a K/V for row-group 0, it suffices to only
 					// add foreign key checks in this case, because we are guaranteed to enter here.
 					oldIdx++
 					newIdx++
@@ -425,10 +425,10 @@ func (ru *Updater) UpdateRow(
 						}
 						batch.CPutAllowingIfNotExists(newEntry.Key, &newEntry.Value, expValue)
 					}
-				} else if oldEntry.Family < newEntry.Family {
-					if oldEntry.Family == descpb.FamilyID(0) {
+				} else if oldEntry.RowGroup < newEntry.RowGroup {
+					if oldEntry.RowGroup == descpb.RowGroupID(0) {
 						return nil, errors.AssertionFailedf(
-							"index entry for family 0 for table %s, index %s was not generated",
+							"index entry for row-group 0 for table %s, index %s was not generated",
 							ru.Helper.TableDesc.GetName(), index.GetName(),
 						)
 					}
@@ -439,9 +439,9 @@ func (ru *Updater) UpdateRow(
 					}
 					oldIdx++
 				} else {
-					if newEntry.Family == descpb.FamilyID(0) {
+					if newEntry.RowGroup == descpb.RowGroupID(0) {
 						return nil, errors.AssertionFailedf(
-							"index entry for family 0 for table %s, index %s was not generated",
+							"index entry for row-group 0 for table %s, index %s was not generated",
 							ru.Helper.TableDesc.GetName(), index.GetName(),
 						)
 					}

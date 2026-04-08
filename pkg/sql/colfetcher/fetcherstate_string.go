@@ -12,31 +12,18 @@ func _() {
 	_ = x[stateInitFetch-1]
 	_ = x[stateResetBatch-2]
 	_ = x[stateDecodeFirstKVOfRow-3]
-	_ = x[stateFetchNextKVWithUnfinishedRow-4]
-	_ = x[stateFinalizeRow-5]
-	_ = x[stateEmitLastBatch-6]
-	_ = x[stateFinished-7]
+	_ = x[stateFinalizeRow-4]
+	_ = x[stateEmitLastBatch-5]
+	_ = x[stateFinished-6]
 }
 
+const _fetcherState_name = "stateInvalidstateInitFetchstateResetBatchstateDecodeFirstKVOfRowstateFinalizeRowstateEmitLastBatchstateFinished"
+
+var _fetcherState_index = [...]uint8{0, 12, 26, 41, 64, 80, 98, 111}
+
 func (i fetcherState) String() string {
-	switch i {
-	case stateInvalid:
-		return "stateInvalid"
-	case stateInitFetch:
-		return "stateInitFetch"
-	case stateResetBatch:
-		return "stateResetBatch"
-	case stateDecodeFirstKVOfRow:
-		return "stateDecodeFirstKVOfRow"
-	case stateFetchNextKVWithUnfinishedRow:
-		return "stateFetchNextKVWithUnfinishedRow"
-	case stateFinalizeRow:
-		return "stateFinalizeRow"
-	case stateEmitLastBatch:
-		return "stateEmitLastBatch"
-	case stateFinished:
-		return "stateFinished"
-	default:
+	if i < 0 || i >= fetcherState(len(_fetcherState_index)-1) {
 		return "fetcherState(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
+	return _fetcherState_name[_fetcherState_index[i]:_fetcherState_index[i+1]]
 }

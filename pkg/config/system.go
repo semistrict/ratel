@@ -1,12 +1,16 @@
 // Copyright 2015 The Cockroach Authors.
 //
-// Use of this software is governed by the Business Source License
-// included in the file licenses/BSL.txt.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// As of the Change Date specified in that file, in accordance with
-// the Business Source License, use of this software will be governed
-// by the Apache License, Version 2.0, included in the file
-// licenses/APL.txt.
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// permissions and limitations under the License.
 
 package config
 
@@ -16,13 +20,19 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/cockroachdb/cockroach/pkg/clusterversion"
 	"github.com/cockroachdb/cockroach/pkg/config/zonepb"
 	"github.com/cockroachdb/cockroach/pkg/keys"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog/systemschema"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog/tabledesc"
+	"github.com/cockroachdb/cockroach/pkg/sql/rowenc/valueside"
+	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
 	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
-	"github.com/cockroachdb/errors"
 )
 
 // ObjectID is an identifier for an object (e.g. database or table)
@@ -71,6 +81,35 @@ type zoneEntry struct {
 	combined *zonepb.ZoneConfig
 }
 
+func decodeZoneConfigValue(v *roachpb.Value) (*zonepb.ZoneConfig, error) {
+	var zone zonepb.ZoneConfig
+	switch v.GetTag() {
+	case roachpb.ValueType_BYTES:
+		if err := v.GetProto(&zone); err != nil {
+			return nil, err
+		}
+	case roachpb.ValueType_TUPLE:
+		tupleBytes, err := v.GetTuple()
+		if err != nil {
+			return nil, err
+		}
+		var alloc tree.DatumAlloc
+		datum, remaining, err := valueside.Decode(&alloc, types.Bytes, tupleBytes)
+		if err != nil {
+			return nil, err
+		}
+		if len(remaining) != 0 {
+			return nil, fmt.Errorf("unexpected trailing bytes in zone config tuple")
+		}
+		if err := protoutil.Unmarshal([]byte(tree.MustBeDBytes(datum)), &zone); err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("unsupported zone config value tag %s", v.GetTag())
+	}
+	return &zone, nil
+}
+
 // SystemConfig embeds a SystemConfigEntries message which contains an
 // entry for every system descriptor (e.g. databases, tables, zone
 // configs). It also has a map from object ID to unmarshaled zone
@@ -79,9 +118,6 @@ type zoneEntry struct {
 // saying whether or not it should be considered for splitting at all.
 // A database descriptor or a table view descriptor are examples of IDs
 // that should not be considered for splits.
-// NB: SystemConfig can be updated to only contain system.descriptor and
-// system.zones. We still need SystemConfig for SystemConfigProvider which is
-// used in replication reports and the opt catalog.
 type SystemConfig struct {
 	SystemConfigEntries
 	DefaultZoneConfig *zonepb.ZoneConfig
@@ -151,7 +187,7 @@ func (s *SystemConfig) getSystemTenantDesc(key roachpb.Key) *roachpb.Value {
 		// configs through proper channels.
 		//
 		// Getting here outside tests is impossible.
-		desc := &descpb.Descriptor{Union: &descpb.Descriptor_Table{Table: &descpb.TableDescriptor{}}}
+		desc := tabledesc.NewBuilder(&descpb.TableDescriptor{}).BuildImmutable().DescriptorProto()
 		var val roachpb.Value
 		if err := val.SetProto(desc); err != nil {
 			panic(err)
@@ -362,8 +398,13 @@ func DecodeKeyIntoZoneIDAndSuffix(
 	if !ok {
 		// Not in the structured data namespace.
 		objectID = keys.RootNamespaceID
-	} else if objectID <= keys.SystemDatabaseID || keys.IsPseudoTableID(uint32(objectID)) {
-		// Pseudo-table ids should be considered to be a part of the
+	} else if objectID <= keys.MaxSystemConfigDescID || isPseudoTableID(uint32(objectID)) {
+		// For now, you cannot set the zone config on gossiped tables. The only
+		// way to set a zone config on these tables is to modify config for the
+		// system database as a whole. This is largely because all the
+		// "system config" tables are colocated in the same range by default and
+		// thus couldn't be managed separately.
+		// Furthermore pseudo-table ids should be considered to be a part of the
 		// system database as they aren't real tables.
 		objectID = keys.SystemDatabaseID
 	}
@@ -385,37 +426,47 @@ func DecodeKeyIntoZoneIDAndSuffix(
 	return objectID, keySuffix
 }
 
+// isPseudoTableID returns true if id is in keys.PseudoTableIDs.
+func isPseudoTableID(id uint32) bool {
+	for _, pseudoTableID := range keys.PseudoTableIDs {
+		if id == pseudoTableID {
+			return true
+		}
+	}
+	return false
+}
+
 // GetZoneConfigForObject returns the combined zone config for the given object
 // identifier and SQL codec.
 //
 // NOTE: any subzones from the zone placeholder will be automatically merged
 // into the cached zone so the caller doesn't need special-case handling code.
 func (s *SystemConfig) GetZoneConfigForObject(
-	codec keys.SQLCodec, id ObjectID,
+	codec keys.SQLCodec, version clusterversion.ClusterVersion, id ObjectID,
 ) (*zonepb.ZoneConfig, error) {
 	var entry zoneEntry
 	var err error
+	// In the case that we've not yet ensured reconciliation of the span
+	// configurations, use the host-provided view of the RANGE tenants
+	// configuration.
+	//
+	// TODO(ajwerner,arulajmani): If the reconciliation protocol is not active,
+	// and this is a secondary tenant object we're trying to look up, we're in a
+	// bit of a pickle. This assumes that if we're in the appropriate version,
+	// then so too is the system tenant and things are reconciled. Is it possible
+	// that neither of these object IDs represent reality? It seems like after
+	// the host cluster has been upgraded but the tenants have not, that we're
+	// in a weird intermediate state whereby the system tenant's config is no
+	// longer respected, but neither is the secondary tenant's.
+	if !codec.ForSystemTenant() &&
+		(id == 0 || !version.IsActive(clusterversion.EnableSpanConfigStore)) {
+		codec, id = keys.SystemSQLCodec, keys.TenantsRangesID
+	}
 	entry, err = s.getZoneEntry(codec, id)
 	if err != nil {
 		return nil, err
 	}
 	return entry.combined, nil
-}
-
-// PurgeZoneConfigCache allocates a new zone config cache in this system config
-// so that tables with stale zone config information could have this info
-// looked up from using the most up-to-date zone config the next time it's
-// requested. Note, this function is only intended to be called during test
-// execution, such as logic tests.
-func (s *SystemConfig) PurgeZoneConfigCache() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if len(s.mu.zoneCache) != 0 {
-		s.mu.zoneCache = map[ObjectID]zoneEntry{}
-	}
-	if len(s.mu.shouldSplitCache) != 0 {
-		s.mu.shouldSplitCache = map[ObjectID]bool{}
-	}
 }
 
 // getZoneEntry returns the zone entry for the given system-tenant
@@ -495,7 +546,7 @@ func StaticSplits() []roachpb.RKey {
 // However, splits are not required between the tables of secondary tenants.
 func (s *SystemConfig) ComputeSplitKey(
 	ctx context.Context, startKey, endKey roachpb.RKey,
-) (rr roachpb.RKey, _ error) {
+) (rr roachpb.RKey) {
 	// Before dealing with splits necessitated by SQL tables, handle all of the
 	// static splits earlier in the keyspace. Note that this list must be kept in
 	// the proper order (ascending in the keyspace) for the logic below to work.
@@ -508,11 +559,11 @@ func (s *SystemConfig) ComputeSplitKey(
 			if split.Less(endKey) {
 				// The split point is contained within [startKey, endKey), so we need to
 				// create the split.
-				return split, nil
+				return split
 			}
 			// [startKey, endKey) is contained between the previous split point and
 			// this split point.
-			return nil, nil
+			return nil
 		}
 		// [startKey, endKey) is somewhere greater than this split point. Continue.
 	}
@@ -521,12 +572,12 @@ func (s *SystemConfig) ComputeSplitKey(
 	// anything, the key range must be somewhere in the SQL table part of the
 	// keyspace. First, look for split keys within the system-tenant's keyspace.
 	if split := s.systemTenantTableBoundarySplitKey(ctx, startKey, endKey); split != nil {
-		return split, nil
+		return split
 	}
 
 	// If the system tenant does not have any splits, look for split keys at the
 	// boundary of each secondary tenant.
-	return s.tenantBoundarySplitKey(ctx, startKey, endKey), nil
+	return s.tenantBoundarySplitKey(ctx, startKey, endKey)
 }
 
 func (s *SystemConfig) systemTenantTableBoundarySplitKey(
@@ -541,9 +592,13 @@ func (s *SystemConfig) systemTenantTableBoundarySplitKey(
 	}
 
 	startID, _, ok := DecodeObjectID(keys.SystemSQLCodec, startKey)
-
-	if !ok || startID <= keys.SystemDatabaseID {
-		startID = keys.SystemDatabaseID
+	if !ok || startID <= keys.MaxSystemConfigDescID {
+		// The start key is either:
+		// - not part of the structured data span
+		// - part of the system span
+		// In either case, start looking for splits at the first ID usable
+		// by the user data span.
+		startID = keys.MaxSystemConfigDescID + 1
 	}
 
 	// Build key prefixes for sequential table IDs until we reach endKey. Note
@@ -569,8 +624,8 @@ func (s *SystemConfig) systemTenantTableBoundarySplitKey(
 			if zoneVal == nil {
 				continue
 			}
-			var zone zonepb.ZoneConfig
-			if err := zoneVal.GetProto(&zone); err != nil {
+			zone, err := decodeZoneConfigValue(zoneVal)
+			if err != nil {
 				// An error while decoding the zone proto is unfortunate, but logging a
 				// message here would be excessively spammy. Just move on, which
 				// effectively assumes there are no subzones for this table.
@@ -638,11 +693,11 @@ func (s *SystemConfig) tenantBoundarySplitKey(
 			log.Errorf(ctx, "unable to decode tenant ID from start key: %s", err)
 			return nil
 		}
-		if lowTenIDExcl.ToUint64() >= roachpb.MaxTenantID.ToUint64() {
+		if lowTenIDExcl == roachpb.MaxTenantID {
 			// MaxTenantID already split or outside range.
 			return nil
 		}
-		lowTenID = roachpb.MustMakeTenantID(lowTenIDExcl.ToUint64() + 1)
+		lowTenID = roachpb.MakeTenantID(lowTenIDExcl.ToUint64() + 1)
 	}
 	if searchSpan.EndKey.Compare(tenantSpan.EndKey) >= 0 {
 		// endKey after tenant keyspace.
@@ -663,7 +718,7 @@ func (s *SystemConfig) tenantBoundarySplitKey(
 			// for DecodeTenantPrefix(searchSpan.EndKey) == MinTenantID. This is
 			// because tenantSpan.Key is set to MakeTenantPrefix(MinTenantID),
 			// so we would have already returned early in that case.
-			highTenID = roachpb.MustMakeTenantID(highTenIDExcl.ToUint64() - 1)
+			highTenID = roachpb.MakeTenantID(highTenIDExcl.ToUint64() - 1)
 		} else {
 			highTenID = highTenIDExcl
 		}
@@ -700,15 +755,8 @@ func (s *SystemConfig) tenantBoundarySplitKey(
 
 // NeedsSplit returns whether the range [startKey, endKey) needs a split due
 // to zone configs.
-func (s *SystemConfig) NeedsSplit(
-	ctx context.Context, startKey, endKey roachpb.RKey,
-) (bool, error) {
-	splits, err := s.ComputeSplitKey(ctx, startKey, endKey)
-	if err != nil {
-		return false, err
-	}
-
-	return len(splits) > 0, nil
+func (s *SystemConfig) NeedsSplit(ctx context.Context, startKey, endKey roachpb.RKey) bool {
+	return len(s.ComputeSplitKey(ctx, startKey, endKey)) > 0
 }
 
 // shouldSplitOnSystemTenantObject checks if the ID is eligible for a split at
@@ -726,44 +774,17 @@ func (s *SystemConfig) shouldSplitOnSystemTenantObject(id ObjectID) bool {
 	}
 
 	var shouldSplit bool
-	// For legacy reasons, if the ID is <= keys.DeprecatedMaxSystemConfigDescID,
-	// we check if there is a table to split on. There are no pseudo ranges
-	// below keys.DeprecatedMaxSystemConfigDescID.
-	if uint32(id) <= keys.MaxReservedDescID && uint32(id) > keys.DeprecatedMaxSystemConfigDescID {
+	if uint32(id) <= keys.MaxReservedDescID {
 		// The ID might be one of the reserved IDs that refer to ranges but not any
 		// actual descriptors.
 		shouldSplit = true
 	} else {
 		desc := s.getSystemTenantDesc(keys.SystemSQLCodec.DescMetadataKey(uint32(id)))
-		shouldSplit = desc != nil && ShouldSplitAtDesc(desc)
+		shouldSplit = desc != nil && systemschema.ShouldSplitAtDesc(desc)
 	}
 	// Populate the cache.
 	s.mu.Lock()
 	s.mu.shouldSplitCache[id] = shouldSplit
 	s.mu.Unlock()
 	return shouldSplit
-}
-
-// ShouldSplitAtDesc determines whether a specific descriptor should be
-// considered for a split. Only plain tables are considered for split.
-func ShouldSplitAtDesc(rawDesc *roachpb.Value) bool {
-	var desc descpb.Descriptor
-	if err := rawDesc.GetProto(&desc); err != nil {
-		return false
-	}
-	switch t := desc.GetUnion().(type) {
-	case *descpb.Descriptor_Table:
-		if t.Table.IsView() && !t.Table.MaterializedView() {
-			return false
-		}
-		return true
-	case *descpb.Descriptor_Database:
-		return false
-	case *descpb.Descriptor_Type:
-		return false
-	case *descpb.Descriptor_Schema:
-		return false
-	default:
-		panic(errors.AssertionFailedf("unexpected descriptor type %#v", &desc))
-	}
 }

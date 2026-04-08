@@ -706,7 +706,7 @@ type Table struct {
 	Indexes    []*Index
 	Stats      TableStats
 	Checks     []cat.CheckConstraint
-	Families   []*Family
+	RowGroups  []*RowGroup
 	IsVirtual  bool
 	IsSystem   bool
 	Catalog    *Catalog
@@ -844,12 +844,12 @@ func (tt *Table) Check(i int) cat.CheckConstraint {
 
 // FamilyCount is part of the cat.Table interface.
 func (tt *Table) FamilyCount() int {
-	return len(tt.Families)
+	return len(tt.RowGroups)
 }
 
 // Family is part of the cat.Table interface.
 func (tt *Table) Family(i int) cat.Family {
-	return tt.Families[i]
+	return tt.RowGroups[i]
 }
 
 // OutboundForeignKeyCount is part of the cat.Table interface.
@@ -1564,9 +1564,9 @@ func (ts *Sequence) CollectTypes(ord int) (descpb.IDs, error) {
 	return nil, nil
 }
 
-// Family implements the cat.Family interface for testing purposes.
-type Family struct {
-	FamName string
+// RowGroup implements the cat.Family interface for testing purposes.
+type RowGroup struct {
+	RowGroupName string
 
 	// Ordinal is the ordinal of this family in the table.
 	Ordinal int
@@ -1578,26 +1578,26 @@ type Family struct {
 }
 
 // ID is part of the cat.Family interface.
-func (tf *Family) ID() cat.StableID {
-	return 1 + cat.StableID(tf.Ordinal)
+func (rg *RowGroup) ID() cat.StableID {
+	return 1 + cat.StableID(rg.Ordinal)
 }
 
 // Name is part of the cat.Family interface.
-func (tf *Family) Name() tree.Name {
-	return tree.Name(tf.FamName)
+func (rg *RowGroup) Name() tree.Name {
+	return tree.Name(rg.RowGroupName)
 }
 
 // Table is part of the cat.Family interface.
-func (tf *Family) Table() cat.Table {
-	return tf.table
+func (rg *RowGroup) Table() cat.Table {
+	return rg.table
 }
 
 // ColumnCount is part of the cat.Family interface.
-func (tf *Family) ColumnCount() int {
-	return len(tf.Columns)
+func (rg *RowGroup) ColumnCount() int {
+	return len(rg.Columns)
 }
 
 // Column is part of the cat.Family interface.
-func (tf *Family) Column(i int) cat.FamilyColumn {
-	return tf.Columns[i]
+func (rg *RowGroup) Column(i int) cat.FamilyColumn {
+	return rg.Columns[i]
 }

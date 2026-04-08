@@ -46,10 +46,10 @@ var validTableDesc = &descpb.Descriptor{
 			},
 			NextColumnID:     2,
 			NextConstraintID: 2,
-			Families: []descpb.ColumnFamilyDescriptor{
+			RowGroups: []descpb.RowGroupDescriptor{
 				{ID: 0, Name: "f", ColumnNames: []string{"col"}, ColumnIDs: []descpb.ColumnID{1}, DefaultColumnID: 1},
 			},
-			NextFamilyID: 1,
+			NextRowGroupID: 1,
 			PrimaryIndex: descpb.IndexDescriptor{
 				Name:                tabledesc.PrimaryKeyIndexName("t"),
 				ID:                  1,

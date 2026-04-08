@@ -493,9 +493,9 @@ const (
 	// SequenceIndexID is the ID of the single index on each special single-column,
 	// single-row sequence table.
 	SequenceIndexID = 1
-	// SequenceColumnFamilyID is the ID of the column family on each special single-column,
-	// single-row sequence table.
-	SequenceColumnFamilyID = 0
+	// SequenceColumnRowGroupID is the physical row-group ID on each special
+	// single-column, single-row sequence table.
+	SequenceColumnRowGroupID = 0
 )
 
 // PseudoTableIDs is the list of ids from above that are not real tables (i.e.

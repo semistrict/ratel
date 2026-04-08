@@ -21,8 +21,8 @@
 //     descriptors that went through many upgrades, and for some system tables.
 //     Primitives related to this version contain the name `Legacy`.
 //
-//   - version 2 (column families): the current encoding which supports multiple
-//     SQL values (columns) per roachpb.Value.
+//   - version 2 (tuple values): the current encoding which stores the row
+//     value as a tuple of SQL values (columns) inside a single roachpb.Value.
 //
 // See also: docs/tech-notes/encoding.md.
 package valueside

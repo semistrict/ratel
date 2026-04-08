@@ -324,8 +324,7 @@ func TestDeletePreservingIndexEncodingWithEmptyValues(t *testing.T) {
 	setupSQL := `
 CREATE DATABASE t;
 CREATE TABLE t.test (
-        x INT PRIMARY KEY, y INT NOT NULL, z INT, a INT,
-        FAMILY (x), FAMILY (y), FAMILY (a), FAMILY (z)
+        x INT PRIMARY KEY, y INT NOT NULL, z INT, a INT
 );
 CREATE UNIQUE INDEX test_index_to_mutate ON t.test (y) STORING (z, a);
 `

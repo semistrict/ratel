@@ -1,22 +1,25 @@
 // Copyright 2022 The Cockroach Authors.
 //
-// Use of this software is governed by the Business Source License
-// included in the file licenses/BSL.txt.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// As of the Change Date specified in that file, in accordance with
-// the Business Source License, use of this software will be governed
-// by the Apache License, Version 2.0, included in the file
-// licenses/APL.txt.
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// permissions and limitations under the License.
 
 // Cannot be proto3 because we use nullable primitives.
 syntax = "proto2";
 package cockroach.sql.sqlbase;
-option go_package = "github.com/cockroachdb/cockroach/pkg/sql/catalog/fetchpb";
+option go_package = "descpb";
 
 import "gogoproto/gogo.proto";
 import "sql/types/types.proto";
-import "sql/catalog/catenumpb/index.proto";
-import "geo/geoindex/config.proto";
+import "sql/catalog/descpb/structured.proto";
 
 // IndexFetchSpec contains the subset of information (from TableDescriptor and
 // IndexDescriptor) that is necessary to decode KVs into SQL keys and values.
@@ -24,14 +27,14 @@ message IndexFetchSpec {
   message Column {
     optional uint32 column_id = 1 [(gogoproto.nullable) = false,
                                    (gogoproto.customname) = "ColumnID",
-                                   (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/sem/catid.ColumnID"];
+                                   (gogoproto.casttype) = "ColumnID"];
 
     // Name of the column, as it is expected to appear in debug and error
     // messages.
     optional string name = 2 [(gogoproto.nullable) = false];
 
     // Type of the column. If this is the key column of an inverted index, this
-    // is the type of the data element (currently always EncodedKey) and not
+    // is the actual type of whan the index encodes (usually Bytes), rather than
     // the table column type (e.g. JSON).
     optional sql.sem.types.T type = 3;
 
@@ -44,7 +47,7 @@ message IndexFetchSpec {
   // KeyColumn describes a column that is encoded using the key encoding.
   message KeyColumn {
     optional Column column = 1 [(gogoproto.embed) = true, (gogoproto.nullable) = false];
-    optional catalog.catpb.IndexColumn.Direction direction = 2 [(gogoproto.nullable) = false];
+    optional IndexDescriptor.Direction direction = 2 [(gogoproto.nullable) = false];
 
     // IsComposite is true if this column can have a composite encoding (i.e. it
     // can appear in the value in addition to the key).
@@ -52,21 +55,8 @@ message IndexFetchSpec {
 
     // IsInverted is true if this column is the inverted key of an inverted index.
     // In this case, the type of this column is the type of the data element
-    // (currently always EncodedKey).
+    // (currently always Bytes).
     optional bool is_inverted = 4 [(gogoproto.nullable) = false];
-  }
-
-  // FamilyDefaultColumn specifies the default column ID for a given family ID.
-  message FamilyDefaultColumn {
-    optional uint32 family_id = 1 [(gogoproto.nullable) = false,
-                                   (gogoproto.customname) = "FamilyID",
-                                   (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/sem/catid.FamilyID"];
-
-    // DefaultColumnID is the implicit column ID when a single value is encoded
-    // for the family. See ColumnFamilyDescriptor.DefaultColumnID.
-    optional uint32 default_column_id = 2 [(gogoproto.nullable) = false,
-                                           (gogoproto.customname) = "DefaultColumnID",
-                                           (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/sem/catid.ColumnID"];
   }
 
   // Version is used to allow providing backward compatibility if this spec
@@ -76,25 +66,22 @@ message IndexFetchSpec {
 
   optional uint32 table_id = 2 [(gogoproto.nullable) = false,
                                 (gogoproto.customname) = "TableID",
-                                (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID"];
+                                (gogoproto.casttype) = "ID"];
   optional string table_name = 3 [(gogoproto.nullable) = false];
 
   optional uint32 index_id = 4 [(gogoproto.nullable) = false,
                                 (gogoproto.customname) = "IndexID",
-                                (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/sem/catid.IndexID"];
+                                (gogoproto.casttype) = "IndexID"];
 
   optional string index_name = 5 [(gogoproto.nullable) = false];
 
   optional bool is_secondary_index = 6 [(gogoproto.nullable) = false];
   optional bool is_unique_index = 7 [(gogoproto.nullable) = false];
 
-  // GeoConfig is used if we are fetching an inverted geospatial index.
-  optional geo.geoindex.Config geo_config = 16 [(gogoproto.nullable) = false];
-
   // EncodingType represents what sort of k/v encoding is used to store the
   // table data.
   optional uint32 encoding_type = 8 [(gogoproto.nullable) = false,
-                                     (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/catenumpb.IndexDescriptorEncodingType"];
+                                     (gogoproto.casttype) = "IndexDescriptorEncodingType"];
 
   // NumKeySuffixColumns is the number of suffix columns (corresponding to a
   // suffix of KeyAndSuffixColumns).
@@ -114,14 +101,11 @@ message IndexFetchSpec {
   // index ID.
   optional uint32 key_prefix_length = 11 [(gogoproto.nullable) = false];
 
-  optional uint32 max_family_id = 12 [(gogoproto.nullable) = false,
-                                      (gogoproto.customname) = "MaxFamilyID",
-                                      (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/sem/catid.FamilyID"];
-
-  // FamilyDefaultColumns contains the default column IDs for families with a
-  // default column. This is used to decode values that use the single column
-  // optimization (where the column ID is omitted).
-  repeated FamilyDefaultColumn family_default_columns = 13 [(gogoproto.nullable) = false];
+  // DefaultColumnID is the implicit column ID when a single value is encoded
+  // without its column ID in the value payload.
+  optional uint32 default_column_id = 12 [(gogoproto.nullable) = false,
+                                          (gogoproto.customname) = "DefaultColumnID",
+                                          (gogoproto.casttype) = "ColumnID"];
 
   // KeyAndSuffixColumns contains all the key and suffix columns, in order.
   repeated KeyColumn key_and_suffix_columns = 14 [(gogoproto.nullable) = false];

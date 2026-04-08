@@ -1915,9 +1915,7 @@ var slowSchemas = []string{
 				col1_8 DESC, col1_9 DESC, col1_4 DESC, col1_1, col1_2 ASC, col1_3 DESC,
 				col1_0 DESC, col1_6
 			),
-			col1_10 INT2 NOT NULL AS (col1_6 + 22798:::INT8) VIRTUAL,
-			FAMILY (col1_4), FAMILY (col1_0, col1_5), FAMILY (col1_1),
-			FAMILY (col1_8, col1_3, col1_9, col1_7), FAMILY (col1_2), FAMILY (col1_6))
+			col1_10 INT2 NOT NULL AS (col1_6 + 22798:::INT8) VIRTUAL)
 	`,
 	`
 		CREATE TYPE greeting64793 AS ENUM ('hello', 'howdy', 'hi', 'good day', 'morning');

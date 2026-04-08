@@ -85,7 +85,6 @@ require (
 	github.com/jackc/pgproto3/v2 v2.3.3
 	github.com/jackc/pgtype v1.14.4
 	github.com/jackc/pgx/v4 v4.18.3
-	github.com/jaegertracing/jaeger v1.18.1
 	github.com/jordan-wright/email v4.0.1-0.20210109023952-943e75fe5223+incompatible
 	github.com/jordanlewis/gcassert v0.0.0-20241223220613-778fb585567f
 	github.com/kevinburke/go-bindata v3.24.0+incompatible
@@ -136,9 +135,7 @@ require (
 	github.com/xdg-go/stringprep v1.0.4
 	go.etcd.io/etcd/raft/v3 v3.5.29
 	go.opentelemetry.io/otel v1.43.0
-	go.opentelemetry.io/otel/exporters/jaeger v1.17.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.43.0
-	go.opentelemetry.io/otel/exporters/zipkin v1.43.0
 	go.opentelemetry.io/otel/sdk v1.43.0
 	go.opentelemetry.io/otel/trace v1.43.0
 	golang.org/x/crypto v0.49.0
@@ -295,7 +292,6 @@ require (
 	github.com/mwitkow/go-proto-validators v0.3.2 // indirect
 	github.com/oklog/ulid/v2 v2.1.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
-	github.com/openzipkin/zipkin-go v0.4.3 // indirect
 	github.com/pelletier/go-toml/v2 v2.3.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect

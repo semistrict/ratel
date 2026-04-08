@@ -301,5 +301,4 @@
 --   trace.datadog.project = CockroachDB  (the project under which traces will be reported to the DataDog agent if trace.datadog.agent is set. Only one tracer can be configured at a time.)
 --   trace.debug.enable = false  (if set, traces for recent requests can be seen at https://<ui>/debug/requests)
 --   trace.lightstep.token =   (if set, traces go to Lightstep using this token)
---   trace.zipkin.collector =   (if set, traces go to the given Zipkin instance (example: '127.0.0.1:9411'). Only one tracer can be configured at a time.)
 --   version = 21.1-118  (set the active cluster version in the format '<major>.<minor>')

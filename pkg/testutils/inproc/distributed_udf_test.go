@@ -73,7 +73,7 @@ func TestDistributedUDF(t *testing.T) {
 
 // TestDistributedUDFWithSQL verifies that a UDF using the sql“
 // tagged template works when executed on remote nodes.
-// TODO(ramon): Enable once InternalExecutor adapter for SQLExecutor is wired.
+// TODO: Enable once InternalExecutor adapter for SQLExecutor is wired.
 func TestDistributedUDFWithSQL(t *testing.T) {
 	t.Skip("sql`` in distributed UDFs requires InternalExecutor adapter for SQLExecutor interface")
 	c := inproc.StartCluster(t, 3, func(args *base.TestClusterArgs) {

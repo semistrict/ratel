@@ -259,7 +259,6 @@ func init() {
 		scpb.ToAbsent,
 		element(scpb.Status_ABSENT,
 			// Table elements.
-			(*scpb.ColumnFamily)(nil),
 			(*scpb.UniqueWithoutIndexConstraint)(nil),
 			(*scpb.CheckConstraint)(nil),
 			(*scpb.ForeignKeyConstraint)(nil),

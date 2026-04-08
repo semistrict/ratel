@@ -56,30 +56,6 @@ const (
 		FIELD8 TEXT NOT NULL,
 		FIELD9 TEXT NOT NULL
 	)`
-	usertableSchemaRelationalWithFamilies = `(
-		ycsb_key VARCHAR(255) PRIMARY KEY NOT NULL,
-		FIELD0 TEXT NOT NULL,
-		FIELD1 TEXT NOT NULL,
-		FIELD2 TEXT NOT NULL,
-		FIELD3 TEXT NOT NULL,
-		FIELD4 TEXT NOT NULL,
-		FIELD5 TEXT NOT NULL,
-		FIELD6 TEXT NOT NULL,
-		FIELD7 TEXT NOT NULL,
-		FIELD8 TEXT NOT NULL,
-		FIELD9 TEXT NOT NULL,
-		FAMILY (ycsb_key),
-		FAMILY (FIELD0),
-		FAMILY (FIELD1),
-		FAMILY (FIELD2),
-		FAMILY (FIELD3),
-		FAMILY (FIELD4),
-		FAMILY (FIELD5),
-		FAMILY (FIELD6),
-		FAMILY (FIELD7),
-		FAMILY (FIELD8),
-		FAMILY (FIELD9)
-	)`
 	usertableSchemaJSON = `(
 		ycsb_key VARCHAR(255) PRIMARY KEY NOT NULL,
 		FIELD JSONB
@@ -100,7 +76,6 @@ type ycsb struct {
 	insertCount int
 	recordCount int
 	json        bool
-	families    bool
 	sfu         bool
 	splits      int
 
@@ -134,7 +109,6 @@ var ycsbMeta = workload.Meta{
 		g.flags.IntVar(&g.insertCount, `insert-count`, 10000, `Number of rows to sequentially insert before beginning workload.`)
 		g.flags.IntVar(&g.recordCount, `record-count`, 0, `Key to start workload insertions from. Must be >= insert-start + insert-count. (Default: insert-start + insert-count)`)
 		g.flags.BoolVar(&g.json, `json`, false, `Use JSONB rather than relational data`)
-		g.flags.BoolVar(&g.families, `families`, true, `Place each column in its own column family`)
 		g.flags.BoolVar(&g.sfu, `select-for-update`, true, `Use SELECT FOR UPDATE syntax in read-modify-write transactions`)
 		g.flags.IntVar(&g.splits, `splits`, 0, `Number of splits to perform before starting normal operations`)
 		g.flags.StringVar(&g.workload, `workload`, `B`, `Workload type. Choose from A-F.`)
@@ -195,12 +169,6 @@ func (g *ycsb) Hooks() workload.Hooks {
 				g.requestDistribution = defaultReqDist
 			}
 
-			if !g.flags.Lookup(`families`).Changed {
-				// If `--families` was not specified, default its value to the
-				// configuration that we expect to lead to better performance.
-				g.families = preferColumnFamilies(g.workload)
-			}
-
 			if g.recordCount == 0 {
 				g.recordCount = g.insertStart + g.insertCount
 			}
@@ -209,78 +177,6 @@ func (g *ycsb) Hooks() workload.Hooks {
 			}
 			return nil
 		},
-	}
-}
-
-// preferColumnFamilies returns whether we expect the use of column families to
-// improve performance for a given workload.
-func preferColumnFamilies(workload string) bool {
-	// These determinations were computed on 80da27b (04/04/2020) while running
-	// the ycsb roachtests.
-	//
-	// ycsb/[A-F]/nodes=3 (3x n1-standard-8 VMs):
-	//
-	// | workload | --families=false | --families=true | better with families? |
-	// |----------|-----------------:|----------------:|-----------------------|
-	// | A        |         11,743.5 |        17,760.5 | true                  |
-	// | B        |         35,232.3 |        32,982.2 | false                 |
-	// | C        |         45,454.7 |        44,112.5 | false                 |
-	// | D        |         36,091.0 |        35,615.1 | false                 |
-	// | E        |          5,774.9 |         2,604.8 | false                 |
-	// | F        |          4,933.1 |         8,259.7 | true                  |
-	//
-	// ycsb/[A-F]/nodes=3/cpu=32 (3x n1-standard-32 VMs):
-	//
-	// | workload | --families=false | --families=true | better with families? |
-	// |----------|-----------------:|----------------:|-----------------------|
-	// | A        |         14,144.1 |        27,179.4 | true                  |
-	// | B        |         96,669.6 |       104,567.5 | true                  |
-	// | C        |        137,463.3 |       131,953.7 | false                 |
-	// | D        |        103,188.6 |        95,285.7 | false                 |
-	// | E        |         10,417.5 |         7,913.6 | false                 |
-	// | F        |          5,782.3 |        15,532.1 | true                  |
-	//
-	switch workload {
-	case "A":
-		// Workload A is highly contended. It performs 50% single-row lookups
-		// and 50% single-column updates. Using column families breaks the
-		// contention between all updates to different columns of the same row,
-		// so we use them by default.
-		return true
-	case "B":
-		// Workload B is less contended than Workload A, but still bottlenecks
-		// on contention as concurrency grows. It performs 95% single-row
-		// lookups and 5% single-column updates. Using column families slows
-		// down the single-row lookups but speeds up the updates (see above).
-		// This trade-off favors column families for higher concurrency levels
-		// but does not at lower concurrency levels. We prefer larger YCSB
-		// deployments, so we use column families by default.
-		return true
-	case "C":
-		// Workload C has no contention. It consistent entirely of single-row
-		// lookups. Using column families slows down single-row lookups, so we
-		// do not use them by default.
-		return false
-	case "D":
-		// Workload D has no contention. It performs 95% single-row lookups and
-		// 5% single-row insertion. Using column families slows down single-row
-		// lookups and single-row insertion, so we do not use them by default.
-		return false
-	case "E":
-		// Workload E has moderate contention. It performs 95% multi-row scans
-		// and 5% single-row insertion. Using column families slows down
-		// multi-row scans and single-row insertion, so we do not use them by
-		// default.
-		return false
-	case "F":
-		// Workload F is highly contended. It performs 50% single-row lookups
-		// and 50% single-column updates expressed as multi-statement
-		// read-modify-write transactions. Using column families breaks the
-		// contention between all updates to different columns of the same row,
-		// so we use them by default.
-		return true
-	default:
-		panic(fmt.Sprintf("unexpected workload: %s", workload))
 	}
 }
 
@@ -318,11 +214,7 @@ func (g *ycsb) Tables() []workload.Table {
 				return []interface{}{key, "{}"}
 			})
 	} else {
-		if g.families {
-			usertable.Schema = usertableSchemaRelationalWithFamilies
-		} else {
-			usertable.Schema = usertableSchemaRelational
-		}
+		usertable.Schema = usertableSchemaRelational
 
 		const batchSize = 1000
 		usertable.InitialRows = workload.BatchedTuples{

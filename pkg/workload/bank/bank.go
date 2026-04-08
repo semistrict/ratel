@@ -35,8 +35,7 @@ const (
 	bankSchema = `(
 		id INT PRIMARY KEY,
 		balance INT,
-		payload STRING,
-		FAMILY (id, balance, payload)
+		payload STRING
 	)`
 
 	defaultRows         = 1000

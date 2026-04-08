@@ -26,7 +26,6 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/multiregion"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/schemaexpr"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/tabledesc"
 	"github.com/cockroachdb/cockroach/pkg/sql/parser"
 	"github.com/cockroachdb/cockroach/pkg/sql/rowenc"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
@@ -422,34 +421,6 @@ func ShowCreateSequence(
 		f.Printf(" CACHE %d", opts.CacheSize)
 	}
 	return f.CloseAndGetString(), nil
-}
-
-// showFamilyClause creates the FAMILY clauses for a CREATE statement, writing them
-// to tree.FmtCtx f
-func showFamilyClause(desc catalog.TableDescriptor, f *tree.FmtCtx) {
-	// Do not show family in SHOW CREATE TABLE if there is only one and
-	// it is named "primary".
-	families := desc.GetFamilies()
-	if len(families) == 1 && families[0].Name == tabledesc.FamilyPrimaryName {
-		return
-	}
-	for _, fam := range families {
-		activeColumnNames := make([]string, 0, len(fam.ColumnNames))
-		for i, colID := range fam.ColumnIDs {
-			if col, _ := desc.FindColumnWithID(colID); col != nil && col.Public() {
-				activeColumnNames = append(activeColumnNames, fam.ColumnNames[i])
-			}
-		}
-		if len(desc.PublicColumns()) == 0 {
-			f.WriteString("FAMILY ")
-		} else {
-			f.WriteString(",\n\tFAMILY ")
-		}
-		formatQuoteNames(&f.Buffer, fam.Name)
-		f.WriteString(" (")
-		formatQuoteNames(&f.Buffer, activeColumnNames...)
-		f.WriteString(")")
-	}
 }
 
 // showCreateLocality creates the LOCALITY clauses for a CREATE statement, writing them

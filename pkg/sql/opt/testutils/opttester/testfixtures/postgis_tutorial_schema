@@ -14,8 +14,7 @@ CREATE TABLE nyc_census_blocks (
   popn_other FLOAT8 NULL,
   boroname VARCHAR(32) NULL,
   geom GEOMETRY(MULTIPOLYGON,26918) NULL,
-  CONSTRAINT "primary" PRIMARY KEY (gid ASC),
-  FAMILY "primary" (gid, blkid, popn_total, popn_white, popn_black, popn_nativ, popn_asian, popn_other, boroname, geom)
+  CONSTRAINT "primary" PRIMARY KEY (gid ASC)
 )
 ----
 
@@ -31,8 +30,7 @@ CREATE TABLE nyc_homicides (
   light_dark VARCHAR(1) NULL,
   year FLOAT8 NULL,
   geom GEOMETRY(POINT,26918) NULL,
-  CONSTRAINT "primary" PRIMARY KEY (gid ASC),
-  FAMILY "primary" (gid, incident_d, boroname, num_victim, primary_mo, id, weapon, light_dark, year, geom)
+  CONSTRAINT "primary" PRIMARY KEY (gid ASC)
 )
 ----
 
@@ -42,8 +40,7 @@ CREATE TABLE nyc_neighborhoods (
   boroname VARCHAR(43) NULL,
   name VARCHAR(64) NULL,
   geom GEOMETRY(MULTIPOLYGON,26918) NULL,
-  CONSTRAINT "primary" PRIMARY KEY (gid ASC),
-  FAMILY "primary" (gid, boroname, name, geom)
+  CONSTRAINT "primary" PRIMARY KEY (gid ASC)
 )
 ----
 
@@ -55,8 +52,7 @@ CREATE TABLE nyc_streets (
   oneway VARCHAR(10) NULL,
   type VARCHAR(50) NULL,
   geom GEOMETRY(MULTILINESTRING,26918) NULL,
-  CONSTRAINT "primary" PRIMARY KEY (gid ASC),
-  FAMILY "primary" (gid, id, name, oneway, type, geom)
+  CONSTRAINT "primary" PRIMARY KEY (gid ASC)
 )
 ----
 
@@ -78,14 +74,12 @@ CREATE TABLE nyc_subway_stations (
   express VARCHAR(10) NULL,
   closed VARCHAR(10) NULL,
   geom GEOMETRY(POINT,26918) NULL,
-  CONSTRAINT "primary" PRIMARY KEY (gid ASC),
-  FAMILY "primary" (gid, objectid, id, name, alt_name, cross_st, long_name, label, borough, nghbhd, routes, transfers, color, express, closed, geom)
+  CONSTRAINT "primary" PRIMARY KEY (gid ASC)
 )
 ----
 
 exec-ddl
 CREATE TABLE subway_lines (
-  route CHAR NULL,
-  FAMILY "primary" (route, rowid)
+  route CHAR NULL
 )
 ----

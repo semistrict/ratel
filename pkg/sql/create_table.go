@@ -1575,10 +1575,6 @@ func NewTableDesc(
 				n.Defs = append(n.Defs, checkConstraint)
 				cdd = append(cdd, nil)
 			}
-			if d.IsVirtual() && d.HasColumnFamily() {
-				return nil, pgerror.Newf(pgcode.Syntax, "virtual columns cannot have family specifications")
-			}
-
 			cdd[i], err = tabledesc.MakeColumnDefDescs(ctx, d, semaCtx, evalCtx)
 			if err != nil {
 				return nil, err
@@ -1598,15 +1594,6 @@ func NewTableDesc(
 				implicitColumnDefIdxs = append(implicitColumnDefIdxs, implicitColumnDefIdx{idx: idx, def: d})
 			}
 
-			if d.HasColumnFamily() {
-				// Pass true for `create` and `ifNotExists` because when we're creating
-				// a table, we always want to create the specified family if it doesn't
-				// exist.
-				err := desc.AddColumnToFamilyMaybeCreate(col.Name, string(d.Family.Name), true, true)
-				if err != nil {
-					return nil, err
-				}
-			}
 		}
 	}
 
@@ -1979,7 +1966,7 @@ func NewTableDesc(
 					return nil, err
 				}
 			}
-		case *tree.CheckConstraintTableDef, *tree.ForeignKeyConstraintTableDef, *tree.FamilyTableDef:
+		case *tree.CheckConstraintTableDef, *tree.ForeignKeyConstraintTableDef:
 			// pass, handled below.
 
 		default:
@@ -2008,32 +1995,9 @@ func NewTableDesc(
 		}
 	}
 
-	// Now that all columns are in place, add any explicit families (this is done
-	// here, rather than in the constraint pass below since we want to pick up
-	// explicit allocations before AllocateIDs adds implicit ones).
-	columnsInExplicitFamilies := map[string]bool{}
-	for _, def := range n.Defs {
-		if d, ok := def.(*tree.FamilyTableDef); ok {
-			fam := descpb.ColumnFamilyDescriptor{
-				Name:        string(d.Name),
-				ColumnNames: d.Columns.ToStrings(),
-			}
-			for _, c := range fam.ColumnNames {
-				columnsInExplicitFamilies[c] = true
-			}
-			desc.AddFamily(fam)
-		}
-	}
 	version := st.Version.ActiveVersionOrEmpty(ctx)
 	if err := desc.AllocateIDs(ctx, version); err != nil {
 		return nil, err
-	}
-
-	for _, idx := range desc.PublicNonPrimaryIndexes() {
-		// Increment the counter if this index could be storing data across multiple column families.
-		if idx.NumSecondaryStoredColumns() > 1 && len(desc.Families) > 1 {
-			telemetry.Inc(sqltelemetry.SecondaryIndexColumnFamiliesCounter)
-		}
 	}
 
 	if n.PartitionByTable.ContainsPartitions() || desc.PartitionAllBy {
@@ -2161,7 +2125,7 @@ func NewTableDesc(
 				}
 			}
 
-		case *tree.IndexTableDef, *tree.FamilyTableDef, *tree.LikeTableDef:
+		case *tree.IndexTableDef, *tree.LikeTableDef:
 			// Pass, handled above.
 
 		case *tree.CheckConstraintTableDef:

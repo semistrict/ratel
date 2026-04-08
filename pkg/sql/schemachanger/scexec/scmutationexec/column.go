@@ -192,22 +192,6 @@ func (m *visitor) MakeColumnAbsent(ctx context.Context, op scop.MakeColumnAbsent
 	return nil
 }
 
-func (m *visitor) AddColumnFamily(ctx context.Context, op scop.AddColumnFamily) error {
-	tbl, err := m.checkOutTable(ctx, op.TableID)
-	if err != nil {
-		return err
-	}
-	family := descpb.ColumnFamilyDescriptor{
-		Name: op.Name,
-		ID:   op.FamilyID,
-	}
-	tbl.AddFamily(family)
-	if family.ID >= tbl.NextFamilyID {
-		tbl.NextFamilyID = family.ID + 1
-	}
-	return nil
-}
-
 func (m *visitor) SetColumnName(ctx context.Context, op scop.SetColumnName) error {
 	tbl, err := m.checkOutTable(ctx, op.TableID)
 	if err != nil {

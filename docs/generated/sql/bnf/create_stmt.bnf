@@ -6,3 +6,4 @@ create_stmt ::=
 	| create_changefeed_stmt
 	| create_replication_stream_stmt
 	| create_extension_stmt
+	| create_function_stmt

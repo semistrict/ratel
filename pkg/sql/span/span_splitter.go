@@ -15,13 +15,11 @@
 package span
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/keys"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/rowenc"
 	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/errors"
 )
 
 // Splitter is a helper for splitting single-row spans into more specific spans
@@ -79,20 +77,7 @@ func MakeSplitter(
 	}
 
 	neededFamilies := rowenc.NeededColumnFamilyIDs(neededColOrdinals, table, index)
-
-	// Sanity check.
-	for i := range neededFamilies[1:] {
-		if neededFamilies[i] >= neededFamilies[i+1] {
-			panic(errors.AssertionFailedf("family IDs not increasing"))
-		}
-	}
-
-	// * The index either has just 1 family (so we'll make a GetRequest) or we
-	//   need fewer than every column family in the table (otherwise we'd just
-	//   make a big ScanRequest).
-	// TODO(radu): should we be using IndexKeysPerRow() instead?
-	numFamilies := len(table.GetFamilies())
-	if numFamilies > 1 && len(neededFamilies) == numFamilies {
+	if len(neededFamilies) <= 1 {
 		return NoopSplitter()
 	}
 
@@ -110,15 +95,8 @@ func MakeSplitter(
 // This should only be used when the conditions checked by MakeSplitter are
 // already known to be satisfied.
 func MakeSplitterWithFamilyIDs(numKeyColumns int, familyIDs []descpb.FamilyID) Splitter {
-	if len(familyIDs) == 0 {
+	if len(familyIDs) <= 1 {
 		return NoopSplitter()
-	}
-
-	// Sanity check.
-	for i := range familyIDs[1:] {
-		if familyIDs[i] >= familyIDs[i+1] {
-			panic(errors.AssertionFailedf("family IDs not increasing"))
-		}
 	}
 	return Splitter{
 		numKeyColumns:  numKeyColumns,
@@ -183,12 +161,5 @@ func (s *Splitter) CanSplitSpanIntoFamilySpans(prefixLen int, containsNull bool)
 func (s *Splitter) ExistenceCheckSpan(
 	span roachpb.Span, prefixLen int, containsNull bool,
 ) roachpb.Span {
-	if s.CanSplitSpanIntoFamilySpans(prefixLen, containsNull) {
-		// If it is safe to split this lookup into multiple families, generate a
-		// point lookup for family 0. Because we are just checking for existence, we
-		// only need family 0.
-		key := keys.MakeFamilyKey(span.Key, 0 /* famID */)
-		return roachpb.Span{Key: key, EndKey: roachpb.Key(key).PrefixEnd()}
-	}
 	return span
 }

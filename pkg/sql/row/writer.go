@@ -109,121 +109,46 @@ func prepareInsertOrUpdateBatch(
 	putFn func(ctx context.Context, b putter, key *roachpb.Key, value *roachpb.Value, traceKV bool),
 	overwrite, traceKV bool,
 ) ([]byte, error) {
-	families := helper.TableDesc.GetFamilies()
-	for i := range families {
-		family := &families[i]
-		update := false
-		for _, colID := range family.ColumnIDs {
-			if _, ok := marshaledColIDMapping.Get(colID); ok {
-				update = true
-				break
-			}
-		}
-		// We can have an empty family.ColumnIDs in the following case:
-		// * A table is created with the primary key not in family 0, and another column in family 0.
-		// * The column in family 0 is dropped, leaving the 0'th family empty.
-		// In this case, we must keep the empty 0'th column family in order to ensure that column family 0
-		// is always encoded as the sentinel k/v for a row.
-		if !update && len(family.ColumnIDs) != 0 {
-			continue
-		}
+	family := &helper.TableDesc.GetFamilies()[0]
+	*kvKey = keys.MakeFamilyKey(primaryIndexKey, 0)
+	rawValueBuf = rawValueBuf[:0]
 
-		if i > 0 {
-			// HACK: MakeFamilyKey appends to its argument, so on every loop iteration
-			// after the first, trim primaryIndexKey so nothing gets overwritten.
-			// TODO(dan): Instead of this, use something like engine.ChunkAllocator.
-			primaryIndexKey = primaryIndexKey[:len(primaryIndexKey):len(primaryIndexKey)]
-		}
-
-		*kvKey = keys.MakeFamilyKey(primaryIndexKey, uint32(family.ID))
-		// We need to ensure that column family 0 contains extra metadata, like composite primary key values.
-		// Additionally, the decoders expect that column family 0 is encoded with a TUPLE value tag, so we
-		// don't want to use the untagged value encoding.
-		if len(family.ColumnIDs) == 1 && family.ColumnIDs[0] == family.DefaultColumnID && family.ID != 0 {
-			// Storage optimization to store DefaultColumnID directly as a value. Also
-			// backwards compatible with the original BaseFormatVersion.
-
-			idx, ok := marshaledColIDMapping.Get(family.DefaultColumnID)
-			if !ok {
-				continue
-			}
-
-			if marshaledValues[idx].RawBytes == nil {
-				if overwrite {
-					// If the new family contains a NULL value, then we must
-					// delete any pre-existing row.
-					insertDelFn(ctx, batch, kvKey, traceKV)
-				}
-			} else {
-				// We only output non-NULL values. Non-existent column keys are
-				// considered NULL during scanning and the row sentinel ensures we know
-				// the row exists.
-				if err := helper.checkRowSize(ctx, kvKey, &marshaledValues[idx], family.ID); err != nil {
-					return nil, err
-				}
-				putFn(ctx, batch, kvKey, &marshaledValues[idx], traceKV)
-			}
-
-			continue
-		}
-
-		rawValueBuf = rawValueBuf[:0]
-
-		var lastColID descpb.ColumnID
-		familySortedColumnIDs, ok := helper.sortedColumnFamily(family.ID)
-		if !ok {
-			return nil, errors.AssertionFailedf("invalid family sorted column id map")
-		}
-		for _, colID := range familySortedColumnIDs {
-			idx, ok := valColIDMapping.Get(colID)
-			if !ok || values[idx] == tree.DNull {
-				// Column not being updated or inserted.
-				continue
-			}
-
-			if skip, err := helper.skipColumnNotInPrimaryIndexValue(colID, values[idx]); err != nil {
-				return nil, err
-			} else if skip {
-				continue
-			}
-
-			col := fetchedCols[idx]
-			if lastColID > col.GetID() {
-				return nil, errors.AssertionFailedf("cannot write column id %d after %d", col.GetID(), lastColID)
-			}
-			colIDDelta := valueside.MakeColumnIDDelta(lastColID, col.GetID())
-			lastColID = col.GetID()
-			var err error
-			rawValueBuf, err = valueside.Encode(rawValueBuf, colIDDelta, values[idx], nil)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		if family.ID != 0 && len(rawValueBuf) == 0 {
-			if overwrite {
-				// The family might have already existed but every column in it is being
-				// set to NULL, so delete it.
-				insertDelFn(ctx, batch, kvKey, traceKV)
-			}
-		} else {
-			// Copy the contents of rawValueBuf into the roachpb.Value. This is
-			// a deep copy so rawValueBuf can be re-used by other calls to the
-			// function.
-			kvValue.SetTuple(rawValueBuf)
-			if err := helper.checkRowSize(ctx, kvKey, kvValue, family.ID); err != nil {
-				return nil, err
-			}
-			putFn(ctx, batch, kvKey, kvValue, traceKV)
-		}
-
-		// Release reference to roachpb.Key.
-		*kvKey = nil
-		// Prevent future calls to prepareInsertOrUpdateBatch from mutating
-		// the RawBytes in the kvValue we just added to the batch. Remember
-		// that we share the kvValue reference across calls to this function.
-		*kvValue = roachpb.Value{}
+	var lastColID descpb.ColumnID
+	familySortedColumnIDs, ok := helper.sortedColumnFamily(family.ID)
+	if !ok {
+		return nil, errors.AssertionFailedf("invalid family sorted column id map")
 	}
+	for _, colID := range familySortedColumnIDs {
+		idx, ok := valColIDMapping.Get(colID)
+		if !ok || values[idx] == tree.DNull {
+			continue
+		}
+		if skip, err := helper.skipColumnNotInPrimaryIndexValue(colID, values[idx]); err != nil {
+			return nil, err
+		} else if skip {
+			continue
+		}
+		col := fetchedCols[idx]
+		if lastColID > col.GetID() {
+			return nil, errors.AssertionFailedf("cannot write column id %d after %d", col.GetID(), lastColID)
+		}
+		colIDDelta := valueside.MakeColumnIDDelta(lastColID, col.GetID())
+		lastColID = col.GetID()
+		var err error
+		rawValueBuf, err = valueside.Encode(rawValueBuf, colIDDelta, values[idx], nil)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	kvValue.SetTuple(rawValueBuf)
+	if err := helper.checkRowSize(ctx, kvKey, kvValue, family.ID); err != nil {
+		return nil, err
+	}
+	putFn(ctx, batch, kvKey, kvValue, traceKV)
+
+	*kvKey = nil
+	*kvValue = roachpb.Value{}
 
 	return rawValueBuf, nil
 }

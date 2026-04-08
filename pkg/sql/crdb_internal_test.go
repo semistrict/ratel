@@ -77,7 +77,7 @@ func TestGetAllNamesInternal(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	names, err := sql.TestingGetAllNames(ctx, nil, s.InternalExecutor().(*sql.InternalExecutor))
+	names, err := sql.TestingGetAllNames(ctx, nil, keys.SystemSQLCodec)
 	require.NoError(t, err)
 
 	assert.Equal(t, descpb.NameInfo{ParentID: 999, ParentSchemaID: 444, Name: "bob"}, names[9999])

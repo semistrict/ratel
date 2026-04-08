@@ -41,10 +41,6 @@ var (
 	// ForeignKeyMutator adds ALTER TABLE ADD FOREIGN KEY statements.
 	ForeignKeyMutator MultiStatementMutation = foreignKeyMutator
 
-	// ColumnFamilyMutator modifies a CREATE TABLE statement without any FAMILY
-	// definitions to have random FAMILY definitions.
-	ColumnFamilyMutator StatementMutator = columnFamilyMutator
-
 	// IndexStoringMutator modifies the STORING clause of CREATE INDEX and
 	// indexes in CREATE TABLE.
 	IndexStoringMutator MultiStatementMutation = indexStoringMutator
@@ -660,17 +656,7 @@ var postgresStatementMutator MultiStatementMutation = func(rng *rand.Rand, stmts
 			}
 			for i := 0; i < len(stmt.Defs); i++ {
 				switch def := stmt.Defs[i].(type) {
-				case *tree.FamilyTableDef:
-					// Remove.
-					stmt.Defs = append(stmt.Defs[:i], stmt.Defs[i+1:]...)
-					i--
-					changed = true
 				case *tree.ColumnTableDef:
-					if def.HasColumnFamily() {
-						def.Family.Name = ""
-						def.Family.Create = false
-						changed = true
-					}
 					if def.Unique.WithoutIndex {
 						def.Unique.WithoutIndex = false
 						changed = true
@@ -824,59 +810,6 @@ func postgresCreateTableMutator(
 		}
 	}
 	return mutated, changed
-}
-
-// columnFamilyMutator is mutations.StatementMutator, but lives here to prevent
-// dependency cycles with RandCreateTable.
-func columnFamilyMutator(rng *rand.Rand, stmt tree.Statement) (changed bool) {
-	ast, ok := stmt.(*tree.CreateTable)
-	if !ok {
-		return false
-	}
-
-	var columns []tree.Name
-	for _, def := range ast.Defs {
-		switch def := def.(type) {
-		case *tree.FamilyTableDef:
-			return false
-		case *tree.ColumnTableDef:
-			if def.HasColumnFamily() {
-				return false
-			}
-			if !def.Computed.Virtual {
-				columns = append(columns, def.Name)
-			}
-		}
-	}
-
-	if len(columns) <= 1 {
-		return false
-	}
-
-	// Any columns not specified in column families
-	// are auto assigned to the first family, so
-	// there's no requirement to exhaust columns here.
-
-	rng.Shuffle(len(columns), func(i, j int) {
-		columns[i], columns[j] = columns[j], columns[i]
-	})
-	fd := &tree.FamilyTableDef{}
-	for {
-		if len(columns) == 0 {
-			if len(fd.Columns) > 0 {
-				ast.Defs = append(ast.Defs, fd)
-			}
-			break
-		}
-		fd.Columns = append(fd.Columns, columns[0])
-		columns = columns[1:]
-		// 50% chance to make a new column family.
-		if rng.Intn(2) != 0 {
-			ast.Defs = append(ast.Defs, fd)
-			fd = &tree.FamilyTableDef{}
-		}
-	}
-	return true
 }
 
 // tableInfo is a helper struct that contains information necessary for mutating

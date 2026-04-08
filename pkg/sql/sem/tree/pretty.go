@@ -1660,17 +1660,6 @@ func (node *CreateIndex) doc(p *PrettyCfg) pretty.Doc {
 		pretty.Group(pretty.Stack(clauses...)))
 }
 
-func (node *FamilyTableDef) doc(p *PrettyCfg) pretty.Doc {
-	// Final layout:
-	// FAMILY [name] (columns...)
-	//
-	d := pretty.Keyword("FAMILY")
-	if node.Name != "" {
-		d = pretty.ConcatSpace(d, p.Doc(&node.Name))
-	}
-	return pretty.ConcatSpace(d, p.bracket("(", p.Doc(&node.Columns), ")"))
-}
-
 func (node *LikeTableDef) doc(p *PrettyCfg) pretty.Doc {
 	d := pretty.Keyword("LIKE")
 	d = pretty.ConcatSpace(d, p.Doc(&node.Name))
@@ -1849,7 +1838,6 @@ func (node *ColumnTableDef) docRow(p *PrettyCfg) pretty.TableRow {
 	//   type
 	//   [AS ( ... ) STORED]
 	//   [GENERATED {ALWAYS|BY DEFAULT} AS IDENTITY]
-	//   [[CREATE [IF NOT EXISTS]] FAMILY [name]]
 	//   [[CONSTRAINT name] DEFAULT expr]
 	//   [[CONSTRAINT name] {NULL|NOT NULL}]
 	//   [[CONSTRAINT name] {PRIMARY KEY|UNIQUE [WITHOUT INDEX]}]
@@ -1903,22 +1891,6 @@ func (node *ColumnTableDef) docRow(p *PrettyCfg) pretty.TableRow {
 			bracketedTxt := p.bracket("(", pretty.Text(strings.TrimSpace(txt)), ")")
 			clauses = append(clauses, bracketedTxt)
 		}
-	}
-
-	// Column family.
-	if node.HasColumnFamily() {
-		d := pretty.Keyword("FAMILY")
-		if node.Family.Name != "" {
-			d = pretty.ConcatSpace(d, p.Doc(&node.Family.Name))
-		}
-		if node.Family.Create {
-			c := pretty.Keyword("CREATE")
-			if node.Family.IfNotExists {
-				c = pretty.ConcatSpace(c, pretty.Keyword("IF NOT EXISTS"))
-			}
-			d = pretty.ConcatSpace(c, d)
-		}
-		clauses = append(clauses, d)
 	}
 
 	// DEFAULT constraint.

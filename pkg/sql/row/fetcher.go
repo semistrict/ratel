@@ -732,26 +732,26 @@ func (rf *Fetcher) processKV(
 				return "", "", scrub.WrapError(scrub.IndexKeyDecodingError, err)
 			}
 
-			// If familyID is 0, this is the row sentinel (in the legacy pre-family format),
-			// and a value is not expected, so we're done.
-			if familyID != 0 {
-				// Find the default column ID for the family.
-				var defaultColumnID descpb.ColumnID
-				for _, f := range table.spec.FamilyDefaultColumns {
-					if f.FamilyID == descpb.FamilyID(familyID) {
-						defaultColumnID = f.DefaultColumnID
-						break
-					}
+			// Find the default column ID for the family. In the single-family
+			// layout, family 0 can carry a real value when the descriptor
+			// declares a default column for it; otherwise, family 0 is just the
+			// legacy row sentinel.
+			var defaultColumnID descpb.ColumnID
+			for _, f := range table.spec.FamilyDefaultColumns {
+				if f.FamilyID == descpb.FamilyID(familyID) {
+					defaultColumnID = f.DefaultColumnID
+					break
 				}
-				if defaultColumnID == 0 {
-					if kv.Value.GetTag() == roachpb.ValueType_UNKNOWN {
-						// Tombstone for a secondary column family, nothing needs to be done.
-					} else {
-						return "", "", errors.Errorf("single entry value with no default column id")
-					}
+			}
+			if defaultColumnID == 0 {
+				if familyID == 0 || kv.Value.GetTag() == roachpb.ValueType_UNKNOWN {
+					// Legacy sentinel in family 0 or tombstone for a secondary column
+					// family, nothing needs to be decoded.
 				} else {
-					prettyKey, prettyValue, err = rf.processValueSingle(ctx, table, defaultColumnID, kv, prettyKey)
+					return "", "", errors.Errorf("single entry value with no default column id")
 				}
+			} else {
+				prettyKey, prettyValue, err = rf.processValueSingle(ctx, table, defaultColumnID, kv, prettyKey)
 			}
 		}
 		if err != nil {

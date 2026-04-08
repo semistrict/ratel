@@ -280,18 +280,9 @@ func (ru *Updater) UpdateRow(
 
 	for i, index := range ru.Helper.Indexes {
 		// We don't want to insert any empty k/v's, so set includeEmpty to false.
-		// Consider the following case:
-		// TABLE t (
-		//   x INT PRIMARY KEY, y INT, z INT, w INT,
-		//   INDEX (y) STORING (z, w),
-		//   FAMILY (x), FAMILY (y), FAMILY (z), FAMILY (w)
-		//)
-		// If we are to perform an update on row (1, 2, 3, NULL), the k/v pair
-		// for index i that encodes column w would have an empty value because w
-		// is null and the sole resident of that family. We want to ensure that
-		// we don't insert empty k/v pairs during the process of the update, so
-		// set includeEmpty to false while generating the old and new index
-		// entries.
+		// Consider an index entry with a stored column whose value is NULL. We
+		// don't want to emit empty value KVs while generating the old and new
+		// index entries, so includeEmpty stays false.
 		//
 		// Also, we don't build entries for old and new values if the index
 		// exists in ignoreIndexesForDel and ignoreIndexesForPut, respectively.

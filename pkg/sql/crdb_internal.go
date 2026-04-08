@@ -46,6 +46,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/settings"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catconstants"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catalogkeys"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catprivilege"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo"
@@ -3452,43 +3453,37 @@ CREATE TABLE crdb_internal.ranges_no_leases (
 // getAllNames returns a map from ID to namespaceKey for every entry in
 // system.namespace.
 func (p *planner) getAllNames(ctx context.Context) (map[descpb.ID]catalog.NameKey, error) {
-	return getAllNames(ctx, p.txn, p.ExtendedEvalContext().ExecCfg.InternalExecutor)
+	return getAllNames(ctx, p.txn, p.ExecCfg().Codec)
 }
 
 // TestingGetAllNames is a wrapper for getAllNames.
 func TestingGetAllNames(
-	ctx context.Context, txn *kv.Txn, executor *InternalExecutor,
+	ctx context.Context, txn *kv.Txn, codec keys.SQLCodec,
 ) (map[descpb.ID]catalog.NameKey, error) {
-	return getAllNames(ctx, txn, executor)
+	return getAllNames(ctx, txn, codec)
 }
 
 // getAllNames is the testable implementation of getAllNames.
 // It is public so that it can be tested outside the sql package.
 func getAllNames(
-	ctx context.Context, txn *kv.Txn, executor *InternalExecutor,
+	ctx context.Context, txn *kv.Txn, codec keys.SQLCodec,
 ) (map[descpb.ID]catalog.NameKey, error) {
 	namespace := map[descpb.ID]catalog.NameKey{}
-	it, err := executor.QueryIterator(
-		ctx, "get-all-names", txn,
-		`SELECT id, "parentID", "parentSchemaID", name FROM system.namespace`,
-	)
+	prefix := codec.IndexPrefix(keys.NamespaceTableID, catconstants.NamespaceTablePrimaryIndexID)
+	rows, err := txn.Scan(ctx, prefix, prefix.PrefixEnd(), 0 /* maxRows */)
 	if err != nil {
 		return nil, err
 	}
-	var ok bool
-	for ok, err = it.Next(ctx); ok; ok, err = it.Next(ctx) {
-		r := it.Cur()
-		id, parentID, parentSchemaID, name := tree.MustBeDInt(r[0]), tree.MustBeDInt(r[1]), tree.MustBeDInt(r[2]), tree.MustBeDString(r[3])
-		namespace[descpb.ID(id)] = descpb.NameInfo{
-			ParentID:       descpb.ID(parentID),
-			ParentSchemaID: descpb.ID(parentSchemaID),
-			Name:           string(name),
+	for _, row := range rows {
+		nameInfo, err := catalogkeys.DecodeNameMetadataKey(codec, row.Key)
+		if err != nil {
+			return nil, err
 		}
+		if !row.Exists() {
+			continue
+		}
+		namespace[descpb.ID(row.ValueInt())] = nameInfo
 	}
-	if err != nil {
-		return nil, err
-	}
-
 	return namespace, nil
 }
 

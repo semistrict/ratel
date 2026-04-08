@@ -1,0 +1,7 @@
+statement ok
+CREATE TABLE t1 (a INT, INDEX t1i (a) WHERE a = 0)
+
+query I
+SELECT count(1) FROM t1@t1i WHERE a = 0
+----
+0

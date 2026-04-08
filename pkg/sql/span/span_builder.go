@@ -159,7 +159,8 @@ func (s *Builder) SpanFromDatumRow(
 // specific family. It is up to the caller to ensure that this is a safe operation,
 // by calling CanSplitSpanIntoFamilySpans before using it.
 func (s *Builder) SpanToPointSpan(span roachpb.Span, family descpb.FamilyID) roachpb.Span {
-	key := keys.MakeFamilyKey(span.Key, uint32(family))
+	_ = family
+	key := keys.MakeFamilyKey(span.Key, 0)
 	return roachpb.Span{Key: key, EndKey: roachpb.Key(key).PrefixEnd()}
 }
 

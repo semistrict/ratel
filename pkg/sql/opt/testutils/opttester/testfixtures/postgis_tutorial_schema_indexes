@@ -15,8 +15,7 @@ CREATE TABLE nyc_census_blocks (
   boroname VARCHAR(32) NULL,
   geom GEOMETRY(MULTIPOLYGON,26918) NULL,
   CONSTRAINT "primary" PRIMARY KEY (gid ASC),
-  INVERTED INDEX nyc_census_blocks_geom_idx (geom),
-  FAMILY "primary" (gid, blkid, popn_total, popn_white, popn_black, popn_nativ, popn_asian, popn_other, boroname, geom)
+  INVERTED INDEX nyc_census_blocks_geom_idx (geom)
 )
 ----
 
@@ -33,8 +32,7 @@ CREATE TABLE nyc_homicides (
   year FLOAT8 NULL,
   geom GEOMETRY(POINT,26918) NULL,
   CONSTRAINT "primary" PRIMARY KEY (gid ASC),
-  INVERTED INDEX nyc_homicides_geom_idx (geom),
-  FAMILY "primary" (gid, incident_d, boroname, num_victim, primary_mo, id, weapon, light_dark, year, geom)
+  INVERTED INDEX nyc_homicides_geom_idx (geom)
 )
 ----
 
@@ -45,8 +43,7 @@ CREATE TABLE nyc_neighborhoods (
   name VARCHAR(64) NULL,
   geom GEOMETRY(MULTIPOLYGON,26918) NULL,
   CONSTRAINT "primary" PRIMARY KEY (gid ASC),
-  INVERTED INDEX nyc_neighborhoods_geom_idx (geom),
-  FAMILY "primary" (gid, boroname, name, geom)
+  INVERTED INDEX nyc_neighborhoods_geom_idx (geom)
 )
 ----
 
@@ -59,8 +56,7 @@ CREATE TABLE nyc_streets (
   type VARCHAR(50) NULL,
   geom GEOMETRY(MULTILINESTRING,26918) NULL,
   CONSTRAINT "primary" PRIMARY KEY (gid ASC),
-  INVERTED INDEX nyc_streets_geom_idx (geom),
-  FAMILY "primary" (gid, id, name, oneway, type, geom)
+  INVERTED INDEX nyc_streets_geom_idx (geom)
 )
 ----
 
@@ -83,14 +79,12 @@ CREATE TABLE nyc_subway_stations (
   closed VARCHAR(10) NULL,
   geom GEOMETRY(POINT,26918) NULL,
   CONSTRAINT "primary" PRIMARY KEY (gid ASC),
-  INVERTED INDEX nyc_subway_stations_geom_idx (geom),
-  FAMILY "primary" (gid, objectid, id, name, alt_name, cross_st, long_name, label, borough, nghbhd, routes, transfers, color, express, closed, geom)
+  INVERTED INDEX nyc_subway_stations_geom_idx (geom)
 )
 ----
 
 exec-ddl
 CREATE TABLE subway_lines (
-  route CHAR NULL,
-  FAMILY "primary" (route, rowid)
+  route CHAR NULL
 )
 ----

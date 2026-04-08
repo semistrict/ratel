@@ -183,9 +183,7 @@ statement ok
 CREATE TABLE test_show_default (
   p STRING NOT NULL,
   k STRING NULL DEFAULT 'def' ON UPDATE 'regress',
-  CONSTRAINT "primary" PRIMARY KEY (p ASC),
-  FAMILY fam_0_p (p),
-  FAMILY fam_1_k (k)
+  CONSTRAINT "primary" PRIMARY KEY (p ASC)
 )
 
 query TT
@@ -194,19 +192,14 @@ SHOW CREATE TABLE test_show_default
 test_show_default  CREATE TABLE public.test_show_default (
                      p STRING NOT NULL,
                      k STRING NULL DEFAULT 'def':::STRING ON UPDATE 'regress':::STRING,
-                     CONSTRAINT "primary" PRIMARY KEY (p ASC),
-                     FAMILY fam_0_p (p),
-                     FAMILY fam_1_k (k)
+                     CONSTRAINT "primary" PRIMARY KEY (p ASC)
                    )
 
 statement ok
 CREATE TABLE test_show_fk (
   p STRING PRIMARY KEY,
   j STRING REFERENCES test_fk_base (j) ON UPDATE CASCADE,
-  k STRING ON UPDATE 'regress',
-  FAMILY fam_0_p (p),
-  FAMILY fam_1_j (j),
-  FAMILY fam_2_k (k)
+  k STRING ON UPDATE 'regress'
 )
 
 query TT
@@ -217,10 +210,7 @@ test_show_fk  CREATE TABLE public.test_show_fk (
                 j STRING NULL,
                 k STRING NULL ON UPDATE 'regress':::STRING,
                 CONSTRAINT test_show_fk_pkey PRIMARY KEY (p ASC),
-                CONSTRAINT test_show_fk_j_fkey FOREIGN KEY (j) REFERENCES public.test_fk_base(j) ON UPDATE CASCADE,
-                FAMILY fam_0_p (p),
-                FAMILY fam_1_j (j),
-                FAMILY fam_2_k (k)
+                CONSTRAINT test_show_fk_j_fkey FOREIGN KEY (j) REFERENCES public.test_fk_base(j) ON UPDATE CASCADE
               )
 
 # Sequence tests

@@ -182,8 +182,7 @@ CREATE TABLE t8 (
     b INT,
     c STRING,
     INDEX (a) WHERE b > 0,
-    INDEX (a) WHERE c = 'foo',
-    FAMILY (a, b, c)
+    INDEX (a) WHERE c = 'foo'
 )
 
 # TODO(mgartner): Lift this restriction. See #96924.
@@ -200,8 +199,7 @@ t8  CREATE TABLE public.t8 (
       rowid INT8 NOT VISIBLE NOT NULL DEFAULT unique_rowid(),
       CONSTRAINT t8_pkey PRIMARY KEY (rowid ASC),
       INDEX t8_a_idx (a ASC) WHERE b > 0:::INT8,
-      INDEX t8_a_idx1 (a ASC) WHERE c = 'foo':::STRING,
-      FAMILY fam_0_a_b_c_rowid (a, b, c, rowid)
+      INDEX t8_a_idx1 (a ASC) WHERE c = 'foo':::STRING
     )
 
 # CREATE TABLE LIKE ... INCLUDING INDEXES copies partial index predicate
@@ -247,10 +245,7 @@ CREATE TABLE a (
     a INT,
     b INT,
     c INT,
-    INDEX idx_c_b_gt_1 (c) WHERE b > 1,
-    FAMILY (a),
-    FAMILY (b),
-    FAMILY (c)
+    INDEX idx_c_b_gt_1 (c) WHERE b > 1
 )
 
 statement ok
@@ -1128,8 +1123,7 @@ statement ok
 CREATE TABLE enum_table_show (
     a INT,
     b enum_type,
-    INDEX i (a) WHERE b IN ('foo', 'bar'),
-    FAMILY (a, b)
+    INDEX i (a) WHERE b IN ('foo', 'bar')
 )
 
 query TT
@@ -1140,8 +1134,7 @@ enum_table_show  CREATE TABLE public.enum_table_show (
                    b public.enum_type NULL,
                    rowid INT8 NOT VISIBLE NOT NULL DEFAULT unique_rowid(),
                    CONSTRAINT enum_table_show_pkey PRIMARY KEY (rowid ASC),
-                   INDEX i (a ASC) WHERE b IN ('foo':::public.enum_type, 'bar':::public.enum_type),
-                   FAMILY fam_0_a_b_rowid (a, b, rowid)
+                   INDEX i (a ASC) WHERE b IN ('foo':::public.enum_type, 'bar':::public.enum_type)
                  )
 
 # Inverted partial indexes.
@@ -1288,11 +1281,7 @@ CREATE TABLE prune (
     b INT,
     c INT,
     d INT,
-    INDEX idx (b) WHERE c > 0,
-    FAMILY (a),
-    FAMILY (b),
-    FAMILY (c),
-    FAMILY (d)
+    INDEX idx (b) WHERE c > 0
 )
 
 statement ok
@@ -1583,8 +1572,7 @@ CREATE TABLE public.indexes_article (
     pub_date TIMESTAMPTZ NOT NULL,
     published BOOL NOT NULL,
     CONSTRAINT "primary" PRIMARY KEY (id ASC),
-    INDEX indexes_article_headline_pub_date_b992dbba_idx (headline ASC, pub_date ASC),
-    FAMILY "primary" (id, headline, pub_date, published)
+    INDEX indexes_article_headline_pub_date_b992dbba_idx (headline ASC, pub_date ASC)
 )
 
 statement ok
@@ -1781,8 +1769,7 @@ CREATE TABLE t61414_c (
   c INT,
   d INT,
   INDEX (b) WHERE b > 0,
-  UNIQUE WITHOUT INDEX (b) WHERE b > 0,
-  FAMILY (k, a, c)
+  UNIQUE WITHOUT INDEX (b) WHERE b > 0
 )
 
 statement ok

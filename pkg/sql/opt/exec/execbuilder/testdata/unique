@@ -11,11 +11,6 @@ CREATE TABLE uniq (
   x INT,
   y INT DEFAULT 5,
   UNIQUE WITHOUT INDEX (x, y),
-  FAMILY (k),
-  FAMILY (v),
-  FAMILY (w),
-  FAMILY (x),
-  FAMILY (y)
 )
 
 statement ok
@@ -27,10 +22,6 @@ CREATE TABLE uniq_overlaps_pk (
   PRIMARY KEY (a, b),
   UNIQUE WITHOUT INDEX (b, c),
   UNIQUE WITHOUT INDEX (a, b, d),
-  FAMILY (a),
-  FAMILY (b),
-  FAMILY (c),
-  FAMILY (d)
 );
 ALTER TABLE uniq_overlaps_pk ADD CONSTRAINT unique_a UNIQUE WITHOUT INDEX (a) NOT VALID;
 ALTER TABLE uniq_overlaps_pk ADD CONSTRAINT unique_c_d UNIQUE WITHOUT INDEX (c, d) NOT VALID
@@ -45,10 +36,6 @@ CREATE TABLE uniq_hidden_pk (
   UNIQUE WITHOUT INDEX (b, c),
   UNIQUE WITHOUT INDEX (a, b, d),
   UNIQUE WITHOUT INDEX (a),
-  FAMILY (a),
-  FAMILY (b),
-  FAMILY (c),
-  FAMILY (d)
 )
 
 statement ok
@@ -57,7 +44,6 @@ CREATE TABLE uniq_fk_parent (
   b INT,
   c INT,
   UNIQUE WITHOUT INDEX (b, c),
-  FAMILY (rowid, a, b, c)
 )
 
 statement ok
@@ -67,9 +53,6 @@ CREATE TABLE uniq_fk_child (
   c INT,
   FOREIGN KEY (b, c) REFERENCES uniq_fk_parent (b, c) ON UPDATE CASCADE,
   UNIQUE WITHOUT INDEX (c),
-  FAMILY (a),
-  FAMILY (b),
-  FAMILY (c)
 )
 
 statement ok
@@ -79,9 +62,6 @@ CREATE TABLE uniq_partial (
   b INT,
   UNIQUE WITHOUT INDEX (a) WHERE b > 0,
   UNIQUE WITHOUT INDEX (b) WHERE b > 0,
-  FAMILY (k),
-  FAMILY (a),
-  FAMILY (b)
 )
 
 statement ok
@@ -91,9 +71,6 @@ CREATE TABLE uniq_partial_overlaps_pk (
   b INT,
   UNIQUE WITHOUT INDEX (k) WHERE b > 0,
   UNIQUE WITHOUT INDEX (k, a) WHERE b > 0,
-  FAMILY (k),
-  FAMILY (a),
-  FAMILY (b)
 )
 
 statement ok
@@ -102,9 +79,6 @@ CREATE TABLE uniq_partial_hidden_pk (
   b INT,
   c INT,
   UNIQUE WITHOUT INDEX (b) WHERE c > 0,
-  FAMILY (a),
-  FAMILY (b),
-  FAMILY (c)
 )
 
 statement ok
@@ -120,10 +94,6 @@ CREATE TABLE uniq_enum (
   UNIQUE INDEX (r, s, j),
   UNIQUE WITHOUT INDEX (i),
   UNIQUE WITHOUT INDEX (s, j),
-  FAMILY (r),
-  FAMILY (s),
-  FAMILY (i),
-  FAMILY (j)
 )
 
 statement ok
@@ -135,10 +105,6 @@ CREATE TABLE uniq_partial_enum (
   PRIMARY KEY (r, a),
   UNIQUE WITHOUT INDEX (b) WHERE c IN ('foo', 'bar', 'baz'),
   INDEX (r, b) WHERE c IN ('foo', 'bar', 'baz'),
-  FAMILY (r),
-  FAMILY (a),
-  FAMILY (b),
-  FAMILY (c)
 )
 
 statement ok
@@ -215,12 +181,6 @@ CREATE TABLE uniq_computed_pk (
   UNIQUE WITHOUT INDEX (i),
   UNIQUE WITHOUT INDEX (s),
   UNIQUE WITHOUT INDEX (d),
-  FAMILY (i),
-  FAMILY (s),
-  FAMILY (d),
-  FAMILY (c_i_expr),
-  FAMILY (c_d),
-  FAMILY (c_d_expr)
 )
 
 statement ok
@@ -229,8 +189,6 @@ CREATE TABLE uniq_uuid (
   id2 UUID DEFAULT '00000000-0000-0000-0000-000000000000',
   UNIQUE WITHOUT INDEX (id1),
   UNIQUE WITHOUT INDEX (id2),
-  FAMILY (id1),
-  FAMILY (id2)
 )
 
 statement ok

@@ -145,15 +145,6 @@ func FormatTable(cat Catalog, tab Table, tp treeprinter.Node) {
 		child.Child(buf.String())
 	}
 
-	// If we only have one primary family (the default), don't print it.
-	if tab.FamilyCount() > 1 || tab.Family(0).Name() != "primary" {
-		for i := 0; i < tab.FamilyCount(); i++ {
-			buf.Reset()
-			formatFamily(tab.Family(i), &buf)
-			child.Child(buf.String())
-		}
-	}
-
 	for i := 0; i < tab.CheckCount(); i++ {
 		child.Childf("CHECK (%s)", tab.Check(i).Constraint)
 	}
@@ -365,16 +356,4 @@ func formatColumn(col *Column, buf *bytes.Buffer) {
 	case Inverted:
 		fmt.Fprintf(buf, " [inverted]")
 	}
-}
-
-func formatFamily(family Family, buf *bytes.Buffer) {
-	fmt.Fprintf(buf, "FAMILY %s (", family.Name())
-	for i, n := 0, family.ColumnCount(); i < n; i++ {
-		if i != 0 {
-			buf.WriteString(", ")
-		}
-		col := family.Column(i)
-		buf.WriteString(string(col.ColName()))
-	}
-	buf.WriteString(")")
 }

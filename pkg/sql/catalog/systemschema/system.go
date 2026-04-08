@@ -98,8 +98,7 @@ CREATE TABLE system.role_options (
 	username STRING NOT NULL,
 	option STRING NOT NULL,
 	value STRING,
-	CONSTRAINT "primary" PRIMARY KEY (username, option),
-	FAMILY "primary" (username, option, value)
+	CONSTRAINT "primary" PRIMARY KEY (username, option)
 )`
 
 	// Zone settings per DB/Table.
@@ -116,8 +115,7 @@ CREATE TABLE system.settings (
 	value             STRING    NOT NULL,
 	"lastUpdated"     TIMESTAMP NOT NULL DEFAULT now(),
 	"valueType"       STRING,
-	CONSTRAINT "primary" PRIMARY KEY (name),
-	FAMILY (name, value, "lastUpdated", "valueType")
+	CONSTRAINT "primary" PRIMARY KEY (name)
 );`
 
 	DescIDSequenceSchema = `
@@ -128,8 +126,7 @@ CREATE TABLE system.tenants (
 	id     INT8 NOT NULL,
 	active BOOL NOT NULL DEFAULT true,
 	info   BYTES,
-	CONSTRAINT "primary" PRIMARY KEY (id),
-	FAMILY "primary" (id, active, info)
+	CONSTRAINT "primary" PRIMARY KEY (id)
 );`
 )
 
@@ -183,10 +180,8 @@ CREATE TABLE system.ui (
 	// JobsRunStatsIdxPredicate is the predicate in jobs_run_stats_idx in JobsTable.
 	JobsRunStatsIdxPredicate = `status IN ('running':::STRING, 'reverting':::STRING, 'pending':::STRING, 'pause-requested':::STRING, 'cancel-requested':::STRING)`
 
-	// Note: this schema is changed in a migration (a progress column is added in
-	// a separate family).
-	// NB: main column family uses old, pre created_by_type/created_by_id columns, named.
-	// This is done to minimize migration work required.
+	// NB: the hard-coded descriptor layout preserves the historical columns even
+	// though the SQL literal is now single-family.
 	JobsTableSchema = `
 CREATE TABLE system.jobs (
 	id                INT8      DEFAULT unique_rowid(),
@@ -208,10 +203,7 @@ CREATE TABLE system.jobs (
     status,
     created
   ) STORING(last_run, num_runs, claim_instance_id)
-    WHERE ` + JobsRunStatsIdxPredicate + `,
-	FAMILY fam_0_id_status_created_payload (id, status, created, payload, created_by_type, created_by_id),
-	FAMILY progress (progress),
-	FAMILY claim (claim_session_id, claim_instance_id, num_runs, last_run)
+    WHERE ` + JobsRunStatsIdxPredicate + `
 );`
 
 	// web_sessions are used to track authenticated user actions over stateless
@@ -232,8 +224,7 @@ CREATE TABLE system.web_sessions (
 	INDEX ("expiresAt"),
 	INDEX ("createdAt"),
   INDEX ("revokedAt"),
-  INDEX ("lastUsedAt"),
-	FAMILY (id, "hashedSecret", username, "createdAt", "expiresAt", "revokedAt", "lastUsedAt", "auditInfo")
+  INDEX ("lastUsedAt")
 );`
 
 	// table_statistics is used to track statistics collected about individual
@@ -257,8 +248,7 @@ CREATE TABLE system.table_statistics (
 	"nullCount"     INT8       NOT NULL,
 	histogram       BYTES,
 	"avgSize"       INT8       NOT NULL DEFAULT 0,
-	CONSTRAINT "primary" PRIMARY KEY ("tableID", "statisticID"),
-	FAMILY "fam_0_tableID_statisticID_name_columnIDs_createdAt_rowCount_distinctCount_nullCount_histogram" ("tableID", "statisticID", name, "columnIDs", "createdAt", "rowCount", "distinctCount", "nullCount", histogram, "avgSize")
+	CONSTRAINT "primary" PRIMARY KEY ("tableID", "statisticID")
 );`
 
 	// locations are used to map a locality specified by a node to geographic
@@ -269,8 +259,7 @@ CREATE TABLE system.locations (
   "localityValue" STRING,
   latitude        DECIMAL(18,15) NOT NULL,
   longitude       DECIMAL(18,15) NOT NULL,
-  CONSTRAINT "primary" PRIMARY KEY ("localityKey", "localityValue"),
-  FAMILY ("localityKey", "localityValue", latitude, longitude)
+  CONSTRAINT "primary" PRIMARY KEY ("localityKey", "localityValue")
 );`
 
 	// role_members stores relationships between roles (role->role and role->user).
@@ -298,8 +287,7 @@ CREATE TABLE system.comments (
 	ReportsMetaTableSchema = `
 CREATE TABLE system.reports_meta (
 	id INT8 NOT NULL, "generated" TIMESTAMPTZ NOT NULL,
-	CONSTRAINT "primary" PRIMARY KEY (id ASC),
-	FAMILY "primary" (id, "generated")
+	CONSTRAINT "primary" PRIMARY KEY (id ASC)
 );`
 
 	// replication_constraint_stats stores replication constraint statistics
@@ -319,8 +307,7 @@ CREATE TABLE system.replication_constraint_stats (
 		TIMESTAMPTZ NULL,
 	violating_ranges
 		INT8 NOT NULL,
-	CONSTRAINT "primary" PRIMARY KEY (zone_id ASC, subzone_id ASC, type ASC, config ASC),
-	FAMILY "primary" (zone_id, subzone_id, type, config, report_id, violation_start, violating_ranges)
+	CONSTRAINT "primary" PRIMARY KEY (zone_id ASC, subzone_id ASC, type ASC, config ASC)
 );`
 
 	// replication_critical_localities stores replication critical localities
@@ -336,8 +323,7 @@ CREATE TABLE system.replication_critical_localities (
 		INT8 NOT NULL,
 	at_risk_ranges
 		INT8 NOT NULL,
-	CONSTRAINT "primary" PRIMARY KEY (zone_id ASC, subzone_id ASC, locality ASC),
-	FAMILY "primary" (zone_id, subzone_id, locality, report_id, at_risk_ranges)
+	CONSTRAINT "primary" PRIMARY KEY (zone_id ASC, subzone_id ASC, locality ASC)
 );`
 
 	// replication_stats stores replication statistics
@@ -357,16 +343,7 @@ CREATE TABLE system.replication_stats (
 		INT8 NOT NULL,
 	over_replicated_ranges
 		INT8 NOT NULL,
-	CONSTRAINT "primary" PRIMARY KEY (zone_id, subzone_id),
-	FAMILY "primary" (
-		zone_id,
-		subzone_id,
-		report_id,
-		total_ranges,
-		unavailable_ranges,
-		under_replicated_ranges,
-		over_replicated_ranges
-	)
+	CONSTRAINT "primary" PRIMARY KEY (zone_id, subzone_id)
 );`
 
 	// protected_ts_meta stores a single row of metadata for the protectedts
@@ -379,8 +356,7 @@ CREATE TABLE system.protected_ts_meta (
    num_spans   INT8 NOT NULL,
    total_bytes INT8 NOT NULL,
    CONSTRAINT check_singleton  CHECK (singleton),
-   CONSTRAINT "primary" PRIMARY KEY (singleton),
-	 FAMILY "primary" (singleton, version, num_records, num_spans, total_bytes)
+   CONSTRAINT "primary" PRIMARY KEY (singleton)
 );`
 
 	ProtectedTimestampsRecordsTableSchema = `
@@ -393,8 +369,7 @@ CREATE TABLE system.protected_ts_records (
    spans     BYTES NOT NULL,
    verified  BOOL NOT NULL DEFAULT (false),
    target    BYTES,         -- target is an encoded protobuf that specifies what the pts record will protect
-   CONSTRAINT "primary" PRIMARY KEY (id),
-	 FAMILY "primary" (id, ts, meta_type, meta, num_spans, spans, verified, target)
+   CONSTRAINT "primary" PRIMARY KEY (id)
 );`
 
 	StatementBundleChunksTableSchema = `
@@ -402,8 +377,7 @@ CREATE TABLE system.statement_bundle_chunks (
    id          INT8 DEFAULT unique_rowid(),
 	 description STRING,
 	 data        BYTES NOT NULL,
-	 CONSTRAINT "primary" PRIMARY KEY (id),
-	 FAMILY "primary" (id, description, data)
+	 CONSTRAINT "primary" PRIMARY KEY (id)
 );`
 
 	StatementDiagnosticsRequestsTableSchema = `
@@ -416,9 +390,7 @@ CREATE TABLE system.statement_diagnostics_requests(
 	min_execution_latency INTERVAL NULL,
 	expires_at TIMESTAMPTZ NULL,
 	CONSTRAINT "primary" PRIMARY KEY (id),
-	INDEX completed_idx_v2 (completed, id) STORING (statement_fingerprint, min_execution_latency, expires_at),
-
-	FAMILY "primary" (id, completed, statement_fingerprint, statement_diagnostics_id, requested_at, min_execution_latency, expires_at)
+	INDEX completed_idx_v2 (completed, id) STORING (statement_fingerprint, min_execution_latency, expires_at)
 );`
 
 	StatementDiagnosticsTableSchema = `
@@ -430,9 +402,7 @@ create table system.statement_diagnostics(
   trace JSONB,
   bundle_chunks INT ARRAY,
 	error STRING,
-	CONSTRAINT "primary" PRIMARY KEY (id),
-
-	FAMILY "primary" (id, statement_fingerprint, statement, collected_at, trace, bundle_chunks, error)
+	CONSTRAINT "primary" PRIMARY KEY (id)
 );`
 
 	ScheduledJobsTableSchema = `
@@ -449,21 +419,14 @@ CREATE TABLE system.scheduled_jobs (
     execution_args   BYTES NOT NULL,
 
     CONSTRAINT "primary" PRIMARY KEY (schedule_id),
-    INDEX "next_run_idx" (next_run),
-
- 	 FAMILY sched (schedule_id, next_run, schedule_state),
- 	 FAMILY other (
-       schedule_name, created, owner, schedule_expr, 
-       schedule_details, executor_type, execution_args 
-    )
+    INDEX "next_run_idx" (next_run)
 )`
 
 	SqllivenessTableSchema = `
 CREATE TABLE system.sqlliveness (
     session_id       BYTES NOT NULL,
     expiration       DECIMAL NOT NULL,
-    CONSTRAINT "primary" PRIMARY KEY (session_id),
-  	FAMILY fam0_session_id_expiration (session_id, expiration)
+    CONSTRAINT "primary" PRIMARY KEY (session_id)
 )`
 
 	MigrationsTableSchema = `
@@ -473,7 +436,6 @@ CREATE TABLE system.migrations (
     patch        INT8 NOT NULL,
     internal     INT8 NOT NULL,
     completed_at TIMESTAMPTZ NOT NULL,
- 	 FAMILY "primary" (major, minor, patch, internal, completed_at),
     CONSTRAINT "primary" PRIMARY KEY (major, minor, patch, internal)
 )`
 
@@ -482,8 +444,7 @@ CREATE TABLE system.join_tokens (
     id           UUID NOT NULL,
     secret       BYTES NOT NULL,
     expiration   TIMESTAMPTZ NOT NULL,
-    CONSTRAINT "primary" PRIMARY KEY (id),
- 	 FAMILY "primary" (id, secret, expiration)
+    CONSTRAINT "primary" PRIMARY KEY (id)
 )`
 
 	// TODO(azhng): Currently we choose number of bucket for hash-sharding to be
@@ -510,20 +471,7 @@ CREATE TABLE system.statement_statistics (
 
     CONSTRAINT "primary" PRIMARY KEY (aggregated_ts, fingerprint_id, transaction_fingerprint_id, plan_hash, app_name, node_id)
       USING HASH WITH (bucket_count=8),
-    INDEX "fingerprint_stats_idx" (fingerprint_id, transaction_fingerprint_id),
-		FAMILY "primary" (
-			crdb_internal_aggregated_ts_app_name_fingerprint_id_node_id_plan_hash_transaction_fingerprint_id_shard_8,
-			aggregated_ts,
-			fingerprint_id,
-			transaction_fingerprint_id,
-			plan_hash,
-			app_name,
-			node_id,
-			agg_interval,
-			metadata,
-			statistics,
-			plan
-		)
+    INDEX "fingerprint_stats_idx" (fingerprint_id, transaction_fingerprint_id)
 )
 `
 
@@ -544,17 +492,7 @@ CREATE TABLE system.transaction_statistics (
 
     CONSTRAINT "primary" PRIMARY KEY (aggregated_ts, fingerprint_id, app_name, node_id)
       USING HASH WITH (bucket_count=8),
-    INDEX "fingerprint_stats_idx" (fingerprint_id),
-		FAMILY "primary" (
-			crdb_internal_aggregated_ts_app_name_fingerprint_id_node_id_shard_8,
-			aggregated_ts,
-			fingerprint_id,
-			app_name,
-			node_id,
-			agg_interval,
-			metadata,
-			statistics
-		)
+    INDEX "fingerprint_stats_idx" (fingerprint_id)
 );
 `
 	DatabaseRoleSettingsTableSchema = `
@@ -562,12 +500,7 @@ CREATE TABLE system.database_role_settings (
     database_id  OID NOT NULL,
     role_name    STRING NOT NULL,
     settings     STRING[] NOT NULL,
-    CONSTRAINT "primary" PRIMARY KEY (database_id, role_name),
-		FAMILY "primary" (
-			database_id,
-      role_name,
-      settings
-		)
+    CONSTRAINT "primary" PRIMARY KEY (database_id, role_name)
 );`
 
 	TenantUsageTableSchema = `
@@ -625,13 +558,6 @@ CREATE TABLE system.tenant_usage (
   -- Current shares value for this instance.
   instance_shares FLOAT,
 
-  FAMILY "primary" (
-    tenant_id, instance_id, next_instance_id, last_update,
-    ru_burst_limit, ru_refill_rate, ru_current, current_share_sum,
-    total_consumption,
-    instance_lease, instance_seq, instance_shares
-  ),
-
 	CONSTRAINT "primary" PRIMARY KEY (tenant_id, instance_id)
 )`
 
@@ -640,8 +566,7 @@ CREATE TABLE system.sql_instances (
     id           INT NOT NULL,
     addr         STRING,
     session_id   BYTES,
-    CONSTRAINT "primary" PRIMARY KEY (id),
-    FAMILY "primary" (id, addr, session_id)
+    CONSTRAINT "primary" PRIMARY KEY (id)
 )`
 
 	SpanConfigurationsTableSchema = `
@@ -650,8 +575,7 @@ CREATE TABLE system.span_configurations (
     end_key      BYTES NOT NULL,
     config        BYTES NOT NULL,
     CONSTRAINT "primary" PRIMARY KEY (start_key),
-    CONSTRAINT check_bounds CHECK (start_key < end_key),
-    FAMILY "primary" (start_key, end_key, config)
+    CONSTRAINT check_bounds CHECK (start_key < end_key)
 )`
 
 	TenantSettingsTableSchema = `
@@ -668,8 +592,7 @@ CREATE TABLE system.tenant_settings (
 
 	-- reason is unused for now.
 	reason       STRING,
-	CONSTRAINT "primary" PRIMARY KEY (tenant_id, name),
-	FAMILY (tenant_id, name, value, last_updated, value_type, reason)
+	CONSTRAINT "primary" PRIMARY KEY (tenant_id, name)
 );`
 
 	WasmFunctionsTableSchema = `
@@ -686,8 +609,7 @@ CREATE TABLE system.wasm_functions (
 	memory_limit   INT8 NOT NULL DEFAULT 16777216,
 	owner          STRING NOT NULL,
 	created_at     TIMESTAMP NOT NULL DEFAULT now(),
-	CONSTRAINT "primary" PRIMARY KEY (database_id, schema_id, function_name, arg_types),
-	FAMILY "primary" (database_id, schema_id, function_name, arg_types, return_type, wasm_module, wat_source, export_name, fuel_limit, memory_limit, owner, created_at)
+	CONSTRAINT "primary" PRIMARY KEY (database_id, schema_id, function_name, arg_types)
 );`
 
 	SpanCountTableSchema = `
@@ -695,8 +617,7 @@ CREATE TABLE system.span_count (
 	singleton  BOOL DEFAULT TRUE,
 	span_count INT NOT NULL,
 	CONSTRAINT "primary" PRIMARY KEY (singleton),
-	CONSTRAINT single_row CHECK (singleton),
-	FAMILY "primary" (singleton, span_count)
+	CONSTRAINT single_row CHECK (singleton)
 );`
 )
 
@@ -764,6 +685,34 @@ func systemTable(
 	families []descpb.ColumnFamilyDescriptor,
 	indexes ...descpb.IndexDescriptor,
 ) descpb.TableDescriptor {
+	var defaultColumnID descpb.ColumnID
+	for _, family := range families {
+		if family.DefaultColumnID == 0 {
+			continue
+		}
+		if defaultColumnID == 0 {
+			defaultColumnID = family.DefaultColumnID
+			continue
+		}
+		// Keep the single-family descriptor conservative when the historical
+		// layout had multiple family-local default columns.
+		defaultColumnID = 0
+		break
+	}
+	primaryFamily := descpb.ColumnFamilyDescriptor{
+		ID:   0,
+		Name: tabledesc.FamilyPrimaryName,
+	}
+	for _, col := range columns {
+		if col.Virtual {
+			continue
+		}
+		primaryFamily.ColumnNames = append(primaryFamily.ColumnNames, col.Name)
+		primaryFamily.ColumnIDs = append(primaryFamily.ColumnIDs, col.ID)
+	}
+	primaryFamily.DefaultColumnID = defaultColumnID
+	families = []descpb.ColumnFamilyDescriptor{primaryFamily}
+
 	tbl := descpb.TableDescriptor{
 		Name:                    string(name),
 		ID:                      id,

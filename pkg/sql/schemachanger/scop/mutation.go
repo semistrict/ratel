@@ -281,14 +281,6 @@ type LogEvent struct {
 	TargetStatus   scpb.Status
 }
 
-// AddColumnFamily adds a new column family to the table.
-type AddColumnFamily struct {
-	mutationOp
-	TableID  descpb.ID
-	FamilyID descpb.FamilyID
-	Name     string
-}
-
 // AddColumnDefaultExpression adds a DEFAULT expression to a column.
 type AddColumnDefaultExpression struct {
 	mutationOp

@@ -102,7 +102,6 @@ func TestCompare(t *testing.T) {
 					mutators: []randgen.Mutator{
 						randgen.StatisticsMutator,
 						randgen.ForeignKeyMutator,
-						randgen.ColumnFamilyMutator,
 						randgen.StatisticsMutator,
 						randgen.IndexStoringMutator,
 						randgen.PartialIndexMutator,

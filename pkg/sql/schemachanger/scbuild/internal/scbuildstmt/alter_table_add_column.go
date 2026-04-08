@@ -28,7 +28,6 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/sqlerrors"
 	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
-	"github.com/cockroachdb/errors"
 )
 
 func alterTableAddColumn(
@@ -98,29 +97,6 @@ func alterTableAddColumn(
 	} else {
 		spec.colType.TypeT = b.ResolveTypeRef(d.Type)
 	}
-	if d.HasColumnFamily() {
-		elts := b.QueryByID(tbl.TableID)
-		var found bool
-		scpb.ForEachColumnFamily(elts, func(_ scpb.Status, target scpb.TargetStatus, cf *scpb.ColumnFamily) {
-			if target == scpb.ToPublic && cf.Name == string(d.Family.Name) {
-				spec.colType.FamilyID = cf.FamilyID
-				found = true
-			}
-		})
-		if !found {
-			if !d.Family.Create {
-				panic(errors.Errorf("unknown family %q", d.Family.Name))
-			}
-			spec.fam = &scpb.ColumnFamily{
-				TableID:  tbl.TableID,
-				FamilyID: b.NextColumnFamilyID(tbl),
-				Name:     string(d.Family.Name),
-			}
-			spec.colType.FamilyID = spec.fam.FamilyID
-		} else if d.Family.Create && !d.Family.IfNotExists {
-			panic(errors.Errorf("family %q already exists", d.Family.Name))
-		}
-	}
 	if desc.HasDefault() {
 		spec.def = &scpb.ColumnDefaultExpression{
 			TableID:    tbl.TableID,
@@ -147,7 +123,6 @@ func alterTableAddColumn(
 type addColumnSpec struct {
 	tbl      *scpb.Table
 	col      *scpb.Column
-	fam      *scpb.ColumnFamily
 	name     *scpb.ColumnName
 	colType  *scpb.ColumnType
 	def      *scpb.ColumnDefaultExpression
@@ -159,9 +134,6 @@ type addColumnSpec struct {
 // that the new column is backed by a primary index, which it returns.
 func addColumn(b BuildCtx, spec addColumnSpec) (backing *scpb.PrimaryIndex) {
 	b.Add(spec.col)
-	if spec.fam != nil {
-		b.Add(spec.fam)
-	}
 	b.Add(spec.name)
 	b.Add(spec.colType)
 	if spec.def != nil {

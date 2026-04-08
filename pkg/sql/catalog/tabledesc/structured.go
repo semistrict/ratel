@@ -239,21 +239,6 @@ func (desc *wrapper) AllActiveAndInactiveChecks() []*descpb.TableDescriptor_Chec
 	return checks
 }
 
-// GetColumnFamilyForShard returns the column family that a newly added shard column
-// should be assigned to, given the set of columns it's computed from.
-//
-// This is currently the column family of the first column in the set of index columns.
-func GetColumnFamilyForShard(desc *Mutable, idxColumns []string) string {
-	for _, f := range desc.Families {
-		for _, fCol := range f.ColumnNames {
-			if fCol == idxColumns[0] {
-				return f.Name
-			}
-		}
-	}
-	return ""
-}
-
 // AllActiveAndInactiveUniqueWithoutIndexConstraints implements the
 // TableDescriptor interface.
 func (desc *wrapper) AllActiveAndInactiveUniqueWithoutIndexConstraints() []*descpb.UniqueWithoutIndexConstraint {
@@ -835,117 +820,24 @@ func (desc *Mutable) allocateIndexIDs(columnNames map[string]descpb.ColumnID) er
 }
 
 func (desc *Mutable) allocateColumnFamilyIDs(columnNames map[string]descpb.ColumnID) {
-	if desc.NextFamilyID == 0 {
-		if len(desc.Families) == 0 {
-			desc.Families = []descpb.ColumnFamilyDescriptor{
-				{ID: 0, Name: "primary"},
-			}
-		}
-		desc.NextFamilyID = 1
-	}
-
-	var columnsInFamilies catalog.TableColSet
-	for i := range desc.Families {
-		family := &desc.Families[i]
-		if family.ID == 0 && i != 0 {
-			family.ID = desc.NextFamilyID
-			desc.NextFamilyID++
-		}
-
-		for j, colName := range family.ColumnNames {
-			if len(family.ColumnIDs) <= j {
-				family.ColumnIDs = append(family.ColumnIDs, 0)
-			}
-			if family.ColumnIDs[j] == 0 {
-				family.ColumnIDs[j] = columnNames[colName]
-			}
-			columnsInFamilies.Add(family.ColumnIDs[j])
-		}
-
-		desc.Families[i] = *family
-	}
-
-	var primaryIndexColIDs catalog.TableColSet
-	for _, colID := range desc.PrimaryIndex.KeyColumnIDs {
-		primaryIndexColIDs.Add(colID)
-	}
-
-	ensureColumnInFamily := func(col *descpb.ColumnDescriptor) {
+	primary := descpb.ColumnFamilyDescriptor{ID: 0, Name: FamilyPrimaryName}
+	appendColumn := func(col *descpb.ColumnDescriptor) {
 		if col.Virtual {
-			// Virtual columns don't need to be part of families.
 			return
 		}
-		if columnsInFamilies.Contains(col.ID) {
-			return
-		}
-		if primaryIndexColIDs.Contains(col.ID) {
-			// Primary index columns are required to be assigned to family 0.
-			desc.Families[0].ColumnNames = append(desc.Families[0].ColumnNames, col.Name)
-			desc.Families[0].ColumnIDs = append(desc.Families[0].ColumnIDs, col.ID)
-			return
-		}
-		var familyID descpb.FamilyID
-		if desc.ParentID == keys.SystemDatabaseID {
-			// TODO(dan): This assigns families such that the encoding is exactly the
-			// same as before column families. It's used for all system tables because
-			// reads of them don't go through the normal sql layer, which is where the
-			// knowledge of families lives. Fix that and remove this workaround.
-			familyID = descpb.FamilyID(col.ID)
-			desc.Families = append(desc.Families, descpb.ColumnFamilyDescriptor{
-				ID:          familyID,
-				ColumnNames: []string{col.Name},
-				ColumnIDs:   []descpb.ColumnID{col.ID},
-			})
-		} else {
-			idx, ok := fitColumnToFamily(desc, *col)
-			if !ok {
-				idx = len(desc.Families)
-				desc.Families = append(desc.Families, descpb.ColumnFamilyDescriptor{
-					ID:          desc.NextFamilyID,
-					ColumnNames: []string{},
-					ColumnIDs:   []descpb.ColumnID{},
-				})
-			}
-			familyID = desc.Families[idx].ID
-			desc.Families[idx].ColumnNames = append(desc.Families[idx].ColumnNames, col.Name)
-			desc.Families[idx].ColumnIDs = append(desc.Families[idx].ColumnIDs, col.ID)
-		}
-		if familyID >= desc.NextFamilyID {
-			desc.NextFamilyID = familyID + 1
-		}
+		primary.ColumnNames = append(primary.ColumnNames, col.Name)
+		primary.ColumnIDs = append(primary.ColumnIDs, columnNames[col.Name])
 	}
 	for i := range desc.Columns {
-		ensureColumnInFamily(&desc.Columns[i])
+		appendColumn(&desc.Columns[i])
 	}
 	for _, m := range desc.Mutations {
 		if c := m.GetColumn(); c != nil {
-			ensureColumnInFamily(c)
+			appendColumn(c)
 		}
 	}
-
-	for i := range desc.Families {
-		family := &desc.Families[i]
-		if len(family.Name) == 0 {
-			family.Name = generatedFamilyName(family.ID, family.ColumnNames)
-		}
-
-		if family.DefaultColumnID == 0 {
-			defaultColumnID := descpb.ColumnID(0)
-			for _, colID := range family.ColumnIDs {
-				if !primaryIndexColIDs.Contains(colID) {
-					if defaultColumnID == 0 {
-						defaultColumnID = colID
-					} else {
-						defaultColumnID = descpb.ColumnID(0)
-						break
-					}
-				}
-			}
-			family.DefaultColumnID = defaultColumnID
-		}
-
-		desc.Families[i] = *family
-	}
+	desc.Families = []descpb.ColumnFamilyDescriptor{primary}
+	desc.NextFamilyID = 1
 }
 
 // fitColumnToFamily attempts to fit a new column into the existing column
@@ -1122,9 +1014,13 @@ func (desc *Mutable) AddColumn(col *descpb.ColumnDescriptor) {
 	desc.Columns = append(desc.Columns, *col)
 }
 
-// AddFamily adds a family to the table.
+// AddFamily adds columns to the single physical family on the table.
 func (desc *Mutable) AddFamily(fam descpb.ColumnFamilyDescriptor) {
-	desc.Families = append(desc.Families, fam)
+	if len(desc.Families) == 0 {
+		desc.Families = []descpb.ColumnFamilyDescriptor{{ID: 0, Name: FamilyPrimaryName}}
+	}
+	desc.Families[0].ColumnNames = append(desc.Families[0].ColumnNames, fam.ColumnNames...)
+	desc.Families[0].ColumnIDs = append(desc.Families[0].ColumnIDs, fam.ColumnIDs...)
 }
 
 // AddPrimaryIndex adds a primary index to a mutable table descriptor, assuming
@@ -1192,29 +1088,10 @@ func (desc *Mutable) AddSecondaryIndex(idx descpb.IndexDescriptor) error {
 func (desc *Mutable) AddColumnToFamilyMaybeCreate(
 	col string, family string, create bool, ifNotExists bool,
 ) error {
-	idx := int(-1)
-	if len(family) > 0 {
-		for i := range desc.Families {
-			if desc.Families[i].Name == family {
-				idx = i
-				break
-			}
-		}
+	if len(desc.Families) == 0 {
+		desc.Families = []descpb.ColumnFamilyDescriptor{{ID: 0, Name: FamilyPrimaryName}}
 	}
-
-	if idx == -1 {
-		if create {
-			// NB: When AllocateIDs encounters an empty `Name`, it'll generate one.
-			desc.AddFamily(descpb.ColumnFamilyDescriptor{Name: family, ColumnNames: []string{col}})
-			return nil
-		}
-		return fmt.Errorf("unknown family %q", family)
-	}
-
-	if create && !ifNotExists {
-		return fmt.Errorf("family %q already exists", family)
-	}
-	desc.Families[idx].ColumnNames = append(desc.Families[idx].ColumnNames, col)
+	desc.Families[0].ColumnNames = append(desc.Families[0].ColumnNames, col)
 	return nil
 }
 

@@ -168,12 +168,12 @@ func (fit *fakeSpanResolverIterator) Seek(
 
 	// Check for the case where the last range of the previous Seek() describes
 	// the same row as this seek. In this case we'll assign the same replica so we
-	// don't "split" column families of the same row across different replicas.
+	// don't split different keys of the same row across different replicas.
 	if prevRange.endKey != nil {
 		prefix, err := keys.EnsureSafeSplitKey(span.Key)
-		// EnsureSafeSplitKey returns an error for keys which do not specify a
-		// column family. In this case we don't need to worry about splitting the
-		// row.
+		// EnsureSafeSplitKey returns an error for keys that do not specify a
+		// row-local key suffix. In this case we don't need to worry about
+		// splitting the row.
 		if err == nil && len(prevRange.endKey) >= len(prefix) &&
 			bytes.Equal(prefix, prevRange.endKey[:len(prefix)]) {
 			fit.ranges[0].replica = prevRange.replica

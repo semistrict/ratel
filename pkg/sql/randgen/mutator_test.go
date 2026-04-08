@@ -25,7 +25,7 @@ import (
 func TestPostgresMutator(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	q := `
-		CREATE TABLE t (s STRING FAMILY fam1, b BYTES, FAMILY fam2 (b), PRIMARY KEY (s ASC, b DESC), INDEX (s) STORING (b))
+		CREATE TABLE t (s STRING, b BYTES, PRIMARY KEY (s ASC, b DESC), INDEX (s) STORING (b))
 		    PARTITION BY LIST (s)
 		        (
 		            PARTITION europe_west VALUES IN ('a', 'b')

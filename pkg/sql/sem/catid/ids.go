@@ -30,11 +30,11 @@ type ColumnID uint32
 // SafeValue implements the redact.SafeValue interface.
 func (ColumnID) SafeValue() {}
 
-// FamilyID is a custom type for ColumnFamilyDescriptor IDs.
-type FamilyID uint32
+// RowGroupID is a custom type for RowGroupDescriptor IDs.
+type RowGroupID uint32
 
 // SafeValue implements the redact.SafeValue interface.
-func (FamilyID) SafeValue() {}
+func (RowGroupID) SafeValue() {}
 
 // IndexID is a custom type for IndexDescriptor IDs.
 type IndexID uint32

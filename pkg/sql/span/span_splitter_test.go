@@ -16,10 +16,10 @@ package span_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/cockroachdb/cockroach/pkg/keys"
+	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/desctestutils"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/systemschema"
 	"github.com/cockroachdb/cockroach/pkg/sql/span"
@@ -30,115 +30,65 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/util/log"
 )
 
-func TestSpanSplitterDoesNotSplitSystemTableFamilySpans(t *testing.T) {
-	splitter := span.MakeSplitter(
-		systemschema.DescriptorTable,
-		systemschema.DescriptorTable.GetPrimaryIndex(),
-		util.MakeFastIntSet(0),
-	)
-
-	if res := splitter.CanSplitSpanIntoFamilySpans(1, false); res {
-		t.Errorf("expected the system table to not be splittable")
-	}
-}
-
-func TestSpanSplitterCanSplitSpan(t *testing.T) {
+func TestSpanSplitterIsNoop(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
+
 	ctx := context.Background()
 	params, _ := tests.CreateTestServerParams()
 	s, sqlDB, kvDB := serverutils.StartServer(t, params)
 	defer s.Stopper().Stop(ctx)
-	tcs := []struct {
-		sql           string
-		index         string
-		prefixLen     int
-		neededColumns util.FastIntSet
-		containsNull  bool
-		canSplit      bool
-	}{
-		{
-			sql:           "a INT, b INT, c INT, d INT, PRIMARY KEY (a, b), FAMILY (a, b, c), FAMILY (d)",
-			index:         "t_pkey",
-			prefixLen:     2,
-			neededColumns: util.MakeFastIntSet(0),
-			canSplit:      true,
-		},
-		{
-			sql:           "a INT, b INT, c INT, d INT, PRIMARY KEY (a, b), FAMILY (a, b, c), FAMILY (d)",
-			index:         "t_pkey",
-			prefixLen:     1,
-			neededColumns: util.MakeFastIntSet(0),
-			canSplit:      false,
-		},
-		{
-			sql:           "a INT, b INT, c INT, d INT, PRIMARY KEY (a, b), FAMILY (a, b, c, d)",
-			index:         "t_pkey",
-			prefixLen:     2,
-			neededColumns: util.MakeFastIntSet(0),
-			canSplit:      true,
-		},
-		{
-			sql:           "a INT, b INT, c INT, INDEX i (b) STORING (a, c), FAMILY (a), FAMILY (b), FAMILY (c)",
-			index:         "i",
-			prefixLen:     1,
-			neededColumns: util.MakeFastIntSet(0),
-			canSplit:      false,
-		},
-		{
-			sql:           "a INT, b INT, c INT, UNIQUE INDEX i (b) STORING (a, c), FAMILY (a), FAMILY (b), FAMILY (c)",
-			index:         "i",
-			prefixLen:     1,
-			neededColumns: util.MakeFastIntSet(0),
-			containsNull:  true,
-			canSplit:      false,
-		},
-		{
-			sql:           "a INT, b INT, c INT, UNIQUE INDEX i (b) STORING (a, c), FAMILY (a), FAMILY (b), FAMILY (c)",
-			index:         "i",
-			prefixLen:     1,
-			neededColumns: util.MakeFastIntSet(0),
-			containsNull:  false,
-			canSplit:      true,
-		},
-		{
-			sql:           "a INT, b INT, c INT, UNIQUE INDEX i (b), FAMILY (a), FAMILY (b), FAMILY (c)",
-			index:         "i",
-			prefixLen:     1,
-			neededColumns: util.MakeFastIntSet(0),
-			containsNull:  false,
-			canSplit:      true,
-		},
-		{
-			sql:           "a INT, b INT, c INT, UNIQUE INDEX i (b), FAMILY (a), FAMILY (b), FAMILY (c)",
-			index:         "i",
-			prefixLen:     1,
-			neededColumns: util.MakeFastIntSet(0),
-			containsNull:  true,
-			canSplit:      false,
-		},
-	}
-	if _, err := sqlDB.Exec("CREATE DATABASE t"); err != nil {
+
+	if _, err := sqlDB.Exec(`CREATE DATABASE t`); err != nil {
 		t.Fatal(err)
 	}
-	for _, tc := range tcs {
-		t.Run(tc.sql, func(t *testing.T) {
-			if _, err := sqlDB.Exec("DROP TABLE IF EXISTS t.t"); err != nil {
-				t.Fatal(err)
-			}
-			sql := fmt.Sprintf("CREATE TABLE t.t (%s)", tc.sql)
-			if _, err := sqlDB.Exec(sql); err != nil {
-				t.Fatal(err)
-			}
-			desc := desctestutils.TestingGetPublicTableDescriptor(kvDB, keys.SystemSQLCodec, "t", "t")
-			idx, err := desc.FindIndexWithName(tc.index)
+	if _, err := sqlDB.Exec(`
+CREATE TABLE t.u (
+	a INT PRIMARY KEY,
+	b INT,
+	c INT,
+	UNIQUE INDEX u_b (b),
+	INDEX u_c (c)
+)`); err != nil {
+		t.Fatal(err)
+	}
+	desc := desctestutils.TestingGetPublicTableDescriptor(kvDB, keys.SystemSQLCodec, "t", "u")
+
+	testCases := []struct {
+		name      string
+		indexName string
+	}{
+		{name: "user-primary", indexName: desc.GetPrimaryIndex().GetName()},
+		{name: "user-secondary", indexName: "u_b"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			idx, err := desc.FindIndexWithName(tc.indexName)
 			if err != nil {
 				t.Fatal(err)
 			}
-			splitter := span.MakeSplitter(desc, idx, tc.neededColumns)
-			if res := splitter.CanSplitSpanIntoFamilySpans(tc.prefixLen, tc.containsNull); res != tc.canSplit {
-				t.Errorf("expected result to be %v, but found %v", tc.canSplit, res)
+			splitter := span.MakeSplitter(desc, idx, util.MakeFastIntSet(0, 1, 2))
+			if !splitter.IsNoop() {
+				t.Fatal("expected no-op splitter")
+			}
+			got := splitter.AppendSpan(nil, roachpb.Span{Key: []byte("k"), EndKey: []byte("ke")}, idx.NumKeyColumns(), false)
+			if len(got) != 1 {
+				t.Fatalf("expected appended span, got %v", got)
 			}
 		})
+	}
+
+	systemSplitter := span.MakeSplitter(
+		systemschema.DescriptorTable,
+		systemschema.DescriptorTable.GetPrimaryIndex(),
+		util.MakeFastIntSet(0),
+	)
+	if !systemSplitter.IsNoop() {
+		t.Fatal("expected system-table splitter to be a no-op")
+	}
+	got := systemSplitter.AppendSpan(nil, roachpb.Span{Key: []byte("k"), EndKey: []byte("ke")}, 1, false)
+	if len(got) != 1 {
+		t.Fatalf("expected appended span, got %v", got)
 	}
 }

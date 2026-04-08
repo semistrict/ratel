@@ -434,9 +434,9 @@ func (desc *wrapper) SystemColumns() []catalog.Column {
 	return desc.getExistingOrNewColumnCache().system
 }
 
-// FamilyDefaultColumns implements the TableDescriptor interface.
-func (desc *wrapper) FamilyDefaultColumns() []descpb.IndexFetchSpec_FamilyDefaultColumn {
-	return desc.getExistingOrNewColumnCache().familyDefaultColumns
+// DefaultColumnID implements the TableDescriptor interface.
+func (desc *wrapper) DefaultColumnID() descpb.ColumnID {
+	return desc.getExistingOrNewColumnCache().defaultColumnID
 }
 
 // PublicColumnIDs implements the TableDescriptor interface.

@@ -33,8 +33,8 @@ func fixImports(s string) string {
 	var builder strings.Builder
 	for _, line := range lines {
 		if strings.Contains(line, "import _ ") ||
-			strings.Contains(line, "import fmt \"github.com/cockroachdb/cockroach/pkg/fmt\"") ||
-			strings.Contains(line, "import math \"github.com/cockroachdb/cockroach/pkg/math\"") {
+			strings.Contains(line, "\"github.com/cockroachdb/cockroach/pkg/fmt\"") ||
+			strings.Contains(line, "\"github.com/cockroachdb/cockroach/pkg/math\"") {
 			continue
 		}
 

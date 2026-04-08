@@ -39,7 +39,6 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/randgen"
 	"github.com/cockroachdb/cockroach/pkg/sql/rowenc"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/span"
 	"github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/cockroachdb/cockroach/pkg/storage"
 	"github.com/cockroachdb/cockroach/pkg/testutils"
@@ -98,7 +97,7 @@ func TestJoinReader(t *testing.T) {
 	tdSecondary := desctestutils.TestingGetPublicTableDescriptor(kvDB, keys.SystemSQLCodec, "test", "t")
 
 	sqlutils.CreateTable(t, sqlDB, "t2",
-		"a INT, b INT, sum INT, s STRING, PRIMARY KEY (a,b), FAMILY f1 (a, b), FAMILY f2 (s), FAMILY f3 (sum), INDEX bs (b,s)",
+		"a INT, b INT, sum INT, s STRING, PRIMARY KEY (a,b), INDEX bs (b,s)",
 		99,
 		sqlutils.ToRowFn(aFn, bFn, sumFn, sqlutils.RowEnglishFn))
 
@@ -926,14 +925,11 @@ func TestJoinReader(t *testing.T) {
 							); err != nil {
 								t.Fatal(err)
 							}
-							splitter := span.MakeSplitter(td, index, neededOrds)
-
 							jr, err := newJoinReader(
 								&flowCtx,
 								0, /* processorID */
 								&execinfrapb.JoinReaderSpec{
 									FetchSpec:                         fetchSpec,
-									SplitFamilyIDs:                    splitter.FamilyIDs(),
 									LookupColumns:                     c.lookupCols,
 									LookupExpr:                        execinfrapb.Expression{Expr: c.lookupExpr},
 									RemoteLookupExpr:                  execinfrapb.Expression{Expr: c.remoteLookupExpr},
@@ -1296,7 +1292,7 @@ func TestIndexJoiner(t *testing.T) {
 		sqlutils.ToRowFn(aFn, bFn, sumFn, sqlutils.RowEnglishFn))
 
 	sqlutils.CreateTable(t, sqlDB, "t2",
-		"a INT, b INT, sum INT, s STRING, PRIMARY KEY (a,b), FAMILY f1 (a, b), FAMILY f2 (s), FAMILY f3 (sum), INDEX bs (b,s)",
+		"a INT, b INT, sum INT, s STRING, PRIMARY KEY (a,b), INDEX bs (b,s)",
 		99,
 		sqlutils.ToRowFn(aFn, bFn, sumFn, sqlutils.RowEnglishFn))
 
@@ -1372,11 +1368,8 @@ func TestIndexJoiner(t *testing.T) {
 			); err != nil {
 				t.Fatal(err)
 			}
-			splitter := span.MakeSplitter(c.desc, c.desc.GetPrimaryIndex(), util.MakeFastIntSet(0, 1, 2, 3))
-
 			spec := execinfrapb.JoinReaderSpec{
-				FetchSpec:      fetchSpec,
-				SplitFamilyIDs: splitter.FamilyIDs(),
+				FetchSpec: fetchSpec,
 			}
 			txn := kv.NewTxn(context.Background(), s.DB(), s.NodeID())
 			runProcessorTest(

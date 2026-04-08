@@ -279,7 +279,7 @@ type columnCache struct {
 	readable             []catalog.Column
 	withUDTs             []catalog.Column
 	system               []catalog.Column
-	familyDefaultColumns []descpb.IndexFetchSpec_FamilyDefaultColumn
+	defaultColumnID descpb.ColumnID
 	index                []indexColumnCache
 }
 
@@ -357,17 +357,8 @@ func newColumnCache(desc *descpb.TableDescriptor, mutations *mutationCache) *col
 		}
 	}
 
-	// Populate familyDefaultColumns.
-	for i := range desc.Families {
-		if f := &desc.Families[i]; f.DefaultColumnID != 0 {
-			if c.familyDefaultColumns == nil {
-				c.familyDefaultColumns = make([]descpb.IndexFetchSpec_FamilyDefaultColumn, 0, len(desc.Families)-i)
-			}
-			c.familyDefaultColumns = append(c.familyDefaultColumns, descpb.IndexFetchSpec_FamilyDefaultColumn{
-				FamilyID:        f.ID,
-				DefaultColumnID: f.DefaultColumnID,
-			})
-		}
+	if len(desc.RowGroups) > 0 {
+		c.defaultColumnID = desc.RowGroups[0].DefaultColumnID
 	}
 
 	// Populate the per-index column cache

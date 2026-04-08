@@ -38,7 +38,6 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/execinfra"
 	"github.com/cockroachdb/cockroach/pkg/sql/kvstreamer"
 	"github.com/cockroachdb/cockroach/pkg/sql/row"
-	"github.com/cockroachdb/cockroach/pkg/sql/rowenc/keyside"
 	"github.com/cockroachdb/cockroach/pkg/sql/rowinfra"
 	"github.com/cockroachdb/cockroach/pkg/sql/scrub"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
@@ -83,14 +82,13 @@ type cTableInfo struct {
 	// be included in indexColOrdinals instead);
 	// - for unique indexes, these columns are stored in the value (unless the
 	// key contains a NULL value: then the extra columns are appended to the key
-	// to unique-ify it).
+	// to unique-ify it even though the row still occupies a single KV).
 	extraValColOrdinals []int
 
 	// The following fields contain MVCC metadata for each row and may be
 	// returned to users of cFetcher immediately after NextBatch returns.
 	//
-	// rowLastModified is the timestamp of the last time any family in the row
-	// was modified in any way.
+	// rowLastModified is the timestamp of the last time the row KV was modified.
 	rowLastModified hlc.Timestamp
 	// timestampOutputIdx controls at what column ordinal in the output batch to
 	// write the timestamp for the MVCC timestamp system column.
@@ -261,9 +259,7 @@ type cFetcher struct {
 		// remainingValueColsByIdx is the set of value columns that are yet to be
 		// seen during the decoding of the current row.
 		remainingValueColsByIdx util.FastIntSet
-		// lastRowPrefix is the row prefix for the last row we saw a key for. New
-		// keys are compared against this prefix to determine whether they're part
-		// of a new row or not.
+		// lastRowPrefix is the row prefix for the last row we saw a key for.
 		lastRowPrefix roachpb.Key
 		// prettyValueBuf is a temp buffer used to create strings for tracing.
 		prettyValueBuf *bytes.Buffer
@@ -518,23 +514,9 @@ func (cf *cFetcher) StartScan(
 	// a very restrictive filter and actually have to retrieve a lot of rows).
 	firstBatchLimit := rowinfra.KeyLimit(limitHint)
 	if firstBatchLimit != 0 {
-		// The limitHint is a row limit, but each row could be made up of more
-		// than one key. We take the maximum possible keys per row out of all
-		// the table rows we could potentially scan over.
-		//
-		// Note that unlike for the row.Fetcher, we don't need an extra key to
-		// form the last row in the cFetcher because we are eagerly finalizing
-		// each row once we know that all KVs comprising that row have been
-		// fetched. Consider several cases:
-		// - the table has only one column family - then we can finalize each
-		//   row right after the first KV is decoded;
-		// - the table has multiple column families:
-		//   - KVs for all column families are present for all rows - then for
-		//     each row, when its last KV is fetched, the row can be finalized
-		//     (and firstBatchLimit asks exactly for the correct number of KVs);
-		//   - KVs for some column families are omitted for some rows - then we
-		//     will actually fetch more KVs than necessary, but we'll decode
-		//     limitHint number of rows.
+		// The limit hint is in rows; convert it to a key limit using the fetch
+		// spec's bound. In the single-row-KV layout this remains one key per row,
+		// but keeping the multiplication avoids changing the rowinfra contract.
 		firstBatchLimit = rowinfra.KeyLimit(int(limitHint) * int(cf.table.spec.MaxKeysPerRow))
 	}
 
@@ -602,31 +584,13 @@ const (
 	// selection vector.
 	stateResetBatch
 
-	// stateDecodeFirstKVOfRow is the state of looking at a key that is part of
-	// a row that the fetcher hasn't processed before. s.machine.nextKV must be
-	// set.
+	// stateDecodeFirstKVOfRow is the state of looking at a key that starts a
+	// new row. s.machine.nextKV must be set.
 	//   1. skip common prefix
 	//   2. parse key (past common prefix) into row buffer, setting last row prefix buffer
 	//   3. parse value into row buffer.
-	//   4. 1-cf or secondary index?
-	//     -> doneRow(initFetch)
-	//   else:
-	//     -> fetchNextKVWithUnfinishedRow
+	//   4. -> doneRow(initFetch)
 	stateDecodeFirstKVOfRow
-
-	// stateFetchNextKVWithUnfinishedRow is the state of getting a new key for
-	// the current row. The machine will read a new key from the underlying
-	// fetcher, process it, and either add the results to the current row, or
-	// shift to a new row.
-	//   1. fetch next kv into nextKV buffer
-	//   2. skip common prefix
-	//   3. check equality to last row prefix buffer
-	//   4. no?
-	//     -> finalizeRow(decodeFirstKVOfRow)
-	//   5. skip to end of last row prefix buffer
-	//   6. parse value into row buffer
-	//   7. -> fetchNextKVWithUnfinishedRow
-	stateFetchNextKVWithUnfinishedRow
 
 	// stateFinalizeRow is the state of finalizing a row. It assumes that no more
 	// keys for the current row are present.
@@ -732,10 +696,6 @@ func (cf *cFetcher) NextBatch(ctx context.Context) (coldata.Batch, error) {
 			// Reset MVCC metadata for the table, since this is the first KV of a row.
 			cf.table.rowLastModified = hlc.Timestamp{}
 
-			// foundNull is set when decoding a new index key for a row finds a NULL value
-			// in the index key. This is used when decoding unique secondary indexes in order
-			// to tell whether they have extra columns appended to the key.
-			var foundNull bool
 			if cf.mustDecodeIndexKey {
 				if debugState {
 					log.Infof(ctx, "decoding first key %s", cf.machine.nextKV.Key)
@@ -744,17 +704,12 @@ func (cf *cFetcher) NextBatch(ctx context.Context) (coldata.Batch, error) {
 					key []byte
 					err error
 				)
-				// For unique secondary indexes on tables with multiple column
-				// families, we must check all columns for NULL values in order
-				// to determine whether a KV belongs to the same row as the
-				// previous KV or a different row.
-				checkAllColsForNull := cf.table.spec.IsSecondaryIndex && cf.table.spec.IsUniqueIndex && cf.table.spec.MaxKeysPerRow != 1
-				key, foundNull, cf.scratch, err = colencoding.DecodeKeyValsToCols(
+				key, _, cf.scratch, err = colencoding.DecodeKeyValsToCols(
 					&cf.table.da,
 					&cf.machine.colvecs,
 					cf.machine.rowIdx,
 					cf.table.indexColOrdinals,
-					checkAllColsForNull,
+					false, /* checkAllColsForNull */
 					cf.table.spec.KeyFullColumns(),
 					nil, /* unseen */
 					cf.machine.nextKV.Key[cf.table.spec.KeyPrefixLength:],
@@ -773,124 +728,18 @@ func (cf *cFetcher) NextBatch(ctx context.Context) (coldata.Batch, error) {
 				cf.machine.lastRowPrefix = cf.machine.nextKV.Key[:prefixLen]
 			}
 
-			// For unique secondary indexes on tables with multiple column
-			// families, the index-key does not distinguish one row from the
-			// next if both rows contain identical values along with a NULL.
-			// Consider the keys:
-			//
-			//   /test/unique_idx/NULL/0
-			//   /test/unique_idx/NULL/1
-			//
-			// The index-key extracted from the above keys is
-			// /test/unique_idx/NULL. The trailing /0 and /1 are the primary key
-			// used to unique-ify the keys when a NULL is present. When a null
-			// is present in the index key, we include the primary key columns
-			// in lastRowPrefix.
-			//
-			// Note that we do not need to do this for non-unique secondary
-			// indexes because the extra columns in the primary key will
-			// _always_ be there, so we can decode them when processing the
-			// index. The difference with unique secondary indexes is that the
-			// extra columns are not always there, and are used to unique-ify
-			// the index key, rather than provide the primary key column values.
-			//
-			// We also do not need to do this when a table has only one column
-			// family because it is guaranteed that there is only one KV per
-			// row. We entirely skip the check that determines if the row is
-			// unfinished.
-			if foundNull && cf.table.spec.IsSecondaryIndex && cf.table.spec.IsUniqueIndex && cf.table.spec.MaxKeysPerRow != 1 {
-				// We get the remaining bytes after the computed prefix, and then
-				// slice off the extra encoded columns from those bytes. We calculate
-				// how many bytes were sliced away, and then extend lastRowPrefix
-				// by that amount.
-				prefixLen := len(cf.machine.lastRowPrefix)
-				remainingBytes := cf.machine.nextKV.Key[prefixLen:]
-				origRemainingBytesLen := len(remainingBytes)
-				for i := 0; i < int(cf.table.spec.NumKeySuffixColumns); i++ {
-					var err error
-					// Slice off an extra encoded column from remainingBytes.
-					remainingBytes, err = keyside.Skip(remainingBytes)
-					if err != nil {
-						return nil, err
-					}
-				}
-				cf.machine.lastRowPrefix = cf.machine.nextKV.Key[:prefixLen+(origRemainingBytesLen-len(remainingBytes))]
-			}
-
-			familyID, err := cf.getCurrentColumnFamilyID()
-			if err != nil {
-				return nil, err
-			}
 			cf.machine.remainingValueColsByIdx.CopyFrom(cf.table.neededValueColsByIdx)
 			// Process the current KV's value component.
-			if err := cf.processValue(ctx, familyID); err != nil {
+			if err := cf.processValue(ctx); err != nil {
 				return nil, err
 			}
 			// Update the MVCC values for this row.
 			if cf.table.rowLastModified.Less(cf.machine.nextKV.Value.Timestamp) {
 				cf.table.rowLastModified = cf.machine.nextKV.Value.Timestamp
 			}
-			// If the index has only one column family, then the next KV will
-			// always belong to a different row than the current KV.
-			if cf.table.spec.MaxKeysPerRow == 1 {
-				cf.machine.state[0] = stateFinalizeRow
-				cf.machine.state[1] = stateInitFetch
-				continue
-			}
-			// If the table has more than one column family, then the next KV
-			// may belong to the same row as the current KV.
-			cf.machine.state[0] = stateFetchNextKVWithUnfinishedRow
-
-		case stateFetchNextKVWithUnfinishedRow:
-			moreKVs, kv, finalReferenceToBatch, err := cf.fetcher.NextKV(ctx, cf.mvccDecodeStrategy)
-			if err != nil {
-				return nil, cf.convertFetchError(ctx, err)
-			}
-			if !moreKVs {
-				// No more data. Finalize the row and exit.
-				cf.machine.state[0] = stateFinalizeRow
-				cf.machine.state[1] = stateEmitLastBatch
-				continue
-			}
-			// TODO(jordan): if nextKV returns newSpan = true, set the new span
-			// prefix and indicate that it needs decoding.
-			cf.setNextKV(kv, finalReferenceToBatch)
-			if debugState {
-				log.Infof(ctx, "decoding next key %s", cf.machine.nextKV.Key)
-			}
-
-			// TODO(yuzefovich): optimize this prefix check by skipping logical
-			// longest common span prefix.
-			if !bytes.HasPrefix(kv.Key[cf.table.spec.KeyPrefixLength:], cf.machine.lastRowPrefix[cf.table.spec.KeyPrefixLength:]) {
-				// The kv we just found is from a different row.
-				cf.machine.state[0] = stateFinalizeRow
-				cf.machine.state[1] = stateDecodeFirstKVOfRow
-				continue
-			}
-
-			familyID, err := cf.getCurrentColumnFamilyID()
-			if err != nil {
-				return nil, err
-			}
-
-			// Process the current KV's value component.
-			if err := cf.processValue(ctx, familyID); err != nil {
-				return nil, err
-			}
-
-			// Update the MVCC values for this row.
-			if cf.table.rowLastModified.Less(cf.machine.nextKV.Value.Timestamp) {
-				cf.table.rowLastModified = cf.machine.nextKV.Value.Timestamp
-			}
-
-			if familyID == cf.table.spec.MaxFamilyID {
-				// We know the row can't have any more keys, so finalize the row.
-				cf.machine.state[0] = stateFinalizeRow
-				cf.machine.state[1] = stateInitFetch
-			} else {
-				// Continue with current state.
-				cf.machine.state[0] = stateFetchNextKVWithUnfinishedRow
-			}
+			cf.machine.state[0] = stateFinalizeRow
+			cf.machine.state[1] = stateInitFetch
+			continue
 
 		case stateFinalizeRow:
 			// Populate the timestamp system column if needed. We have to do it
@@ -992,7 +841,7 @@ func (cf *cFetcher) writeDecodedCols(buf *strings.Builder, colOrdinals []int, se
 // processValue processes the state machine's current value component, setting
 // columns in the rowIdx'th tuple in the current batch depending on what data
 // is found in the current value component.
-func (cf *cFetcher) processValue(ctx context.Context, familyID descpb.FamilyID) (err error) {
+func (cf *cFetcher) processValue(ctx context.Context) (err error) {
 	table := cf.table
 
 	var prettyKey, prettyValue string
@@ -1027,14 +876,13 @@ func (cf *cFetcher) processValue(ctx context.Context, familyID descpb.FamilyID) 
 		// strings, it is one of potentially many strings with the same collation
 		// key).
 		//
-		// In these cases, the correct value will be present in family 0 and the
+		// In these cases, the correct value is present in the row value and the
 		// table.row value gets overwritten.
 
 		switch val.GetTag() {
 		case roachpb.ValueType_TUPLE:
-			// In this case, we don't need to decode the column family ID, because
-			// the ValueType_TUPLE encoding includes the column id with every encoded
-			// column value.
+			// The ValueType_TUPLE encoding includes the column ID with every
+			// encoded column value.
 			var tupleBytes []byte
 			tupleBytes, err = val.GetTuple()
 			if err != nil {
@@ -1043,25 +891,9 @@ func (cf *cFetcher) processValue(ctx context.Context, familyID descpb.FamilyID) 
 			prettyKey, prettyValue, err = cf.processValueBytes(ctx, table, tupleBytes, prettyKey)
 
 		default:
-			// Find the default column ID for the family.
-			var defaultColumnID descpb.ColumnID
-			for _, f := range table.spec.FamilyDefaultColumns {
-				if f.FamilyID == familyID {
-					defaultColumnID = f.DefaultColumnID
-					break
-				}
+			if table.spec.DefaultColumnID != 0 {
+				prettyKey, prettyValue, err = cf.processValueSingle(ctx, table, table.spec.DefaultColumnID, prettyKey)
 			}
-			if defaultColumnID == 0 {
-				if familyID == 0 {
-					// Family 0 without a default column remains the legacy row sentinel.
-					break
-				}
-				return scrub.WrapError(
-					scrub.IndexKeyDecodingError,
-					errors.Errorf("single entry value with no default column id"),
-				)
-			}
-			prettyKey, prettyValue, err = cf.processValueSingle(ctx, table, defaultColumnID, prettyKey)
 		}
 		if err != nil {
 			return scrub.WrapError(scrub.IndexValueDecodingError, err)
@@ -1071,9 +903,8 @@ func (cf *cFetcher) processValue(ctx context.Context, familyID descpb.FamilyID) 
 		var valueBytes []byte
 		switch tag {
 		case roachpb.ValueType_BYTES:
-			// If we have the ValueType_BYTES on a secondary index, then we know we
-			// are looking at column family 0. Column family 0 stores the extra primary
-			// key columns if they are present, so we decode them here.
+			// Secondary index ValueType_BYTES values store extra primary key
+			// columns when they are present, so decode them here.
 			valueBytes, err = val.GetBytes()
 			if err != nil {
 				return scrub.WrapError(scrub.IndexValueDecodingError, err)
@@ -1297,26 +1128,6 @@ func (cf *cFetcher) finalizeBatch() {
 	}
 	cf.machine.batch.SetLength(cf.machine.rowIdx)
 	cf.machine.rowIdx = 0
-}
-
-// getCurrentColumnFamilyID returns the column family id of the key in
-// cf.machine.nextKV.Key.
-func (cf *cFetcher) getCurrentColumnFamilyID() (descpb.FamilyID, error) {
-	// If the table only has 1 column family, and its ID is 0, we know that the
-	// key has to be the 0th column family.
-	if cf.table.spec.MaxFamilyID == 0 {
-		return 0, nil
-	}
-	// The column family is encoded in the final bytes of the key. The last
-	// byte of the key is the length of the column family id encoding
-	// itself. See encoding.md for more details, and see MakeFamilyKey for
-	// the routine that performs this encoding.
-	var id uint64
-	_, id, err := encoding.DecodeUvarintAscending(cf.machine.nextKV.Key[len(cf.machine.lastRowPrefix):])
-	if err != nil {
-		return 0, scrub.WrapError(scrub.IndexKeyDecodingError, err)
-	}
-	return descpb.FamilyID(id), nil
 }
 
 // convertFetchError converts an error generated during a key-value fetch to a

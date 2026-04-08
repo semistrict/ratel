@@ -55,7 +55,7 @@ func TestShouldSkipConstraintValidation(t *testing.T) {
 		Columns: []descpb.ColumnDescriptor{
 			{ID: 1, Name: "c1"},
 		},
-		Families: []descpb.ColumnFamilyDescriptor{
+		RowGroups: []descpb.RowGroupDescriptor{
 			{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1, 2}, ColumnNames: []string{"c1", "c2"}},
 		},
 		PrimaryIndex: descpb.IndexDescriptor{

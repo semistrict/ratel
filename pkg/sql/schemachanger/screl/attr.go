@@ -54,8 +54,6 @@ const (
 	DescID
 	// IndexID is the index ID to which this element corresponds.
 	IndexID
-	// ColumnFamilyID is the ID of the column family for this element.
-	ColumnFamilyID
 	// ColumnID is the ID of the column for this element.
 	ColumnID
 	// ConstraintID is the ID of a constraint
@@ -171,7 +169,6 @@ var elementSchemaOptions = []rel.SchemaOption{
 	),
 	rel.EntityMapping(t((*scpb.ColumnType)(nil)),
 		rel.EntityAttr(DescID, "TableID"),
-		rel.EntityAttr(ColumnFamilyID, "FamilyID"),
 		rel.EntityAttr(ColumnID, "ColumnID"),
 	),
 	rel.EntityMapping(t((*scpb.SequenceOwner)(nil)),

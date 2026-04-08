@@ -255,22 +255,22 @@ func (tc *Catalog) CreateTable(stmt *tree.CreateTable) *Table {
 		}
 	}
 
-	// If there are columns missing from explicit family definitions, add them
-	// to family 0 (ensure that one exists).
-	if len(tab.Families) == 0 {
-		tab.Families = []*Family{{FamName: "primary", Ordinal: 0, table: tab}}
+	// If there are columns missing from explicit row-group definitions, add them
+	// to the primary row-group (ensure that one exists).
+	if len(tab.RowGroups) == 0 {
+		tab.RowGroups = []*RowGroup{{RowGroupName: "primary", Ordinal: 0, table: tab}}
 	}
 OuterLoop:
 	for colOrd := range tab.Columns {
 		col := &tab.Columns[colOrd]
-		for _, fam := range tab.Families {
-			for _, famCol := range fam.Columns {
-				if col.ColName() == famCol.ColName() {
+		for _, rowGroup := range tab.RowGroups {
+			for _, rowGroupCol := range rowGroup.Columns {
+				if col.ColName() == rowGroupCol.ColName() {
 					continue OuterLoop
 				}
 			}
 		}
-		tab.Families[0].Columns = append(tab.Families[0].Columns,
+		tab.RowGroups[0].Columns = append(tab.RowGroups[0].Columns,
 			cat.FamilyColumn{Column: col, Ordinal: colOrd})
 	}
 
@@ -325,9 +325,9 @@ func (tc *Catalog) createVirtualTable(stmt *tree.CreateTable) *Table {
 		}
 	}
 
-	tab.Families = []*Family{{FamName: "primary", Ordinal: 0, table: tab}}
+	tab.RowGroups = []*RowGroup{{RowGroupName: "primary", Ordinal: 0, table: tab}}
 	for colOrd := range tab.Columns {
-		tab.Families[0].Columns = append(tab.Families[0].Columns,
+		tab.RowGroups[0].Columns = append(tab.RowGroups[0].Columns,
 			cat.FamilyColumn{Column: &tab.Columns[colOrd], Ordinal: colOrd})
 	}
 

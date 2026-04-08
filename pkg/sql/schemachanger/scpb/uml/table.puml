@@ -39,11 +39,11 @@ object AliasType
 AliasType :  TypeID
 AliasType :  TypeT
 
-object ColumnFamily
+object RowGroup
 
-ColumnFamily :  TableID
-ColumnFamily :  FamilyID
-ColumnFamily :  Name
+RowGroup :  TableID
+RowGroup :  RowGroupID
+RowGroup :  Name
 
 object Column
 
@@ -127,7 +127,7 @@ ColumnName :  Name
 object ColumnType
 
 ColumnType :  TableID
-ColumnType :  FamilyID
+ColumnType :  RowGroupID
 ColumnType :  ColumnID
 ColumnType :  TypeT
 ColumnType :  IsNullable
@@ -244,7 +244,7 @@ object ObjectParent
 ObjectParent :  ObjectID
 ObjectParent :  ParentSchemaID
 
-Table <|-- ColumnFamily
+Table <|-- RowGroup
 Table <|-- Column
 View <|-- Column
 Table <|-- PrimaryIndex

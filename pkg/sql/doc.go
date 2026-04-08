@@ -161,14 +161,12 @@ simply the primary index key, with an empty value:
 Thus the above scan on such a row would return a single key, which we can use to
 reconstruct the row filling in NULLs for the non-primary-key values.
 
-# Column Families
+# Row KV Layout
 
 The above structure is inefficient if we have many columns, since each row in an
 N-column table results in up to N+1 entries (1 sentinel key + N keys if every
-column was non-NULL). Thus, Cockroach has the ability to group multiple columns
-together and write them as a single key-value pair. We call this a "column
-family", and there are more details in this blog post:
-https://www.cockroachlabs.com/blog/sql-cockroachdb-column-families/
+column was non-NULL). Modern Cockroach row storage collapses those values into a
+single row KV in the common case.
 
 # Secondary Indexes
 

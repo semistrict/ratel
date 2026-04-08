@@ -28,6 +28,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/kv/kvclient/kvcoord"
 	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/concurrency/lock"
 	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/diskmap"
+	"github.com/cockroachdb/cockroach/pkg/multitenant"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/settings"
 	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
@@ -334,7 +335,7 @@ func NewStreamer(
 // looked-up keys are unique (e.g. in the case of an index-join).
 //
 // maxKeysPerRow indicates the maximum number of KV pairs that comprise a single
-// SQL row (i.e. the number of column families in the index being scanned).
+// SQL row for the scanned index.
 //
 // In InOrder mode, engine and diskMonitor arguments must be non-nil and will be
 // used to instantiate a temporary disk-backed container for some of buffered
@@ -1125,7 +1126,10 @@ func (w *workerCoordinator) performRequestAsync(
 			}
 
 			// Do admission control after we've finalized the memory accounting.
-			if br != nil && w.responseAdmissionQ != nil {
+			if br != nil &&
+				w.responseAdmissionQ != nil &&
+				w.requestAdmissionHeader.Source == roachpb.AdmissionHeader_FROM_SQL &&
+				!multitenant.HasTenantCostControlExemption(ctx) {
 				responseAdmission := admission.WorkInfo{
 					TenantID:   roachpb.SystemTenantID,
 					Priority:   admission.WorkPriority(w.requestAdmissionHeader.Priority),

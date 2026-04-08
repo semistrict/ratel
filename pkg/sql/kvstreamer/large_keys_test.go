@@ -99,50 +99,41 @@ func TestLargeKeys(t *testing.T) {
 	// - 40000 is interesting because a single row already exceeds the buffer
 	// size.
 	for _, pkBlobSize := range []int{3000 + rng.Intn(4000), 20000, 40000} {
-		// useScans indicates whether we want Scan requests to be used by the
-		// Streamer (if we do, then we need to have multiple column families).
-		for _, useScans := range []bool{false, true} {
-			// onlyLarge determines whether only large blobs are inserted or a
-			// mix of large and small blobs.
-			for _, onlyLarge := range []bool{false, true} {
-				_, err = db.Exec("DROP TABLE IF EXISTS foo")
-				require.NoError(t, err)
-				// We set up such a table that contains two large columns, one
-				// of them being the primary key. The idea is that the test
-				// query will first read from the secondary index which would
-				// include only the PK blob, and that will be used to construct
-				// index join lookups (i.e. the PK blobs will be the enqueued
-				// requests for the Streamer) whereas the other blob will be
-				// part of the response.
-				var familiesSuffix string
-				// In order to use Scan requests we need to have multiple column
-				// families.
-				if useScans {
-					familiesSuffix = ", FAMILY (pk_blob, attribute, extra), FAMILY (blob)"
-				}
-				_, err = db.Exec(fmt.Sprintf(
-					`CREATE TABLE foo (
-						pk_blob STRING PRIMARY KEY, attribute INT8, extra INT8, blob STRING,
-						INDEX (attribute)%s
-					);`, familiesSuffix))
-				require.NoError(t, err)
+		// onlyLarge determines whether only large blobs are inserted or a
+		// mix of large and small blobs.
+		for _, onlyLarge := range []bool{false, true} {
+			_, err = db.Exec("DROP TABLE IF EXISTS foo")
+			require.NoError(t, err)
+			// We set up such a table that contains two large columns, one
+			// of them being the primary key. The idea is that the test
+			// query will first read from the secondary index which would
+			// include only the PK blob, and that will be used to construct
+			// index join lookups (i.e. the PK blobs will be the enqueued
+			// requests for the Streamer) whereas the other blob will be
+			// part of the response.
+			_, err = db.Exec(fmt.Sprintf(
+				`CREATE TABLE foo (
+					pk_blob STRING PRIMARY KEY, attribute INT8, extra INT8, blob STRING,
+					INDEX (attribute)
+				);`))
+			require.NoError(t, err)
 
-				// Insert some number of rows.
-				numRows := rng.Intn(10) + 10
-				for i := 0; i < numRows; i++ {
-					letter := string(byte('a') + byte(i))
-					valueSize := pkBlobSize
-					if !onlyLarge && rng.Float64() < 0.5 {
-						// If we're using a mix of large and small values, with
-						// 50% use a small value now.
-						valueSize = rng.Intn(10) + 1
-					}
-					// We randomize the value size for 'blob' column to improve
-					// the test coverage.
-					blobSize := int(float64(valueSize)*5.0*rng.Float64()) + 1
-					_, err = db.Exec("INSERT INTO foo SELECT repeat($1, $2), 1, 1, repeat($1, $3);", letter, valueSize, blobSize)
-					require.NoError(t, err)
+			// Insert some number of rows.
+			numRows := rng.Intn(10) + 10
+			for i := 0; i < numRows; i++ {
+				letter := string(byte('a') + byte(i))
+				valueSize := pkBlobSize
+				if !onlyLarge && rng.Float64() < 0.5 {
+					// If we're using a mix of large and small values, with
+					// 50% use a small value now.
+					valueSize = rng.Intn(10) + 1
 				}
+				// We randomize the value size for 'blob' column to improve
+				// the test coverage.
+				blobSize := int(float64(valueSize)*5.0*rng.Float64()) + 1
+				_, err = db.Exec("INSERT INTO foo SELECT repeat($1, $2), 1, 1, repeat($1, $3);", letter, valueSize, blobSize)
+				require.NoError(t, err)
+			}
 
 				// Try two scenarios: one with a single range (so no parallelism
 				// within the Streamer) and another with a random number of
@@ -169,8 +160,8 @@ func TestLargeKeys(t *testing.T) {
 						require.NoError(t, err)
 						for _, tc := range testCases {
 							t.Run(fmt.Sprintf(
-								"%s/size=%s/scans=%t/onlyLarge=%t/numRows=%d/newRangeProb=%.2f/vec=%s",
-								tc.name, humanize.Bytes(uint64(pkBlobSize)), useScans,
+								"%s/size=%s/onlyLarge=%t/numRows=%d/newRangeProb=%.2f/vec=%s",
+								tc.name, humanize.Bytes(uint64(pkBlobSize)),
 								onlyLarge, numRows, newRangeProbability, vectorizeMode,
 							),
 								func(t *testing.T) {
@@ -201,7 +192,6 @@ func TestLargeKeys(t *testing.T) {
 								})
 						}
 					}
-				}
 			}
 		}
 	}

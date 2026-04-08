@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/cockroach/pkg/kv"
+	"github.com/cockroachdb/cockroach/pkg/multitenant"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
@@ -26,6 +27,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/sessiondatapb"
 	"github.com/cockroachdb/cockroach/pkg/storage/enginepb"
+	"github.com/cockroachdb/cockroach/pkg/util/admission"
 	"github.com/cockroachdb/cockroach/pkg/util/hlc"
 	"github.com/cockroachdb/cockroach/pkg/util/metric"
 	"github.com/cockroachdb/cockroach/pkg/util/mon"
@@ -135,6 +137,20 @@ const (
 	upgradedExplicitTxn
 )
 
+func newSQLTxnWithSteppingEnabled(
+	ctx context.Context, db *kv.DB, gatewayNodeID roachpb.NodeID, qualityOfService sessiondatapb.QoSLevel,
+) *kv.Txn {
+	source := roachpb.AdmissionHeader_FROM_SQL
+	if multitenant.HasTenantCostControlExemption(ctx) {
+		source = roachpb.AdmissionHeader_OTHER
+	}
+	txn := kv.NewTxnWithAdmissionControl(
+		ctx, db, gatewayNodeID, source, admission.WorkPriority(qualityOfService),
+	)
+	_ = txn.ConfigureStepping(ctx, kv.SteppingEnabled)
+	return txn
+}
+
 // resetForNewSQLTxn (re)initializes the txnState for a new transaction.
 // It creates a new client.Txn and initializes it using the session defaults
 // and returns the ID of the new transaction.
@@ -209,7 +225,7 @@ func (ts *txnState) resetForNewSQLTxn(
 	ts.mu.Lock()
 	ts.mu.stmtCount = 0
 	if txn == nil {
-		ts.mu.txn = kv.NewTxnWithSteppingEnabled(ts.Ctx, tranCtx.db, tranCtx.nodeIDOrZero, qualityOfService)
+		ts.mu.txn = newSQLTxnWithSteppingEnabled(ts.Ctx, tranCtx.db, tranCtx.nodeIDOrZero, qualityOfService)
 		ts.mu.txn.SetDebugName(opName)
 		if err := ts.setPriorityLocked(priority); err != nil {
 			panic(err)

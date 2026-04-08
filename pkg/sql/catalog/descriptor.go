@@ -297,7 +297,8 @@ type TableDescriptor interface {
 	// IsPhysicalTable returns true if the TableDescriptor actually describes a
 	// physical Table that needs to be stored in the kv layer, as opposed to a
 	// different resource like a view or a virtual table. Physical tables have
-	// primary keys, column families, and indexes (unlike virtual tables).
+	// primary keys, physical row-group metadata, and indexes (unlike virtual
+	// tables).
 	// Sequences count as physical tables because their values are stored in
 	// the KV layer.
 	IsPhysicalTable() bool
@@ -516,9 +517,7 @@ type TableDescriptor interface {
 	IndexStoredColumns(idx Index) []Column
 
 	// IndexKeysPerRow returns the maximum number of keys used to encode a row for
-	// the given index. If a secondary index doesn't store any columns, then it
-	// only has one k/v pair, but if it stores some columns, it can return up to
-	// one k/v pair per family in the table, just like a primary index.
+	// the given index.
 	IndexKeysPerRow(idx Index) int
 
 	// IndexFetchSpecKeyAndSuffixColumns returns information about the key and
@@ -554,23 +553,17 @@ type TableDescriptor interface {
 	// index. This method assumes that col is currently a member of desc.
 	IsShardColumn(col Column) bool
 
-	// GetFamilies returns the column families of this table. All tables contain
-	// at least one column family. The returned list is sorted by family ID.
-	GetFamilies() []descpb.ColumnFamilyDescriptor
-	// NumFamilies returns the number of column families in the descriptor.
-	NumFamilies() int
-	// FindFamilyByID finds the family with specified ID.
-	FindFamilyByID(id descpb.FamilyID) (*descpb.ColumnFamilyDescriptor, error)
-	// ForeachFamily calls f for every column family key in desc until an
-	// error is returned.
-	ForeachFamily(f func(family *descpb.ColumnFamilyDescriptor) error) error
-	// GetNextFamilyID returns the next unused family ID for this table. Family
-	// IDs are unique per table, but not unique globally.
-	GetNextFamilyID() descpb.FamilyID
+	// GetRowGroups returns the physical row-group metadata of this table. In the
+	// current layout this is always the single primary group at ID 0. The
+	// returned list is sorted by ID.
+	GetRowGroups() []descpb.RowGroupDescriptor
+	// GetNextRowGroupID returns the next unused row-group ID for this table. IDs
+	// are unique per table, but not unique globally.
+	GetNextRowGroupID() descpb.RowGroupID
 
-	// FamilyDefaultColumns returns the default column IDs for families with a
-	// default column. See IndexFetchSpec.FamilyDefaultColumns.
-	FamilyDefaultColumns() []descpb.IndexFetchSpec_FamilyDefaultColumn
+	// DefaultColumnID returns the implicit column ID used for single-value row
+	// encodings.
+	DefaultColumnID() descpb.ColumnID
 
 	// HasColumnBackfillMutation returns whether the table has any queued column
 	// mutations that require a backfill.

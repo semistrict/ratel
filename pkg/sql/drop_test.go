@@ -115,11 +115,9 @@ func TestDropDatabase(t *testing.T) {
 	defer s.Stopper().Stop(context.Background())
 	ctx := context.Background()
 
-	// Fix the column families so the key counts below don't change if the
-	// family heuristics are updated.
 	if _, err := sqlDB.Exec(`
 CREATE DATABASE t;
-CREATE TABLE t.kv (k CHAR PRIMARY KEY, v CHAR, FAMILY (k), FAMILY (v));
+CREATE TABLE t.kv (k CHAR PRIMARY KEY, v CHAR);
 INSERT INTO t.kv VALUES ('c', 'e'), ('a', 'c'), ('b', 'd');
 `); err != nil {
 		t.Fatal(err)
@@ -153,7 +151,7 @@ INSERT INTO t.kv VALUES ('c', 'e'), ('a', 'c'), ('b', 'd');
 	}
 
 	tableSpan := tbDesc.TableSpan(keys.SystemSQLCodec)
-	tests.CheckKeyCount(t, kvDB, tableSpan, 6)
+	tests.CheckKeyCount(t, kvDB, tableSpan, 3)
 
 	if _, err := sqlDB.Exec(`DROP DATABASE t RESTRICT`); !testutils.IsError(err,
 		`database "t" is not empty`) {
@@ -165,7 +163,7 @@ INSERT INTO t.kv VALUES ('c', 'e'), ('a', 'c'), ('b', 'd');
 	}
 
 	// Data is not deleted.
-	tests.CheckKeyCount(t, kvDB, tableSpan, 6)
+	tests.CheckKeyCount(t, kvDB, tableSpan, 3)
 
 	if err := descExists(sqlDB, true, tbDesc.GetID()); err != nil {
 		t.Fatal(err)
@@ -278,13 +276,11 @@ func TestDropDatabaseDeleteData(t *testing.T) {
 	// TTL into the system with AddImmediateGCZoneConfig.
 	defer sqltestutils.DisableGCTTLStrictEnforcement(t, sqlDB)()
 
-	// Fix the column families so the key counts below don't change if the
-	// family heuristics are updated.
 	if _, err := sqlDB.Exec(`
 CREATE DATABASE t;
-CREATE TABLE t.kv (k CHAR PRIMARY KEY, v CHAR, FAMILY (k), FAMILY (v));
+CREATE TABLE t.kv (k CHAR PRIMARY KEY, v CHAR);
 INSERT INTO t.kv VALUES ('c', 'e'), ('a', 'c'), ('b', 'd');
-CREATE TABLE t.kv2 (k CHAR PRIMARY KEY, v CHAR, FAMILY (k), FAMILY (v));
+CREATE TABLE t.kv2 (k CHAR PRIMARY KEY, v CHAR);
 INSERT INTO t.kv2 VALUES ('c', 'd'), ('a', 'b'), ('e', 'a');
 `); err != nil {
 		t.Fatal(err)
@@ -300,8 +296,8 @@ INSERT INTO t.kv2 VALUES ('c', 'd'), ('a', 'b'), ('e', 'a');
 
 	tableSpan := tbDesc.TableSpan(keys.SystemSQLCodec)
 	table2Span := tb2Desc.TableSpan(keys.SystemSQLCodec)
-	tests.CheckKeyCount(t, kvDB, tableSpan, 6)
-	tests.CheckKeyCount(t, kvDB, table2Span, 6)
+	tests.CheckKeyCount(t, kvDB, tableSpan, 3)
+	tests.CheckKeyCount(t, kvDB, table2Span, 3)
 
 	if _, err := sqltestutils.AddDefaultZoneConfig(sqlDB, dbDesc.GetID()); err != nil {
 		t.Fatal(err)
@@ -316,8 +312,8 @@ INSERT INTO t.kv2 VALUES ('c', 'd'), ('a', 'b'), ('e', 'a');
 		t.Fatal(err)
 	}
 
-	tests.CheckKeyCount(t, kvDB, tableSpan, 6)
-	tests.CheckKeyCount(t, kvDB, table2Span, 6)
+	tests.CheckKeyCount(t, kvDB, tableSpan, 3)
+	tests.CheckKeyCount(t, kvDB, table2Span, 3)
 
 	// TODO (lucy): Maybe this test API should use an offset starting
 	// from the most recent job instead.
@@ -350,7 +346,7 @@ INSERT INTO t.kv2 VALUES ('c', 'd'), ('a', 'b'), ('e', 'a');
 
 	// Table 1 data is deleted.
 	tests.CheckKeyCount(t, kvDB, tableSpan, 0)
-	tests.CheckKeyCount(t, kvDB, table2Span, 6)
+	tests.CheckKeyCount(t, kvDB, table2Span, 3)
 
 	def := zonepb.DefaultZoneConfig()
 	if err := zoneExists(sqlDB, &def, dbDesc.GetID()); err != nil {
@@ -579,8 +575,8 @@ func TestDropIndexWithZoneConfigOSS(t *testing.T) {
 		t.Fatal("zone config for index still exists")
 	}
 	tests.CheckKeyCount(t, kvDB, indexSpan, numRows)
-	// TODO(benesch): Run scrub here. It can't currently handle the way t.kv
-	// declares column families.
+	// TODO(benesch): Run scrub here. It can't currently handle the way t.kv is
+	// declared in this test.
 
 	tableDesc = desctestutils.TestingGetPublicTableDescriptor(kvDB, keys.SystemSQLCodec, "t", "kv")
 	if _, err := tableDesc.FindIndexWithName("foo"); err == nil {

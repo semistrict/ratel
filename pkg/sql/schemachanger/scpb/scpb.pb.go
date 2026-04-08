@@ -3090,3 +3090,4 @@ var (
 	ErrIntOverflowScpb          = fmt.Errorf("proto: integer overflow")
 	ErrUnexpectedEndOfGroupScpb = fmt.Errorf("proto: unexpected end of group")
 )
+

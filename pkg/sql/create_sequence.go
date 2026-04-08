@@ -288,9 +288,9 @@ func NewSequenceTableDesc(
 		Version:             descpb.PrimaryIndexWithStoredColumnsVersion,
 		CreatedAtNanos:      creationTime.WallTime,
 	})
-	desc.Families = []descpb.ColumnFamilyDescriptor{
+	desc.RowGroups = []descpb.RowGroupDescriptor{
 		{
-			ID:              keys.SequenceColumnFamilyID,
+			ID:              keys.SequenceColumnRowGroupID,
 			ColumnIDs:       []descpb.ColumnID{tabledesc.SequenceColumnID},
 			ColumnNames:     []string{tabledesc.SequenceColumnName},
 			Name:            "primary",

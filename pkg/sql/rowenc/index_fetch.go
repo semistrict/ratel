@@ -56,8 +56,7 @@ func InitIndexFetchSpec(
 		encoding.EncodedLengthUvarintAscending(uint64(s.TableID)) +
 		encoding.EncodedLengthUvarintAscending(uint64(index.GetID())))
 
-	s.FamilyDefaultColumns = table.FamilyDefaultColumns()
-	s.MaxFamilyID = 0
+	s.DefaultColumnID = table.DefaultColumnID()
 
 	s.KeyAndSuffixColumns = table.IndexFetchSpecKeyAndSuffixColumns(index)
 

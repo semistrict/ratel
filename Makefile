@@ -494,6 +494,10 @@ CGO_PKGS := \
 	pkg/geo/geoproj \
 	vendor/github.com/knz/go-libedit/unix
 vendor/github.com/knz/go-libedit/unix-package := libedit_unix
+pkg/cli-rootrel := ../..
+pkg/cli/clisqlshell-rootrel := ../../..
+pkg/server/status-rootrel := ../../..
+pkg/geo/geoproj-rootrel := ../../..
 CGO_UNSUFFIXED_FLAGS_FILES := $(addprefix ./,$(addsuffix /zcgo_flags.go,$(CGO_PKGS)))
 CGO_SUFFIXED_FLAGS_FILES   := $(addprefix ./,$(addsuffix /zcgo_flags_$(native-tag).go,$(CGO_PKGS)))
 BASE_CGO_FLAGS_FILES := $(CGO_UNSUFFIXED_FLAGS_FILES) $(CGO_SUFFIXED_FLAGS_FILES)
@@ -508,8 +512,8 @@ $(BASE_CGO_FLAGS_FILES): Makefile build/defs.mk.sig vendor/modules.txt
 	@echo >> $@
 	@echo 'package $(if $($(@D)-package),$($(@D)-package),$(notdir $(@D)))' >> $@
 	@echo >> $@
-	@echo '// #cgo CPPFLAGS: $(addprefix -I,$(JEMALLOC_DIR)/include)' >> $@
-	@echo '// #cgo LDFLAGS: $(addprefix -L,$(JEMALLOC_DIR)/lib $(PROJ_DIR)/lib)' >> $@
+	@echo '// #cgo CPPFLAGS: -I$${SRCDIR}/$($(@D)-rootrel)/lib/build/jemalloc/include' >> $@
+	@echo '// #cgo LDFLAGS: -L$${SRCDIR}/$($(@D)-rootrel)/lib/build/jemalloc/lib -L$${SRCDIR}/$($(@D)-rootrel)/lib/build/proj/lib' >> $@
 	@echo 'import "C"' >> $@
 
 vendor/github.com/knz/go-libedit/unix/zcgo_flags_extra.go: Makefile vendor/modules.txt

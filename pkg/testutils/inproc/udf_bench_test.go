@@ -58,7 +58,7 @@ func BenchmarkUDF(b *testing.B) {
 	`)
 	require.NoError(b, err)
 
-	// TODO(ramon): Enable sql`` benchmarks once InternalExecutor adapter
+	// TODO: Enable sql`` benchmarks once InternalExecutor adapter
 	// for SQLExecutor is wired through the pgwire evaluation path.
 
 	// Warm up.

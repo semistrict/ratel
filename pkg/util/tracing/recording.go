@@ -26,7 +26,6 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb"
 	"github.com/cockroachdb/redact"
 	"github.com/gogo/protobuf/types"
-	jaegerjson "github.com/jaegertracing/jaeger/model/json"
 )
 
 // RecordingType is the type of recording that a Span might be performing.
@@ -358,18 +357,18 @@ func (r Recording) ToJaegerJSON(stmt, comment, nodeStr string) (string, error) {
 	tagsCopy["statement"] = stmt
 	r[0].Tags = tagsCopy
 
-	toJaegerSpanID := func(spanID tracingpb.SpanID) jaegerjson.SpanID {
-		return jaegerjson.SpanID(strconv.FormatUint(uint64(spanID), 10))
+	toJaegerSpanID := func(spanID tracingpb.SpanID) jaegerSpanID {
+		return jaegerSpanID(strconv.FormatUint(uint64(spanID), 10))
 	}
 
 	// Each Span in Jaeger belongs to a "process" that generated it. Spans
 	// belonging to different colors are colored differently in Jaeger. We're
 	// going to map our different nodes to different processes.
-	processes := make(map[jaegerjson.ProcessID]jaegerjson.Process)
+	processes := make(map[jaegerProcessID]jaegerProcess)
 	// getProcessID figures out what "process" a Span belongs to. It looks for an
 	// "node: <node id>" tag. The processes map is populated with an entry for every
 	// node present in the trace.
-	getProcessID := func(sp tracingpb.RecordedSpan) jaegerjson.ProcessID {
+	getProcessID := func(sp tracingpb.RecordedSpan) jaegerProcessID {
 		node := "unknown node"
 		for k, v := range sp.Tags {
 			if k == "node" {
@@ -381,9 +380,9 @@ func (r Recording) ToJaegerJSON(stmt, comment, nodeStr string) (string, error) {
 		if nodeStr != "" {
 			node = nodeStr
 		}
-		pid := jaegerjson.ProcessID(node)
+		pid := jaegerProcessID(node)
 		if _, ok := processes[pid]; !ok {
-			processes[pid] = jaegerjson.Process{
+			processes[pid] = jaegerProcess{
 				ServiceName: node,
 				Tags:        nil,
 			}
@@ -391,12 +390,12 @@ func (r Recording) ToJaegerJSON(stmt, comment, nodeStr string) (string, error) {
 		return pid
 	}
 
-	var t jaegerjson.Trace
-	t.TraceID = jaegerjson.TraceID(strconv.FormatUint(uint64(r[0].TraceID), 10))
+	var t jaegerTrace
+	t.TraceID = jaegerTraceID(strconv.FormatUint(uint64(r[0].TraceID), 10))
 	t.Processes = processes
 
 	for _, sp := range r {
-		var s jaegerjson.Span
+		var s jaegerSpan
 
 		s.TraceID = t.TraceID
 		s.Duration = uint64(sp.Duration.Microseconds())
@@ -406,34 +405,34 @@ func (r Recording) ToJaegerJSON(stmt, comment, nodeStr string) (string, error) {
 		s.ProcessID = getProcessID(sp)
 
 		if sp.ParentSpanID != 0 {
-			s.References = []jaegerjson.Reference{{
-				RefType: jaegerjson.ChildOf,
+			s.References = []jaegerReference{{
+				RefType: jaegerChildOf,
 				TraceID: s.TraceID,
 				SpanID:  toJaegerSpanID(sp.ParentSpanID),
 			}}
 		}
 
 		if sp.GoroutineID != 0 {
-			s.Tags = append(s.Tags, jaegerjson.KeyValue{
+			s.Tags = append(s.Tags, jaegerKeyValue{
 				Key:   "goroutine",
 				Value: sp.GoroutineID,
-				Type:  jaegerjson.Int64Type,
+				Type:  jaegerInt64Type,
 			})
 		}
 		for k, v := range sp.Tags {
-			s.Tags = append(s.Tags, jaegerjson.KeyValue{
+			s.Tags = append(s.Tags, jaegerKeyValue{
 				Key:   k,
 				Value: v,
-				Type:  "STRING",
+				Type:  jaegerStringType,
 			})
 		}
 		for _, l := range sp.Logs {
-			jl := jaegerjson.Log{
+			jl := jaegerLog{
 				Timestamp: uint64(l.Time.UnixNano() / 1000),
-				Fields: []jaegerjson.KeyValue{{
+				Fields: []jaegerKeyValue{{
 					Key:   "event",
 					Value: l.Msg(),
-					Type:  "STRING",
+					Type:  jaegerStringType,
 				}},
 			}
 			s.Logs = append(s.Logs, jl)
@@ -448,15 +447,15 @@ func (r Recording) ToJaegerJSON(stmt, comment, nodeStr string) (string, error) {
 		// produced.
 		if !(sp.Verbose || sp.RecordingMode == tracingpb.RecordingMode_VERBOSE) {
 			sp.Structured(func(sr *types.Any, t time.Time) {
-				jl := jaegerjson.Log{Timestamp: uint64(t.UnixNano() / 1000)}
+				jl := jaegerLog{Timestamp: uint64(t.UnixNano() / 1000)}
 				jsonStr, err := MessageToJSONString(sr, true /* emitDefaults */)
 				if err != nil {
 					return
 				}
-				jl.Fields = append(jl.Fields, jaegerjson.KeyValue{
+				jl.Fields = append(jl.Fields, jaegerKeyValue{
 					Key:   "structured",
 					Value: jsonStr,
-					Type:  "STRING",
+					Type:  jaegerStringType,
 				})
 				s.Logs = append(s.Logs, jl)
 			})
@@ -466,7 +465,7 @@ func (r Recording) ToJaegerJSON(stmt, comment, nodeStr string) (string, error) {
 	}
 
 	data := TraceCollection{
-		Data: []jaegerjson.Trace{t},
+		Data: []jaegerTrace{t},
 		// Add a comment that will show-up at the top of the JSON file, is someone opens the file.
 		// NOTE: This comment is scarce on newlines because they appear as \n in the
 		// generated file doing more harm than good.
@@ -483,6 +482,6 @@ func (r Recording) ToJaegerJSON(stmt, comment, nodeStr string) (string, error) {
 // https://github.com/jaegertracing/jaeger-ui/issues/381#issuecomment-494150826
 type TraceCollection struct {
 	// Comment is a dummy field we use to put instructions on how to load the trace.
-	Comment string             `json:"_comment"`
-	Data    []jaegerjson.Trace `json:"data"`
+	Comment string        `json:"_comment"`
+	Data    []jaegerTrace `json:"data"`
 }

@@ -468,48 +468,33 @@ C_LIBS_DYNAMIC = $(LIBGEOS)
 # Go does not permit dashes in build tags. This is undocumented.
 native-tag := $(subst -,_,$(TARGET_TRIPLE))$(if $(use-stdmalloc),_stdmalloc)
 
-# In each package that uses cgo, we inject include and library search paths into
-# files named zcgo_flags_{native-tag}.go. The logic for this is complicated so
-# that Make-driven builds can cache the state of builds for multiple
-# configurations at once, while still allowing the use of `go build` and `go
-# test` for the configuration most recently built with Make.
-#
-# Building with Make always adds the `make` and {native-tag} tags to the build.
-#
-# Unsuffixed flags files (zcgo_flags.cgo) have the build constraint `!make` and
-# are only compiled when invoking the Go toolchain directly on a package-- i.e.,
-# when the `make` build tag is not specified. These files are rebuilt whenever
-# the build signature changes (see build/defs.mk.sig), and so reflect the target
-# triple that Make was most recently invoked with.
-#
-# Suffixed flags files (e.g. zcgo_flags_{native-tag}.go) have the build
-# constraint `{native-tag}` and are built the first time a Make-driven build
-# encounters a given native tag or when the build signature changes (see
-# build/defs.mk.sig). These tags are unset when building with the Go toolchain
-# directly, so these files are only compiled when building with Make.
+# In each package that uses cgo, we check in a zcgo_flags.go file that injects
+# the include and library search paths needed for our vendored native deps.
+# These files now use ${SRCDIR}-relative paths, so they are configuration
+# agnostic and work for both Make-driven and direct Go builds. Refresh them
+# explicitly with `make generate`; normal build/test targets should consume the
+# checked-in copies without rewriting the worktree.
 CGO_PKGS := \
 	pkg/cli \
 	pkg/cli/clisqlshell \
 	pkg/server/status \
-	pkg/geo/geoproj \
-	vendor/github.com/knz/go-libedit/unix
+	pkg/geo/geoproj
 vendor/github.com/knz/go-libedit/unix-package := libedit_unix
-CGO_UNSUFFIXED_FLAGS_FILES := $(addprefix ./,$(addsuffix /zcgo_flags.go,$(CGO_PKGS)))
-CGO_SUFFIXED_FLAGS_FILES   := $(addprefix ./,$(addsuffix /zcgo_flags_$(native-tag).go,$(CGO_PKGS)))
-BASE_CGO_FLAGS_FILES := $(CGO_UNSUFFIXED_FLAGS_FILES) $(CGO_SUFFIXED_FLAGS_FILES)
+pkg/cli-rootrel := ../..
+pkg/cli/clisqlshell-rootrel := ../../..
+pkg/server/status-rootrel := ../../..
+pkg/geo/geoproj-rootrel := ../../..
+BASE_CGO_FLAGS_FILES := $(addprefix ./,$(addsuffix /zcgo_flags.go,$(CGO_PKGS)))
 CGO_FLAGS_FILES := $(BASE_CGO_FLAGS_FILES) vendor/github.com/knz/go-libedit/unix/zcgo_flags_extra.go
 
 $(BASE_CGO_FLAGS_FILES): Makefile build/defs.mk.sig vendor/modules.txt
 	@echo "regenerating $@"
 	@echo '// GENERATED FILE DO NOT EDIT' > $@
 	@echo >> $@
-	@echo '//go:build $(if $(findstring $(native-tag),$@),$(native-tag),!make)' >> $@
-	@echo '// +build $(if $(findstring $(native-tag),$@),$(native-tag),!make)' >> $@
-	@echo >> $@
 	@echo 'package $(if $($(@D)-package),$($(@D)-package),$(notdir $(@D)))' >> $@
 	@echo >> $@
-	@echo '// #cgo CPPFLAGS: $(addprefix -I,$(JEMALLOC_DIR)/include)' >> $@
-	@echo '// #cgo LDFLAGS: $(addprefix -L,$(JEMALLOC_DIR)/lib $(PROJ_DIR)/lib)' >> $@
+	@echo '// #cgo CPPFLAGS: -I$${SRCDIR}/$($(@D)-rootrel)/lib/build/jemalloc/include' >> $@
+	@echo '// #cgo LDFLAGS: -L$${SRCDIR}/$($(@D)-rootrel)/lib/build/jemalloc/lib -L$${SRCDIR}/$($(@D)-rootrel)/lib/build/proj/lib' >> $@
 	@echo 'import "C"' >> $@
 
 vendor/github.com/knz/go-libedit/unix/zcgo_flags_extra.go: Makefile vendor/modules.txt
@@ -854,8 +839,10 @@ BUILD_TAGGED_RELEASE =
 ## Override for .buildinfo/tag
 BUILDINFO_TAG :=
 
-$(go-targets): bin/.bootstrap $(BUILDINFO) $(CGO_FLAGS_FILES) $(PROTOBUF_TARGETS) $(LIBPROJ) $(GENERATED_TARGETS)
-$(go-targets): $(LOG_TARGETS) $(SQLPARSER_TARGETS) $(OPTGEN_TARGETS)
+# Checked-in generated files are refreshed explicitly via `make generate`.
+# Normal build/test targets should use the committed copies without rewriting
+# the worktree as a side effect.
+$(go-targets): bin/.bootstrap $(BUILDINFO) $(LIBPROJ)
 $(go-targets): override LINKFLAGS += \
 	-X "github.com/cockroachdb/cockroach/pkg/build.tag=$(if $(BUILDINFO_TAG),$(BUILDINFO_TAG),$(shell cat .buildinfo/tag))" \
 	-X "github.com/cockroachdb/cockroach/pkg/build.rev=$(shell cat .buildinfo/rev)" \
@@ -887,19 +874,6 @@ SETTINGS_DOC_PAGES := docs/generated/settings/settings.html docs/generated/setti
 $(COCKROACHOSS) $(COCKROACHSHORT) $(COCKROACHSQL) $(RATEL) go-install:
 	 $(xgo) $(build-mode) -v $(GOFLAGS) $(GOMODVENDORFLAGS) -tags '$(TAGS)' -ldflags '$(LINKFLAGS)' $(BUILDTARGET)
 
-# The build targets, in addition to producing a Cockroach binary, silently
-# regenerate SQL diagram BNFs and some other doc pages. Generating these docs
-# doesn't really belong in the build target, but when they were only part of the
-# generate target it was too easy to forget to regenerate them when necessary
-# and burn a CI cycle.
-#
-# We check these docs into version control in the first place in the hope that
-# the diff of the generated docs that shows up in Reviewable, 'git diff', etc.
-# makes it obvious when a commit has broken the docs. For example, it's very
-# easy for changes to the SQL parser to result in unintelligible railroad
-# diagrams. When the generated files are not checked in, the breakage goes
-# unnoticed until the docs team comes along, potentially months later. Much
-# better to make the developer who introduces the breakage fix the breakage.
 .PHONY: buildoss buildshort buildratel
 buildoss: ## Build the CockroachDB binary.
 buildshort: ## Build the CockroachDB binary without the admin UI and RocksDB.
@@ -907,8 +881,6 @@ buildratel: ## Build the ratel binary (S3-native CockroachDB).
 buildoss: $(COCKROACHOSS)
 buildshort: $(COCKROACHSHORT)
 buildratel: $(RATEL)
-buildoss buildshort: $(if $(is-cross-compile),,$(DOCGEN_TARGETS))
-buildshort: $(if $(is-cross-compile),,$(SETTINGS_DOC_PAGES))
 
 .PHONY: install
 install: ## Install the CockroachDB binary.
@@ -1053,7 +1025,7 @@ dupl: bin/.bootstrap
 
 .PHONY: generate
 generate: ## Regenerate generated code.
-generate: protobuf $(DOCGEN_TARGETS) $(OPTGEN_TARGETS) $(LOG_TARGETS) $(SQLPARSER_TARGETS) $(SETTINGS_DOC_PAGES) $(SWAGGER_TARGETS) bin/langgen bin/terraformgen
+generate: generate-make-variables protobuf $(DOCGEN_TARGETS) $(OPTGEN_TARGETS) $(LOG_TARGETS) $(SQLPARSER_TARGETS) $(SETTINGS_DOC_PAGES) $(SWAGGER_TARGETS) $(GENERATED_TARGETS) $(CGO_FLAGS_FILES) bin/langgen bin/terraformgen
 	$(GO) generate $(GOFLAGS) $(GOMODVENDORFLAGS) -tags '$(TAGS)' -ldflags '$(LINKFLAGS)' $(PKG)
 	$(MAKE) execgen
 
@@ -1575,7 +1547,6 @@ clean: ## Like cleanshort, but also includes C++ artifacts, Bazel artifacts, and
 clean: cleanshort clean-c-deps
 	rm -rf build/defs.mk*
 	-$(GO) clean $(GOFLAGS) $(GOMODVENDORFLAGS) -tags '$(TAGS)' -ldflags '$(LINKFLAGS)' -i -cache github.com/cockroachdb/cockroach...
-	$(FIND_RELEVANT) -type f -name 'zcgo_flags*.go' -exec rm {} +
 	if command -v bazel &> /dev/null; then bazel clean --expunge; fi
 	rm -rf artifacts bin
 
@@ -1642,12 +1613,11 @@ logictestopt-package = ./pkg/sql/opt/exec/execbuilder
 terraformgen-package = ./pkg/roachprod/vm/aws/terraformgen
 logictest-bins := bin/logictest bin/logictestopt
 
-# Additional dependencies for binaries that depend on generated code.
+# Additional runtime/native dependencies for binaries that require them.
 #
-# TODO(benesch): Derive this automatically. This is getting out of hand.
-bin/workload bin/docgen bin/execgen bin/roachtest bin/roachvet $(logictest-bins): $(SQLPARSER_TARGETS) $(LOG_TARGETS) $(PROTOBUF_TARGETS)
-bin/workload bin/docgen bin/roachtest $(logictest-bins): $(LIBPROJ) $(CGO_FLAGS_FILES)
-bin/roachtest $(logictest-bins): $(C_LIBS_OSS) $(CGO_FLAGS_FILES) $(OPTGEN_TARGETS) | $(C_LIBS_DYNAMIC)
+# Checked-in generated inputs are refreshed explicitly via `make generate`.
+bin/workload bin/docgen bin/roachtest $(logictest-bins): $(LIBPROJ)
+bin/roachtest $(logictest-bins): $(C_LIBS_OSS) | $(C_LIBS_DYNAMIC)
 
 PREREQS := GOFLAGS= bin/prereqs
 
@@ -1719,32 +1689,35 @@ endif
 # https://github.com/golang/go/issues/13560#issuecomment-277804473
 # https://github.com/Reviewable/Reviewable/wiki/FAQ#how-do-i-tell-reviewable-that-a-file-is-generated-and-should-not-be-reviewed
 # Note how the 'prefix' variable is manually appended. This is required by Homebrew.
-.SECONDARY: build/variables.mk
-build/variables.mk: Makefile build/archive/contents/Makefile pkg/ui/Makefile build/defs.mk
-	@echo '# Code generated by Make. DO NOT EDIT.' > $@.tmp
-	@echo '# GENERATED FILE DO NOT EDIT' >> $@.tmp
-	@echo 'define VALID_VARS' >> $@.tmp
+.PHONY: generate-make-variables
+generate-make-variables:
+	@echo '# Code generated by Make. DO NOT EDIT.' > build/variables.mk.tmp
+	@echo '# GENERATED FILE DO NOT EDIT' >> build/variables.mk.tmp
+	@echo 'define VALID_VARS' >> build/variables.mk.tmp
 	@sed -nE -e '/^	/d' -e 's/([^#]*)#.*/\1/' \
-	  -e 's/(^|^[^:]+:)[ ]*(export)?[ ]*([[:upper:]_]+)[ ]*[:?+]?=.*/  \3/p' $^ \
-	  | sort -u >> $@.tmp
-	@echo '  prefix' >> $@.tmp
-	@echo 'endef' >> $@.tmp
+	  -e 's/(^|^[^:]+:)[ ]*(export)?[ ]*([[:upper:]_]+)[ ]*[:?+]?=.*/  \3/p' \
+	  Makefile build/archive/contents/Makefile pkg/ui/Makefile build/defs.mk \
+	  | sort -u >> build/variables.mk.tmp
+	@echo '  prefix' >> build/variables.mk.tmp
+	@echo 'endef' >> build/variables.mk.tmp
 	@set -e; \
-	if ! cmp -s $@.tmp $@; then \
-	   mv -f $@.tmp $@; \
-	else rm -f $@.tmp; fi
+	if ! cmp -s build/variables.mk.tmp build/variables.mk; then \
+	   mv -f build/variables.mk.tmp build/variables.mk; \
+	else rm -f build/variables.mk.tmp; fi
 
 # Print an error if the user specified any variables on the command line that
-# don't appear in this Makefile. The list of valid variables is automatically
-# rebuilt on the first successful `make` invocation after the Makefile changes.
+# don't appear in this Makefile. Refresh the checked-in list explicitly with
+# `make generate` after changing Make variables.
 #
 # TODO(peter): Figure out how to disallow overriding of variables that
 # are not in the valid list from the environment. The problem is that
 # any environment variable becomes a make variable and environments
 # are dirty. For instance, my includes GREP_COLOR.
-include build/variables.mk
+-include build/variables.mk
+ifneq ($(strip $(VALID_VARS)),)
 $(foreach v,$(filter-out $(strip $(VALID_VARS)),$(.VARIABLES)),\
 	$(if $(findstring command line,$(origin $v)),$(error Variable '$v' is not recognized by this Makefile)))
+endif
 
 # Cypress e2e tests
 .PHONY: db-console-e2e-test

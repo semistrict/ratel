@@ -84,7 +84,9 @@ type ScanParams struct {
 }
 
 // ArrayAnyFilter describes a scan-local filter of the form
-//   <left> = ANY(array_col)
+//
+//	<left> = ANY(array_col)
+//
 // where Left does not depend on scanned row values.
 type ArrayAnyFilter struct {
 	ArrayCol TableColumnOrdinal

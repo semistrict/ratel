@@ -16,6 +16,7 @@ package inproc_test
 
 import (
 	"context"
+	gosql "database/sql"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -136,6 +137,46 @@ func TestSyncNetworkPartition(t *testing.T) {
 		val, err = db.Get(ctx, roachpb.Key("pre-partition"))
 		require.NoError(t, err)
 		require.Equal(t, []byte("v1"), val.ValueBytes())
+	})
+}
+
+// TestSyncNetworkPartitionClosesExistingConnections verifies that partitioning
+// a node tears down already-established SQL connections to that node, instead
+// of only blocking future dials.
+func TestSyncNetworkPartitionClosesExistingConnections(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		c := inproc.StartCluster(t, 3)
+		defer c.Stop()
+
+		ctx := t.Context()
+		db := c.ServerConn(2)
+		db.SetMaxOpenConns(1)
+		db.SetMaxIdleConns(1)
+
+		conn, err := db.Conn(ctx)
+		require.NoError(t, err)
+		defer conn.Close()
+
+		var before int
+		require.NoError(t, conn.QueryRowContext(ctx, `SELECT 1`).Scan(&before))
+		require.Equal(t, 1, before)
+
+		c.PartitionNode(2)
+
+		var during int
+		err = conn.QueryRowContext(ctx, `SELECT 1`).Scan(&during)
+		require.Error(t, err)
+		require.NotErrorIs(t, err, gosql.ErrNoRows)
+
+		c.HealPartition(2)
+
+		fresh := c.ServerConn(2)
+		fresh.SetMaxOpenConns(1)
+		fresh.SetMaxIdleConns(1)
+
+		var after int
+		require.NoError(t, fresh.QueryRowContext(ctx, `SELECT 1`).Scan(&after))
+		require.Equal(t, 1, after)
 	})
 }
 

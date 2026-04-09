@@ -118,7 +118,7 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 		tk.ShareRPCListenSQL = true
 		tk.StickyEngineRegistry = stickyRegistry
 		tk.DisableAuthSessionPurge = true
-		tk.ContextTestingKnobs.DialerFunc = registry.DialerFunc()
+		tk.ContextTestingKnobs.DialerFunc = registry.DialerFuncFor(rpcAddr)
 		args.Knobs.Server = tk
 
 		clusterArgs.ServerArgsPerNode[i] = args
@@ -164,6 +164,17 @@ func (c *Cluster) PartitionNode(nodeIdx int) {
 // HealPartition restores connectivity to a previously partitioned node.
 func (c *Cluster) HealPartition(nodeIdx int) {
 	c.Registry.Unblock(c.addrs[nodeIdx])
+}
+
+// PartitionLink blocks traffic from srcNodeIdx to dstNodeIdx and tears down
+// any existing connections on that directed link.
+func (c *Cluster) PartitionLink(srcNodeIdx, dstNodeIdx int) {
+	c.Registry.BlockLink(c.addrs[srcNodeIdx], c.addrs[dstNodeIdx])
+}
+
+// HealLink restores a previously blocked directed link.
+func (c *Cluster) HealLink(srcNodeIdx, dstNodeIdx int) {
+	c.Registry.UnblockLink(c.addrs[srcNodeIdx], c.addrs[dstNodeIdx])
 }
 
 // NodeAddr returns the in-memory address for the given node index.

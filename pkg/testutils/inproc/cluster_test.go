@@ -22,6 +22,7 @@ import (
 
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/testutils/inproc"
+	"github.com/semistrict/ratel/pkg/testutils/skip"
 	"github.com/stretchr/testify/require"
 )
 
@@ -164,6 +165,7 @@ func TestSyncFakeTime(t *testing.T) {
 // that the HLC tracks time advancement correctly under synctest's
 // full control over time progression.
 func TestSyncClockJump(t *testing.T) {
+	skip.UnderRace(t, "synctest+race hangs or crashes in this clock-jump case; non-race still checks intended behavior")
 	synctest.Test(t, func(t *testing.T) {
 		c := inproc.StartCluster(t, 1)
 		defer c.Stop()

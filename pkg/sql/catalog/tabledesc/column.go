@@ -269,18 +269,18 @@ func (w column) HasGeneratedAsIdentitySequenceOption() bool {
 
 // columnCache contains precomputed slices of catalog.Column interfaces.
 type columnCache struct {
-	all                  []catalog.Column
-	public               []catalog.Column
-	writable             []catalog.Column
-	deletable            []catalog.Column
-	nonDrop              []catalog.Column
-	visible              []catalog.Column
-	accessible           []catalog.Column
-	readable             []catalog.Column
-	withUDTs             []catalog.Column
-	system               []catalog.Column
+	all             []catalog.Column
+	public          []catalog.Column
+	writable        []catalog.Column
+	deletable       []catalog.Column
+	nonDrop         []catalog.Column
+	visible         []catalog.Column
+	accessible      []catalog.Column
+	readable        []catalog.Column
+	withUDTs        []catalog.Column
+	system          []catalog.Column
 	defaultColumnID descpb.ColumnID
-	index                []indexColumnCache
+	index           []indexColumnCache
 }
 
 type indexColumnCache struct {

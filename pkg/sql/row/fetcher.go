@@ -244,7 +244,9 @@ func (rf *Fetcher) Reset() {
 }
 
 // ConfigureArrayEqualsAnyFilter enables scan-local evaluation of
-//   left = ANY(array_col)
+//
+//	left = ANY(array_col)
+//
 // for the fetched column at colIdx.
 func (rf *Fetcher) ConfigureArrayEqualsAnyFilter(
 	evalCtx *tree.EvalContext, colIdx int, left tree.Datum, materialize bool,

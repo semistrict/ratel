@@ -1026,7 +1026,7 @@ func (cf *cFetcher) processValueSingle(
 ) (prettyKey string, prettyValue string, err error) {
 	prettyKey = prettyKeyPrefix
 
-		if idx, ok := table.ColIdxMap.Get(colID); ok {
+	if idx, ok := table.ColIdxMap.Get(colID); ok {
 		if cf.traceKV {
 			prettyKey = fmt.Sprintf("%s/%s", prettyKey, table.spec.FetchedColumns[idx].Name)
 		}

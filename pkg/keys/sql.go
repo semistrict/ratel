@@ -140,7 +140,7 @@ func (e sqlEncoder) TenantMetadataKey(tenID roachpb.TenantID) roachpb.Key {
 // SequenceKey returns the key used to store the value of a sequence.
 func (e sqlEncoder) SequenceKey(tableID uint32) roachpb.Key {
 	k := e.IndexPrefix(tableID, SequenceIndexID)
-	k = encoding.EncodeUvarintAscending(k, 0)    // Primary key value
+	k = encoding.EncodeUvarintAscending(k, 0)      // Primary key value
 	k = MakeFamilyKey(k, SequenceColumnRowGroupID) // Row-group suffix
 	return k
 }

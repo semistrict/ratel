@@ -135,63 +135,63 @@ func TestLargeKeys(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-				// Try two scenarios: one with a single range (so no parallelism
-				// within the Streamer) and another with a random number of
-				// ranges (which might add parallelism within the Streamer).
-				//
-				// Note that a single range scenario needs to be exercised first
-				// in order to reuse the same table without dropping it (we
-				// don't want to deal with merging ranges).
-				for _, newRangeProbability := range []float64{0, rng.Float64()} {
-					for i := 1; i < numRows; i++ {
-						if rng.Float64() < newRangeProbability {
-							// Create a new range.
-							letter := string(byte('a') + byte(i))
-							_, err = db.Exec("ALTER TABLE foo SPLIT AT VALUES ($1);", letter)
-							require.NoError(t, err)
-						}
-					}
-					// Populate the range cache.
-					_, err = db.Exec("SELECT count(*) FROM foo")
-					require.NoError(t, err)
-
-					for _, vectorizeMode := range []string{"on", "off"} {
-						_, err = db.Exec("SET vectorize = " + vectorizeMode)
+			// Try two scenarios: one with a single range (so no parallelism
+			// within the Streamer) and another with a random number of
+			// ranges (which might add parallelism within the Streamer).
+			//
+			// Note that a single range scenario needs to be exercised first
+			// in order to reuse the same table without dropping it (we
+			// don't want to deal with merging ranges).
+			for _, newRangeProbability := range []float64{0, rng.Float64()} {
+				for i := 1; i < numRows; i++ {
+					if rng.Float64() < newRangeProbability {
+						// Create a new range.
+						letter := string(byte('a') + byte(i))
+						_, err = db.Exec("ALTER TABLE foo SPLIT AT VALUES ($1);", letter)
 						require.NoError(t, err)
-						for _, tc := range testCases {
-							t.Run(fmt.Sprintf(
-								"%s/size=%s/onlyLarge=%t/numRows=%d/newRangeProb=%.2f/vec=%s",
-								tc.name, humanize.Bytes(uint64(pkBlobSize)),
-								onlyLarge, numRows, newRangeProbability, vectorizeMode,
-							),
-								func(t *testing.T) {
-									_, err = db.Exec(tc.query)
-									if err != nil {
-										t.Fatal(err)
-									}
-									// Now examine the trace and count the async
-									// requests issued by the Streamer.
-									tr := <-recCh
-									var numStreamerRequests int
-									for _, rs := range tr {
-										if rs.Operation == kvstreamer.AsyncRequestOp {
-											numStreamerRequests++
-										}
-									}
-									// Assert that the number of requests is
-									// reasonable using the number of rows as
-									// the proxy for how many requests need to
-									// be issued. We expect some requests to
-									// come back empty because of a low initial
-									// TargetBytes limit, some requests might
-									// get an empty result multiple times while
-									// we're figuring out the correct limit, so
-									// we use a 4x multiple on the number of
-									// rows.
-									require.Greater(t, 4*numRows, numStreamerRequests)
-								})
-						}
 					}
+				}
+				// Populate the range cache.
+				_, err = db.Exec("SELECT count(*) FROM foo")
+				require.NoError(t, err)
+
+				for _, vectorizeMode := range []string{"on", "off"} {
+					_, err = db.Exec("SET vectorize = " + vectorizeMode)
+					require.NoError(t, err)
+					for _, tc := range testCases {
+						t.Run(fmt.Sprintf(
+							"%s/size=%s/onlyLarge=%t/numRows=%d/newRangeProb=%.2f/vec=%s",
+							tc.name, humanize.Bytes(uint64(pkBlobSize)),
+							onlyLarge, numRows, newRangeProbability, vectorizeMode,
+						),
+							func(t *testing.T) {
+								_, err = db.Exec(tc.query)
+								if err != nil {
+									t.Fatal(err)
+								}
+								// Now examine the trace and count the async
+								// requests issued by the Streamer.
+								tr := <-recCh
+								var numStreamerRequests int
+								for _, rs := range tr {
+									if rs.Operation == kvstreamer.AsyncRequestOp {
+										numStreamerRequests++
+									}
+								}
+								// Assert that the number of requests is
+								// reasonable using the number of rows as
+								// the proxy for how many requests need to
+								// be issued. We expect some requests to
+								// come back empty because of a low initial
+								// TargetBytes limit, some requests might
+								// get an empty result multiple times while
+								// we're figuring out the correct limit, so
+								// we use a 4x multiple on the number of
+								// rows.
+								require.Greater(t, 4*numRows, numStreamerRequests)
+							})
+					}
+				}
 			}
 		}
 	}

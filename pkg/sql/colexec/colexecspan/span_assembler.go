@@ -136,7 +136,6 @@ type spanAssembler struct {
 	// spanCols is used to iterate through the input columns that contain the
 	// key encodings during span construction.
 	spanCols []*coldata.Bytes
-
 }
 
 var _ ColSpanAssembler = (*spanAssembler)(nil)

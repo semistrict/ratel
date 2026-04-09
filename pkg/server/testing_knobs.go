@@ -141,6 +141,12 @@ type TestingKnobs struct {
 	// testing/synctest.
 	DisableProtectedTSProvider bool
 
+	// DisableRunnableCountCallbacks skips registering the global goschedstats
+	// runnable-count callback used by admission control. This is useful in fully
+	// in-process tests that run under testing/synctest, where the global ticker
+	// can outlive an individual synctest bubble.
+	DisableRunnableCountCallbacks bool
+
 	// BlobClientFactory supplies a BlobClientFactory for
 	// use by servers.
 	BlobClientFactory blobs.BlobClientFactory

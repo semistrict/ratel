@@ -136,6 +136,7 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 		tk.DisableEnvironmentSample = true
 		tk.DisableReplicationReporter = true
 		tk.DisableProtectedTSProvider = true
+		tk.DisableRunnableCountCallbacks = true
 		tk.ContextTestingKnobs.DialerFunc = registry.DialerFuncFor(rpcAddr)
 		args.Knobs.Server = tk
 

@@ -31,5 +31,5 @@ jobs:
         run: |
           make test \
             PKG=./pkg/testutils/inproc \
-            TESTS='^(TestSyncRestartThenFreshBubble|TestSyncJepsen|TestJepsen)$' \
+            TESTS='^(TestSyncRestartThenFreshBubble|TestSyncJepsen.*|TestJepsen.*|TestRegistry(PartitionGrudgeClosesSpecifiedLinks|HealAllLinksPreservesBlockedNodes)|Test(RandomHalvesGrudge|MajoritiesRingGrudge))$' \
             TESTFLAGS="-v -count=3 -timeout 60s"

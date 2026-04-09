@@ -151,6 +151,29 @@ func (r *Registry) UnblockLink(source, addr string) {
 	}
 }
 
+// PartitionGroups blocks all directed traffic between distinct groups while
+// preserving connectivity within each group.
+func (r *Registry) PartitionGroups(groups [][]string) {
+	r.PartitionGrudge(CompleteGrudge(groups))
+}
+
+// PartitionGrudge blocks all directed links specified by the given grudge.
+func (r *Registry) PartitionGrudge(grudge map[string][]string) {
+	for source, blocked := range grudge {
+		for _, addr := range blocked {
+			r.BlockLink(source, addr)
+		}
+	}
+}
+
+// HealAllLinks removes all directed link partitions while leaving whole-node
+// partitions untouched.
+func (r *Registry) HealAllLinks() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.links = make(map[string]map[string]bool)
+}
+
 // Unregister removes a listener from the registry and closes it.
 func (r *Registry) Unregister(addr string) {
 	r.mu.Lock()

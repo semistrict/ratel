@@ -72,6 +72,27 @@ type jepsenBankHistory struct {
 	ops []jepsenBankOp
 }
 
+func composeJepsenBankNemeses(nemeses ...jepsenBankNemesisFunc) jepsenBankNemesisFunc {
+	return func(
+		ctx context.Context,
+		stopCh <-chan struct{},
+		c *inproc.Cluster,
+		db *gosql.DB,
+		history *jepsenBankHistory,
+		keys *jepsenKeyTracker,
+	) {
+		var wg sync.WaitGroup
+		for _, nemesis := range nemeses {
+			wg.Add(1)
+			go func(n jepsenBankNemesisFunc) {
+				defer wg.Done()
+				n(ctx, stopCh, c, db, history, keys)
+			}(nemesis)
+		}
+		wg.Wait()
+	}
+}
+
 func (h *jepsenBankHistory) Add(op jepsenBankOp) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -151,6 +172,36 @@ func TestSyncJepsenBankRestart(t *testing.T) {
 func TestSyncJepsenBankPartition(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		runJepsenBankWorkload(t, runJepsenBankPartitionNemesis)
+	})
+}
+
+func TestSyncJepsenBankParts(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runJepsenBankWorkload(t, runJepsenBankPartsNemesis)
+	})
+}
+
+func TestSyncJepsenBankMajorityRing(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runJepsenBankWorkload(t, runJepsenBankMajorityRingNemesis)
+	})
+}
+
+func TestSyncJepsenBankPartsRestart(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runJepsenBankWorkload(t, composeJepsenBankNemeses(
+			runJepsenBankPartsNemesis,
+			runJepsenBankRestartNemesis,
+		))
+	})
+}
+
+func TestSyncJepsenBankMajorityRingRestart(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runJepsenBankWorkload(t, composeJepsenBankNemeses(
+			runJepsenBankMajorityRingNemesis,
+			runJepsenBankRestartNemesis,
+		))
 	})
 }
 
@@ -402,48 +453,60 @@ func runJepsenBankPartitionNemesis(
 	history *jepsenBankHistory,
 	_ *jepsenKeyTracker,
 ) {
-	ticker := time.NewTicker(2 * time.Second)
-	defer ticker.Stop()
-	healed := true
-	heal := func() {
-		c.HealLink(2, 0)
-		c.HealLink(0, 2)
-		c.HealLink(2, 1)
-		c.HealLink(1, 2)
-		healed = true
-	}
-	defer func() {
-		if !healed {
-			heal()
-		}
-	}()
+	runTimedLinkPartitionNemesis(stopCh, c, func() {
+		history.Add(jepsenBankOp{
+			Proc:     -1,
+			Type:     "info",
+			Function: "partition",
+			Err:      "isolate-node-2",
+			At:       time.Now(),
+		})
+	}, func() {
+		c.PartitionNodeGroups([][]int{{0, 1}, {2}})
+	})
+}
 
-	for {
-		select {
-		case <-stopCh:
-			return
-		case <-ticker.C:
-			history.Add(jepsenBankOp{
-				Proc:     -1,
-				Type:     "info",
-				Function: "partition",
-				Err:      "isolate-node-2",
-				At:       time.Now(),
-			})
-			c.PartitionLink(2, 0)
-			c.PartitionLink(0, 2)
-			c.PartitionLink(2, 1)
-			c.PartitionLink(1, 2)
-			healed = false
-			select {
-			case <-stopCh:
-				heal()
-				return
-			case <-time.After(500 * time.Millisecond):
-				heal()
-			}
-		}
-	}
+func runJepsenBankPartsNemesis(
+	ctx context.Context,
+	stopCh <-chan struct{},
+	c *inproc.Cluster,
+	_ *gosql.DB,
+	history *jepsenBankHistory,
+	_ *jepsenKeyTracker,
+) {
+	rng := rand.New(rand.NewSource(1234))
+	runTimedLinkPartitionNemesis(stopCh, c, func() {
+		history.Add(jepsenBankOp{
+			Proc:     -1,
+			Type:     "info",
+			Function: "partition",
+			Err:      "parts",
+			At:       time.Now(),
+		})
+	}, func() {
+		c.PartitionRandomHalves([]int{0, 1, 2}, rng)
+	})
+}
+
+func runJepsenBankMajorityRingNemesis(
+	ctx context.Context,
+	stopCh <-chan struct{},
+	c *inproc.Cluster,
+	_ *gosql.DB,
+	history *jepsenBankHistory,
+	_ *jepsenKeyTracker,
+) {
+	runTimedLinkPartitionNemesis(stopCh, c, func() {
+		history.Add(jepsenBankOp{
+			Proc:     -1,
+			Type:     "info",
+			Function: "partition",
+			Err:      "majority-ring",
+			At:       time.Now(),
+		})
+	}, func() {
+		c.PartitionMajoritiesRing([]int{0, 1, 2})
+	})
 }
 
 func readJepsenBankBalances(ctx context.Context, db *gosql.DB) ([]int64, error) {

@@ -850,9 +850,12 @@ func NewServer(cfg Config, stopper *stop.Stopper) (*Server, error) {
 		kvMemoryMonitor:        kvMemoryMonitor,
 	}
 
-	// Begin an async task to periodically purge old sessions in the system.web_sessions table.
-	if err = startPurgeOldSessions(ctx, sAuth); err != nil {
-		return nil, err
+	serverKnobs, _ := cfg.TestingKnobs.Server.(*TestingKnobs)
+	if serverKnobs == nil || !serverKnobs.DisableAuthSessionPurge {
+		// Begin an async task to periodically purge old sessions in the system.web_sessions table.
+		if err = startPurgeOldSessions(ctx, sAuth); err != nil {
+			return nil, err
+		}
 	}
 
 	return lateBoundServer, err

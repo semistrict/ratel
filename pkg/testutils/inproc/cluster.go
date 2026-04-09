@@ -15,6 +15,7 @@
 package inproc
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -22,6 +23,8 @@ import (
 	"github.com/semistrict/ratel/pkg/kv/kvserver"
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/server"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/sql/contention"
 	"github.com/semistrict/ratel/pkg/testutils/testcluster"
 )
 
@@ -56,6 +59,13 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 	for _, fn := range extraArgs {
 		fn(&clusterArgs)
 	}
+
+	if clusterArgs.ServerArgs.Settings == nil {
+		clusterArgs.ServerArgs.Settings = cluster.MakeTestingClusterSettings()
+	}
+	contention.TxnIDResolutionInterval.Override(
+		context.Background(), &clusterArgs.ServerArgs.Settings.SV, 0,
+	)
 
 	addrs := make([]string, nodes)
 	rpcListeners := make([]*Listener, nodes)
@@ -107,6 +117,7 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 		tk.HTTPListener = httpListener
 		tk.ShareRPCListenSQL = true
 		tk.StickyEngineRegistry = stickyRegistry
+		tk.DisableAuthSessionPurge = true
 		tk.ContextTestingKnobs.DialerFunc = registry.DialerFunc()
 		args.Knobs.Server = tk
 
@@ -131,12 +142,18 @@ func (c *Cluster) StopNode(nodeIdx int) {
 // RestartNode restarts a previously stopped node, re-opening its
 // in-memory listeners.
 func (c *Cluster) RestartNode(t testing.TB, nodeIdx int) {
+	if err := c.RestartNodeE(nodeIdx); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// RestartNodeE restarts a previously stopped node, re-opening its
+// in-memory listeners.
+func (c *Cluster) RestartNodeE(nodeIdx int) error {
 	// Re-open the in-memory RPC listener so the restarted node can
 	// accept connections on the same address.
 	c.rpcListeners[nodeIdx].Reset()
-	if err := c.RestartServer(nodeIdx); err != nil {
-		t.Fatal(err)
-	}
+	return c.RestartServer(nodeIdx)
 }
 
 // PartitionNode blocks all new inbound connections to the given node.

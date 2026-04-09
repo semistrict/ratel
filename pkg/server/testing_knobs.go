@@ -116,6 +116,11 @@ type TestingKnobs struct {
 	// a custom function that counts the number of times the sleep function is called.
 	DrainSleepFn func(time.Duration)
 
+	// DisableAuthSessionPurge skips the background task that periodically purges
+	// rows from system.web_sessions. This is useful in fully in-process tests
+	// that run under testing/synctest.
+	DisableAuthSessionPurge bool
+
 	// BlobClientFactory supplies a BlobClientFactory for
 	// use by servers.
 	BlobClientFactory blobs.BlobClientFactory

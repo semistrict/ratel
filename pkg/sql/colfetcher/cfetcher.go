@@ -116,6 +116,37 @@ func newCTableInfo() *cTableInfo {
 	return cTableInfoPool.Get().(*cTableInfo)
 }
 
+type subordinateArrayBuilder struct {
+	elemType *types.T
+	elems    tree.Datums
+}
+
+func newSubordinateArrayBuilder(elemType *types.T) *subordinateArrayBuilder {
+	return &subordinateArrayBuilder{elemType: elemType}
+}
+
+func (b *subordinateArrayBuilder) Set(elemIdx int, value tree.Datum) {
+	if elemIdx >= len(b.elems) {
+		elems := make(tree.Datums, elemIdx+1)
+		copy(elems, b.elems)
+		b.elems = elems
+	}
+	b.elems[elemIdx] = value
+}
+
+func (b *subordinateArrayBuilder) Materialize() (*tree.DArray, error) {
+	arr := tree.NewDArray(b.elemType)
+	for i, elem := range b.elems {
+		if elem == nil {
+			return nil, errors.AssertionFailedf("missing subordinate array element %d", i)
+		}
+		if err := arr.Append(elem); err != nil {
+			return nil, err
+		}
+	}
+	return arr, nil
+}
+
 // Release implements the execinfra.Releasable interface.
 func (c *cTableInfo) Release() {
 	c.cFetcherTableArgs.Release()
@@ -283,7 +314,7 @@ type cFetcher struct {
 
 	// subordinateArrays accumulates array elements from subordinate keys during
 	// row assembly. Keyed by fetched-column ordinal.
-	subordinateArrays map[int]*tree.DArray
+	subordinateArrays map[int]*subordinateArrayBuilder
 
 	// hasArrayColumns indicates that subordinate keys may be present.
 	hasArrayColumns bool
@@ -790,7 +821,9 @@ func (cf *cFetcher) NextBatch(ctx context.Context) (coldata.Batch, error) {
 			cf.machine.state[0] = stateFetchNextKVWithUnfinishedRow
 
 		case stateFinalizeRow:
-			cf.finalizeSubordinateArrays()
+			if err := cf.finalizeSubordinateArrays(); err != nil {
+				return nil, err
+			}
 			// Populate the timestamp system column if needed. We have to do it
 			// on a per row basis since each row can be modified at a different
 			// time.
@@ -1026,7 +1059,7 @@ func (cf *cFetcher) processValueSingle(
 ) (prettyKey string, prettyValue string, err error) {
 	prettyKey = prettyKeyPrefix
 
-		if idx, ok := table.ColIdxMap.Get(colID); ok {
+	if idx, ok := table.ColIdxMap.Get(colID); ok {
 		if cf.traceKV {
 			prettyKey = fmt.Sprintf("%s/%s", prettyKey, table.spec.FetchedColumns[idx].Name)
 		}
@@ -1081,10 +1114,11 @@ func (cf *cFetcher) processSubordinateValue(
 		return "", "", errors.Wrap(err, "decoding subordinate key column ID")
 	}
 	colID := descpb.ColumnID(colID64)
-	_, _, err = encoding.DecodeUvarintAscending(remaining)
+	_, elemIdx64, err := encoding.DecodeUvarintAscending(remaining)
 	if err != nil {
 		return "", "", errors.Wrap(err, "decoding subordinate key element index")
 	}
+	elemIdx := int(elemIdx64)
 
 	idx, ok := table.ColIdxMap.Get(colID)
 	if !ok {
@@ -1105,18 +1139,16 @@ func (cf *cFetcher) processSubordinateValue(
 	}
 
 	if cf.subordinateArrays == nil {
-		cf.subordinateArrays = make(map[int]*tree.DArray)
+		cf.subordinateArrays = make(map[int]*subordinateArrayBuilder)
 	}
 	arr, exists := cf.subordinateArrays[idx]
 	if !exists {
-		arr = tree.NewDArray(elemType)
+		arr = newSubordinateArrayBuilder(elemType)
 		cf.subordinateArrays[idx] = arr
 	}
-	if err := arr.Append(value); err != nil {
-		return "", "", err
-	}
+	arr.Set(elemIdx, value)
 	if cf.traceKV {
-		prettyKey = fmt.Sprintf("%s/%s[%d]", prettyKey, colSpec.Name, arr.Len()-1)
+		prettyKey = fmt.Sprintf("%s/%s[%d]", prettyKey, colSpec.Name, elemIdx)
 		prettyValue = value.String()
 	}
 	return prettyKey, prettyValue, nil
@@ -1211,8 +1243,12 @@ func (cf *cFetcher) processValueBytes(
 
 // finalizeSubordinateArrays writes accumulated array datums into the current
 // output row and clears the per-row accumulator.
-func (cf *cFetcher) finalizeSubordinateArrays() {
-	for idx, arr := range cf.subordinateArrays {
+func (cf *cFetcher) finalizeSubordinateArrays() error {
+	for idx, arrBuilder := range cf.subordinateArrays {
+		arr, err := arrBuilder.Materialize()
+		if err != nil {
+			return err
+		}
 		cf.machine.colvecs.Vecs[idx].Datum().Set(cf.machine.rowIdx, arr)
 		cf.machine.colvecs.Nulls[idx].UnsetNull(cf.machine.rowIdx)
 		cf.machine.remainingValueColsByIdx.Remove(idx)
@@ -1220,6 +1256,7 @@ func (cf *cFetcher) finalizeSubordinateArrays() {
 	for k := range cf.subordinateArrays {
 		delete(cf.subordinateArrays, k)
 	}
+	return nil
 }
 
 func (cf *cFetcher) fillNulls() error {

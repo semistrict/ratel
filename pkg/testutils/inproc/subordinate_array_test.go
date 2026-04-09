@@ -217,6 +217,36 @@ func TestSubordinateArrayReverseScanOrder(t *testing.T) {
 	require.Equal(t, [][]int64{{40, 50}, {10, 20, 30}}, got)
 }
 
+func TestSubordinateArrayReverseScanOrderVectorized(t *testing.T) {
+	c := inproc.StartCluster(t, 1)
+	defer c.Stop()
+
+	ctx := context.Background()
+	db := c.ServerConn(0)
+
+	_, err := db.ExecContext(ctx, `SET distsql = always`)
+	require.NoError(t, err)
+	_, err = db.ExecContext(ctx, `SET vectorize = on`)
+	require.NoError(t, err)
+	_, err = db.ExecContext(ctx, `CREATE TABLE t (id INT PRIMARY KEY, vals INT[])`)
+	require.NoError(t, err)
+	_, err = db.ExecContext(ctx, `INSERT INTO t VALUES (1, ARRAY[10, 20, 30]), (2, ARRAY[40, 50])`)
+	require.NoError(t, err)
+
+	rows, err := db.QueryContext(ctx, `SELECT vals FROM t ORDER BY id DESC`)
+	require.NoError(t, err)
+	defer rows.Close()
+
+	var got [][]int64
+	for rows.Next() {
+		var vals []int64
+		require.NoError(t, rows.Scan(pq.Array(&vals)))
+		got = append(got, vals)
+	}
+	require.NoError(t, rows.Err())
+	require.Equal(t, [][]int64{{40, 50}, {10, 20, 30}}, got)
+}
+
 // TestSubordinateArrayRespectsMaxRowSize verifies that arrays encoded as
 // subordinate KV entries are still subject to row-size guardrails.
 func TestSubordinateArrayRespectsMaxRowSize(t *testing.T) {
@@ -614,5 +644,115 @@ func TestSubordinateArrayJoin(t *testing.T) {
 	require.Equal(t, []result{
 		{"Hello", []string{"admin", "editor"}},
 		{"Again", []string{"admin", "editor"}},
+	}, results)
+}
+
+func TestSubordinateArrayJoinReverseOrder(t *testing.T) {
+	c := inproc.StartCluster(t, 1)
+	defer c.Stop()
+
+	ctx := context.Background()
+	db := c.ServerConn(0)
+
+	_, err := db.ExecContext(ctx, `CREATE TABLE users (id INT PRIMARY KEY, name TEXT, tags TEXT[])`)
+	require.NoError(t, err)
+	_, err = db.ExecContext(ctx, `CREATE TABLE posts (id INT PRIMARY KEY, user_id INT, title TEXT)`)
+	require.NoError(t, err)
+
+	_, err = db.ExecContext(ctx, `INSERT INTO users VALUES
+		(1, 'alice', ARRAY['admin','editor']),
+		(2, 'bob', ARRAY['viewer','author'])
+	`)
+	require.NoError(t, err)
+	_, err = db.ExecContext(ctx, `INSERT INTO posts VALUES
+		(1, 1, 'Hello'),
+		(2, 2, 'World'),
+		(3, 1, 'Again'),
+		(4, 2, 'More')
+	`)
+	require.NoError(t, err)
+
+	rows, err := db.QueryContext(ctx, `
+		SELECT p.title, u.tags
+		FROM users u
+		JOIN posts p ON p.user_id = u.id
+		ORDER BY u.id DESC, p.id DESC
+	`)
+	require.NoError(t, err)
+	defer rows.Close()
+
+	type result struct {
+		title string
+		tags  []string
+	}
+	var results []result
+	for rows.Next() {
+		var r result
+		require.NoError(t, rows.Scan(&r.title, pq.Array(&r.tags)))
+		results = append(results, r)
+	}
+	require.NoError(t, rows.Err())
+	require.Equal(t, []result{
+		{"More", []string{"viewer", "author"}},
+		{"World", []string{"viewer", "author"}},
+		{"Again", []string{"admin", "editor"}},
+		{"Hello", []string{"admin", "editor"}},
+	}, results)
+}
+
+func TestSubordinateArrayJoinReverseOrderVectorized(t *testing.T) {
+	c := inproc.StartCluster(t, 1)
+	defer c.Stop()
+
+	ctx := context.Background()
+	db := c.ServerConn(0)
+
+	_, err := db.ExecContext(ctx, `SET distsql = always`)
+	require.NoError(t, err)
+	_, err = db.ExecContext(ctx, `SET vectorize = on`)
+	require.NoError(t, err)
+	_, err = db.ExecContext(ctx, `CREATE TABLE users (id INT PRIMARY KEY, name TEXT, tags TEXT[])`)
+	require.NoError(t, err)
+	_, err = db.ExecContext(ctx, `CREATE TABLE posts (id INT PRIMARY KEY, user_id INT, title TEXT)`)
+	require.NoError(t, err)
+
+	_, err = db.ExecContext(ctx, `INSERT INTO users VALUES
+		(1, 'alice', ARRAY['admin','editor']),
+		(2, 'bob', ARRAY['viewer','author'])
+	`)
+	require.NoError(t, err)
+	_, err = db.ExecContext(ctx, `INSERT INTO posts VALUES
+		(1, 1, 'Hello'),
+		(2, 2, 'World'),
+		(3, 1, 'Again'),
+		(4, 2, 'More')
+	`)
+	require.NoError(t, err)
+
+	rows, err := db.QueryContext(ctx, `
+		SELECT p.title, u.tags
+		FROM users u
+		JOIN posts p ON p.user_id = u.id
+		ORDER BY u.id DESC, p.id DESC
+	`)
+	require.NoError(t, err)
+	defer rows.Close()
+
+	type result struct {
+		title string
+		tags  []string
+	}
+	var results []result
+	for rows.Next() {
+		var r result
+		require.NoError(t, rows.Scan(&r.title, pq.Array(&r.tags)))
+		results = append(results, r)
+	}
+	require.NoError(t, rows.Err())
+	require.Equal(t, []result{
+		{"More", []string{"viewer", "author"}},
+		{"World", []string{"viewer", "author"}},
+		{"Again", []string{"admin", "editor"}},
+		{"Hello", []string{"admin", "editor"}},
 	}, results)
 }

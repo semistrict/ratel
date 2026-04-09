@@ -2,8 +2,8 @@
 - Status: completed
 - Start Date: 2017-03-13
 - Authors: @bdarnell
-- RFC PR: [#14251](https://github.com/cockroachdb/cockroach/pull/14251)
-- Cockroach Issue: [#5974](https://github.com/cockroachdb/cockroach/issues/5974)
+- RFC PR: [#14251](https://github.com/semistrict/ratel/pull/14251)
+- Cockroach Issue: [#5974](https://github.com/semistrict/ratel/issues/5974)
 
 # Summary
 
@@ -33,7 +33,7 @@ revert to normal mode (with a `--join` flag) for later restarts (or
 else it could re-initialize a new cluster if it is ever restarted
 without its data directory. We have solved
 this
-[for Kubernetes](https://github.com/cockroachdb/cockroach/blob/43f24c9042657448a0ad635b95099b75e478de41/cloud/kubernetes/cockroachdb-statefulset.yaml#L97) with
+[for Kubernetes](https://github.com/semistrict/ratel/blob/43f24c9042657448a0ad635b95099b75e478de41/cloud/kubernetes/cockroachdb-statefulset.yaml#L97) with
 a special "init container", but this is relatively subtle logic that
 must be redone for each new deployment platform.
 

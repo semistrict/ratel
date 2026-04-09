@@ -14,7 +14,7 @@
 
 package scop
 
-import "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
+import "github.com/semistrict/ratel/pkg/sql/catalog/descpb"
 
 //go:generate go run ./generate_visitor.go scop Validation validation.go validation_visitor_generated.go
 

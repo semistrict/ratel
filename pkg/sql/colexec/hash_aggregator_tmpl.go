@@ -18,10 +18,10 @@
 package colexec
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/col/coldata"
-	"github.com/cockroachdb/cockroach/pkg/sql/colexec/colexecutils"
-	"github.com/cockroachdb/cockroach/pkg/sql/colexecerror"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/col/coldata"
+	"github.com/semistrict/ratel/pkg/sql/colexec/colexecutils"
+	"github.com/semistrict/ratel/pkg/sql/colexecerror"
 )
 
 // populateEqChains populates op.scratch.eqChains with indices of tuples from b

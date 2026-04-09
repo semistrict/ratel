@@ -18,8 +18,8 @@ import (
 	"math"
 	"sort"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/partition"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/opt/partition"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 )
 
 // compare compares the key prefix in prefixInfo with the span prefix. The key

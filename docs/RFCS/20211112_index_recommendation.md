@@ -2,7 +2,7 @@
 - Status: in-progress
 - Start Date: 2018-10-18
 - Authors: Neha George
-- RFC PR: [#71784](https://github.com/cockroachdb/cockroach/pull/71784)
+- RFC PR: [#71784](https://github.com/semistrict/ratel/pull/71784)
 - Cockroach Issue:
 
 # Summary
@@ -150,7 +150,7 @@ This is largely dependent on user preference, as some users might prioritize rea
 To handle this, we could have user settings that allow the user to indicate their preference, which will then affect the cost we use internally.
 These user settings should be specific to each "application name", to deal with the fact that some applications may be more latency-sensitive than others.
 
-Furthermore, creating and removing indexes has significant overhead, so we will use hypothetical indexes instead. There is an existing [prototype PR](https://github.com/cockroachdb/cockroach/pull/66111/) for this. However, these indexes persist to disk, and for our purposes, we only need the indexes in memory.
+Furthermore, creating and removing indexes has significant overhead, so we will use hypothetical indexes instead. There is an existing [prototype PR](https://github.com/semistrict/ratel/pull/66111/) for this. However, these indexes persist to disk, and for our purposes, we only need the indexes in memory.
 We will need to additionally create fake tables that we can tamper with, without interfering with planning on concurrent queries. The implementation idea is to create a struct that wraps `optTable` with additional information pertaining to the table's hypothetical indexes.
 Our hypothetical indexes will be added and removed from this table, that is otherwise identical to the regular table.
 

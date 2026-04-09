@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils/inproc"
+	"github.com/semistrict/ratel/pkg/testutils/inproc"
 	"github.com/stretchr/testify/require"
 )
 

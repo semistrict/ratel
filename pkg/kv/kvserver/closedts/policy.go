@@ -17,8 +17,8 @@ package closedts
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/hlc"
 )
 
 // TargetForPolicy returns the target closed timestamp for a range with the

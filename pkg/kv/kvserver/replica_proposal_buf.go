@@ -19,17 +19,17 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/cockroachdb/cockroach/pkg/clusterversion"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/closedts/tracker"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverpb"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/liveness"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/util/errorutil"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/clusterversion"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/closedts/tracker"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverpb"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/liveness"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/util/errorutil"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/protoutil"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 )
@@ -507,7 +507,7 @@ func (b *propBuf) FlushLockedWithRaftGroup(
 				// Silently ignore dropped proposals (they were always silently
 				// ignored prior to the introduction of ErrProposalDropped).
 				// TODO(bdarnell): Handle ErrProposalDropped better.
-				// https://github.com/cockroachdb/cockroach/issues/21849
+				// https://github.com/semistrict/ratel/issues/21849
 				firstErr = err
 				continue
 			}
@@ -745,7 +745,7 @@ func (b *propBuf) allocateLAIAndClosedTimestampLocked(
 	// (*replicaAppBatch).assertNoWriteBelowClosedTimestamp that is not
 	// susceptible to the above false positive.
 	//
-	// See https://github.com/cockroachdb/cockroach/issues/72428#issuecomment-976428551.
+	// See https://github.com/semistrict/ratel/issues/72428#issuecomment-976428551.
 
 	lb := b.evalTracker.LowerBound(ctx)
 	if !lb.IsEmpty() {
@@ -822,7 +822,7 @@ func proposeBatch(raftGroup proposerRaft, replID roachpb.ReplicaID, ents []raftp
 		// Silently ignore dropped proposals (they were always silently
 		// ignored prior to the introduction of ErrProposalDropped).
 		// TODO(bdarnell): Handle ErrProposalDropped better.
-		// https://github.com/cockroachdb/cockroach/issues/21849
+		// https://github.com/semistrict/ratel/issues/21849
 		return nil
 	} else if err != nil {
 		return err

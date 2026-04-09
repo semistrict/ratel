@@ -7,21 +7,21 @@ import (
 	context "context"
 	encoding_binary "encoding/binary"
 	fmt "fmt"
-	lock "github.com/cockroachdb/cockroach/pkg/kv/kvserver/concurrency/lock"
-	rspb "github.com/cockroachdb/cockroach/pkg/kv/kvserver/readsummary/rspb"
-	settings "github.com/cockroachdb/cockroach/pkg/settings"
-	enginepb "github.com/cockroachdb/cockroach/pkg/storage/enginepb"
-	github_com_cockroachdb_cockroach_pkg_storage_enginepb "github.com/cockroachdb/cockroach/pkg/storage/enginepb"
-	github_com_cockroachdb_cockroach_pkg_util_hlc "github.com/cockroachdb/cockroach/pkg/util/hlc"
-	hlc "github.com/cockroachdb/cockroach/pkg/util/hlc"
-	tracingpb "github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb"
-	github_com_cockroachdb_cockroach_pkg_util_uuid "github.com/cockroachdb/cockroach/pkg/util/uuid"
 	errorspb "github.com/cockroachdb/errors/errorspb"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
 	_ "github.com/gogo/protobuf/types"
 	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
+	lock "github.com/semistrict/ratel/pkg/kv/kvserver/concurrency/lock"
+	rspb "github.com/semistrict/ratel/pkg/kv/kvserver/readsummary/rspb"
+	settings "github.com/semistrict/ratel/pkg/settings"
+	enginepb "github.com/semistrict/ratel/pkg/storage/enginepb"
+	github_com_cockroachdb_cockroach_pkg_storage_enginepb "github.com/semistrict/ratel/pkg/storage/enginepb"
+	github_com_cockroachdb_cockroach_pkg_util_hlc "github.com/semistrict/ratel/pkg/util/hlc"
+	hlc "github.com/semistrict/ratel/pkg/util/hlc"
+	tracingpb "github.com/semistrict/ratel/pkg/util/tracing/tracingpb"
+	github_com_cockroachdb_cockroach_pkg_util_uuid "github.com/semistrict/ratel/pkg/util/uuid"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -463,7 +463,7 @@ type RequestHeader struct {
 	// including Key and excluding EndKey.
 	EndKey Key `protobuf:"bytes,4,opt,name=end_key,json=endKey,proto3,casttype=Key" json:"end_key,omitempty"`
 	// A zero-indexed transactional sequence number.
-	Sequence github_com_cockroachdb_cockroach_pkg_storage_enginepb.TxnSeq `protobuf:"varint,5,opt,name=sequence,proto3,casttype=github.com/cockroachdb/cockroach/pkg/storage/enginepb.TxnSeq" json:"sequence,omitempty"`
+	Sequence github_com_cockroachdb_cockroach_pkg_storage_enginepb.TxnSeq `protobuf:"varint,5,opt,name=sequence,proto3,casttype=github.com/semistrict/ratel/pkg/storage/enginepb.TxnSeq" json:"sequence,omitempty"`
 }
 
 func (m *RequestHeader) Reset()         { *m = RequestHeader{} }
@@ -2903,7 +2903,7 @@ type QueryTxnRequest struct {
 	// transaction status or priority -OR- to the set of dependent transactions.
 	WaitForUpdate bool `protobuf:"varint,3,opt,name=wait_for_update,json=waitForUpdate,proto3" json:"wait_for_update,omitempty"`
 	// Set of known dependent transactions.
-	KnownWaitingTxns []github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,4,rep,name=known_waiting_txns,json=knownWaitingTxns,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/uuid.UUID" json:"known_waiting_txns,omitempty"`
+	KnownWaitingTxns []github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,4,rep,name=known_waiting_txns,json=knownWaitingTxns,proto3,customtype=github.com/semistrict/ratel/pkg/util/uuid.UUID" json:"known_waiting_txns,omitempty"`
 }
 
 func (m *QueryTxnRequest) Reset()         { *m = QueryTxnRequest{} }
@@ -2947,7 +2947,7 @@ type QueryTxnResponse struct {
 	// The field only started being populated in 20.2, so 20.1 nodes never set it.
 	TxnRecordExists bool `protobuf:"varint,4,opt,name=txn_record_exists,json=txnRecordExists,proto3" json:"txn_record_exists,omitempty"`
 	// Specifies a list of transaction IDs which are waiting on the txn.
-	WaitingTxns []github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,3,rep,name=waiting_txns,json=waitingTxns,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/uuid.UUID" json:"waiting_txns,omitempty"`
+	WaitingTxns []github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,3,rep,name=waiting_txns,json=waitingTxns,proto3,customtype=github.com/semistrict/ratel/pkg/util/uuid.UUID" json:"waiting_txns,omitempty"`
 }
 
 func (m *QueryTxnResponse) Reset()         { *m = QueryTxnResponse{} }
@@ -3502,7 +3502,7 @@ type RequestLeaseRequest struct {
 	// The MinLeaseProposedTS of the proposing replica to make sure that leases
 	// issued after a node restart receive a new sequence number (instead of
 	// counting as a lease extension). See #23204.
-	MinProposedTS *github_com_cockroachdb_cockroach_pkg_util_hlc.ClockTimestamp `protobuf:"bytes,4,opt,name=min_proposed_ts,json=minProposedTs,proto3,casttype=github.com/cockroachdb/cockroach/pkg/util/hlc.ClockTimestamp" json:"min_proposed_ts,omitempty"`
+	MinProposedTS *github_com_cockroachdb_cockroach_pkg_util_hlc.ClockTimestamp `protobuf:"bytes,4,opt,name=min_proposed_ts,json=minProposedTs,proto3,casttype=github.com/semistrict/ratel/pkg/util/hlc.ClockTimestamp" json:"min_proposed_ts,omitempty"`
 }
 
 func (m *RequestLeaseRequest) Reset()         { *m = RequestLeaseRequest{} }
@@ -3767,7 +3767,7 @@ type ComputeChecksumResponse struct {
 	ResponseHeader `protobuf:"bytes,1,opt,name=header,proto3,embedded=header" json:"header"`
 	// ChecksumID is the unique identifier that can be used to get the computed
 	// checksum in a future storage.CollectChecksumRequest.
-	ChecksumID github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,2,opt,name=checksum_id,json=checksumId,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/uuid.UUID" json:"checksum_id"`
+	ChecksumID github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,2,opt,name=checksum_id,json=checksumId,proto3,customtype=github.com/semistrict/ratel/pkg/util/uuid.UUID" json:"checksum_id"`
 }
 
 func (m *ComputeChecksumResponse) Reset()         { *m = ComputeChecksumResponse{} }
@@ -4472,7 +4472,7 @@ var xxx_messageInfo_AdminScatterResponse_Range proto.InternalMessageInfo
 type AdminVerifyProtectedTimestampRequest struct {
 	RequestHeader `protobuf:"bytes,1,opt,name=header,proto3,embedded=header" json:"header"`
 	// RecordID is the ID of the protected timestamp Record being verified.
-	RecordID github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,4,opt,name=record_id,json=recordId,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/uuid.UUID" json:"record_id"`
+	RecordID github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,4,opt,name=record_id,json=recordId,proto3,customtype=github.com/semistrict/ratel/pkg/util/uuid.UUID" json:"record_id"`
 	// Protected is the timestamp at which the record with RecordID protects.
 	Protected hlc.Timestamp `protobuf:"bytes,2,opt,name=protected,proto3" json:"protected"`
 	// RecordAliveAt is a an hlc timestamp at which the record being verified is
@@ -4669,7 +4669,7 @@ type AddSSTableRequest struct {
 	//
 	// TODO(erikgrinaker): It might be possible to avoid this parameter if we
 	// could pick an MVCC timestamp that's guaranteed to not collide with
-	// existing keys, see: https://github.com/cockroachdb/cockroach/issues/73047.
+	// existing keys, see: https://github.com/semistrict/ratel/issues/73047.
 	// However, this would always lead to inaccurate MVCC stats.
 	DisallowConflicts bool `protobuf:"varint,7,opt,name=disallow_conflicts,json=disallowConflicts,proto3" json:"disallow_conflicts,omitempty"`
 	// DisallowShadowing implies DisallowConflicts, and additionally rejects
@@ -4709,7 +4709,7 @@ type AddSSTableRequest struct {
 	// costs of adding an extra file (file IO, triggering a flush, compactions)
 	// would be higher than the marginal costs of the amount of data going though
 	// the usual write pipeline (on-disk raft log, WAL, etc).
-	// TODO(dt): https://github.com/cockroachdb/cockroach/issues/34579#issuecomment-544627193
+	// TODO(dt): https://github.com/semistrict/ratel/issues/34579#issuecomment-544627193
 	IngestAsWrites bool `protobuf:"varint,5,opt,name=ingest_as_writes,json=ingestAsWrites,proto3" json:"ingest_as_writes,omitempty"`
 	// ReturnFollowingLikelyNonEmptySpanStart controls whether the request should
 	// also find and return the key at which the span after the added file span
@@ -5019,7 +5019,7 @@ type SubsumeResponse struct {
 	// being subsumed). It is suitable for use as the timestamp cache's low water
 	// mark for the keys previously owned by the subsumed range though this role
 	// is largely being... subsumed by the RightReadSummary.
-	FreezeStart github_com_cockroachdb_cockroach_pkg_util_hlc.ClockTimestamp `protobuf:"bytes,5,opt,name=freeze_start,json=freezeStart,proto3,casttype=github.com/cockroachdb/cockroach/pkg/util/hlc.ClockTimestamp" json:"freeze_start"`
+	FreezeStart github_com_cockroachdb_cockroach_pkg_util_hlc.ClockTimestamp `protobuf:"bytes,5,opt,name=freeze_start,json=freezeStart,proto3,casttype=github.com/semistrict/ratel/pkg/util/hlc.ClockTimestamp" json:"freeze_start"`
 	// closed_timestamp is the range's closed timestamp at the moment of the
 	// subsumption. Because the SubsumeRequest synchronizes with all other
 	// requests, the range's closed timestamp does not advance past the snapshot
@@ -6889,7 +6889,7 @@ type Header struct {
 	// can change due to server-side uncertainty retries. By remembering a stable
 	// reference to the initial timestamp, we ensure that a non-transactional
 	// request's uncertainty interval remains fixed across retries.
-	TimestampFromServerClock *github_com_cockroachdb_cockroach_pkg_util_hlc.ClockTimestamp `protobuf:"bytes,27,opt,name=timestamp_from_server_clock,json=timestampFromServerClock,proto3,casttype=github.com/cockroachdb/cockroach/pkg/util/hlc.ClockTimestamp" json:"timestamp_from_server_clock,omitempty"`
+	TimestampFromServerClock *github_com_cockroachdb_cockroach_pkg_util_hlc.ClockTimestamp `protobuf:"bytes,27,opt,name=timestamp_from_server_clock,json=timestampFromServerClock,proto3,casttype=github.com/semistrict/ratel/pkg/util/hlc.ClockTimestamp" json:"timestamp_from_server_clock,omitempty"`
 	// replica specifies the destination of the request.
 	Replica ReplicaDescriptor `protobuf:"bytes,2,opt,name=replica,proto3" json:"replica"`
 	// range_id specifies the ID of the Raft consensus group which the key
@@ -7387,7 +7387,7 @@ type BatchResponse_Header struct {
 	Txn *Transaction `protobuf:"bytes,3,opt,name=txn,proto3" json:"txn,omitempty"`
 	// now is the highest current time from any node contacted during the request.
 	// It can be used by the receiver to update its local HLC.
-	Now github_com_cockroachdb_cockroach_pkg_util_hlc.ClockTimestamp `protobuf:"bytes,5,opt,name=now,proto3,casttype=github.com/cockroachdb/cockroach/pkg/util/hlc.ClockTimestamp" json:"now"`
+	Now github_com_cockroachdb_cockroach_pkg_util_hlc.ClockTimestamp `protobuf:"bytes,5,opt,name=now,proto3,casttype=github.com/semistrict/ratel/pkg/util/hlc.ClockTimestamp" json:"now"`
 	// collected_spans stores trace spans recorded during the execution of this
 	// request.
 	CollectedSpans []tracingpb.RecordedSpan `protobuf:"bytes,6,rep,name=collected_spans,json=collectedSpans,proto3" json:"collected_spans"`

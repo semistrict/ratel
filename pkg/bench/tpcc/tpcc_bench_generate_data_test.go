@@ -19,8 +19,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils"
 	"github.com/cockroachdb/pebble/vfs"
+	"github.com/semistrict/ratel/pkg/testutils"
 	"github.com/stretchr/testify/require"
 )
 

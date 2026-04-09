@@ -17,10 +17,10 @@ package migrations
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/clusterversion"
-	"github.com/cockroachdb/cockroach/pkg/jobs"
-	"github.com/cockroachdb/cockroach/pkg/migration"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/systemschema"
+	"github.com/semistrict/ratel/pkg/clusterversion"
+	"github.com/semistrict/ratel/pkg/jobs"
+	"github.com/semistrict/ratel/pkg/migration"
+	"github.com/semistrict/ratel/pkg/sql/catalog/systemschema"
 )
 
 // wasmFunctionsTableMigration creates the system.wasm_functions table.

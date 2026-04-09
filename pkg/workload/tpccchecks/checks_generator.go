@@ -20,11 +20,11 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
-	"github.com/cockroachdb/cockroach/pkg/workload"
-	"github.com/cockroachdb/cockroach/pkg/workload/histogram"
-	"github.com/cockroachdb/cockroach/pkg/workload/tpcc"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/workload"
+	"github.com/semistrict/ratel/pkg/workload/histogram"
+	"github.com/semistrict/ratel/pkg/workload/tpcc"
 	"github.com/spf13/pflag"
 )
 

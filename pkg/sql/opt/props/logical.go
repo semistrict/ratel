@@ -15,8 +15,8 @@
 package props
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/opt"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/constraint"
+	"github.com/semistrict/ratel/pkg/sql/opt"
+	"github.com/semistrict/ratel/pkg/sql/opt/constraint"
 )
 
 // AvailableRuleProps is a bit set that indicates when lazily-populated Rule

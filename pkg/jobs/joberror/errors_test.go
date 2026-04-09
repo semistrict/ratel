@@ -19,9 +19,9 @@ import (
 	"testing"
 
 	circuitbreaker "github.com/cockroachdb/circuitbreaker"
-	"github.com/cockroachdb/cockroach/pkg/util/circuit"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
+	"github.com/semistrict/ratel/pkg/util/circuit"
 	"github.com/stretchr/testify/require"
 )
 

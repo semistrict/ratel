@@ -21,13 +21,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/cmd/reduce/reduce"
-	"github.com/cockroachdb/cockroach/pkg/cmd/reduce/reduce/reducesql"
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/server"
-	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
 	"github.com/jackc/pgx/v4"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/cmd/reduce/reduce"
+	"github.com/semistrict/ratel/pkg/cmd/reduce/reduce/reducesql"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/server"
+	"github.com/semistrict/ratel/pkg/testutils/skip"
 )
 
 var printUnknown = flag.Bool("unknown", false, "print unknown types during walk")

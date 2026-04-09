@@ -17,8 +17,8 @@ package colinfo
 import (
 	"bytes"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/util/encoding"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/util/encoding"
 )
 
 // ColumnOrderInfo describes a column (as an index) and a desired order

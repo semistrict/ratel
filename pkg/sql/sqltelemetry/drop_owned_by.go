@@ -14,7 +14,7 @@
 
 package sqltelemetry
 
-import "github.com/cockroachdb/cockroach/pkg/server/telemetry"
+import "github.com/semistrict/ratel/pkg/server/telemetry"
 
 // CreateDropOwnedByCounter returns a counter to increment for the DROP OWNED BY command.
 func CreateDropOwnedByCounter() telemetry.Counter {

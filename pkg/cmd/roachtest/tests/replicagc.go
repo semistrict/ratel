@@ -21,14 +21,14 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/cluster"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/option"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/registry"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/test"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/install"
-	"github.com/cockroachdb/cockroach/pkg/util/retry"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/cluster"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/option"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/registry"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/test"
+	"github.com/semistrict/ratel/pkg/roachprod/install"
+	"github.com/semistrict/ratel/pkg/util/retry"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 )
 
 func registerReplicaGC(r registry.Registry) {
@@ -102,7 +102,7 @@ func runReplicaGCChangedPeers(
 	// of five applied to them, and they would be unable to move off n3 as n1 and
 	// n2 will be down at that point. For details, see:
 	//
-	// https://github.com/cockroachdb/cockroach/issues/67910#issuecomment-884856356
+	// https://github.com/semistrict/ratel/issues/67910#issuecomment-884856356
 	t.Status("waiting for zero replicas on n3")
 	waitForZeroReplicasOnN3(ctx, t, c.Conn(ctx, t.L(), 1))
 

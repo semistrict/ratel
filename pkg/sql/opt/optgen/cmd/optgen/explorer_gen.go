@@ -17,7 +17,7 @@ package main
 import (
 	"io"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/optgen/lang"
+	"github.com/semistrict/ratel/pkg/sql/opt/optgen/lang"
 )
 
 // explorerGen generates code for the explorer, which searches for logically
@@ -38,9 +38,9 @@ func (g *explorerGen) generate(compiled *lang.CompiledExpr, w io.Writer) {
 	g.w.writeIndent("package xform\n\n")
 
 	g.w.nestIndent("import (\n")
-	g.w.writeIndent("\"github.com/cockroachdb/cockroach/pkg/sql/opt\"\n")
-	g.w.writeIndent("\"github.com/cockroachdb/cockroach/pkg/sql/opt/memo\"\n")
-	g.w.writeIndent("\"github.com/cockroachdb/cockroach/pkg/sql/sem/tree\"\n")
+	g.w.writeIndent("\"github.com/semistrict/ratel/pkg/sql/opt\"\n")
+	g.w.writeIndent("\"github.com/semistrict/ratel/pkg/sql/opt/memo\"\n")
+	g.w.writeIndent("\"github.com/semistrict/ratel/pkg/sql/sem/tree\"\n")
 	g.w.unnest(")\n\n")
 
 	g.genDispatcher()

@@ -15,10 +15,10 @@
 package colexec_test
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/colexec/colbuilder"
-	"github.com/cockroachdb/cockroach/pkg/sql/colexec/colexecargs"
-	"github.com/cockroachdb/cockroach/pkg/sql/colexec/colexecbase"
-	"github.com/cockroachdb/cockroach/pkg/sql/colexec/colexectestutils"
+	"github.com/semistrict/ratel/pkg/sql/colexec/colbuilder"
+	"github.com/semistrict/ratel/pkg/sql/colexec/colexecargs"
+	"github.com/semistrict/ratel/pkg/sql/colexec/colexecbase"
+	"github.com/semistrict/ratel/pkg/sql/colexec/colexectestutils"
 )
 
 func init() {

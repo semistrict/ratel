@@ -17,8 +17,8 @@ package scgraph
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scop"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/screl"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scop"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/screl"
 )
 
 // Edge represents a relationship between two Nodes.

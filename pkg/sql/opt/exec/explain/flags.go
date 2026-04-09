@@ -14,7 +14,7 @@
 
 package explain
 
-import "github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+import "github.com/semistrict/ratel/pkg/sql/sem/tree"
 
 // Flags are modifiers for EXPLAIN (PLAN).
 type Flags struct {

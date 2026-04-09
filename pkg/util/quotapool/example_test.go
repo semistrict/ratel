@@ -18,7 +18,7 @@ import (
 	"context"
 	"sort"
 
-	"github.com/cockroachdb/cockroach/pkg/util/ctxgroup"
+	"github.com/semistrict/ratel/pkg/util/ctxgroup"
 )
 
 // An example use case for AcquireFunc is a pool of workers attempting to

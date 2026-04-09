@@ -28,8 +28,8 @@ import (
 	"text/template"
 	"unicode"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/exit"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/cli/exit"
 )
 
 func main() {

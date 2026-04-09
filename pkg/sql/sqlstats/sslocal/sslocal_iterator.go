@@ -15,9 +15,9 @@
 package sslocal
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlstats"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlstats/ssmemstorage"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/sql/sqlstats"
+	"github.com/semistrict/ratel/pkg/sql/sqlstats/ssmemstorage"
 )
 
 type baseIterator struct {

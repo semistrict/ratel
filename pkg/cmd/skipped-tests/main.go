@@ -149,7 +149,7 @@ func postReport(skipped []skippedTest) {
 func main() {
 	flag.Parse()
 
-	const root = "github.com/cockroachdb/cockroach"
+	const root = "github.com/semistrict/ratel"
 
 	crdb, err := build.Import(root, "", build.FindOnly)
 	if err != nil {

@@ -2,7 +2,7 @@
 - Status: Draft
 - Start Date: 2018-04-11
 - Authors: David Taylor, Rohan Yadav, Solon Gordon
-- RFC PR: [25208](https://github.com/cockroachdb/cockroach/pull/25208)
+- RFC PR: [25208](https://github.com/semistrict/ratel/pull/25208)
 - Cockroach Issues: #19141
 
 # Table of Contents
@@ -284,7 +284,7 @@ interleaved into non-primary indexes, which is currently not permitted.
 ## Supporting DROP on Interleaved Parents
 
 We could also start allowing ALTER PRIMARY KEY on interleaved parents if
-https://github.com/cockroachdb/cockroach/issues/8036 were completed. This is
+https://github.com/semistrict/ratel/issues/8036 were completed. This is
 perhaps less ideal than preserving the old primary index, because the child
 tables would be interleaved into nothing until their primary keys were also
 altered.

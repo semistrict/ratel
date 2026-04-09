@@ -20,14 +20,14 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/spanset"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/storage"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/uuid"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/spanset"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/storage"
+	"github.com/semistrict/ratel/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/uuid"
 )
 
 func fakePrevKey(k []byte) roachpb.Key {
@@ -97,7 +97,7 @@ func createRangeData(
 		{keys.TransactionKey(roachpb.Key(desc.StartKey.Next()), uuid.MakeV4()), ts0},
 		{keys.TransactionKey(fakePrevKey(desc.EndKey), uuid.MakeV4()), ts0},
 		// TODO(bdarnell): KeyMin.Next() results in a key in the reserved system-local space.
-		// Once we have resolved https://github.com/cockroachdb/cockroach/issues/437,
+		// Once we have resolved https://github.com/semistrict/ratel/issues/437,
 		// replace this with something that reliably generates the first valid key in the range.
 		//{r.Desc().StartKey.Next(), ts},
 		// The following line is similar to StartKey.Next() but adds more to the key to

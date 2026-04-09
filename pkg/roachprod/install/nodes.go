@@ -19,8 +19,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/util"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util"
 )
 
 // Node represents a node in a roachprod cluster; a cluster of N nodes consists

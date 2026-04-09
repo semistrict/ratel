@@ -22,8 +22,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/exit"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/cli/exit"
 )
 
 // TODO: HTTP requests should be bound to context via http.NewRequestWithContext

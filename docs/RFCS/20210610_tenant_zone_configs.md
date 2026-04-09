@@ -2,7 +2,7 @@
 - Status: completed 
 - Start Date: 2021-06-10
 - Authors: Irfan Sharif, Arul Ajmani
-- RFC PR: [#66348](https://github.com/cockroachdb/cockroach/pull/66348)
+- RFC PR: [#66348](https://github.com/semistrict/ratel/pull/66348)
 - Cockroach Issue: [#67679][67679]
 
 ***NOTE: The work described in this RFC was implemented in parallel with it
@@ -1190,27 +1190,27 @@ everything). <sup>[ret](#a1)</sup>
 <a name="f2">[2]</a>: Distinguished zcfgs for the meta and liveness ranges have
 [pseudo descriptor IDs][pseudo-ids] allocated for them. <sup>[ret](#a2)</sup>
 
-[48159]: https://github.com/cockroachdb/cockroach/pull/48159
-[48843]: https://github.com/cockroachdb/cockroach/pull/48843
-[50377]: https://github.com/cockroachdb/cockroach/pull/50377
-[57832]: https://github.com/cockroachdb/cockroach/pull/57832
-[58362]: https://github.com/cockroachdb/cockroach/pull/58362
-[54254]: https://github.com/cockroachdb/cockroach/issues/54254
-[63206]: https://github.com/cockroachdb/cockroach/issues/63206
-[65903]: https://github.com/cockroachdb/cockroach/issues/65903
-[66063]: https://github.com/cockroachdb/cockroach/issues/66063
-[58611]: https://github.com/cockroachdb/cockroach/issues/58611
-[66402]: https://github.com/cockroachdb/cockroach/pull/66402
-[67679]: https://github.com/cockroachdb/cockroach/issues/67679
-[locality-aware-tenant]: https://github.com/cockroachdb/cockroach/issues/70558
-[tenant-conf-reports]: https://github.com/cockroachdb/cockroach/issues/70557
-[coalesce-scfgs]: https://github.com/cockroachdb/cockroach/issues/72389
-[scfgs-limits]: https://github.com/cockroachdb/cockroach/issues/70555
-[span-config-proto]: https://github.com/cockroachdb/cockroach/blob/362bde3eb1f0567bf8ecc30969165b4dc7d63b54/pkg/roachpb/span_config.proto
-[cascade]: https://github.com/cockroachdb/cockroach/pull/30426
-[la-planning]: https://github.com/cockroachdb/cockroach/blob/692fa83ce377c86cf1b6f865a7583a383c458ce2/pkg/sql/opt_catalog.go#L455-L466
-[pseudo-ids]: https://github.com/cockroachdb/cockroach/blob/ce1c68397db8ebc222ed201fef1f9ca92485ddcd/pkg/keys/constants.go#L379-L385
+[48159]: https://github.com/semistrict/ratel/pull/48159
+[48843]: https://github.com/semistrict/ratel/pull/48843
+[50377]: https://github.com/semistrict/ratel/pull/50377
+[57832]: https://github.com/semistrict/ratel/pull/57832
+[58362]: https://github.com/semistrict/ratel/pull/58362
+[54254]: https://github.com/semistrict/ratel/issues/54254
+[63206]: https://github.com/semistrict/ratel/issues/63206
+[65903]: https://github.com/semistrict/ratel/issues/65903
+[66063]: https://github.com/semistrict/ratel/issues/66063
+[58611]: https://github.com/semistrict/ratel/issues/58611
+[66402]: https://github.com/semistrict/ratel/pull/66402
+[67679]: https://github.com/semistrict/ratel/issues/67679
+[locality-aware-tenant]: https://github.com/semistrict/ratel/issues/70558
+[tenant-conf-reports]: https://github.com/semistrict/ratel/issues/70557
+[coalesce-scfgs]: https://github.com/semistrict/ratel/issues/72389
+[scfgs-limits]: https://github.com/semistrict/ratel/issues/70555
+[span-config-proto]: https://github.com/semistrict/ratel/blob/362bde3eb1f0567bf8ecc30969165b4dc7d63b54/pkg/roachpb/span_config.proto
+[cascade]: https://github.com/semistrict/ratel/pull/30426
+[la-planning]: https://github.com/semistrict/ratel/blob/692fa83ce377c86cf1b6f865a7583a383c458ce2/pkg/sql/opt_catalog.go#L455-L466
+[pseudo-ids]: https://github.com/semistrict/ratel/blob/ce1c68397db8ebc222ed201fef1f9ca92485ddcd/pkg/keys/constants.go#L379-L385
 [conf-reports]: https://www.cockroachlabs.com/docs/v21.1/query-replication-reports.html
-[commit-deadline]: https://github.com/cockroachdb/cockroach/blob/31847acd14ed27a340dfc620a544c3e33cbd7c9a/pkg/roachpb/api.proto#L608-L614
-[schema-leases]: https://github.com/cockroachdb/cockroach/blob/f2fa4c5cb1604e1f483bf253107c0f0d9ae56f59/pkg/sql/catalog/descs/collection.go#L339-L347
-[spanconfig-mgr]: https://github.com/cockroachdb/cockroach/pull/68522
+[commit-deadline]: https://github.com/semistrict/ratel/blob/31847acd14ed27a340dfc620a544c3e33cbd7c9a/pkg/roachpb/api.proto#L608-L614
+[schema-leases]: https://github.com/semistrict/ratel/blob/f2fa4c5cb1604e1f483bf253107c0f0d9ae56f59/pkg/sql/catalog/descs/collection.go#L339-L347
+[spanconfig-mgr]: https://github.com/semistrict/ratel/pull/68522

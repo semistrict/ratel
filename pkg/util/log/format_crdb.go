@@ -18,9 +18,9 @@ import (
 	"hash/adler32"
 	"io"
 
-	"github.com/cockroachdb/cockroach/pkg/util/log/logpb"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/ttycolor"
+	"github.com/semistrict/ratel/pkg/util/log/logpb"
 )
 
 const severityChar = "IWEF"

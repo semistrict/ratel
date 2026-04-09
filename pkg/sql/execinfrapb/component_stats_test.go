@@ -20,7 +20,7 @@ import (
 	"testing"
 	time "time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/optional"
+	"github.com/semistrict/ratel/pkg/util/optional"
 )
 
 func TestComponentStatsMakeDeterminstic(t *testing.T) {

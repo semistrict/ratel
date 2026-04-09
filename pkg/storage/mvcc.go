@@ -24,21 +24,21 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/uncertainty"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/settings"
-	"github.com/cockroachdb/cockroach/pkg/storage/enginepb"
-	"github.com/cockroachdb/cockroach/pkg/util/envutil"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/iterutil"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/mon"
-	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
-	"github.com/cockroachdb/cockroach/pkg/util/tracing"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/uncertainty"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/settings"
+	"github.com/semistrict/ratel/pkg/storage/enginepb"
+	"github.com/semistrict/ratel/pkg/util/envutil"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/iterutil"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/mon"
+	"github.com/semistrict/ratel/pkg/util/protoutil"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/util/tracing"
 )
 
 const (
@@ -1193,7 +1193,7 @@ func replayTransactionalWrite(
 			txn.ID, meta.Txn.Sequence, txn.Sequence)
 		errWithIssue := errors.WithIssueLink(err,
 			errors.IssueLink{
-				IssueURL: "https://github.com/cockroachdb/cockroach/issues/71236",
+				IssueURL: "https://github.com/semistrict/ratel/issues/71236",
 				Detail: "This error may be caused by `DelRange` operation in a batch that also contains a " +
 					"write on an intersecting key, as in the case the other write hits a `WriteTooOld` " +
 					"error, it is possible for the `DelRange` operation to pick up a new key to delete on " +
@@ -2882,7 +2882,7 @@ func mvccGetIntent(
 // For a deeper discussion of these correctness problems (avoided using the
 // scoping down in this helper), see:
 //
-// https://github.com/cockroachdb/cockroach/issues/69891
+// https://github.com/semistrict/ratel/issues/69891
 type singleDelOptimizationHelper struct {
 	// Internal state, don't access this, use the getters instead
 	// (that's what the _ prefix is trying to communicate).

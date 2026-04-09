@@ -17,8 +17,8 @@ package descpb
 import (
 	"strconv"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/catalog/catpb"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 )
 
 // CompositeKeyMatchMethodValue allows the conversion from a

@@ -19,7 +19,7 @@ import (
 	"go/ast"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils/lint/passes/passesutil"
+	"github.com/semistrict/ratel/pkg/testutils/lint/passes/passesutil"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"

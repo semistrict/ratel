@@ -15,8 +15,8 @@
 package migration
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/clusterversion"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/clusterversion"
 )
 
 // TestingKnobs are knobs to inject behavior into the migration manager which

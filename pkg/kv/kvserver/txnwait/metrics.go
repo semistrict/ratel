@@ -17,7 +17,7 @@ package txnwait
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
+	"github.com/semistrict/ratel/pkg/util/metric"
 )
 
 // Metrics contains all the txnqueue related metrics.

@@ -133,7 +133,7 @@ message ShardedDescriptor {
 message ScheduledRowLevelTTLArgs {
   optional uint32 table_id = 1 [
     (gogoproto.customname) = "TableID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID",
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/sem/catid.DescID",
     (gogoproto.nullable) = false
   ];
 }

@@ -25,9 +25,9 @@ import (
 	"testing"
 	"text/tabwriter"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt"
-	"github.com/cockroachdb/cockroach/pkg/util/randutil"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/sql/opt"
+	"github.com/semistrict/ratel/pkg/util/randutil"
 )
 
 const debug = false

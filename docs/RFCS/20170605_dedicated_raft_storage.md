@@ -2,17 +2,17 @@
 - Status: postponed
 - Start Date: 2017-05-25
 - Authors: Irfan Sharif
-- RFC PR: [#16361](https://github.com/cockroachdb/cockroach/pull/16361)
+- RFC PR: [#16361](https://github.com/semistrict/ratel/pull/16361)
 - Cockroach Issue(s):
-  [#7807](https://github.com/cockroachdb/cockroach/issues/7807),
-  [#15245](https://github.com/cockroachdb/cockroach/issues/15245)
+  [#7807](https://github.com/semistrict/ratel/issues/7807),
+  [#15245](https://github.com/semistrict/ratel/issues/15245)
 
 # Summary
 
 At the time of writing each
-[`Replica`](https://github.com/cockroachdb/cockroach/blob/ea3b2c499/pkg/storage/replica.go#L214)
+[`Replica`](https://github.com/semistrict/ratel/blob/ea3b2c499/pkg/storage/replica.go#L214)
 is backed by a single instance of RocksDB
-([`Store.engine`](https://github.com/cockroachdb/cockroach/blob/ea3b2c499/pkg/storage/store.go#L391))
+([`Store.engine`](https://github.com/semistrict/ratel/blob/ea3b2c499/pkg/storage/store.go#L391))
 which is used to store all modifications to the underlying state machine in
 _addition_ to storing all consensus state. This RFC proposes the separation of
 the two, outlines the motivations for doing so and alternatives considered.
@@ -24,25 +24,25 @@ storage before responding. This 'persistent state' is comprised of the latest
 term the server has seen, the candidate voted for in the current term (if any),
 and the raft log entries themselves<sup>[1]</sup>. Modifications to any of the
 above are [synchronously
-updated](https://github.com/cockroachdb/cockroach/pull/15366) on stable storage
+updated](https://github.com/semistrict/ratel/pull/15366) on stable storage
 before responding to RPCs.
 
 In our usage of RocksDB, data is only persisted when explicitly issuing a write
 with [`sync =
-true`](https://github.com/cockroachdb/cockroach/blob/ea3b2c499/pkg/storage/engine/db.cc#L1828).
+true`](https://github.com/semistrict/ratel/blob/ea3b2c499/pkg/storage/engine/db.cc#L1828).
 Internally this also persists previously unsynchronized writes<sup>[2]</sup>.
 
 Let's consider a sequential write-only workload on a single node cluster. The
 internals of the Raft/RocksDB+Storage interface can be simplified to the
 following:
   - Convert the write command into a Raft proposal and
-    [submit](https://github.com/cockroachdb/cockroach/blob/ea3b2c499/pkg/storage/replica.go#L2811)
+    [submit](https://github.com/semistrict/ratel/blob/ea3b2c499/pkg/storage/replica.go#L2811)
     the proposal to the underlying raft group
   - 'Downstream' of raft we
-    [persist](https://github.com/cockroachdb/cockroach/blob/ea3b2c499/pkg/storage/replica.go#L3120)
+    [persist](https://github.com/semistrict/ratel/blob/ea3b2c499/pkg/storage/replica.go#L3120)
     the newly generated log entry corresponding to the command
   - We record the modifications to the underlying state machine but [_do
-    not_](https://github.com/cockroachdb/cockroach/blob/ea3b2c499/pkg/storage/replica.go#L4208)
+    not_](https://github.com/semistrict/ratel/blob/ea3b2c499/pkg/storage/replica.go#L4208)
     persist this synchronously
 
 One can see that for the `n+1-th` write, upon persisting the corresponding raft

@@ -2,10 +2,10 @@
 - Status: in progress
 - Start Date: 2020-05-01
 - Authors: Raphael Poss, Andrew Werner, Rohan Yadav, Lucy Zhang
-- RFC PR: [#48276](https://github.com/cockroachdb/cockroach/pull/48276),
-  previously [#30916](https://github.com/cockroachdb/cockroach/pull/30916)
+- RFC PR: [#48276](https://github.com/semistrict/ratel/pull/48276),
+  previously [#30916](https://github.com/semistrict/ratel/pull/30916)
 - Cockroach Issue:
-  [#26443](https://github.com/cockroachdb/cockroach/pull/26443)
+  [#26443](https://github.com/semistrict/ratel/pull/26443)
 
 # Summary
 
@@ -64,11 +64,11 @@ schema namespace entries.
 As a starting point, this requires the ability to lease databases and schemas
 the way tables are currently leased, which is also necessary for the ongoing
 work on supporting enums and other user-defined types (see
-[#47040](https://github.com/cockroachdb/cockroach/pull/47070)). Leasing
+[#47040](https://github.com/semistrict/ratel/pull/47070)). Leasing
 enables transactionally renaming and dropping objects such that names are
 correctly resolved for the duration of the change. With the introduction of
 generalized leasing (see
-[#48250](https://github.com/cockroachdb/cockroach/pull/48250)), we'll
+[#48250](https://github.com/semistrict/ratel/pull/48250)), we'll
 introduce a `SchemaDescriptor` to the `sqlbase.Descriptor` union to store
 schema metadata. These schema descriptors undergo schema changes similarly to
 online schema changes for tables.
@@ -149,7 +149,7 @@ name-to-ID mappings have a per-node incoherent cache, and schema IDs have a
 cache that is never cleared because the name-to-ID mapping is immutable for the
 `public` and `pg_temp` schemas, which clearly won't be true in general. The
 rest of the RFC assumes that we'll implement
-[#48250](https://github.com/cockroachdb/cockroach/pull/48250) to extract
+[#48250](https://github.com/semistrict/ratel/pull/48250) to extract
 leasing-related metadata from the table descriptor to somewhere common to all
 `sqlbase.Descriptor`s and generalize the existing table leasing system,
 enabling every type of `Descriptor` to be leased.
@@ -172,7 +172,7 @@ fields to the `Descriptor` itself or somewhere else.
 
 Next, we need to generalize our leasing and caching capabilities (this list is
 mostly not schema-specific, and overlaps heavily with
-[#48250](https://github.com/cockroachdb/cockroach/pull/48250)):
+[#48250](https://github.com/semistrict/ratel/pull/48250)):
 
 * Generalize the `LeaseManager` to handle leasing all descriptor types.
 * Remove the old database and schema caches on the `TableCollection` and
@@ -184,7 +184,7 @@ mostly not schema-specific, and overlaps heavily with
 Note that the schema-related groundwork that's been completed for temporary
 tables, and the proposed extension of the work in this RFC, is Alternative B in
 the original user-defined schemas RFC
-([#30916](https://github.com/cockroachdb/cockroach/pull/30916)). Alternative
+([#30916](https://github.com/semistrict/ratel/pull/30916)). Alternative
 C, which involves storing all schema metadata on database descriptors, would
 also be possible in our current state, and is discussed later in the context of
 caching and name resolution.
@@ -275,7 +275,7 @@ alternative approach considered was to store all schema metadata on database
 descriptors, without giving them individually leasable descriptors. But we
 expect memory savings from keeping the privileges off the database descriptor:
 Assuming we impose a length limit on identifier names of 63 characters
-([#48443](https://github.com/cockroachdb/cockroach/issues/48443)), each
+([#48443](https://github.com/semistrict/ratel/issues/48443)), each
 additional ID-name pair will require at most 68 bytes (though usually less in
 practice), whereas privileges (consisting of a list of name-to-permissions
 mappings) are unbounded in size. Storing privileges separately also reduces
@@ -344,7 +344,7 @@ The proposed deprecation cycle:
       the old `public` schemas, turned off by default, to make this transition
       easier.
 * In a future release `v` when long-running migrations become available (see
-  [#39182](https://github.com/cockroachdb/cockroach/issues/39182)), we'll want
+  [#39182](https://github.com/semistrict/ratel/issues/39182)), we'll want
   to upgrade any remaining databases with an old-style `public` schema to have
   a proper `public` schema with a unique ID and a descriptor. We'll need this
   migration to only start running when it's guaranteed that no more nodes at
@@ -470,7 +470,7 @@ persist until when the transaction is ready to commit.
   scans worse on that table. This was brought up in the context of user-defined
   types, and the decision was that (somehow) building an index would be better
   than trying to split types off in their own table; the same thing applies
-  here. ([#47534](https://github.com/cockroachdb/cockroach/issues/47534) tracks
+  here. ([#47534](https://github.com/semistrict/ratel/issues/47534) tracks
   support for a native protobuf column type, which is a first step.)
 
 ## Rationale and Alternatives

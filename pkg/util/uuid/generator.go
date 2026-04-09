@@ -34,8 +34,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 )
 
 // Difference in 100-nanosecond intervals between

@@ -15,8 +15,8 @@
 package kvserver
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // NB: don't change the string here; this will cause cross-version issues

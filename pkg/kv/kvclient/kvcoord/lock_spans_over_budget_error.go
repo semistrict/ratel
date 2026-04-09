@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/errors/errorspb"
 	"github.com/gogo/protobuf/proto"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // lockSpansOverBudgetError signals that a txn is being rejected because lock

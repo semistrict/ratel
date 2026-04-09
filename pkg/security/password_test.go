@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -44,7 +44,7 @@ func TestBCryptToSCRAMConversion(t *testing.T) {
 	s := cluster.MakeTestingClusterSettings()
 
 	// Temporary override until resolution of
-	// https://github.com/cockroachdb/cockroach/issues/80246.
+	// https://github.com/semistrict/ratel/issues/80246.
 	PasswordHashMethod.Override(ctx, &s.SV, int64(HashSCRAMSHA256))
 	autoUpgradePasswordHashes.Override(ctx, &s.SV, true)
 

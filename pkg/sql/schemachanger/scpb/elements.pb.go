@@ -5,12 +5,12 @@ package scpb
 
 import (
 	fmt "fmt"
-	catpb "github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb"
-	github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb "github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb"
-	github_com_cockroachdb_cockroach_pkg_sql_sem_catid "github.com/cockroachdb/cockroach/pkg/sql/sem/catid"
-	types "github.com/cockroachdb/cockroach/pkg/sql/types"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	catpb "github.com/semistrict/ratel/pkg/sql/catalog/catpb"
+	github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb "github.com/semistrict/ratel/pkg/sql/catalog/catpb"
+	github_com_cockroachdb_cockroach_pkg_sql_sem_catid "github.com/semistrict/ratel/pkg/sql/sem/catid"
+	types "github.com/semistrict/ratel/pkg/sql/types"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -171,7 +171,7 @@ var xxx_messageInfo_ElementProto proto.InternalMessageInfo
 // its array alias type in the closure.
 type TypeT struct {
 	Type          *types.T                                                    `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	ClosedTypeIDs []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,2,rep,packed,name=closed_type_ids,json=closedTypeIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"closed_type_ids,omitempty"`
+	ClosedTypeIDs []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,2,rep,packed,name=closed_type_ids,json=closedTypeIds,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"closed_type_ids,omitempty"`
 }
 
 func (m *TypeT) Reset()         { *m = TypeT{} }
@@ -207,9 +207,9 @@ var xxx_messageInfo_TypeT proto.InternalMessageInfo
 // much like the TypeT wrapper, tracks its dependent descriptor IDs. Here these
 // include also sequence descriptor IDs.
 type Expression struct {
-	Expr            github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.Expression `protobuf:"bytes,1,opt,name=expr,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb.Expression" json:"expr,omitempty"`
-	UsesTypeIDs     []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID       `protobuf:"varint,2,rep,packed,name=uses_type_ids,json=usesTypeIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"uses_type_ids,omitempty"`
-	UsesSequenceIDs []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID       `protobuf:"varint,3,rep,packed,name=uses_sequence_ids,json=usesSequenceIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"uses_sequence_ids,omitempty"`
+	Expr            github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.Expression `protobuf:"bytes,1,opt,name=expr,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/catpb.Expression" json:"expr,omitempty"`
+	UsesTypeIDs     []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID       `protobuf:"varint,2,rep,packed,name=uses_type_ids,json=usesTypeIds,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"uses_type_ids,omitempty"`
+	UsesSequenceIDs []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID       `protobuf:"varint,3,rep,packed,name=uses_sequence_ids,json=usesSequenceIds,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"uses_sequence_ids,omitempty"`
 }
 
 func (m *Expression) Reset()         { *m = Expression{} }
@@ -242,11 +242,11 @@ func (m *Expression) XXX_DiscardUnknown() {
 var xxx_messageInfo_Expression proto.InternalMessageInfo
 
 type Column struct {
-	TableID                           github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID                      `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
-	ColumnID                          github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID                    `protobuf:"varint,2,opt,name=column_id,json=columnId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.ColumnID" json:"column_id,omitempty"`
+	TableID                           github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID                      `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
+	ColumnID                          github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID                    `protobuf:"varint,2,opt,name=column_id,json=columnId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.ColumnID" json:"column_id,omitempty"`
 	IsHidden                          bool                                                                           `protobuf:"varint,3,opt,name=is_hidden,json=isHidden,proto3" json:"is_hidden,omitempty"`
 	IsInaccessible                    bool                                                                           `protobuf:"varint,4,opt,name=is_inaccessible,json=isInaccessible,proto3" json:"is_inaccessible,omitempty"`
-	GeneratedAsIdentityType           github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.GeneratedAsIdentityType `protobuf:"varint,5,opt,name=generated_as_identity_type,json=generatedAsIdentityType,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb.GeneratedAsIdentityType" json:"generated_as_identity_type,omitempty"`
+	GeneratedAsIdentityType           github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.GeneratedAsIdentityType `protobuf:"varint,5,opt,name=generated_as_identity_type,json=generatedAsIdentityType,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/catpb.GeneratedAsIdentityType" json:"generated_as_identity_type,omitempty"`
 	GeneratedAsIdentitySequenceOption string                                                                         `protobuf:"bytes,6,opt,name=generated_as_identity_sequence_option,json=generatedAsIdentitySequenceOption,proto3" json:"generated_as_identity_sequence_option,omitempty"`
 	PgAttributeNum                    uint32                                                                         `protobuf:"varint,7,opt,name=pg_attribute_num,json=pgAttributeNum,proto3" json:"pg_attribute_num,omitempty"`
 }
@@ -294,8 +294,8 @@ var xxx_messageInfo_Column proto.InternalMessageInfo
 // have user-defined types, or reference user-defined types in their compute
 // expression.
 type ColumnType struct {
-	TableID     github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID   `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
-	ColumnID    github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID `protobuf:"varint,3,opt,name=column_id,json=columnId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.ColumnID" json:"column_id,omitempty"`
+	TableID     github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID   `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
+	ColumnID    github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID `protobuf:"varint,3,opt,name=column_id,json=columnId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.ColumnID" json:"column_id,omitempty"`
 	TypeT       `protobuf:"bytes,4,opt,name=embedded_type_t,json=embeddedTypeT,proto3,embedded=embedded_type_t" json:"embedded_type_t"`
 	IsNullable  bool        `protobuf:"varint,5,opt,name=is_nullable,json=isNullable,proto3" json:"is_nullable,omitempty"`
 	ComputeExpr *Expression `protobuf:"bytes,6,opt,name=compute_expr,json=computeExpr,proto3" json:"compute_expr,omitempty"`
@@ -342,13 +342,13 @@ var xxx_messageInfo_ColumnType proto.InternalMessageInfo
 // to be distinguished by type (instead of, say, via a boolean flag in the
 // element) to make for sane dependency rules.
 type Index struct {
-	TableID             github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID     `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
-	IndexID             github_com_cockroachdb_cockroach_pkg_sql_sem_catid.IndexID    `protobuf:"varint,2,opt,name=index_id,json=indexId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.IndexID" json:"index_id,omitempty"`
-	KeyColumnIDs        []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID `protobuf:"varint,3,rep,packed,name=key_column_ids,json=keyColumnIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.ColumnID" json:"key_column_ids,omitempty"`
+	TableID             github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID     `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
+	IndexID             github_com_cockroachdb_cockroach_pkg_sql_sem_catid.IndexID    `protobuf:"varint,2,opt,name=index_id,json=indexId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.IndexID" json:"index_id,omitempty"`
+	KeyColumnIDs        []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID `protobuf:"varint,3,rep,packed,name=key_column_ids,json=keyColumnIds,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.ColumnID" json:"key_column_ids,omitempty"`
 	KeyColumnDirections []Index_Direction                                             `protobuf:"varint,4,rep,packed,name=key_column_directions,json=keyColumnDirections,proto3,enum=cockroach.sql.schemachanger.scpb.Index_Direction" json:"key_column_directions,omitempty"`
-	KeySuffixColumnIDs  []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID `protobuf:"varint,5,rep,packed,name=key_suffix_column_ids,json=keySuffixColumnIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.ColumnID" json:"key_suffix_column_ids,omitempty"`
-	StoringColumnIDs    []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID `protobuf:"varint,6,rep,packed,name=storing_column_ids,json=storingColumnIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.ColumnID" json:"storing_column_ids,omitempty"`
-	CompositeColumnIDs  []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID `protobuf:"varint,7,rep,packed,name=composite_column_ids,json=compositeColumnIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.ColumnID" json:"composite_column_ids,omitempty"`
+	KeySuffixColumnIDs  []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID `protobuf:"varint,5,rep,packed,name=key_suffix_column_ids,json=keySuffixColumnIds,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.ColumnID" json:"key_suffix_column_ids,omitempty"`
+	StoringColumnIDs    []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID `protobuf:"varint,6,rep,packed,name=storing_column_ids,json=storingColumnIds,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.ColumnID" json:"storing_column_ids,omitempty"`
+	CompositeColumnIDs  []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID `protobuf:"varint,7,rep,packed,name=composite_column_ids,json=compositeColumnIds,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.ColumnID" json:"composite_column_ids,omitempty"`
 	IsUnique            bool                                                          `protobuf:"varint,10,opt,name=is_unique,json=isUnique,proto3" json:"is_unique,omitempty"`
 	IsInverted          bool                                                          `protobuf:"varint,11,opt,name=is_inverted,json=isInverted,proto3" json:"is_inverted,omitempty"`
 	Sharding            *catpb.ShardedDescriptor                                      `protobuf:"bytes,12,opt,name=sharding,proto3" json:"sharding,omitempty"`
@@ -358,8 +358,8 @@ type Index struct {
 	// TODO(postamar): try to get rid of these altogether
 	//  Perhaps move these to the target metadata instead?
 	IsConcurrently   bool                                                       `protobuf:"varint,20,opt,name=is_concurrently,json=isConcurrently,proto3" json:"is_concurrently,omitempty"`
-	SourceIndexID    github_com_cockroachdb_cockroach_pkg_sql_sem_catid.IndexID `protobuf:"varint,21,opt,name=source_index_id,json=sourceIndexId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.IndexID" json:"source_index_id,omitempty"`
-	TemporaryIndexID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.IndexID `protobuf:"varint,22,opt,name=temporary_index_id,json=temporaryIndexId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.IndexID" json:"temporary_index_id,omitempty"`
+	SourceIndexID    github_com_cockroachdb_cockroach_pkg_sql_sem_catid.IndexID `protobuf:"varint,21,opt,name=source_index_id,json=sourceIndexId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.IndexID" json:"source_index_id,omitempty"`
+	TemporaryIndexID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.IndexID `protobuf:"varint,22,opt,name=temporary_index_id,json=temporaryIndexId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.IndexID" json:"temporary_index_id,omitempty"`
 }
 
 func (m *Index) Reset()         { *m = Index{} }
@@ -492,8 +492,8 @@ func (m *TemporaryIndex) XXX_DiscardUnknown() {
 var xxx_messageInfo_TemporaryIndex proto.InternalMessageInfo
 
 type SecondaryIndexPartial struct {
-	TableID    github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID  `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
-	IndexID    github_com_cockroachdb_cockroach_pkg_sql_sem_catid.IndexID `protobuf:"varint,2,opt,name=index_id,json=indexId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.IndexID" json:"index_id,omitempty"`
+	TableID    github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID  `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
+	IndexID    github_com_cockroachdb_cockroach_pkg_sql_sem_catid.IndexID `protobuf:"varint,2,opt,name=index_id,json=indexId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.IndexID" json:"index_id,omitempty"`
 	Expression `protobuf:"bytes,3,opt,name=embedded_expr,json=embeddedExpr,proto3,embedded=embedded_expr" json:"embedded_expr"`
 	// Spec fields.
 	// These fields only make sense if the element is for PUBLIC -> ABSENT.
@@ -538,8 +538,8 @@ var xxx_messageInfo_SecondaryIndexPartial proto.InternalMessageInfo
 // element because this one owns the updating of the corresponding
 // back-reference in the parent database descriptor as part of its lifecycle.
 type SchemaParent struct {
-	SchemaID         github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=schema_id,json=schemaId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"schema_id,omitempty"`
-	ParentDatabaseID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,2,opt,name=parent_database_id,json=parentDatabaseId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"parent_database_id,omitempty"`
+	SchemaID         github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=schema_id,json=schemaId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"schema_id,omitempty"`
+	ParentDatabaseID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,2,opt,name=parent_database_id,json=parentDatabaseId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"parent_database_id,omitempty"`
 }
 
 func (m *SchemaParent) Reset()         { *m = SchemaParent{} }
@@ -575,8 +575,8 @@ var xxx_messageInfo_SchemaParent proto.InternalMessageInfo
 // This is a bit useless since schemas don't maintain a set of back-references
 // to their children. Still, it exists as a convenient join relation.
 type ObjectParent struct {
-	ObjectID       github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=object_id,json=objectId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"object_id,omitempty"`
-	ParentSchemaID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,2,opt,name=parent_schema_id,json=parentSchemaId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"parent_schema_id,omitempty"`
+	ObjectID       github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=object_id,json=objectId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"object_id,omitempty"`
+	ParentSchemaID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,2,opt,name=parent_schema_id,json=parentSchemaId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"parent_schema_id,omitempty"`
 }
 
 func (m *ObjectParent) Reset()         { *m = ObjectParent{} }
@@ -609,7 +609,7 @@ func (m *ObjectParent) XXX_DiscardUnknown() {
 var xxx_messageInfo_ObjectParent proto.InternalMessageInfo
 
 type Sequence struct {
-	SequenceID  github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=sequence_id,json=sequenceId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"sequence_id,omitempty"`
+	SequenceID  github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=sequence_id,json=sequenceId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"sequence_id,omitempty"`
 	IsTemporary bool                                                      `protobuf:"varint,10,opt,name=is_temporary,json=isTemporary,proto3" json:"is_temporary,omitempty"`
 }
 
@@ -643,9 +643,9 @@ func (m *Sequence) XXX_DiscardUnknown() {
 var xxx_messageInfo_Sequence proto.InternalMessageInfo
 
 type SequenceOwner struct {
-	SequenceID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID   `protobuf:"varint,1,opt,name=sequence_id,json=sequenceId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"sequence_id,omitempty"`
-	TableID    github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID   `protobuf:"varint,2,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
-	ColumnID   github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID `protobuf:"varint,3,opt,name=column_id,json=columnId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.ColumnID" json:"column_id,omitempty"`
+	SequenceID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID   `protobuf:"varint,1,opt,name=sequence_id,json=sequenceId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"sequence_id,omitempty"`
+	TableID    github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID   `protobuf:"varint,2,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
+	ColumnID   github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID `protobuf:"varint,3,opt,name=column_id,json=columnId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.ColumnID" json:"column_id,omitempty"`
 }
 
 func (m *SequenceOwner) Reset()         { *m = SequenceOwner{} }
@@ -678,8 +678,8 @@ func (m *SequenceOwner) XXX_DiscardUnknown() {
 var xxx_messageInfo_SequenceOwner proto.InternalMessageInfo
 
 type ColumnDefaultExpression struct {
-	TableID    github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID   `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
-	ColumnID   github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID `protobuf:"varint,2,opt,name=column_id,json=columnId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.ColumnID" json:"column_id,omitempty"`
+	TableID    github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID   `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
+	ColumnID   github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID `protobuf:"varint,2,opt,name=column_id,json=columnId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.ColumnID" json:"column_id,omitempty"`
 	Expression `protobuf:"bytes,3,opt,name=embedded_expr,json=embeddedExpr,proto3,embedded=embedded_expr" json:"embedded_expr"`
 }
 
@@ -713,8 +713,8 @@ func (m *ColumnDefaultExpression) XXX_DiscardUnknown() {
 var xxx_messageInfo_ColumnDefaultExpression proto.InternalMessageInfo
 
 type ColumnOnUpdateExpression struct {
-	TableID    github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID   `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
-	ColumnID   github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID `protobuf:"varint,2,opt,name=column_id,json=columnId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.ColumnID" json:"column_id,omitempty"`
+	TableID    github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID   `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
+	ColumnID   github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID `protobuf:"varint,2,opt,name=column_id,json=columnId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.ColumnID" json:"column_id,omitempty"`
 	Expression `protobuf:"bytes,3,opt,name=embedded_expr,json=embeddedExpr,proto3,embedded=embedded_expr" json:"embedded_expr"`
 }
 
@@ -748,9 +748,9 @@ func (m *ColumnOnUpdateExpression) XXX_DiscardUnknown() {
 var xxx_messageInfo_ColumnOnUpdateExpression proto.InternalMessageInfo
 
 type View struct {
-	ViewID          github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID   `protobuf:"varint,1,opt,name=view_id,json=viewId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"view_id,omitempty"`
-	UsesTypeIDs     []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,2,rep,packed,name=uses_type_ids,json=usesTypeIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"uses_type_ids,omitempty"`
-	UsesRelationIDs []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,3,rep,packed,name=uses_relation_ids,json=usesRelationIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"uses_relation_ids,omitempty"`
+	ViewID          github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID   `protobuf:"varint,1,opt,name=view_id,json=viewId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"view_id,omitempty"`
+	UsesTypeIDs     []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,2,rep,packed,name=uses_type_ids,json=usesTypeIds,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"uses_type_ids,omitempty"`
+	UsesRelationIDs []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,3,rep,packed,name=uses_relation_ids,json=usesRelationIds,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"uses_relation_ids,omitempty"`
 	IsTemporary     bool                                                        `protobuf:"varint,10,opt,name=is_temporary,json=isTemporary,proto3" json:"is_temporary,omitempty"`
 	IsMaterialized  bool                                                        `protobuf:"varint,11,opt,name=is_materialized,json=isMaterialized,proto3" json:"is_materialized,omitempty"`
 }
@@ -785,7 +785,7 @@ func (m *View) XXX_DiscardUnknown() {
 var xxx_messageInfo_View proto.InternalMessageInfo
 
 type Table struct {
-	TableID     github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
+	TableID     github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
 	IsTemporary bool                                                      `protobuf:"varint,10,opt,name=is_temporary,json=isTemporary,proto3" json:"is_temporary,omitempty"`
 }
 
@@ -819,9 +819,9 @@ func (m *Table) XXX_DiscardUnknown() {
 var xxx_messageInfo_Table proto.InternalMessageInfo
 
 type UniqueWithoutIndexConstraint struct {
-	TableID      github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID       `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
-	ConstraintID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ConstraintID `protobuf:"varint,2,opt,name=constraint_id,json=constraintId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.ConstraintID" json:"constraint_id,omitempty"`
-	ColumnIDs    []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID   `protobuf:"varint,3,rep,packed,name=column_ids,json=columnIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.ColumnID" json:"column_ids,omitempty"`
+	TableID      github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID       `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
+	ConstraintID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ConstraintID `protobuf:"varint,2,opt,name=constraint_id,json=constraintId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.ConstraintID" json:"constraint_id,omitempty"`
+	ColumnIDs    []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID   `protobuf:"varint,3,rep,packed,name=column_ids,json=columnIds,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.ColumnID" json:"column_ids,omitempty"`
 }
 
 func (m *UniqueWithoutIndexConstraint) Reset()         { *m = UniqueWithoutIndexConstraint{} }
@@ -854,9 +854,9 @@ func (m *UniqueWithoutIndexConstraint) XXX_DiscardUnknown() {
 var xxx_messageInfo_UniqueWithoutIndexConstraint proto.InternalMessageInfo
 
 type CheckConstraint struct {
-	TableID      github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID       `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
-	ConstraintID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ConstraintID `protobuf:"varint,2,opt,name=constraint_id,json=constraintId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.ConstraintID" json:"constraint_id,omitempty"`
-	ColumnIDs    []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID   `protobuf:"varint,3,rep,packed,name=column_ids,json=columnIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.ColumnID" json:"column_ids,omitempty"`
+	TableID      github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID       `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
+	ConstraintID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ConstraintID `protobuf:"varint,2,opt,name=constraint_id,json=constraintId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.ConstraintID" json:"constraint_id,omitempty"`
+	ColumnIDs    []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID   `protobuf:"varint,3,rep,packed,name=column_ids,json=columnIds,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.ColumnID" json:"column_ids,omitempty"`
 	Expression   `protobuf:"bytes,4,opt,name=embedded_expr,json=embeddedExpr,proto3,embedded=embedded_expr" json:"embedded_expr"`
 }
 
@@ -890,11 +890,11 @@ func (m *CheckConstraint) XXX_DiscardUnknown() {
 var xxx_messageInfo_CheckConstraint proto.InternalMessageInfo
 
 type ForeignKeyConstraint struct {
-	TableID             github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID       `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
-	ConstraintID        github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ConstraintID `protobuf:"varint,2,opt,name=constraint_id,json=constraintId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.ConstraintID" json:"constraint_id,omitempty"`
-	ColumnIDs           []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID   `protobuf:"varint,3,rep,packed,name=column_ids,json=columnIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.ColumnID" json:"column_ids,omitempty"`
-	ReferencedTableID   github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID       `protobuf:"varint,4,opt,name=referenced_table_id,json=referencedTableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"referenced_table_id,omitempty"`
-	ReferencedColumnIDs []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID   `protobuf:"varint,5,rep,packed,name=referenced_column_ids,json=referencedColumnIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.ColumnID" json:"referenced_column_ids,omitempty"`
+	TableID             github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID       `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
+	ConstraintID        github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ConstraintID `protobuf:"varint,2,opt,name=constraint_id,json=constraintId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.ConstraintID" json:"constraint_id,omitempty"`
+	ColumnIDs           []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID   `protobuf:"varint,3,rep,packed,name=column_ids,json=columnIds,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.ColumnID" json:"column_ids,omitempty"`
+	ReferencedTableID   github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID       `protobuf:"varint,4,opt,name=referenced_table_id,json=referencedTableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"referenced_table_id,omitempty"`
+	ReferencedColumnIDs []github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID   `protobuf:"varint,5,rep,packed,name=referenced_column_ids,json=referencedColumnIds,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.ColumnID" json:"referenced_column_ids,omitempty"`
 }
 
 func (m *ForeignKeyConstraint) Reset()         { *m = ForeignKeyConstraint{} }
@@ -927,8 +927,8 @@ func (m *ForeignKeyConstraint) XXX_DiscardUnknown() {
 var xxx_messageInfo_ForeignKeyConstraint proto.InternalMessageInfo
 
 type EnumType struct {
-	TypeID        github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=type_id,json=typeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"type_id,omitempty"`
-	ArrayTypeID   github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,2,opt,name=array_type_id,json=arrayTypeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"array_type_id,omitempty"`
+	TypeID        github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=type_id,json=typeId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"type_id,omitempty"`
+	ArrayTypeID   github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,2,opt,name=array_type_id,json=arrayTypeId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"array_type_id,omitempty"`
 	IsMultiRegion bool                                                      `protobuf:"varint,3,opt,name=is_multi_region,json=isMultiRegion,proto3" json:"is_multi_region,omitempty"`
 }
 
@@ -962,7 +962,7 @@ func (m *EnumType) XXX_DiscardUnknown() {
 var xxx_messageInfo_EnumType proto.InternalMessageInfo
 
 type AliasType struct {
-	TypeID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=type_id,json=typeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"type_id,omitempty"`
+	TypeID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=type_id,json=typeId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"type_id,omitempty"`
 	TypeT  `protobuf:"bytes,2,opt,name=embedded_type_t,json=embeddedTypeT,proto3,embedded=embedded_type_t" json:"embedded_type_t"`
 }
 
@@ -996,7 +996,7 @@ func (m *AliasType) XXX_DiscardUnknown() {
 var xxx_messageInfo_AliasType proto.InternalMessageInfo
 
 type Schema struct {
-	SchemaID    github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=schema_id,json=schemaId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"schema_id,omitempty"`
+	SchemaID    github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=schema_id,json=schemaId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"schema_id,omitempty"`
 	IsTemporary bool                                                      `protobuf:"varint,10,opt,name=is_temporary,json=isTemporary,proto3" json:"is_temporary,omitempty"`
 	IsPublic    bool                                                      `protobuf:"varint,11,opt,name=is_public,json=isPublic,proto3" json:"is_public,omitempty"`
 	IsVirtual   bool                                                      `protobuf:"varint,12,opt,name=is_virtual,json=isVirtual,proto3" json:"is_virtual,omitempty"`
@@ -1032,7 +1032,7 @@ func (m *Schema) XXX_DiscardUnknown() {
 var xxx_messageInfo_Schema proto.InternalMessageInfo
 
 type Database struct {
-	DatabaseID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=database_id,json=databaseId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"database_id,omitempty"`
+	DatabaseID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=database_id,json=databaseId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"database_id,omitempty"`
 }
 
 func (m *Database) Reset()         { *m = Database{} }
@@ -1065,9 +1065,9 @@ func (m *Database) XXX_DiscardUnknown() {
 var xxx_messageInfo_Database proto.InternalMessageInfo
 
 type Namespace struct {
-	DatabaseID   github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=database_id,json=databaseId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"database_id,omitempty"`
-	SchemaID     github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,2,opt,name=schema_id,json=schemaId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"schema_id,omitempty"`
-	DescriptorID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,3,opt,name=descriptor_id,json=descriptorId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"descriptor_id,omitempty"`
+	DatabaseID   github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=database_id,json=databaseId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"database_id,omitempty"`
+	SchemaID     github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,2,opt,name=schema_id,json=schemaId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"schema_id,omitempty"`
+	DescriptorID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,3,opt,name=descriptor_id,json=descriptorId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"descriptor_id,omitempty"`
 	Name         string                                                    `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 }
 
@@ -1101,7 +1101,7 @@ func (m *Namespace) XXX_DiscardUnknown() {
 var xxx_messageInfo_Namespace proto.InternalMessageInfo
 
 type Owner struct {
-	DescriptorID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=descriptor_id,json=descriptorId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"descriptor_id,omitempty"`
+	DescriptorID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=descriptor_id,json=descriptorId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"descriptor_id,omitempty"`
 	Owner        string                                                    `protobuf:"bytes,2,opt,name=owner,proto3" json:"owner,omitempty"`
 }
 
@@ -1135,7 +1135,7 @@ func (m *Owner) XXX_DiscardUnknown() {
 var xxx_messageInfo_Owner proto.InternalMessageInfo
 
 type UserPrivileges struct {
-	DescriptorID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=descriptor_id,json=descriptorId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"descriptor_id,omitempty"`
+	DescriptorID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=descriptor_id,json=descriptorId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"descriptor_id,omitempty"`
 	UserName     string                                                    `protobuf:"bytes,2,opt,name=user_name,json=userName,proto3" json:"user_name,omitempty"`
 	Privileges   uint32                                                    `protobuf:"varint,3,opt,name=privileges,proto3" json:"privileges,omitempty"`
 }
@@ -1170,7 +1170,7 @@ func (m *UserPrivileges) XXX_DiscardUnknown() {
 var xxx_messageInfo_UserPrivileges proto.InternalMessageInfo
 
 type TableLocalityGlobal struct {
-	TableID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
+	TableID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
 }
 
 func (m *TableLocalityGlobal) Reset()         { *m = TableLocalityGlobal{} }
@@ -1203,7 +1203,7 @@ func (m *TableLocalityGlobal) XXX_DiscardUnknown() {
 var xxx_messageInfo_TableLocalityGlobal proto.InternalMessageInfo
 
 type TableLocalityPrimaryRegion struct {
-	TableID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
+	TableID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
 }
 
 func (m *TableLocalityPrimaryRegion) Reset()         { *m = TableLocalityPrimaryRegion{} }
@@ -1236,9 +1236,9 @@ func (m *TableLocalityPrimaryRegion) XXX_DiscardUnknown() {
 var xxx_messageInfo_TableLocalityPrimaryRegion proto.InternalMessageInfo
 
 type TableLocalitySecondaryRegion struct {
-	TableID          github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID         `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
-	RegionEnumTypeID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID         `protobuf:"varint,2,opt,name=region_enum_type_id,json=regionEnumTypeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"region_enum_type_id,omitempty"`
-	RegionName       github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.RegionName `protobuf:"bytes,3,opt,name=region_name,json=regionName,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb.RegionName" json:"region_name,omitempty"`
+	TableID          github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID         `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
+	RegionEnumTypeID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID         `protobuf:"varint,2,opt,name=region_enum_type_id,json=regionEnumTypeId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"region_enum_type_id,omitempty"`
+	RegionName       github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.RegionName `protobuf:"bytes,3,opt,name=region_name,json=regionName,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/catpb.RegionName" json:"region_name,omitempty"`
 }
 
 func (m *TableLocalitySecondaryRegion) Reset()         { *m = TableLocalitySecondaryRegion{} }
@@ -1271,7 +1271,7 @@ func (m *TableLocalitySecondaryRegion) XXX_DiscardUnknown() {
 var xxx_messageInfo_TableLocalitySecondaryRegion proto.InternalMessageInfo
 
 type TableLocalityRegionalByRow struct {
-	TableID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
+	TableID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
 	As      string                                                    `protobuf:"bytes,2,opt,name=as,proto3" json:"as,omitempty"`
 }
 
@@ -1305,8 +1305,8 @@ func (m *TableLocalityRegionalByRow) XXX_DiscardUnknown() {
 var xxx_messageInfo_TableLocalityRegionalByRow proto.InternalMessageInfo
 
 type IndexPartitioning struct {
-	TableID                      github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID  `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
-	IndexID                      github_com_cockroachdb_cockroach_pkg_sql_sem_catid.IndexID `protobuf:"varint,2,opt,name=index_id,json=indexId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.IndexID" json:"index_id,omitempty"`
+	TableID                      github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID  `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
+	IndexID                      github_com_cockroachdb_cockroach_pkg_sql_sem_catid.IndexID `protobuf:"varint,2,opt,name=index_id,json=indexId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.IndexID" json:"index_id,omitempty"`
 	catpb.PartitioningDescriptor `protobuf:"bytes,3,opt,name=partitioning,proto3,embedded=partitioning" json:"partitioning"`
 }
 
@@ -1340,7 +1340,7 @@ func (m *IndexPartitioning) XXX_DiscardUnknown() {
 var xxx_messageInfo_IndexPartitioning proto.InternalMessageInfo
 
 type RowLevelTTL struct {
-	TableID           github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
+	TableID           github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
 	catpb.RowLevelTTL `protobuf:"bytes,2,opt,name=row_level_ttl,json=rowLevelTtl,proto3,embedded=row_level_ttl" json:"row_level_ttl"`
 }
 
@@ -1374,8 +1374,8 @@ func (m *RowLevelTTL) XXX_DiscardUnknown() {
 var xxx_messageInfo_RowLevelTTL proto.InternalMessageInfo
 
 type ColumnName struct {
-	TableID  github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID   `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
-	ColumnID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID `protobuf:"varint,2,opt,name=column_id,json=columnId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.ColumnID" json:"column_id,omitempty"`
+	TableID  github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID   `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
+	ColumnID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID `protobuf:"varint,2,opt,name=column_id,json=columnId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.ColumnID" json:"column_id,omitempty"`
 	Name     string                                                      `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 }
 
@@ -1409,8 +1409,8 @@ func (m *ColumnName) XXX_DiscardUnknown() {
 var xxx_messageInfo_ColumnName proto.InternalMessageInfo
 
 type IndexName struct {
-	TableID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID  `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
-	IndexID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.IndexID `protobuf:"varint,2,opt,name=index_id,json=indexId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.IndexID" json:"index_id,omitempty"`
+	TableID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID  `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
+	IndexID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.IndexID `protobuf:"varint,2,opt,name=index_id,json=indexId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.IndexID" json:"index_id,omitempty"`
 	Name    string                                                     `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 }
 
@@ -1444,8 +1444,8 @@ func (m *IndexName) XXX_DiscardUnknown() {
 var xxx_messageInfo_IndexName proto.InternalMessageInfo
 
 type ConstraintName struct {
-	TableID      github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID       `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
-	ConstraintID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ConstraintID `protobuf:"varint,2,opt,name=constraint_id,json=constraintId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.ConstraintID" json:"constraint_id,omitempty"`
+	TableID      github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID       `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
+	ConstraintID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ConstraintID `protobuf:"varint,2,opt,name=constraint_id,json=constraintId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.ConstraintID" json:"constraint_id,omitempty"`
 	Name         string                                                          `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 }
 
@@ -1479,7 +1479,7 @@ func (m *ConstraintName) XXX_DiscardUnknown() {
 var xxx_messageInfo_ConstraintName proto.InternalMessageInfo
 
 type TableComment struct {
-	TableID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
+	TableID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
 	Comment string                                                    `protobuf:"bytes,2,opt,name=comment,proto3" json:"comment,omitempty"`
 }
 
@@ -1513,7 +1513,7 @@ func (m *TableComment) XXX_DiscardUnknown() {
 var xxx_messageInfo_TableComment proto.InternalMessageInfo
 
 type DatabaseComment struct {
-	DatabaseID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=database_id,json=databaseId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"database_id,omitempty"`
+	DatabaseID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=database_id,json=databaseId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"database_id,omitempty"`
 	Comment    string                                                    `protobuf:"bytes,2,opt,name=comment,proto3" json:"comment,omitempty"`
 }
 
@@ -1547,7 +1547,7 @@ func (m *DatabaseComment) XXX_DiscardUnknown() {
 var xxx_messageInfo_DatabaseComment proto.InternalMessageInfo
 
 type SchemaComment struct {
-	SchemaID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=schema_id,json=schemaId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"schema_id,omitempty"`
+	SchemaID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=schema_id,json=schemaId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"schema_id,omitempty"`
 	Comment  string                                                    `protobuf:"bytes,2,opt,name=comment,proto3" json:"comment,omitempty"`
 }
 
@@ -1581,8 +1581,8 @@ func (m *SchemaComment) XXX_DiscardUnknown() {
 var xxx_messageInfo_SchemaComment proto.InternalMessageInfo
 
 type IndexComment struct {
-	TableID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID  `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
-	IndexID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.IndexID `protobuf:"varint,2,opt,name=index_id,json=indexId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.IndexID" json:"index_id,omitempty"`
+	TableID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID  `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
+	IndexID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.IndexID `protobuf:"varint,2,opt,name=index_id,json=indexId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.IndexID" json:"index_id,omitempty"`
 	Comment string                                                     `protobuf:"bytes,3,opt,name=comment,proto3" json:"comment,omitempty"`
 }
 
@@ -1616,8 +1616,8 @@ func (m *IndexComment) XXX_DiscardUnknown() {
 var xxx_messageInfo_IndexComment proto.InternalMessageInfo
 
 type ColumnComment struct {
-	TableID  github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID   `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
-	ColumnID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID `protobuf:"varint,2,opt,name=column_id,json=columnId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.ColumnID" json:"column_id,omitempty"`
+	TableID  github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID   `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
+	ColumnID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ColumnID `protobuf:"varint,2,opt,name=column_id,json=columnId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.ColumnID" json:"column_id,omitempty"`
 	Comment  string                                                      `protobuf:"bytes,3,opt,name=comment,proto3" json:"comment,omitempty"`
 }
 
@@ -1651,8 +1651,8 @@ func (m *ColumnComment) XXX_DiscardUnknown() {
 var xxx_messageInfo_ColumnComment proto.InternalMessageInfo
 
 type ConstraintComment struct {
-	TableID      github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID       `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
-	ConstraintID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ConstraintID `protobuf:"varint,2,opt,name=constraint_id,json=constraintId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.ConstraintID" json:"constraint_id,omitempty"`
+	TableID      github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID       `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id,omitempty"`
+	ConstraintID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.ConstraintID `protobuf:"varint,2,opt,name=constraint_id,json=constraintId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.ConstraintID" json:"constraint_id,omitempty"`
 	Comment      string                                                          `protobuf:"bytes,3,opt,name=comment,proto3" json:"comment,omitempty"`
 }
 
@@ -1686,8 +1686,8 @@ func (m *ConstraintComment) XXX_DiscardUnknown() {
 var xxx_messageInfo_ConstraintComment proto.InternalMessageInfo
 
 type DatabaseRegionConfig struct {
-	DatabaseID       github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=database_id,json=databaseId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"database_id,omitempty"`
-	RegionEnumTypeID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,2,opt,name=region_enum_type_id,json=regionEnumTypeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"region_enum_type_id,omitempty"`
+	DatabaseID       github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=database_id,json=databaseId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"database_id,omitempty"`
+	RegionEnumTypeID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,2,opt,name=region_enum_type_id,json=regionEnumTypeId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"region_enum_type_id,omitempty"`
 }
 
 func (m *DatabaseRegionConfig) Reset()         { *m = DatabaseRegionConfig{} }
@@ -1720,7 +1720,7 @@ func (m *DatabaseRegionConfig) XXX_DiscardUnknown() {
 var xxx_messageInfo_DatabaseRegionConfig proto.InternalMessageInfo
 
 type DatabaseRoleSetting struct {
-	DatabaseID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=database_id,json=databaseId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"database_id,omitempty"`
+	DatabaseID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=database_id,json=databaseId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"database_id,omitempty"`
 	RoleName   string                                                    `protobuf:"bytes,2,opt,name=role_name,json=roleName,proto3" json:"role_name,omitempty"`
 }
 

@@ -3,7 +3,7 @@
 - Start date: 2016-04-20
 - Last revised: 2016-05-03
 - Authors: Bram Gruneir & Cuong Do
-- RFC PR: [#6484](https://github.com/cockroachdb/cockroach/pull/6484)
+- RFC PR: [#6484](https://github.com/semistrict/ratel/pull/6484)
 - Cockroach Issue:
 
 # Table of Contents
@@ -61,7 +61,7 @@ offline. These are important problems that will be addressed in V3 or later.
 # Motivation
 
 To allocate replicas for ranges, we currently rely on distributed
-[stateless replica relocation](https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20150819_stateless_replica_relocation.md).
+[stateless replica relocation](https://github.com/semistrict/ratel/blob/master/docs/RFCS/20150819_stateless_replica_relocation.md).
 
 Each range lease holder is responsible for replica allocation decisions (adding and removing replicas)
 for its respective range. This is a good, simple start. However, it is particularly susceptible to
@@ -95,7 +95,7 @@ This over-rebalancing continues for many cycles, often resulting in tens of thou
 adds and removes for clusters with miniscule data.
 
 As a stopgap measure, a
-[recent change](https://github.com/cockroachdb/cockroach/commit/c4273b9ef7f418cab2ac30a10a8707c1601e5e99)
+[recent change](https://github.com/semistrict/ratel/commit/c4273b9ef7f418cab2ac30a10a8707c1601e5e99)
 has added a minimum delay of 65 seconds between rebalance attempts for each node, to reduce
 thrashing. This works well for small clusters with little data. However, this severely slows down
 the process of rebalancing many replicas in an imbalanced cluster.

@@ -18,8 +18,8 @@ import (
 	"bytes"
 	"sort"
 
-	"github.com/cockroachdb/cockroach/pkg/config"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/config"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // SystemConfigDeltaFilter keeps track of SystemConfig values so that unmodified

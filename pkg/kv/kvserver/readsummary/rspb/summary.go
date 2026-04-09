@@ -17,8 +17,8 @@ package rspb
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 // FromTimestamp constructs a read summary from the provided timestamp, treating

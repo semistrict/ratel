@@ -17,11 +17,11 @@ package schemaexpr
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/parser"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree/treebin"
-	"github.com/cockroachdb/cockroach/pkg/sql/sessiondata"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/sql/parser"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree/treebin"
+	"github.com/semistrict/ratel/pkg/sql/sessiondata"
 )
 
 // ComputedColumnRewritesMap stores a map of computed column expression

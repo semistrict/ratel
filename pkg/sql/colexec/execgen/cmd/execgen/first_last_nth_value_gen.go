@@ -19,7 +19,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree/treecmp"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree/treecmp"
 )
 
 const firstLastNthTmpl = "pkg/sql/colexec/colexecwindow/first_last_nth_value_tmpl.go"

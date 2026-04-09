@@ -1,4 +1,4 @@
-module github.com/cockroachdb/cockroach/pkg/acceptance/compose/gss/psql
+module github.com/semistrict/ratel/pkg/acceptance/compose/gss/psql
 
 go 1.18
 

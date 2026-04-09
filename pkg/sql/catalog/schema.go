@@ -14,7 +14,7 @@
 
 package catalog
 
-import "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
+import "github.com/semistrict/ratel/pkg/sql/catalog/descpb"
 
 // SchemaDescriptor encapsulates the basic
 type SchemaDescriptor interface {

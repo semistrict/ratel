@@ -17,7 +17,7 @@ package tenantcostmodel
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/settings"
+	"github.com/semistrict/ratel/pkg/settings"
 )
 
 // Settings for the cost model parameters. These determine the values for a

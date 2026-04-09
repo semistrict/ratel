@@ -18,9 +18,9 @@
 package cli
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/cli/democluster"
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/cli/democluster"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 func Example_demo_locality() {

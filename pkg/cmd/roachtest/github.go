@@ -19,13 +19,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/internal/issues"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/registry"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/test"
-	"github.com/cockroachdb/cockroach/pkg/internal/team"
-	rperrors "github.com/cockroachdb/cockroach/pkg/roachprod/errors"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/logger"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/vm"
+	"github.com/semistrict/ratel/pkg/cmd/internal/issues"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/registry"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/test"
+	"github.com/semistrict/ratel/pkg/internal/team"
+	rperrors "github.com/semistrict/ratel/pkg/roachprod/errors"
+	"github.com/semistrict/ratel/pkg/roachprod/logger"
+	"github.com/semistrict/ratel/pkg/roachprod/vm"
 )
 
 type githubIssues struct {
@@ -150,7 +150,7 @@ func (g *githubIssues) createPostRequest(
 		HelpCommand: func(renderer *issues.Renderer) {
 			issues.HelpCommandAsLink(
 				"roachtest README",
-				"https://github.com/cockroachdb/cockroach/blob/master/pkg/cmd/roachtest/README.md",
+				"https://github.com/semistrict/ratel/blob/master/pkg/cmd/roachtest/README.md",
 			)(renderer)
 			issues.HelpCommandAsLink(
 				"How To Investigate (internal)",

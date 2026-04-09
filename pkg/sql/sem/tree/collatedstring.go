@@ -22,6 +22,6 @@ const DefaultCollationTag = "default"
 func init() {
 	if collate.CLDRVersion != "23" {
 		panic("This binary was built with an incompatible version of golang.org/x/text. " +
-			"See https://github.com/cockroachdb/cockroach/issues/63738 for details")
+			"See https://github.com/semistrict/ratel/issues/63738 for details")
 	}
 }

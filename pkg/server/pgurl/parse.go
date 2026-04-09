@@ -18,8 +18,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/util/netutil/addr"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util/netutil/addr"
 )
 
 // Parse parses a URL connection string and extracts its properties.

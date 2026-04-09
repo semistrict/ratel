@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/server/dumpstore"
+	"github.com/semistrict/ratel/pkg/server/dumpstore"
 	"github.com/stretchr/testify/assert"
 )
 

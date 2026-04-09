@@ -18,14 +18,14 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/security/securitytest"
-	"github.com/cockroachdb/cockroach/pkg/server"
-	"github.com/cockroachdb/cockroach/pkg/testutils/buildutil"
-	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/randutil"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/security/securitytest"
+	"github.com/semistrict/ratel/pkg/server"
+	"github.com/semistrict/ratel/pkg/testutils/buildutil"
+	"github.com/semistrict/ratel/pkg/testutils/serverutils"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/randutil"
 )
 
 //go:generate ../../../util/leaktest/add-leaktest.sh *_test.go
@@ -39,12 +39,12 @@ func TestForbiddenDeps(t *testing.T) {
 	defer log.Scope(t).Close(t)
 	// Verify kv does not depend on storage (or any of its subpackages).
 	buildutil.VerifyNoImports(t,
-		"github.com/cockroachdb/cockroach/pkg/kv", true,
+		"github.com/semistrict/ratel/pkg/kv", true,
 		// TODO(tschottdorf): should really disallow ./storage/... but at the
 		// time of writing there's a (legit) dependency on `enginepb`.
 		[]string{
-			"github.com/cockroachdb/cockroach/pkg/storage",
-			"github.com/cockroachdb/cockroach/pkg/storage/engine",
+			"github.com/semistrict/ratel/pkg/storage",
+			"github.com/semistrict/ratel/pkg/storage/engine",
 		},
 		[]string{})
 }

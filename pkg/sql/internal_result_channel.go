@@ -18,8 +18,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/cockroachdb/cockroach/pkg/util"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util"
 )
 
 // ieResultReader is used to read internalExecutor results.

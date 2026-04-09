@@ -9,7 +9,7 @@ sanity checks are:
 ## Testing a new release
 
 bincheck action is triggered when a new tag with `v` prefix is created. Check
-https://github.com/cockroachdb/cockroach/actions after a release is published.
+https://github.com/semistrict/ratel/actions after a release is published.
 
 
 ## The nitty-gritty
@@ -60,7 +60,7 @@ sshd to boot at startup and allow passwordless `root` authentication.
 it's a FAT volume.
 
 [buildroot-install]: https://buildroot.org/download.html
-[issue-15589]: https://github.com/cockroachdb/cockroach/issues/15589
+[issue-15589]: https://github.com/semistrict/ratel/issues/15589
 [linux-image]: ./images/qemu_x86_64_glibc_bzImage
 [Buildroot]: https://buildroot.org
 [CRC32C]: http://www.evanjones.ca/crc32c.html

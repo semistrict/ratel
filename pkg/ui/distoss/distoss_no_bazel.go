@@ -24,7 +24,7 @@ import (
 	"embed"
 	"io/fs"
 
-	"github.com/cockroachdb/cockroach/pkg/ui"
+	"github.com/semistrict/ratel/pkg/ui"
 )
 
 //go:embed assets/*

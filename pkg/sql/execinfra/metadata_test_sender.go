@@ -17,8 +17,8 @@ package execinfra
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/execinfrapb"
-	"github.com/cockroachdb/cockroach/pkg/sql/rowenc"
+	"github.com/semistrict/ratel/pkg/sql/execinfrapb"
+	"github.com/semistrict/ratel/pkg/sql/rowenc"
 )
 
 // MetadataTestSender intersperses a metadata record after every row.

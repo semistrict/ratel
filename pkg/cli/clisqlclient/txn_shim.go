@@ -27,7 +27,7 @@ import (
 // so deals directly with the lib/pq driver. See #14964.
 //
 // TODO(knz): This code is incorrect, see
-// https://github.com/cockroachdb/cockroach/issues/67261
+// https://github.com/semistrict/ratel/issues/67261
 type sqlTxnShim struct {
 	conn *sqlConn
 }

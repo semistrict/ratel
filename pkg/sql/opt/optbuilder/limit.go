@@ -15,8 +15,8 @@
 package optbuilder
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/types"
 )
 
 // buildLimit adds Limit and Offset operators according to the Limit clause.

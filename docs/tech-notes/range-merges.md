@@ -326,10 +326,10 @@ responsibilities:
      do, if you're interested in the details, is to trace through all references
      to `storagepb.ReplicatedEvalResult.Merge`.
 
-[#26599]: https://github.com/cockroachdb/cockroach/pull/26599
-[transaction abort span]: https://github.com/cockroachdb/cockroach/blob/82bcd948384e6a482cdd7c916c0aaca32367a7b0/pkg/storage/abortspan/abortspan.go
-[merge commit trigger]: https://github.com/cockroachdb/cockroach/blob/82bcd948384e6a482cdd7c916c0aaca32367a7b0/pkg/storage/batcheval/cmd_end_transaction.go#L984-L994
-[pd-flag]: https://github.com/cockroachdb/cockroach/blob/82bcd948384e6a482cdd7c916c0aaca32367a7b0/pkg/storage/batcheval/cmd_end_transaction.go#L1033-L1035
+[#26599]: https://github.com/semistrict/ratel/pull/26599
+[transaction abort span]: https://github.com/semistrict/ratel/blob/82bcd948384e6a482cdd7c916c0aaca32367a7b0/pkg/storage/abortspan/abortspan.go
+[merge commit trigger]: https://github.com/semistrict/ratel/blob/82bcd948384e6a482cdd7c916c0aaca32367a7b0/pkg/storage/batcheval/cmd_end_transaction.go#L984-L994
+[pd-flag]: https://github.com/semistrict/ratel/blob/82bcd948384e6a482cdd7c916c0aaca32367a7b0/pkg/storage/batcheval/cmd_end_transaction.go#L1033-L1035
 
 #### Transfer of power
 
@@ -403,9 +403,9 @@ replicas of the RHS with the merge bit set and a merge watcher goroutine
 running—assuming the old leaseholder did not crash but lost its lease for other
 reasons—but this does not cause any problems.
 
-[subsume-request]: https://github.com/cockroachdb/cockroach/blob/d6adf24cae788d7cd967feadae8e9c0388ce5273/pkg/storage/batcheval/cmd_subsume.go#L56-L86
-[merge-bit]: https://github.com/cockroachdb/cockroach/blob/d6adf24cae788d7cd967feadae8e9c0388ce5273/pkg/storage/replica.go#L361-L364
-[watcher]: https://github.com/cockroachdb/cockroach/blob/d6adf24cae788d7cd967feadae8e9c0388ce5273/pkg/storage/replica.go#L2817-L2926
+[subsume-request]: https://github.com/semistrict/ratel/blob/d6adf24cae788d7cd967feadae8e9c0388ce5273/pkg/storage/batcheval/cmd_subsume.go#L56-L86
+[merge-bit]: https://github.com/semistrict/ratel/blob/d6adf24cae788d7cd967feadae8e9c0388ce5273/pkg/storage/replica.go#L361-L364
+[watcher]: https://github.com/semistrict/ratel/blob/d6adf24cae788d7cd967feadae8e9c0388ce5273/pkg/storage/replica.go#L2817-L2926
 
 ### Snapshots
 
@@ -429,7 +429,7 @@ here, but you can begin your own exploration by starting with this call to
 [`Replica.maybeAcquireSnapshotMergeLock`][code-start] and tracing how the
 returned `subsumedRepls` value is used.
 
-[code-start]: https://github.com/cockroachdb/cockroach/blob/82bcd948384e6a482cdd7c916c0aaca32367a7b0/pkg/storage/replica.go#L4071-L4072
+[code-start]: https://github.com/semistrict/ratel/blob/82bcd948384e6a482cdd7c916c0aaca32367a7b0/pkg/storage/replica.go#L4071-L4072
 
 ### Merge queue
 
@@ -819,7 +819,7 @@ go func() {
 
 into [150 lines of hard to follow code][code].
 
-[code]: https://github.com/cockroachdb/cockroach/blob/82bcd948384e6a482cdd7c916c0aaca32367a7b0/pkg/storage/replica.go#L2813-L2920
+[code]: https://github.com/semistrict/ratel/blob/82bcd948384e6a482cdd7c916c0aaca32367a7b0/pkg/storage/replica.go#L2813-L2920
 
 ### Unanimity
 

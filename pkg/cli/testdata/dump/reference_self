@@ -1,6 +1,6 @@
 # Test dumping in the presence of cycles.
 # This used to crash before with stack overflow due to an infinite loop before:
-# https://github.com/cockroachdb/cockroach/pull/20255
+# https://github.com/semistrict/ratel/pull/20255
 
 sql
 CREATE DATABASE d;

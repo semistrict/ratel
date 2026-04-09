@@ -602,6 +602,6 @@ const (
 )
 ```
 
-  [\#16240]: https://github.com/cockroachdb/cockroach/pull/16240
-  [separate RFC]: https://github.com/cockroachdb/cockroach/pull/10055
+  [\#16240]: https://github.com/semistrict/ratel/pull/16240
+  [separate RFC]: https://github.com/semistrict/ratel/pull/10055
   [Clang]: https://clang.llvm.org/docs/LibASTMatchers.html

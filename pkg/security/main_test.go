@@ -18,11 +18,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/security/securitytest"
-	"github.com/cockroachdb/cockroach/pkg/server"
-	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
-	_ "github.com/cockroachdb/cockroach/pkg/util/log" // for flags
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/security/securitytest"
+	"github.com/semistrict/ratel/pkg/server"
+	"github.com/semistrict/ratel/pkg/testutils/serverutils"
+	_ "github.com/semistrict/ratel/pkg/util/log" // for flags
 )
 
 // ResetTest sets up the test environment. In particular, it embeds the

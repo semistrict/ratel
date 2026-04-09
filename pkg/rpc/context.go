@@ -29,26 +29,26 @@ import (
 	"time"
 
 	circuit "github.com/cockroachdb/circuitbreaker"
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/clusterversion"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/util/contextutil"
-	"github.com/cockroachdb/cockroach/pkg/util/envutil"
-	"github.com/cockroachdb/cockroach/pkg/util/growstack"
-	"github.com/cockroachdb/cockroach/pkg/util/grpcutil"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/netutil"
-	"github.com/cockroachdb/cockroach/pkg/util/stop"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
-	"github.com/cockroachdb/cockroach/pkg/util/tracing"
-	"github.com/cockroachdb/cockroach/pkg/util/uuid"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/logtags"
 	"github.com/cockroachdb/redact"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/clusterversion"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/util/contextutil"
+	"github.com/semistrict/ratel/pkg/util/envutil"
+	"github.com/semistrict/ratel/pkg/util/growstack"
+	"github.com/semistrict/ratel/pkg/util/grpcutil"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/netutil"
+	"github.com/semistrict/ratel/pkg/util/stop"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/util/tracing"
+	"github.com/semistrict/ratel/pkg/util/uuid"
 	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/sync/syncmap"
 	"google.golang.org/grpc"
@@ -389,7 +389,7 @@ type Context struct {
 type connKey struct {
 	targetAddr string
 	// Note: this ought to be renamed, see:
-	// https://github.com/cockroachdb/cockroach/pull/73309
+	// https://github.com/semistrict/ratel/pull/73309
 	nodeID roachpb.NodeID
 	class  ConnectionClass
 }
@@ -424,7 +424,7 @@ type ContextOptions struct {
 	// the RPC context will instantiate its own separate container
 	// (this is useful in tests).
 	// Note: this ought to be renamed, see:
-	// https://github.com/cockroachdb/cockroach/pull/73309
+	// https://github.com/semistrict/ratel/pull/73309
 	NodeID *base.NodeIDContainer
 
 	// StorageClusterID is the storage cluster's ID, shared with all
@@ -589,7 +589,7 @@ func (rpcCtx *Context) Metrics() *Metrics {
 // GetLocalInternalClientForAddr returns the context's internal batch client
 // for target, if it exists.
 // Note: the node ID ought to be retyped, see
-// https://github.com/cockroachdb/cockroach/pull/73309
+// https://github.com/semistrict/ratel/pull/73309
 func (rpcCtx *Context) GetLocalInternalClientForAddr(
 	target string, nodeID roachpb.NodeID,
 ) roachpb.InternalClient {
@@ -881,7 +881,7 @@ func (rpcCtx *Context) removeConn(conn *Connection, keys ...connKey) {
 // ConnHealth returns nil if we have an open connection of the request
 // class to the given node that succeeded on its most recent heartbeat.
 // Note: the node ID ought to be retyped, see
-// https://github.com/cockroachdb/cockroach/pull/73309
+// https://github.com/semistrict/ratel/pull/73309
 func (rpcCtx *Context) ConnHealth(
 	target string, nodeID roachpb.NodeID, class ConnectionClass,
 ) error {
@@ -1361,7 +1361,7 @@ func (rpcCtx *Context) grpcDialNodeInternal(
 			// "simulates" a hard network partition for anyone dialing without
 			// the nodeID (gossip).
 			//
-			// See: https://github.com/cockroachdb/cockroach/issues/37200
+			// See: https://github.com/semistrict/ratel/issues/37200
 			//
 			// We also need to be careful that the goroutine which stores the
 			// connection under the second connKey (and accounts for this in

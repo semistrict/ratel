@@ -15,11 +15,11 @@
 package server
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/tracing"
-	"github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/tracing"
+	"github.com/semistrict/ratel/pkg/util/tracing/tracingpb"
 )
 
 // TraceRedactedMarker is used to replace logs that weren't redacted.
@@ -27,7 +27,7 @@ const TraceRedactedMarker = redact.RedactableString("verbose trace message redac
 
 // redactRecordingForTenant redacts the sensitive parts of log messages in the
 // recording if the tenant to which this recording is intended is not the system
-// tenant (the system tenant gets an. See https://github.com/cockroachdb/cockroach/issues/70407.
+// tenant (the system tenant gets an. See https://github.com/semistrict/ratel/issues/70407.
 // The recording is modified in place.
 //
 // tenID is the tenant that will receive this recording.

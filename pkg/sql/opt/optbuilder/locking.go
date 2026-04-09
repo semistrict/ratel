@@ -14,7 +14,7 @@
 
 package optbuilder
 
-import "github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+import "github.com/semistrict/ratel/pkg/sql/sem/tree"
 
 // lockingSpec maintains a collection of FOR [KEY] UPDATE/SHARE items that apply
 // to a given scope. Locking clauses can be applied to the lockingSpec as they

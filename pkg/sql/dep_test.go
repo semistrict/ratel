@@ -17,9 +17,9 @@ package sql
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils/buildutil"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/testutils/buildutil"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 func TestNoLinkForbidden(t *testing.T) {
@@ -27,6 +27,6 @@ func TestNoLinkForbidden(t *testing.T) {
 	defer log.Scope(t).Close(t)
 
 	buildutil.VerifyNoImports(t,
-		"github.com/cockroachdb/cockroach/pkg/sql", true, []string{"github.com/cockroachdb/cockroach/pkg/storage", "c-deps"}, nil,
+		"github.com/semistrict/ratel/pkg/sql", true, []string{"github.com/semistrict/ratel/pkg/storage", "c-deps"}, nil,
 	)
 }

@@ -18,9 +18,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils"
 	"github.com/cockroachdb/datadriven"
 	"github.com/dave/dst/decorator"
+	"github.com/semistrict/ratel/pkg/testutils"
 )
 
 // Walk walks path for datadriven files and calls RunTest on them.

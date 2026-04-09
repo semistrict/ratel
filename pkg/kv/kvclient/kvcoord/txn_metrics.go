@@ -17,8 +17,8 @@ package kvcoord
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/server/telemetry"
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
+	"github.com/semistrict/ratel/pkg/server/telemetry"
+	"github.com/semistrict/ratel/pkg/util/metric"
 )
 
 // TxnMetrics holds all metrics relating to KV transactions.

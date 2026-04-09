@@ -14,7 +14,7 @@
 
 package tenantcostmodel
 
-import "github.com/cockroachdb/cockroach/pkg/roachpb"
+import "github.com/semistrict/ratel/pkg/roachpb"
 
 // RU stands for "Request Unit(s)"; the tenant cost model maps tenant activity
 // into this abstract unit.

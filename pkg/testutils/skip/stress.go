@@ -14,7 +14,7 @@
 
 package skip
 
-import "github.com/cockroachdb/cockroach/pkg/util/envutil"
+import "github.com/semistrict/ratel/pkg/util/envutil"
 
 var stress = envutil.EnvOrDefaultBool("COCKROACH_NIGHTLY_STRESS", false)
 

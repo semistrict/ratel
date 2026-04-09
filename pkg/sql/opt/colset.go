@@ -15,9 +15,9 @@
 package opt
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/cockroach/pkg/util/buildutil"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util"
+	"github.com/semistrict/ratel/pkg/util/buildutil"
 )
 
 // ColSet efficiently stores an unordered set of column ids.

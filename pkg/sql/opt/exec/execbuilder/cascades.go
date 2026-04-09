@@ -17,14 +17,14 @@ package execbuilder
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/exec"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/memo"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/props"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/props/physical"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/xform"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/sql/opt"
+	"github.com/semistrict/ratel/pkg/sql/opt/exec"
+	"github.com/semistrict/ratel/pkg/sql/opt/memo"
+	"github.com/semistrict/ratel/pkg/sql/opt/props"
+	"github.com/semistrict/ratel/pkg/sql/opt/props/physical"
+	"github.com/semistrict/ratel/pkg/sql/opt/xform"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 )
 
 // cascadeBuilder is a helper that fills in exec.Cascade metadata; it also

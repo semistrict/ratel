@@ -1041,20 +1041,20 @@ CREATE PARTITION SCHEME sch AS PARTITION fun TO (filegroups...);
 CREATE TABLE articles (id int PRIMARY KEY, published DATE) ON sch (published);
 ```
 
-[#14113]: https://github.com/cockroachdb/cockroach/issues/14113
-[#18683]: https://github.com/cockroachdb/cockroach/pull/18683
-[#19141]: https://github.com/cockroachdb/cockroach/issues/19141
-[computed columns]: https://github.com/cockroachdb/cockroach/pull/20735
+[#14113]: https://github.com/semistrict/ratel/issues/14113
+[#18683]: https://github.com/semistrict/ratel/pull/18683
+[#19141]: https://github.com/semistrict/ratel/issues/19141
+[computed columns]: https://github.com/semistrict/ratel/pull/20735
 [example: date partitioning]: #example-date-partitioning
 [example: geographic partitioning]: #example-geographic-partitioning
-[index key prefix]: https://github.com/cockroachdb/cockroach/blob/1f3c72f17546f944490e0a4dcd928fd96a375987/docs/RFCS/sql_partitioning.md#key-encoding
+[index key prefix]: https://github.com/semistrict/ratel/blob/1f3c72f17546f944490e0a4dcd928fd96a375987/docs/RFCS/sql_partitioning.md#key-encoding
 [interleaved tables]: https://www.cockroachlabs.com/docs/stable/interleave-in-parent.html
-[leases follow the sun]: https://github.com/cockroachdb/cockroach/blob/763d21e6fad69728a523d3cdd8b449c8513094b7/docs/RFCS/20170125_leaseholder_locality.md
+[leases follow the sun]: https://github.com/semistrict/ratel/blob/763d21e6fad69728a523d3cdd8b449c8513094b7/docs/RFCS/20170125_leaseholder_locality.md
 [locality–resilience tradeoff]: #usage-localityresilience-tradeoff
 [partitioning and index columns]: #partitioning-and-index-columns
 [partitioning key selection]: #partitioning-key-selection
 [range splits and schema changes]: #range-splits-and-schema-changes
 [range splits]: #range-splits
 [select from partition]: #select-from-partition
-[system.subzones]: https://github.com/cockroachdb/cockroach/blob/1f3c72f17546f944490e0a4dcd928fd96a375987/docs/RFCS/sql_partitioning.md#table-subzones
+[system.subzones]: https://github.com/semistrict/ratel/blob/1f3c72f17546f944490e0a4dcd928fd96a375987/docs/RFCS/sql_partitioning.md#table-subzones
 [zone config]: https://www.cockroachlabs.com/docs/stable/configure-replication-zones.html

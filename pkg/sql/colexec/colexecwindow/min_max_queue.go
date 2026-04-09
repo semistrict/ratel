@@ -15,8 +15,8 @@
 package colexecwindow
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/colexecerror"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/sql/colexecerror"
 )
 
 func newMinMaxQueue(maxLength int) minMaxQueue {

@@ -17,8 +17,8 @@ package gossip
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
 	"github.com/cockroachdb/redact"
+	"github.com/semistrict/ratel/pkg/util/metric"
 )
 
 // Metrics contains gossip metrics used per node and server.

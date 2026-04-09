@@ -1,16 +1,16 @@
 - Feature Name: replica_batch
 - Status: completed
 - Start Date: 2015-08-11
-- RFC PR: [#2340](https://github.com/cockroachdb/cockroach/pull/2340)
+- RFC PR: [#2340](https://github.com/semistrict/ratel/pull/2340)
 - Cockroach Issue:
 
 # Summary
 
-Assuming [#1998](https://github.com/cockroachdb/cockroach/pull/1998) in place, replace `roachpb.Request` by `roachpb.BatchRequest` throughout most of the main execution path starting in `Store.ExecuteCmd()`.
+Assuming [#1998](https://github.com/semistrict/ratel/pull/1998) in place, replace `roachpb.Request` by `roachpb.BatchRequest` throughout most of the main execution path starting in `Store.ExecuteCmd()`.
 
 # Motivation
 
-[#1998](https://github.com/cockroachdb/cockroach/pull/1998) introduces gateway
+[#1998](https://github.com/semistrict/ratel/pull/1998) introduces gateway
 changes after the implementation of which only `BatchRequest` is received by
 `(*Store).ExecuteCmd()`. The changes described here allow `BatchRequest` to
 be submitted to Raft and executed in bulk, which should give significant

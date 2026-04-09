@@ -6,8 +6,8 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/cockroachdb/cockroach/pkg/util/jsonbytes"
 	"github.com/cockroachdb/redact"
+	"github.com/semistrict/ratel/pkg/util/jsonbytes"
 )
 
 var safeRe1 = regexp.MustCompile(`^root|node$`)

@@ -5,9 +5,9 @@ package scpb
 
 import (
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb "github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb "github.com/semistrict/ratel/pkg/sql/catalog/catpb"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -288,7 +288,7 @@ var xxx_messageInfo_Authorization proto.InternalMessageInfo
 // current state of the entire schema change.
 type DescriptorState struct {
 	// JobID is the ID of the job responsible for this DescriptorState.
-	JobID github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.JobID `protobuf:"varint,5,opt,name=job_id,json=jobId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb.JobID" json:"job_id,omitempty"`
+	JobID github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.JobID `protobuf:"varint,5,opt,name=job_id,json=jobId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/catpb.JobID" json:"job_id,omitempty"`
 	// Revertible captures whether the job is currently revertible.
 	// This is important to facilitate constructing the job in the appropriate
 	// way upon restore.

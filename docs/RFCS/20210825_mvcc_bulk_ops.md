@@ -4,8 +4,8 @@
 - Authors: David Taylor, Andrew Werner, Tobias Grieger
 - RFC PR: #69380
 - Cockroach Issue: 
-  https://github.com/cockroachdb/cockroach/issues/62585
-  https://github.com/cockroachdb/cockroach/issues/62564
+  https://github.com/semistrict/ratel/issues/62585
+  https://github.com/semistrict/ratel/issues/62564
   
 
 # Summary
@@ -398,7 +398,7 @@ backfills correct without historical writes above could be wasted in that case
 (though it was previously suggested for contention minimization reasons, so not
 entirely wasted, and perhaps not wasted at all?).
 
-This is explored in more detail previously in https://github.com/cockroachdb/cockroach/issues/62585.
+This is explored in more detail previously in https://github.com/semistrict/ratel/issues/62585.
 
 ### Index Backfills
 

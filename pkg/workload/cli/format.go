@@ -19,7 +19,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/workload/histogram"
+	"github.com/semistrict/ratel/pkg/workload/histogram"
 )
 
 // outputFormat is the interface used to output results incrementally

@@ -19,9 +19,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/build"
-	"github.com/cockroachdb/cockroach/pkg/docs"
 	"github.com/kr/text"
+	"github.com/semistrict/ratel/pkg/build"
+	"github.com/semistrict/ratel/pkg/docs"
 )
 
 // FlagInfo contains the static information for a CLI flag and helper

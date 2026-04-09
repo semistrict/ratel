@@ -17,8 +17,8 @@ package clierror
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/util/log/logpb"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util/log/logpb"
 )
 
 // CheckAndMaybeLog reports the error, if non-nil, to the given

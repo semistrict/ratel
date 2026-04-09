@@ -23,9 +23,9 @@
 package fuzz
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/parser"
+	"github.com/semistrict/ratel/pkg/sql/parser"
 	// See above comment about why this is imported.
-	_ "github.com/cockroachdb/cockroach/pkg/sql/sem/builtins"
+	_ "github.com/semistrict/ratel/pkg/sql/sem/builtins"
 )
 
 func FuzzParse(data []byte) int {

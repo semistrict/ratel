@@ -21,7 +21,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/rel"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/rel"
 	"github.com/stretchr/testify/require"
 )
 

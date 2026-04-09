@@ -18,8 +18,8 @@ import (
 	"context"
 	"net"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/base"
 )
 
 // ListenError is returned from Start when we fail to start listening on either

@@ -15,8 +15,8 @@
 package cyclegraphtest
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/rel"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/rel/reltest"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/rel"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/rel/reltest"
 )
 
 // Suite is the suite for testproto.

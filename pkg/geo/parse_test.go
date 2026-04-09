@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/geo/geopb"
 	"github.com/pierrre/geohash"
+	"github.com/semistrict/ratel/pkg/geo/geopb"
 	"github.com/stretchr/testify/require"
 )
 

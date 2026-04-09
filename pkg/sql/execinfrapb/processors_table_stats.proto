@@ -152,13 +152,13 @@ message SampleAggregatorSpec {
   // These are necessary for writing out the statistic data.
   repeated uint32 sampled_column_ids = 3 [
     (gogoproto.customname) = "SampledColumnIDs",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ColumnID"
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ColumnID"
   ];
 
   optional uint32 table_id = 4 [
     (gogoproto.nullable) = false,
     (gogoproto.customname) = "TableID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"
   ];
 
   reserved 5;
@@ -167,7 +167,7 @@ message SampleAggregatorSpec {
   optional int64 job_id = 6 [
     (gogoproto.nullable) = false,
     (gogoproto.customname) = "JobID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/jobs/jobspb.JobID"
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/jobs/jobspb.JobID"
   ];
 
   // The total number of rows expected in the table based on previous runs of

@@ -21,10 +21,10 @@ import (
 	_ "embed" // required for go:embed
 	"sync"
 
-	"github.com/cockroachdb/cockroach/pkg/geo/geographiclib"
-	"github.com/cockroachdb/cockroach/pkg/geo/geopb"
-	"github.com/cockroachdb/cockroach/pkg/geo/geoprojbase/embeddedproj"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/geo/geographiclib"
+	"github.com/semistrict/ratel/pkg/geo/geopb"
+	"github.com/semistrict/ratel/pkg/geo/geoprojbase/embeddedproj"
 )
 
 //go:embed data/proj.json.gz

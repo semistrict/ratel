@@ -19,7 +19,7 @@ import (
 	"net/http"
 	"net/http/pprof"
 
-	"github.com/cockroachdb/cockroach/pkg/workload"
+	"github.com/semistrict/ratel/pkg/workload"
 	"github.com/spf13/cobra"
 )
 

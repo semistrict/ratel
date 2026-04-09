@@ -19,12 +19,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	unimp "github.com/cockroachdb/cockroach/pkg/util/errorutil/unimplemented"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/types"
+	unimp "github.com/semistrict/ratel/pkg/util/errorutil/unimplemented"
 )
 
 type lexer struct {
@@ -237,7 +237,7 @@ func (l *lexer) UnimplementedWithIssue(issue int) {
 	l.populateErrorDetails()
 	l.lastError = &tree.UnsupportedError{
 		Err:         l.lastError,
-		FeatureName: fmt.Sprintf("https://github.com/cockroachdb/cockroach/issues/%d", issue),
+		FeatureName: fmt.Sprintf("https://github.com/semistrict/ratel/issues/%d", issue),
 	}
 }
 

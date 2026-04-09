@@ -18,7 +18,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 )
 
 // --- Single-row (batch of 1) via MakeFn compatibility path ---

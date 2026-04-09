@@ -17,9 +17,9 @@ package spanconfig
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/protectedts/ptpb"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/protectedts/ptpb"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
 )
 
 // ProtectedTimestampStateReader provides a target specific view of the

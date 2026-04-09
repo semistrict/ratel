@@ -97,7 +97,7 @@ Verify that AlertManager is running:
 
 
 Upload alert rules:
-*  These are copied from https://github.com/cockroachdb/cockroach/blob/master/monitoring/rules/alerts.rules.yml:
+*  These are copied from https://github.com/semistrict/ratel/blob/master/monitoring/rules/alerts.rules.yml:
 * `kubectl apply -f alert-rules.yaml`
 * Check that the rules are visible to Prometheus by opening
   http://localhost:9090/rules.  It may take a minute for the configuration
@@ -121,6 +121,6 @@ prometheus configs, located in the top-level `cockroach/monitoring`
 directory.  A `wraprules` tool exists to make maintaining this easier.
 
 ```
-go get github.com/cockroachdb/cockroach/pkg/cmd/wraprules
+go get github.com/semistrict/ratel/pkg/cmd/wraprules
 wraprules -o path/to/alert-rules.yaml path/to/cockroach/monitoring/rules/*.rules.yml
 ```

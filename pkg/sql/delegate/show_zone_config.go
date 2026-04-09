@@ -14,7 +14,7 @@
 
 package delegate
 
-import "github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+import "github.com/semistrict/ratel/pkg/sql/sem/tree"
 
 // ShowZoneConfig only delegates if it selecting ALL configurations.
 func (d *delegator) delegateShowZoneConfig(n *tree.ShowZoneConfig) (tree.Statement, error) {

@@ -14,7 +14,7 @@
 
 package sqltelemetry
 
-import "github.com/cockroachdb/cockroach/pkg/server/telemetry"
+import "github.com/semistrict/ratel/pkg/server/telemetry"
 
 // ScheduledBackupControlCounter is to be incremented every time a scheduled job
 // control action is taken.

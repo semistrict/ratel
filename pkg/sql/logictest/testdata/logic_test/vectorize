@@ -452,7 +452,7 @@ abc   true  false  true   false  true   false  true   false  true   false
 xyz   true  false  false  true   false  true   false  true   false  true
 
 # Regression test for composite null handling
-# https://github.com/cockroachdb/cockroach/issues/37358
+# https://github.com/semistrict/ratel/issues/37358
 statement ok
 CREATE TABLE composite (d DECIMAL, INDEX d_idx (d));
 INSERT INTO composite VALUES (NULL), (1), (1.0), (1.00);

@@ -17,7 +17,7 @@
 
 package colexecjoin
 
-import "github.com/cockroachdb/cockroach/pkg/col/coldata"
+import "github.com/semistrict/ratel/pkg/col/coldata"
 
 // execgen:template<useSel>
 func collectProbeOuter(

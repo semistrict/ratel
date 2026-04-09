@@ -22,7 +22,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/httputil"
+	"github.com/semistrict/ratel/pkg/util/httputil"
 )
 
 const (

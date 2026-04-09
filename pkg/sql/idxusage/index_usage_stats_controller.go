@@ -17,7 +17,7 @@ package idxusage
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/server/serverpb"
+	"github.com/semistrict/ratel/pkg/server/serverpb"
 )
 
 // Controller implements the index usage stats subsystem control plane. This exposes

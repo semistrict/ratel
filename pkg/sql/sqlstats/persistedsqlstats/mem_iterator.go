@@ -17,9 +17,9 @@ package persistedsqlstats
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlstats"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlstats/sslocal"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/sql/sqlstats"
+	"github.com/semistrict/ratel/pkg/sql/sqlstats/sslocal"
 )
 
 // memStmtStatsIterator wraps a sslocal.StmtStatsIterator. Since in-memory

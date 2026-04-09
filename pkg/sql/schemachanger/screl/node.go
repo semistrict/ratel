@@ -14,7 +14,7 @@
 
 package screl
 
-import "github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scpb"
+import "github.com/semistrict/ratel/pkg/sql/schemachanger/scpb"
 
 // Node represents a target element with a given current status.
 type Node struct {

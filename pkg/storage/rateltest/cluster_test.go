@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils/testcluster"
 	"github.com/cockroachdb/pebble/objstorage/remote"
+	"github.com/semistrict/ratel/pkg/testutils/testcluster"
 	"github.com/stretchr/testify/require"
 )
 

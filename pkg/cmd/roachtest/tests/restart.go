@@ -19,12 +19,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/cluster"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/option"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/registry"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/test"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/install"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/cluster"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/option"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/registry"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/test"
+	"github.com/semistrict/ratel/pkg/roachprod/install"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 )
 
 func runRestart(ctx context.Context, t test.Test, c cluster.Cluster, downDuration time.Duration) {
@@ -78,7 +78,7 @@ func runRestart(ctx context.Context, t test.Test, c cluster.Cluster, downDuratio
 	// can fail with a "no inbound stream connection" error. This is not what we
 	// want to catch in this test, so work around it.
 	//
-	// See https://github.com/cockroachdb/cockroach/issues/38602.
+	// See https://github.com/semistrict/ratel/issues/38602.
 	time.Sleep(15 * time.Second)
 
 	start := timeutil.Now()

@@ -26,9 +26,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/security"
 	"github.com/cockroachdb/errors"
 	"github.com/olekukonko/tablewriter"
+	"github.com/semistrict/ratel/pkg/security"
 )
 
 // Conf provides a multi-level, user-configurable mapping between an

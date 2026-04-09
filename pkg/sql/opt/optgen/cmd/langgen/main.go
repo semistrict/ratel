@@ -22,8 +22,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/optgen/lang"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/sql/opt/optgen/lang"
 )
 
 type genFunc func(compiled *lang.CompiledExpr, w io.Writer)

@@ -14,7 +14,7 @@
 
 package geomfn
 
-import "github.com/cockroachdb/cockroach/pkg/geo"
+import "github.com/semistrict/ratel/pkg/geo"
 
 // Envelope forms an envelope (compliant with the OGC spec) of the given Geometry.
 // It uses the bounding box to return a Polygon, but can return a Point or

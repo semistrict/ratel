@@ -20,17 +20,17 @@ import (
 	"fmt"
 	"runtime/debug"
 
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/kv"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/storage/enginepb"
-	"github.com/cockroachdb/cockroach/pkg/util/envutil"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
-	"github.com/cockroachdb/cockroach/pkg/util/uuid"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/logtags"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/kv"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/storage/enginepb"
+	"github.com/semistrict/ratel/pkg/util/envutil"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/util/uuid"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -42,7 +42,7 @@ const (
 // DisableCommitSanityCheck allows opting out of a fatal assertion error that was observed in the wild
 // and for which a root cause is not yet available.
 //
-// See: https://github.com/cockroachdb/cockroach/pull/73512.
+// See: https://github.com/semistrict/ratel/pull/73512.
 var DisableCommitSanityCheck = envutil.EnvOrDefaultBool("COCKROACH_DISABLE_COMMIT_SANITY_CHECK", false)
 
 // txnState represents states relating to whether an EndTxn request needs
@@ -694,7 +694,7 @@ func (tc *TxnCoordSender) maybeRejectClientLocked(
 		// However, we reject this if we know that the transaction has been
 		// committed, to avoid sending the rollback concurrently with the
 		// txnCommitter asynchronously making the commit explicit. See:
-		// https://github.com/cockroachdb/cockroach/issues/68643
+		// https://github.com/semistrict/ratel/issues/68643
 		return nil
 	}
 
@@ -947,7 +947,7 @@ func (tc *TxnCoordSender) updateStateLocked(
 // env var), wrapping the input error in case of an assertion violation.
 //
 // The assertion is known to have failed in the wild, see:
-// https://github.com/cockroachdb/cockroach/issues/67765
+// https://github.com/semistrict/ratel/issues/67765
 func sanityCheckErrWithTxn(
 	ctx context.Context,
 	pErrWithTxn *roachpb.Error,
@@ -974,7 +974,7 @@ func sanityCheckErrWithTxn(
 	)
 	err = errors.WithAssertionFailure(
 		errors.WithIssueLink(err, errors.IssueLink{
-			IssueURL: "https://github.com/cockroachdb/cockroach/issues/67765",
+			IssueURL: "https://github.com/semistrict/ratel/issues/67765",
 			Detail: "you have encountered a known bug in CockroachDB, please consider " +
 				"reporting on the Github issue or reach out via Support. " +
 				"This assertion can be disabled by setting the environment variable " +

@@ -17,7 +17,7 @@ package screl
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scpb"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scpb"
 	"github.com/stretchr/testify/require"
 )
 

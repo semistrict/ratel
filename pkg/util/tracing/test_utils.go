@@ -20,9 +20,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb"
 	"github.com/cockroachdb/errors"
 	"github.com/pmezard/go-difflib/difflib"
+	"github.com/semistrict/ratel/pkg/util/tracing/tracingpb"
 )
 
 // FindMsgInRecording returns the index of the first Span containing msg in its

@@ -17,9 +17,9 @@ package querycache
 import (
 	"math/rand"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/memo"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/sql/opt/memo"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 )
 
 // C is a query cache, keyed on SQL statement strings (which can contain

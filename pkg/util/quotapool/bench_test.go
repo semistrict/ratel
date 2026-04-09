@@ -20,7 +20,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/util/quotapool"
+	"github.com/semistrict/ratel/pkg/util/quotapool"
 	"golang.org/x/sync/errgroup"
 )
 

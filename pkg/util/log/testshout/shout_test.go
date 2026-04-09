@@ -18,9 +18,9 @@ import (
 	"context"
 	"os"
 
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/log/logconfig"
-	"github.com/cockroachdb/cockroach/pkg/util/log/severity"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/log/logconfig"
+	"github.com/semistrict/ratel/pkg/util/log/severity"
 )
 
 // Example_shout_before_log verifies that Shout output emitted after

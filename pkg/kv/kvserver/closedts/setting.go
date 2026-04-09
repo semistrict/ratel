@@ -17,7 +17,7 @@ package closedts
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/settings"
+	"github.com/semistrict/ratel/pkg/settings"
 )
 
 // TargetDuration is the follower reads closed timestamp update target duration.

@@ -2,8 +2,8 @@
 - Status: draft
 - Start Date: 2021-12-03
 - Authors: Rafi Shamim
-- RFC PR: https://github.com/cockroachdb/cockroach/pull/74640
-- Cockroach Issue: https://github.com/cockroachdb/cockroach/issues/74643
+- RFC PR: https://github.com/semistrict/ratel/pull/74640
+- Cockroach Issue: https://github.com/semistrict/ratel/issues/74643
 
 
 ## Summary
@@ -20,7 +20,7 @@ There are two motivations for the new authentication mechanism. For CockroachDB 
 * Gracefully transfer sessions to another SQL node whenever a node is shutting down. Currently, when a SQL node is scaled down, existing connections to that node will be terminated forcefully, which is a poor user experience. We want to transfer these sessions to a live SQL node so that from the user’s perspective, the connection remains usable without interruption.
 * Connection load balancing between SQL nodes. Currently, when there is an increase in load, more SQL nodes are created. However, sessions that caused the increase in load will still be connected to the old nodes. We want to be able to transfer sessions from one SQL node to another for better resource utilization.
 
-These use cases are addressed by “session migration.” In v21.2, the groundwork was laid for session migration with the addition of the builtin functions `crdb_internal.serialize_session` and `crdb_internal.deserialize_session` ([#68792](https://github.com/cockroachdb/cockroach/pull/68792)). These functions, respectively, save the state of the current session, and restore the saved state into the current session. The challenge is that a session can only be restored if the user associated with the current session matches the user defined in the saved session state. This means that in order to restore a session, SQL Proxy must first create a new session for that user, and this new session must be created without any input from the user.
+These use cases are addressed by “session migration.” In v21.2, the groundwork was laid for session migration with the addition of the builtin functions `crdb_internal.serialize_session` and `crdb_internal.deserialize_session` ([#68792](https://github.com/semistrict/ratel/pull/68792)). These functions, respectively, save the state of the current session, and restore the saved state into the current session. The challenge is that a session can only be restored if the user associated with the current session matches the user defined in the saved session state. This means that in order to restore a session, SQL Proxy must first create a new session for that user, and this new session must be created without any input from the user.
 
 The focus of this RFC is to revive a session that had been authenticated for a SQL client previously. Therefore, the goal here is to authenticate the SQL Proxy as operating on behalf of the client, rather than as the client. This is a more narrow scope than the general problem of token authentication for SQL client apps. We do not exclude that this RFC will inform a solution to the more general problem but we wish to not let this RFC be burdened by it.
 
@@ -91,9 +91,9 @@ One may notice that the structure of the token is similar to a [JSON Web Token](
 
 #### Update pgwire code to look out for the new token
 
-We will add a CockroachDB-specific “StartupMessage” parameter name in the [pgwire/server.go](https://github.com/cockroachdb/cockroach/blob/b4ab627436afd8d9ed23330cd4026aa435b5b65d/pkg/sql/pgwire/server.go#L731) code. We’ll name it **<code>session_revival_token</code>**.
+We will add a CockroachDB-specific “StartupMessage” parameter name in the [pgwire/server.go](https://github.com/semistrict/ratel/blob/b4ab627436afd8d9ed23330cd4026aa435b5b65d/pkg/sql/pgwire/server.go#L731) code. We’ll name it **<code>session_revival_token</code>**.
 
-Before reaching the password authentication code, the server will see the token, and if it’s valid, will bypass the regular session initialization and [authentication code](https://github.com/cockroachdb/cockroach/blob/86383ca90f7e0604773496c03e35850d9089b394/pkg/sql/pgwire/conn.go#L645).
+Before reaching the password authentication code, the server will see the token, and if it’s valid, will bypass the regular session initialization and [authentication code](https://github.com/semistrict/ratel/blob/86383ca90f7e0604773496c03e35850d9089b394/pkg/sql/pgwire/conn.go#L645).
 
 To validate the token, the bytes are unmarshalled into a SessionToken struct. The SessionToken is considered valid if: (1) the signature in the token is the correct signature for the payload (verified by using the public key of the signing cert), (2) the user in the payload matches the user field in the session parameters, and (3) the expires_at time has not yet passed. If the token is valid, then the authentication continues as if a correct password were presented. These three checks are because: (1) the signature prevents forgery of a token, (2) checking the user matches is a light bit of defensive programming to make sure SQL Proxy uses the correct token for a user, and (3) enforcing an expiration time prevents the creation of a token by brute-force.
 
@@ -162,7 +162,7 @@ As described in the motivation, sessions that are created using this token, will
 
 **Add a tenant read-only cluster setting for opting into session revival**
 
-Once the [multitenant cluster settings proposal](https://github.com/cockroachdb/cockroach/pull/73349) is completed, we should add a tenant read-only cluster setting that allows users to opt into this new behavior. This will be needed once the multitenant architecture is rolled out to self-hosted/dedicated clusters so that the new authentication mechanism is not enabled on these clusters unintentionally. 
+Once the [multitenant cluster settings proposal](https://github.com/semistrict/ratel/pull/73349) is completed, we should add a tenant read-only cluster setting that allows users to opt into this new behavior. This will be needed once the multitenant architecture is rolled out to self-hosted/dedicated clusters so that the new authentication mechanism is not enabled on these clusters unintentionally. 
 
 
 ## Unresolved questions

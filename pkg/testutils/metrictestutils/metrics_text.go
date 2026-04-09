@@ -21,7 +21,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
+	"github.com/semistrict/ratel/pkg/util/metric"
 )
 
 // GetMetricsText scrapes a metrics registry, filters out the metrics according

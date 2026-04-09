@@ -22,13 +22,13 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/clicfg"
-	"github.com/cockroachdb/cockroach/pkg/cli/clisqlclient"
-	"github.com/cockroachdb/cockroach/pkg/cli/clisqlexec"
-	"github.com/cockroachdb/cockroach/pkg/cli/clisqlshell"
-	"github.com/cockroachdb/cockroach/pkg/server/pgurl"
 	"github.com/cockroachdb/errors"
 	isatty "github.com/mattn/go-isatty"
+	"github.com/semistrict/ratel/pkg/cli/clicfg"
+	"github.com/semistrict/ratel/pkg/cli/clisqlclient"
+	"github.com/semistrict/ratel/pkg/cli/clisqlexec"
+	"github.com/semistrict/ratel/pkg/cli/clisqlshell"
+	"github.com/semistrict/ratel/pkg/server/pgurl"
 )
 
 // Context represents the configuration of a SQL shell instance.

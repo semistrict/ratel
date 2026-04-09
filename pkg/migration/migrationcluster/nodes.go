@@ -17,9 +17,9 @@ package migrationcluster
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // Node captures the relevant bits of each node as it pertains to the migration

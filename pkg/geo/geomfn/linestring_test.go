@@ -19,8 +19,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/geo"
-	"github.com/cockroachdb/cockroach/pkg/geo/geopb"
+	"github.com/semistrict/ratel/pkg/geo"
+	"github.com/semistrict/ratel/pkg/geo/geopb"
 	"github.com/stretchr/testify/require"
 	"github.com/twpayne/go-geom"
 )

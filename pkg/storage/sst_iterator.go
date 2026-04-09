@@ -17,9 +17,9 @@ package storage
 import (
 	"bytes"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble/sstable"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 type sstIterator struct {

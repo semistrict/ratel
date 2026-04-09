@@ -17,8 +17,8 @@ package props
 import (
 	"bytes"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/sql/opt"
 )
 
 // MultiplicityValue is a bit field that describes whether a join's filters

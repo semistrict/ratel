@@ -17,8 +17,8 @@ package txnidcache
 import (
 	"sync"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/contention/contentionutils"
-	"github.com/cockroachdb/cockroach/pkg/sql/contentionpb"
+	"github.com/semistrict/ratel/pkg/sql/contention/contentionutils"
+	"github.com/semistrict/ratel/pkg/sql/contentionpb"
 )
 
 // blockSize is chosen as 168 since each ResolvedTxnID is 24 byte.

@@ -29,9 +29,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/reduce/reduce"
-	"github.com/cockroachdb/cockroach/pkg/cmd/reduce/reduce/reducesql"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/cmd/reduce/reduce"
+	"github.com/semistrict/ratel/pkg/cmd/reduce/reduce/reducesql"
 )
 
 var (

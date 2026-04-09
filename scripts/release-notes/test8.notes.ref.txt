@@ -30,16 +30,16 @@ We would like to thank the following contributors from the CockroachDB community
   - 2018-04-22 [#100  ][#100  ] [ac02f9cf6][ac02f9cf6] (+   0 -   0 ~   0/ 0) PR 1 title alternate format
 
 
-[#1]: https://github.com/cockroachdb/cockroach/pull/1
-[#100]: https://github.com/cockroachdb/cockroach/pull/100
-[#2]: https://github.com/cockroachdb/cockroach/pull/2
-[#200]: https://github.com/cockroachdb/cockroach/pull/200
-[#unknown]: https://github.com/cockroachdb/cockroach/pull/unknown
-[20f736f8b]: https://github.com/cockroachdb/cockroach/commit/20f736f8b
-[801acad03]: https://github.com/cockroachdb/cockroach/commit/801acad03
-[931a97757]: https://github.com/cockroachdb/cockroach/commit/931a97757
-[a1dec5651]: https://github.com/cockroachdb/cockroach/commit/a1dec5651
-[ac02f9cf6]: https://github.com/cockroachdb/cockroach/commit/ac02f9cf6
-[f76e64ed3]: https://github.com/cockroachdb/cockroach/commit/f76e64ed3
-[fc02f2ab9]: https://github.com/cockroachdb/cockroach/commit/fc02f2ab9
+[#1]: https://github.com/semistrict/ratel/pull/1
+[#100]: https://github.com/semistrict/ratel/pull/100
+[#2]: https://github.com/semistrict/ratel/pull/2
+[#200]: https://github.com/semistrict/ratel/pull/200
+[#unknown]: https://github.com/semistrict/ratel/pull/unknown
+[20f736f8b]: https://github.com/semistrict/ratel/commit/20f736f8b
+[801acad03]: https://github.com/semistrict/ratel/commit/801acad03
+[931a97757]: https://github.com/semistrict/ratel/commit/931a97757
+[a1dec5651]: https://github.com/semistrict/ratel/commit/a1dec5651
+[ac02f9cf6]: https://github.com/semistrict/ratel/commit/ac02f9cf6
+[f76e64ed3]: https://github.com/semistrict/ratel/commit/f76e64ed3
+[fc02f2ab9]: https://github.com/semistrict/ratel/commit/fc02f2ab9
 

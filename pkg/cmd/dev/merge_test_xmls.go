@@ -19,7 +19,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	bazelutil "github.com/cockroachdb/cockroach/pkg/build/util"
+	bazelutil "github.com/semistrict/ratel/pkg/build/util"
 	"github.com/spf13/cobra"
 )
 

@@ -25,8 +25,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/util/encoding/csv"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/encoding/csv"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 func ExampleReader() {

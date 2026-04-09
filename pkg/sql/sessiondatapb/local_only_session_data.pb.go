@@ -6,10 +6,10 @@ package sessiondatapb
 import (
 	encoding_binary "encoding/binary"
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_security "github.com/cockroachdb/cockroach/pkg/security"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
+	github_com_cockroachdb_cockroach_pkg_security "github.com/semistrict/ratel/pkg/security"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -174,7 +174,7 @@ type LocalOnlySessionData struct {
 	// established the connection before SET ROLE was first performed.
 	// This is only populated when SET ROLE is used, otherwise the session_user
 	// is the same as the UserProto in SessionData.
-	SessionUserProto github_com_cockroachdb_cockroach_pkg_security.SQLUsernameProto `protobuf:"bytes,46,opt,name=session_user_proto,json=sessionUserProto,proto3,casttype=github.com/cockroachdb/cockroach/pkg/security.SQLUsernameProto" json:"session_user_proto,omitempty"`
+	SessionUserProto github_com_cockroachdb_cockroach_pkg_security.SQLUsernameProto `protobuf:"bytes,46,opt,name=session_user_proto,json=sessionUserProto,proto3,casttype=github.com/semistrict/ratel/pkg/security.SQLUsernameProto" json:"session_user_proto,omitempty"`
 	// TxnRowsWrittenLog is the threshold for the number of rows written by a SQL
 	// transaction which - once exceeded - will trigger a logging event to SQL_PERF
 	// (or SQL_INTERNAL_PERF for internal transactions); 0 means disabled.

@@ -30,7 +30,7 @@ sudo apt-get install -y --no-install-recommends \
 sudo adduser "${USER}" docker
 
 # Configure environment variables.
-echo 'export PATH="/usr/lib/ccache:${PATH}:$HOME/go/src/github.com/cockroachdb/cockroach/bin:/usr/local/go/bin"' >> ~/.bashrc_bootstrap
+echo 'export PATH="/usr/lib/ccache:${PATH}:$HOME/go/src/github.com/semistrict/ratel/bin:/usr/local/go/bin"' >> ~/.bashrc_bootstrap
 echo 'export COCKROACH_BUILDER_CCACHE=1' >> ~/.bashrc_bootstrap
 echo '. ~/.bashrc_bootstrap' >> ~/.bashrc
 . ~/.bashrc_bootstrap
@@ -52,8 +52,8 @@ EOF
 sudo tar -C /usr/local -zxf /tmp/go.tgz && rm /tmp/go.tgz
 
 # Clone CockroachDB.
-git clone https://github.com/cockroachdb/cockroach "$(go env GOPATH)/src/github.com/cockroachdb/cockroach"
-git -C "$(go env GOPATH)/src/github.com/cockroachdb/cockroach" submodule update --init
+git clone https://github.com/semistrict/ratel "$(go env GOPATH)/src/github.com/semistrict/ratel"
+git -C "$(go env GOPATH)/src/github.com/semistrict/ratel" submodule update --init
 
 # Install Bazelisk as Bazel.
 # NOTE: you should keep this in sync with build/packer/teamcity-agent.sh and build/bazelbuilder/Dockerfile -- if

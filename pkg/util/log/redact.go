@@ -19,9 +19,9 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/encoding/encodingtype"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
+	"github.com/semistrict/ratel/pkg/util/encoding/encodingtype"
 )
 
 // EditSensitiveData describes how the messages in log entries should

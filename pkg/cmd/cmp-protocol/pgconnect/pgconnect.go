@@ -20,10 +20,10 @@ import (
 	"net"
 	"reflect"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgwirebase"
-	"github.com/cockroachdb/cockroach/pkg/util/ctxgroup"
 	"github.com/cockroachdb/errors"
 	"github.com/jackc/pgproto3/v2"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgwirebase"
+	"github.com/semistrict/ratel/pkg/util/ctxgroup"
 )
 
 // Connect connects to the postgres-compatible server at addr with specified

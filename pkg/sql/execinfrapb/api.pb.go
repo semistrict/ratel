@@ -10,14 +10,14 @@ package execinfrapb
 import (
 	context "context"
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_base "github.com/cockroachdb/cockroach/pkg/base"
-	roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	sessiondatapb "github.com/cockroachdb/cockroach/pkg/sql/sessiondatapb"
-	tracingpb "github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	_ "github.com/gogo/protobuf/types"
 	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
+	github_com_cockroachdb_cockroach_pkg_base "github.com/semistrict/ratel/pkg/base"
+	roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	sessiondatapb "github.com/semistrict/ratel/pkg/sql/sessiondatapb"
+	tracingpb "github.com/semistrict/ratel/pkg/util/tracing/tracingpb"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -97,7 +97,7 @@ var xxx_messageInfo_SetupFlowRequest proto.InternalMessageInfo
 type FlowSpec struct {
 	FlowID FlowID `protobuf:"bytes,1,opt,name=flow_id,json=flowId,customtype=FlowID" json:"flow_id"`
 	// The SQLInstanceID of the gateway that planned this Flow. Used for debugging.
-	Gateway    github_com_cockroachdb_cockroach_pkg_base.SQLInstanceID `protobuf:"varint,3,opt,name=gateway,casttype=github.com/cockroachdb/cockroach/pkg/base.SQLInstanceID" json:"gateway"`
+	Gateway    github_com_cockroachdb_cockroach_pkg_base.SQLInstanceID `protobuf:"varint,3,opt,name=gateway,casttype=github.com/semistrict/ratel/pkg/base.SQLInstanceID" json:"gateway"`
 	Processors []ProcessorSpec                                         `protobuf:"bytes,2,rep,name=processors" json:"processors"`
 }
 

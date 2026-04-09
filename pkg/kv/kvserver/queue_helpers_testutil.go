@@ -17,8 +17,8 @@ package kvserver
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 // Code in this file is for testing usage only. It is exported only because it

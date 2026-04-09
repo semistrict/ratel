@@ -21,17 +21,17 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/clusterversion"
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/settings"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/hba"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/identmap"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
-	"github.com/cockroachdb/cockroach/pkg/util/errorutil/unimplemented"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/clusterversion"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/settings"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/hba"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/identmap"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
+	"github.com/semistrict/ratel/pkg/util/errorutil/unimplemented"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 // This file contains the logic for the configuration of HBA rules.
@@ -222,7 +222,7 @@ func ParseAndNormalize(val string) (*hba.Conf, error) {
 		if !ok {
 			// TODO(knz): Determine if an error should be reported
 			// upon unknown auth methods.
-			// See: https://github.com/cockroachdb/cockroach/issues/43716
+			// See: https://github.com/semistrict/ratel/issues/43716
 			return nil, errors.Errorf("unknown auth method %s", method)
 		}
 		conf.Entries[i].MethodFn = info

@@ -23,8 +23,8 @@ import (
 	"os"
 	"path/filepath"
 
-	crdblog "github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	crdblog "github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 )
 
 // The flags used by the internal loggers.

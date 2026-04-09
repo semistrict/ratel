@@ -17,7 +17,7 @@ package storage
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 )
 
 // ResourceLimiterOptions is defining limits for resource limiter to restrict number

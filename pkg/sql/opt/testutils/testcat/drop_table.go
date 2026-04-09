@@ -15,8 +15,8 @@
 package testcat
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 )
 
 // DropTable is a partial implementation of the DROP TABLE statement.

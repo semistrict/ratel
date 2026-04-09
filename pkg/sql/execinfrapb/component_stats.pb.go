@@ -5,10 +5,10 @@ package execinfrapb
 
 import (
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_base "github.com/cockroachdb/cockroach/pkg/base"
-	optional "github.com/cockroachdb/cockroach/pkg/util/optional"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	github_com_cockroachdb_cockroach_pkg_base "github.com/semistrict/ratel/pkg/base"
+	optional "github.com/semistrict/ratel/pkg/util/optional"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -89,7 +89,7 @@ type ComponentID struct {
 	ID int32 `protobuf:"varint,3,opt,name=id" json:"id"`
 	// SQLInstanceID of the node this component is associated with. For cross-node
 	// streams, this is the *origin* node for the stream.
-	SQLInstanceID github_com_cockroachdb_cockroach_pkg_base.SQLInstanceID `protobuf:"varint,4,opt,name=sql_instance_id,json=sqlInstanceId,casttype=github.com/cockroachdb/cockroach/pkg/base.SQLInstanceID" json:"sql_instance_id"`
+	SQLInstanceID github_com_cockroachdb_cockroach_pkg_base.SQLInstanceID `protobuf:"varint,4,opt,name=sql_instance_id,json=sqlInstanceId,casttype=github.com/semistrict/ratel/pkg/base.SQLInstanceID" json:"sql_instance_id"`
 }
 
 func (m *ComponentID) Reset()         { *m = ComponentID{} }

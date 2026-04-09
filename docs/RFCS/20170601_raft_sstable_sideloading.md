@@ -271,4 +271,4 @@ DeleteRange, or more generally any proposal that's large enough to profit from
 reduced write amplification compared to what we have today. However, moving the
 raft log out of rocksdb likely already addresses that suitably.
 
-[1]: https://github.com/cockroachdb/cockroach/pull/9459/files#diff-2967750a9f426e20041d924947ff1d46R707
+[1]: https://github.com/semistrict/ratel/pull/9459/files#diff-2967750a9f426e20041d924947ff1d46R707

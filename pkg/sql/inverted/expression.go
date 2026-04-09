@@ -19,9 +19,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/cockroachdb/cockroach/pkg/keysbase"
-	"github.com/cockroachdb/cockroach/pkg/util/treeprinter"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/keysbase"
+	"github.com/semistrict/ratel/pkg/util/treeprinter"
 )
 
 // EncVal is the encoded form of a value in the inverted column. This library

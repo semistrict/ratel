@@ -17,7 +17,7 @@ package cli
 import (
 	"os"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/exit"
+	"github.com/semistrict/ratel/pkg/cli/exit"
 )
 
 // drainSignals are the signals that will cause the server to drain and exit.

@@ -17,7 +17,7 @@
 
 package kvcoord
 
-import "github.com/cockroachdb/cockroach/pkg/rpc/nodedialer"
+import "github.com/semistrict/ratel/pkg/rpc/nodedialer"
 
 // DisableRaceTransport is a no-op in non-race builds. In race builds,
 // setting this to true prevents the background transport racer goroutine

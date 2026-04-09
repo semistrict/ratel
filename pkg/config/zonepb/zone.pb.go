@@ -6,9 +6,9 @@ package zonepb
 import (
 	bytes "bytes"
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	github_com_cockroachdb_cockroach_pkg_roachpb "github.com/semistrict/ratel/pkg/roachpb"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -246,7 +246,7 @@ type ZoneConfig struct {
 	// exchange, writes get pushed into the future and must wait on commit to
 	// ensure linearizability. For more, see:
 	//
-	//	https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20200811_non_blocking_txns.md
+	//	https://github.com/semistrict/ratel/blob/master/docs/RFCS/20200811_non_blocking_txns.md
 	GlobalReads *bool `protobuf:"varint,12,opt,name=global_reads,json=globalReads" json:"global_reads,omitempty" yaml:"global_reads"`
 	// NumReplicas specifies the desired number of replicas. This includes voting
 	// and non-voting replicas.
@@ -257,7 +257,7 @@ type ZoneConfig struct {
 	NumVoters *int32 `protobuf:"varint,13,opt,name=num_voters,json=numVoters" json:"num_voters,omitempty" yaml:"num_voters"`
 	// Constraints constrains which stores the replicas can be stored on. The
 	// order in which the constraints are stored is arbitrary and may change.
-	// https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20160706_expressive_zone_config.md#constraint-system
+	// https://github.com/semistrict/ratel/blob/master/docs/RFCS/20160706_expressive_zone_config.md#constraint-system
 	//
 	// NOTE: The sum of the num_replicas fields of the Constraints must add up to
 	// at most ZoneConfig.num_replicas, or there must be no more than a single
@@ -395,11 +395,11 @@ type SubzoneSpan struct {
 	// Both Key and EndKey, below, are cast to roachpb.Key for convenience, but
 	// there's no technical restriction that prevents switching them to []byte or
 	// another type that communicates their missing prefix.
-	Key github_com_cockroachdb_cockroach_pkg_roachpb.Key `protobuf:"bytes,1,opt,name=key,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.Key" json:"key,omitempty"`
+	Key github_com_cockroachdb_cockroach_pkg_roachpb.Key `protobuf:"bytes,1,opt,name=key,casttype=github.com/semistrict/ratel/pkg/roachpb.Key" json:"key,omitempty"`
 	// EndKey stores a key suffix that represents the exclusive upper bound for
 	// this span. Like with Key, the SQL table prefix is omitted. If EndKey is
 	// empty, it is assumed to be Key.PrefixEnd().
-	EndKey github_com_cockroachdb_cockroach_pkg_roachpb.Key `protobuf:"bytes,2,opt,name=end_key,json=endKey,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.Key" json:"end_key,omitempty"`
+	EndKey github_com_cockroachdb_cockroach_pkg_roachpb.Key `protobuf:"bytes,2,opt,name=end_key,json=endKey,casttype=github.com/semistrict/ratel/pkg/roachpb.Key" json:"end_key,omitempty"`
 	// SubzoneIndex is the slice index of the Subzone this span belongs to in the
 	// parent ZoneConfig's Subzones field.
 	SubzoneIndex int32 `protobuf:"varint,3,opt,name=subzone_index,json=subzoneIndex" json:"subzone_index"`

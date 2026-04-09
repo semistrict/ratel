@@ -14,7 +14,7 @@
 
 package sql
 
-import "github.com/cockroachdb/cockroach/pkg/settings"
+import "github.com/semistrict/ratel/pkg/settings"
 
 // DummyVars contains a list of dummy vars we do not support that
 // PostgreSQL does, but are required as an easy fix to make certain

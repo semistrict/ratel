@@ -9,7 +9,7 @@ statement ok
 USE d;
 
 # The public schema is special and has hard-coded privileges for the public role.
-# When https://github.com/cockroachdb/cockroach/issues/70266 is resolved,
+# When https://github.com/semistrict/ratel/issues/70266 is resolved,
 # the public role will no longer have CREATE privilege.
 query TTTTB colnames
 SHOW GRANTS ON SCHEMA public

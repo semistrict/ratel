@@ -14,7 +14,7 @@
 
 package clisqlexec
 
-import "github.com/cockroachdb/cockroach/pkg/cli/clicfg"
+import "github.com/semistrict/ratel/pkg/cli/clicfg"
 
 // Context represents configuration for running SQL query
 // and presenting results to the screen.

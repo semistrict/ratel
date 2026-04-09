@@ -20,8 +20,8 @@ import (
 	"reflect"
 	"testing"
 
-	_ "github.com/cockroachdb/cockroach/pkg/util/log" // for flags
 	"github.com/cockroachdb/errors"
+	_ "github.com/semistrict/ratel/pkg/util/log" // for flags
 )
 
 func forEachRangeGroupImpl(t *testing.T, fn func(t *testing.T, rg RangeGroup)) {

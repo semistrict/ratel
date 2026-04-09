@@ -196,7 +196,7 @@ type Cascade struct {
 ```
 
 The planning function is similar to the apply-join planning function (recently
-reworked in [#47681](https://github.com/cockroachdb/cockroach/pull/47681)).
+reworked in [#47681](https://github.com/semistrict/ratel/pull/47681)).
 Internally, it uses a new Optimizer/Memo instance to plan the query and
 execbuilds it against the same `exec.Factory` as the original execbuilder.
 

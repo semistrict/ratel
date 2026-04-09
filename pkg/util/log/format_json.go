@@ -22,11 +22,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/util/jsonbytes"
-	"github.com/cockroachdb/cockroach/pkg/util/log/logpb"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/logtags"
 	"github.com/cockroachdb/redact"
+	"github.com/semistrict/ratel/pkg/util/jsonbytes"
+	"github.com/semistrict/ratel/pkg/util/log/logpb"
 )
 
 type formatFluentJSONCompact struct{}

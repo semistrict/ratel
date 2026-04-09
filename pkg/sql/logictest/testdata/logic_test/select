@@ -356,7 +356,7 @@ SELECT 0 * b, b % 1, 0 % b from abc
 NULL NULL NULL
 
 # Doing an index lookup by MaxInt used to not work.
-# https://github.com/cockroachdb/cockroach/issues/3587
+# https://github.com/semistrict/ratel/issues/3587
 statement ok
 CREATE TABLE MaxIntTest (a INT PRIMARY KEY)
 

@@ -17,7 +17,7 @@ package jobs
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
+	"github.com/semistrict/ratel/pkg/util/metric"
 )
 
 // ExecutorMetrics describes metrics related to scheduled

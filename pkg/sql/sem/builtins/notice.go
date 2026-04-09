@@ -17,9 +17,9 @@ package builtins
 import (
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgnotice"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgnotice"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 )
 
 // crdbInternalSendNotice sends a notice.

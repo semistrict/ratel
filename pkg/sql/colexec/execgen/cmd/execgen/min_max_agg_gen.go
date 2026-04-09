@@ -19,7 +19,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree/treecmp"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree/treecmp"
 )
 
 const minMaxAggTmpl = "pkg/sql/colexec/colexecagg/min_max_agg_tmpl.go"

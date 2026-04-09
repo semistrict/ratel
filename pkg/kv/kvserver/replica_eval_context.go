@@ -17,17 +17,17 @@ package kvserver
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/batcheval"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/spanset"
-	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/batcheval"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/spanset"
+	"github.com/semistrict/ratel/pkg/util"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 // todoSpanSet is a placeholder value for callsites that need to pass a properly
 // populated SpanSet (with according protection by the spanlatch manager) but fail
 // to do so at the time of writing.
 //
-// See https://github.com/cockroachdb/cockroach/issues/19851.
+// See https://github.com/semistrict/ratel/issues/19851.
 //
 // Do not introduce new uses of this.
 var todoSpanSet = &spanset.SpanSet{}

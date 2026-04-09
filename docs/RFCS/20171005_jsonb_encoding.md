@@ -8,7 +8,7 @@
 # Summary
 
 Provide a result value and kv encoding for JSONB values as described in the
-[scoping RFC](https://github.com/cockroachdb/cockroach/pull/18739). The
+[scoping RFC](https://github.com/semistrict/ratel/pull/18739). The
 motivation and use-cases for including JSONB were covered in the scoping
 RFC. As a result of this change, users will be able to manipulate JSONB values
 both in SQL result values and in columns within tables.  We opt to disallow key

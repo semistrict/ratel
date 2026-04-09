@@ -22,8 +22,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/util/httputil"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/httputil"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 )
 
 // RoundTripFunc implements http.RoundTripper

@@ -20,9 +20,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/blobs/blobspb"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
 	"github.com/cockroachdb/errors/oserror"
+	"github.com/semistrict/ratel/pkg/blobs/blobspb"
+	"github.com/semistrict/ratel/pkg/testutils"
 )
 
 func TestBlobServiceList(t *testing.T) {

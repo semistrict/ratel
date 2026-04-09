@@ -14,7 +14,7 @@
 
 package batcheval
 
-import "github.com/cockroachdb/cockroach/pkg/storage/enginepb"
+import "github.com/semistrict/ratel/pkg/storage/enginepb"
 
 // splitStatsHelper codifies and explains the stats computations related to a
 // split. The quantities known during a split (i.e. while the split trigger

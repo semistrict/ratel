@@ -2,8 +2,8 @@
 - Status: completed
 - Start Date: 2016-04-25
 - Authors: Tobias Schottdorf (tobias.schottdorf@gmail.com), Alfonso Subiotto Marqués
-- RFC PRs: [#6283](https://github.com/cockroachdb/cockroach/pull/6283), [#10765](https://github.com/cockroachdb/cockroach/pull/10765)
-- Cockroach Issue: [#9541](https://github.com/cockroachdb/cockroach/issues/9541), [#9493](https://github.com/cockroachdb/cockroach/issues/9493), [#6295](https://github.com/cockroachdb/cockroach/issues/6295)
+- RFC PRs: [#6283](https://github.com/semistrict/ratel/pull/6283), [#10765](https://github.com/semistrict/ratel/pull/10765)
+- Cockroach Issue: [#9541](https://github.com/semistrict/ratel/issues/9541), [#9493](https://github.com/semistrict/ratel/issues/9493), [#6295](https://github.com/semistrict/ratel/issues/6295)
 
 # Summary
 Propose a draining process for a CockroachDB node to perform a graceful
@@ -44,7 +44,7 @@ RFC outlines proposed changes to accommodate use cases such as
   leases to avoid a period of unavailability, and only then initiate shutdown
   via `stopper.Stop()`. This clean shutdown avoids:
     * Blocking schema changes on the order of minutes because table descriptor
-    leases are not properly released [#9493](https://github.com/cockroachdb/cockroach/issues/9493)
+    leases are not properly released [#9493](https://github.com/semistrict/ratel/issues/9493)
     * Increased per-range activity caused by nodes trying to pick up expired
     epoch-based range leases.
     * Leaving around intents from ongoing transactions.
@@ -88,7 +88,7 @@ part of an ongoing transaction. The `v3conn` will also be made aware of
 cancellation of its session's context which will be handled in the same way.
 
 All active sessions will be found through the session registry
-([#10317](https://github.com/cockroachdb/cockroach/pull/10317/)). Sessions will
+([#10317](https://github.com/semistrict/ratel/pull/10317/)). Sessions will
 be extended with a `done` channel which will be used by `pgwire.Server` to
 listen for the completion of sessions. Sessions will be created with a context
 derived from a cancellable parent context, thus offering a single point from
@@ -228,7 +228,7 @@ being if that seems opportune.
   forcibly close these connections. It might also make sense to offer operators
   to set this timeout via an environment variable.
 * Reacquire table leases when the node goes back up. This was suggested in
-  [#9493](https://github.com/cockroachdb/cockroach/issues/9493) but does not fix
+  [#9493](https://github.com/semistrict/ratel/issues/9493) but does not fix
   the issue of having to wait for the lease to expire if the node does not come
   back up.
 

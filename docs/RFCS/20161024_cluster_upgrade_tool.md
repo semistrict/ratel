@@ -2,8 +2,8 @@
 - Status: completed
 - Start Date: 2016-09-15
 - Authors: Daniel Harrison, Alex Robinson
-- RFC PR: [#9404](https://github.com/cockroachdb/cockroach/pull/9404)
-- Cockroach Issue: [#4267](https://github.com/cockroachdb/cockroach/issues/4267)
+- RFC PR: [#9404](https://github.com/semistrict/ratel/pull/9404)
+- Cockroach Issue: [#4267](https://github.com/semistrict/ratel/issues/4267)
 
 # Summary
 
@@ -257,7 +257,7 @@ the CockroachDB version (or alternatively the known migrations) for all nodes
 in the cluster. We could potentially use gossip for this, but have to be sure
 that we know the state of all nodes, not just most of them to be confident that
 it's safe to run a migration. It has also been suggested that we [use a form of
-version leases for this](https://github.com/cockroachdb/cockroach/issues/10212).
+version leases for this](https://github.com/semistrict/ratel/issues/10212).
 
 #### Example
 
@@ -308,7 +308,7 @@ Currently, various upgrades are performed on an "as needed" basis: see the
 cluster upgrades with no operational overhead, but it introduces code
 complexity that will be hard to ever remove. Adding new system tables is
 particularly complex; see the
-[attempted `system.jobs` PR](https://github.com/cockroachdb/cockroach/pull/7073)
+[attempted `system.jobs` PR](https://github.com/semistrict/ratel/pull/7073)
 for an example.
 
 We've also considered requiring a command-line tool to be run using the new

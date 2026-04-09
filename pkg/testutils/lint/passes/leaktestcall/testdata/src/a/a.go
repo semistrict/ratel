@@ -17,7 +17,7 @@ package a
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 )
 
 func foo(t *testing.T) {

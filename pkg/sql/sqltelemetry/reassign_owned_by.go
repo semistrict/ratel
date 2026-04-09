@@ -14,7 +14,7 @@
 
 package sqltelemetry
 
-import "github.com/cockroachdb/cockroach/pkg/server/telemetry"
+import "github.com/semistrict/ratel/pkg/server/telemetry"
 
 // CreateReassignOwnedByCounter returns a counter to increment for the REASSIGN OWNED BY command.
 func CreateReassignOwnedByCounter() telemetry.Counter {

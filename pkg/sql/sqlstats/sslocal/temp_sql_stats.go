@@ -17,8 +17,8 @@ package sslocal
 import (
 	"sort"
 
-	"github.com/cockroachdb/cockroach/pkg/server/serverpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlstats/ssmemstorage"
+	"github.com/semistrict/ratel/pkg/server/serverpb"
+	"github.com/semistrict/ratel/pkg/sql/sqlstats/ssmemstorage"
 )
 
 type stmtResponseList []serverpb.StatementsResponse_CollectedStatementStatistics

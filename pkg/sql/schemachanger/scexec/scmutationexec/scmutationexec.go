@@ -17,7 +17,7 @@ package scmutationexec
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scop"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scop"
 )
 
 // NewMutationVisitor creates a new scop.MutationVisitor.

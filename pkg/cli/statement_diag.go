@@ -21,9 +21,9 @@ import (
 	"strconv"
 	"text/tabwriter"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/clierrorplus"
-	"github.com/cockroachdb/cockroach/pkg/cli/clisqlclient"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/cli/clierrorplus"
+	"github.com/semistrict/ratel/pkg/cli/clisqlclient"
 	"github.com/spf13/cobra"
 )
 

@@ -23,8 +23,8 @@ import (
 	"testing"
 	"testing/iotest"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils"
 	"github.com/cockroachdb/datadriven"
+	"github.com/semistrict/ratel/pkg/testutils"
 )
 
 func TestScanner(t *testing.T) {

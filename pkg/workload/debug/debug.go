@@ -17,7 +17,7 @@
 package debug
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/workload/cli"
+	"github.com/semistrict/ratel/pkg/workload/cli"
 	"github.com/spf13/cobra"
 )
 

@@ -298,9 +298,9 @@ Of note:
 ### Integration between logging and `Contexts`
 
 All the logging methods (`log.{Infof,VEventf,…}`) take a `Context` and
-[extract the](https://github.com/cockroachdb/cockroach/blob/281777256787cef83e7b1a8485648010442ffe48/pkg/util/log/structured.go#L111)
-[“log tags”](https://github.com/cockroachdb/cockroach/blob/281777256787cef83e7b1a8485648010442ffe48/pkg/util/log/structured.go#L111)
-[from it](https://github.com/cockroachdb/cockroach/blob/281777256787cef83e7b1a8485648010442ffe48/pkg/util/log/structured.go#L111)
+[extract the](https://github.com/semistrict/ratel/blob/281777256787cef83e7b1a8485648010442ffe48/pkg/util/log/structured.go#L111)
+[“log tags”](https://github.com/semistrict/ratel/blob/281777256787cef83e7b1a8485648010442ffe48/pkg/util/log/structured.go#L111)
+[from it](https://github.com/semistrict/ratel/blob/281777256787cef83e7b1a8485648010442ffe48/pkg/util/log/structured.go#L111)
 and prepend them to the messages. The *log tags* are the prefixes we
 saw (e.g. `n1,s1,r1/1:/{Min-Table/0},@c420498a80`).
 
@@ -317,7 +317,7 @@ instances want to provide different annotations. We use an
 `Context` will be annotated with.
 
 For example, a `replica` initializes its `AmbientContext`
-[like so](https://github.com/cockroachdb/cockroach/blob/281777256787cef83e7b1a8485648010442ffe48/pkg/storage/replica.go#L576):
+[like so](https://github.com/semistrict/ratel/blob/281777256787cef83e7b1a8485648010442ffe48/pkg/storage/replica.go#L576):
 
     // Add replica log tag - the value is rangeStr.String().
     r.AmbientContext.AddLogTag("r", &r.rangeStr)
@@ -326,7 +326,7 @@ For example, a `replica` initializes its `AmbientContext`
 
 And then all entry points into an instance use the `AmbientContext` to
 annotate the operation’s context. For example, `replica.Send()`
-[does](https://github.com/cockroachdb/cockroach/blob/281777256787cef83e7b1a8485648010442ffe48/pkg/storage/replica.go#L1416):
+[does](https://github.com/semistrict/ratel/blob/281777256787cef83e7b1a8485648010442ffe48/pkg/storage/replica.go#L1416):
 
     func (r *Replica) Send(
             ctx context.Context, ba roachpb.BatchRequest,
@@ -368,15 +368,15 @@ other trace collection features.
 
 If the Lightstep integration is enabled, crdb uses both the Lightstep
 and the internal tracers simultaneously - through a
-`[TeeTracer](https://github.com/cockroachdb/cockroach/blob/281777256787cef83e7b1a8485648010442ffe48/pkg/util/tracing/tee_tracer.go#L28)`.
+`[TeeTracer](https://github.com/semistrict/ratel/blob/281777256787cef83e7b1a8485648010442ffe48/pkg/util/tracing/tee_tracer.go#L28)`.
 
 As we’ve seen, all log messages also go to the current distributed
 trace (if any). The logging code [passes messages to the
-tracer](https://github.com/cockroachdb/cockroach/blob/281777256787cef83e7b1a8485648010442ffe48/pkg/util/log/trace.go#L132),
+tracer](https://github.com/semistrict/ratel/blob/281777256787cef83e7b1a8485648010442ffe48/pkg/util/log/trace.go#L132),
 through the OpenTracing interface. The connection with that interface
 is a `Span` which is passed around - you’ve guessed it - in the
 `Context`. The logging code [extracts
-it](https://github.com/cockroachdb/cockroach/blob/281777256787cef83e7b1a8485648010442ffe48/pkg/util/log/trace.go#L110)
+it](https://github.com/semistrict/ratel/blob/281777256787cef83e7b1a8485648010442ffe48/pkg/util/log/trace.go#L110)
 from there.
 
 ### What operations do we track in crdb? Where do we track traces and spans?
@@ -388,10 +388,10 @@ same top-level `Context`, for the benefit of sharing those client
 logging tags (`client=127.0.0.1:52149,user=root`), and for appearing
 in `/debug/events` as a single trace (for `net.trace`‘s definition of
 a trace). The integration with `/debug/events` is done by putting a
-`[trace.EventLog](https://github.com/cockroachdb/cockroach/blob/e05f9ec8e47922c3ffb20570883da17544566953/pkg/sql/session.go#L199)`
+`[trace.EventLog](https://github.com/semistrict/ratel/blob/e05f9ec8e47922c3ffb20570883da17544566953/pkg/sql/session.go#L199)`
 [in the
-session’s](https://github.com/cockroachdb/cockroach/blob/e05f9ec8e47922c3ffb20570883da17544566953/pkg/sql/session.go#L199)
-`[Context](https://github.com/cockroachdb/cockroach/blob/e05f9ec8e47922c3ffb20570883da17544566953/pkg/sql/session.go#L199)`. (FIXME:
+session’s](https://github.com/semistrict/ratel/blob/e05f9ec8e47922c3ffb20570883da17544566953/pkg/sql/session.go#L199)
+`[Context](https://github.com/semistrict/ratel/blob/e05f9ec8e47922c3ffb20570883da17544566953/pkg/sql/session.go#L199)`. (FIXME:
 explain what this does. Radu says: “The most important usecase for
 debug/events is finding an operation that is stuck (you can’t see
 those in lightstep). All net/trace does is take events and present
@@ -421,7 +421,7 @@ resolving a key to a range, or all the work done by individual DistSQL
 processors. So, we create a *root span* for each SQL transaction (so,
 with a larger lifetime than long-lived SQL session). This is done by
 the sql
-`[Executor](https://github.com/cockroachdb/cockroach/blob/281777256787cef83e7b1a8485648010442ffe48/pkg/sql/session.go#L326)`. This
+`[Executor](https://github.com/semistrict/ratel/blob/281777256787cef83e7b1a8485648010442ffe48/pkg/sql/session.go#L326)`. This
 means that the highest level grouping that we’ll see in LightStep for
 SQL operations is a SQL transaction.
 
@@ -440,9 +440,9 @@ tracing operations that are too massive. ]
 Within a SQL transaction, there are many sub-operations. At the time
 of this writing, we’re a little shy about opening child spans. We only
 do it in `grpcTransport` when we’re [about to
-perform](https://github.com/cockroachdb/cockroach/blob/281777256787cef83e7b1a8485648010442ffe48/pkg/kv/transport.go#L173)
+perform](https://github.com/semistrict/ratel/blob/281777256787cef83e7b1a8485648010442ffe48/pkg/kv/transport.go#L173)
 an RPC and on the [server side of the
-RPC](https://github.com/cockroachdb/cockroach/blob/281777256787cef83e7b1a8485648010442ffe48/pkg/server/node.go#L883)
+RPC](https://github.com/semistrict/ratel/blob/281777256787cef83e7b1a8485648010442ffe48/pkg/server/node.go#L883)
 (the situation is better in DistSQL, where we also perform more
 asynchronous actions, so separating logs into different spans becomes
 more important).
@@ -484,8 +484,8 @@ Depending on who you ask, there are some exceptions and shades of gray:
 1. Some structs are just “bags or arguments” for some method
    calls. This is a good pattern - if a method or group of methods has 30
    arguments, you probably want to combine them in a struct. For example,
-   `[EvalContext](https://github.com/cockroachdb/cockroach/blob/e05f9ec/pkg/sql/parser/eval.go#L1605)`
-   [](https://github.com/cockroachdb/cockroach/blob/e05f9ec/pkg/sql/parser/eval.go#L1605)is
+   `[EvalContext](https://github.com/semistrict/ratel/blob/e05f9ec/pkg/sql/parser/eval.go#L1605)`
+   [](https://github.com/semistrict/ratel/blob/e05f9ec/pkg/sql/parser/eval.go#L1605)is
    such a struct and it contains a `Context`. These structs don’t have
    any lifetime - they just exist for one method call. And the `Context`
    is not a special argument in this regard; it can stay in the struct
@@ -601,7 +601,7 @@ add link) It was really cool but I didn’t clean it up. If we’d do
 this, then using proper `Contexts` in tests would be beneficial.
 
 FIXME: integrate side note: “Nathan: I just opened
-https://github.com/cockroachdb/cockroach/pull/14128 to address this
+https://github.com/semistrict/ratel/pull/14128 to address this
 first point. We should be using context.Background in tests, never
 context.TODO. Andrei: well it’s not technically Background() work. In
 fact, you can argue that Background() would be even worse, at it’d

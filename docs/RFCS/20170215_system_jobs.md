@@ -459,11 +459,11 @@ specific compelling use case for a full update history.
   collection to prune old entries from the table, likely with a
   user-configurable timeframe.
 
-[#7037]: https://github.com/cockroachdb/cockroach/pull/7073
-[#11722]: https://github.com/cockroachdb/cockroach/pull/11722
-[#12555]: https://github.com/cockroachdb/cockroach/issues/12555
-[#13656]: https://github.com/cockroachdb/cockroach/pull/13656
+[#7037]: https://github.com/semistrict/ratel/pull/7073
+[#11722]: https://github.com/semistrict/ratel/pull/11722
+[#12555]: https://github.com/semistrict/ratel/issues/12555
+[#13656]: https://github.com/semistrict/ratel/pull/13656
 [@a-robinson]: https://github.com/a-robinson
 [@danhhz]: https://github.com/danhhz
 [@vivekmenezes]: https://github.com/vivekmenezes
-[cluster migration framework]: https://github.com/cockroachdb/cockroach/pull/11658
+[cluster migration framework]: https://github.com/semistrict/ratel/pull/11658

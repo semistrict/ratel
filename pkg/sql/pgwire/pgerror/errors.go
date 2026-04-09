@@ -19,9 +19,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
 	"github.com/cockroachdb/errors"
 	"github.com/lib/pq"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
 )
 
 var _ error = (*Error)(nil)

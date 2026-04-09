@@ -14,7 +14,7 @@
 
 package testcat
 
-import "github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+import "github.com/semistrict/ratel/pkg/sql/sem/tree"
 
 // CreateView creates a test view from a parsed DDL statement and adds it to the
 // catalog.

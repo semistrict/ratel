@@ -19,7 +19,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree/treecmp"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree/treecmp"
 )
 
 const ordSyncTmpl = "pkg/sql/colexec/ordered_synchronizer_tmpl.go"

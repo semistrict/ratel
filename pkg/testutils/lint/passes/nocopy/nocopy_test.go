@@ -18,10 +18,10 @@ package nocopy_test
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/build/bazel"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
-	"github.com/cockroachdb/cockroach/pkg/testutils/lint/passes/nocopy"
-	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
+	"github.com/semistrict/ratel/pkg/build/bazel"
+	"github.com/semistrict/ratel/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/testutils/lint/passes/nocopy"
+	"github.com/semistrict/ratel/pkg/testutils/skip"
 	"golang.org/x/tools/go/analysis/analysistest"
 )
 

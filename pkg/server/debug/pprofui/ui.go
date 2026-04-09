@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/logtags"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 func pprofCtx(ctx context.Context) context.Context {

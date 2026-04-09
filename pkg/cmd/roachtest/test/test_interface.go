@@ -15,8 +15,8 @@
 package test
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/roachprod/logger"
-	"github.com/cockroachdb/cockroach/pkg/util/version"
+	"github.com/semistrict/ratel/pkg/roachprod/logger"
+	"github.com/semistrict/ratel/pkg/util/version"
 )
 
 // Test is the interface through which roachtests interact with the

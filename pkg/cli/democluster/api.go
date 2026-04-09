@@ -18,9 +18,9 @@ import (
 	"context"
 	gosql "database/sql"
 
-	democlusterapi "github.com/cockroachdb/cockroach/pkg/cli/democluster/api"
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/server"
+	democlusterapi "github.com/semistrict/ratel/pkg/cli/democluster/api"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/server"
 )
 
 // DemoCluster represents a demo cluster.

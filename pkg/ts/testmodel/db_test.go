@@ -19,7 +19,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/ts/tspb"
+	"github.com/semistrict/ratel/pkg/ts/tspb"
 )
 
 // TestModelDBQuery is a high-level verification that the test model query

@@ -34,50 +34,50 @@ import (
 	"time"
 
 	"github.com/cockroachdb/cockroach-go/v2/crdb"
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/blobs"
-	"github.com/cockroachdb/cockroach/pkg/cloud"
-	_ "github.com/cockroachdb/cockroach/pkg/cloud/impl"
-	"github.com/cockroachdb/cockroach/pkg/cloud/userfile"
-	"github.com/cockroachdb/cockroach/pkg/jobs"
-	"github.com/cockroachdb/cockroach/pkg/jobs/jobspb"
-	"github.com/cockroachdb/cockroach/pkg/jobs/jobstest"
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/kv"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/rpc"
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/sql"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descs"
-	"github.com/cockroachdb/cockroach/pkg/sql/distsql"
-	"github.com/cockroachdb/cockroach/pkg/sql/execinfra"
-	"github.com/cockroachdb/cockroach/pkg/sql/gcjob"
-	"github.com/cockroachdb/cockroach/pkg/sql/parser"
-	"github.com/cockroachdb/cockroach/pkg/sql/row"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/stats"
-	"github.com/cockroachdb/cockroach/pkg/sql/tests"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
-	"github.com/cockroachdb/cockroach/pkg/testutils/jobutils"
-	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
-	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
-	"github.com/cockroachdb/cockroach/pkg/testutils/sqlutils"
-	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/cockroach/pkg/util/ctxgroup"
-	"github.com/cockroachdb/cockroach/pkg/util/encoding/csv"
-	"github.com/cockroachdb/cockroach/pkg/util/ioctx"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/randutil"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
 	"github.com/cockroachdb/errors"
 	"github.com/jackc/pgx/v4"
 	"github.com/linkedin/goavro/v2"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/blobs"
+	"github.com/semistrict/ratel/pkg/cloud"
+	_ "github.com/semistrict/ratel/pkg/cloud/impl"
+	"github.com/semistrict/ratel/pkg/cloud/userfile"
+	"github.com/semistrict/ratel/pkg/jobs"
+	"github.com/semistrict/ratel/pkg/jobs/jobspb"
+	"github.com/semistrict/ratel/pkg/jobs/jobstest"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/kv"
+	"github.com/semistrict/ratel/pkg/kv/kvserver"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/rpc"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/sql"
+	"github.com/semistrict/ratel/pkg/sql/catalog"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descs"
+	"github.com/semistrict/ratel/pkg/sql/distsql"
+	"github.com/semistrict/ratel/pkg/sql/execinfra"
+	"github.com/semistrict/ratel/pkg/sql/gcjob"
+	"github.com/semistrict/ratel/pkg/sql/parser"
+	"github.com/semistrict/ratel/pkg/sql/row"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/stats"
+	"github.com/semistrict/ratel/pkg/sql/tests"
+	"github.com/semistrict/ratel/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/testutils/jobutils"
+	"github.com/semistrict/ratel/pkg/testutils/serverutils"
+	"github.com/semistrict/ratel/pkg/testutils/skip"
+	"github.com/semistrict/ratel/pkg/testutils/sqlutils"
+	"github.com/semistrict/ratel/pkg/util"
+	"github.com/semistrict/ratel/pkg/util/ctxgroup"
+	"github.com/semistrict/ratel/pkg/util/encoding/csv"
+	"github.com/semistrict/ratel/pkg/util/ioctx"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/randutil"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -3732,7 +3732,7 @@ func benchUserUpload(b *testing.B, uploadBaseURI string) {
 
 // goos: darwin
 // goarch: amd64
-// pkg: github.com/cockroachdb/cockroach/pkg/sql/importer
+// pkg: github.com/semistrict/ratel/pkg/sql/importer
 // BenchmarkNodelocalImport-16    	       1	4444906026 ns/op	   6.11 MB/s
 // BenchmarkNodelocalImport-16    	       1	3943970329 ns/op	   6.88 MB/s
 // BenchmarkNodelocalImport-16    	       1	4372378719 ns/op	   6.21 MB/s
@@ -3749,7 +3749,7 @@ func BenchmarkNodelocalImport(b *testing.B) {
 
 // goos: darwin
 // goarch: amd64
-// pkg: github.com/cockroachdb/cockroach/pkg/sql/importer
+// pkg: github.com/semistrict/ratel/pkg/sql/importer
 // BenchmarkUserfileImport-16    	       1	3950434182 ns/op	   6.87 MB/s
 // BenchmarkUserfileImport-16    	       1	4087946074 ns/op	   6.64 MB/s
 // BenchmarkUserfileImport-16    	       1	4422526863 ns/op	   6.14 MB/s
@@ -4771,7 +4771,7 @@ INSERT INTO users (a, b) VALUES (1, 2), (3, 4);
 
 // goos: darwin
 // goarch: amd64
-// pkg: github.com/cockroachdb/cockroach/pkg/sql/importer
+// pkg: github.com/semistrict/ratel/pkg/sql/importer
 // BenchmarkDelimitedConvertRecord-16    	  500000	      2473 ns/op	  48.51 MB/s
 // BenchmarkDelimitedConvertRecord-16    	  500000	      2580 ns/op	  46.51 MB/s
 // BenchmarkDelimitedConvertRecord-16    	  500000	      2678 ns/op	  44.80 MB/s
@@ -4872,7 +4872,7 @@ func BenchmarkDelimitedConvertRecord(b *testing.B) {
 
 // goos: darwin
 // goarch: amd64
-// pkg: github.com/cockroachdb/cockroach/pkg/sql/importer
+// pkg: github.com/semistrict/ratel/pkg/sql/importer
 // BenchmarkPgCopyConvertRecord-16    	  317534	      3752 ns/op	  31.98 MB/s
 // BenchmarkPgCopyConvertRecord-16    	  317433	      3767 ns/op	  31.86 MB/s
 // BenchmarkPgCopyConvertRecord-16    	  308832	      3867 ns/op	  31.03 MB/s

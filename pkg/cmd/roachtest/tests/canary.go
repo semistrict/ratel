@@ -25,13 +25,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/cluster"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/option"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/test"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/install"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/logger"
-	"github.com/cockroachdb/cockroach/pkg/util/retry"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/cluster"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/option"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/test"
+	"github.com/semistrict/ratel/pkg/roachprod/install"
+	"github.com/semistrict/ratel/pkg/roachprod/logger"
+	"github.com/semistrict/ratel/pkg/util/retry"
 )
 
 // This file contains common elements for all 3rd party test suite roachtests.
@@ -99,7 +99,7 @@ func maybeAddGithubLink(issue string) string {
 	if err != nil {
 		return issue
 	}
-	return fmt.Sprintf("https://github.com/cockroachdb/cockroach/issues/%d", issueNum)
+	return fmt.Sprintf("https://github.com/semistrict/ratel/issues/%d", issueNum)
 }
 
 // The following functions are augmented basic cluster functions but there tends

@@ -17,7 +17,7 @@ package tspb
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // ToInternal places the datapoints in a TimeSeriesData message into one or

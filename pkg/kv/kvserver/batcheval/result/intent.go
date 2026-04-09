@@ -15,8 +15,8 @@
 package result
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/concurrency/lock"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/concurrency/lock"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // FromAcquiredLocks creates a Result communicating that the locks were

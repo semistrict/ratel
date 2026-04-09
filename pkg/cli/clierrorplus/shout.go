@@ -15,8 +15,8 @@
 package clierrorplus
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/cli/clierror"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/cli/clierror"
+	"github.com/semistrict/ratel/pkg/util/log"
 	"github.com/spf13/cobra"
 )
 

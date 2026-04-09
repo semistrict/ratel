@@ -25,25 +25,25 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/cluster"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/option"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/prometheus"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/registry"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/spec"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/test"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/install"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
-	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
-	"github.com/cockroachdb/cockroach/pkg/util/search"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
-	"github.com/cockroachdb/cockroach/pkg/util/version"
-	"github.com/cockroachdb/cockroach/pkg/workload/histogram"
-	"github.com/cockroachdb/cockroach/pkg/workload/tpcc"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/ttycolor"
 	"github.com/lib/pq"
 	promapi "github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/cluster"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/option"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/prometheus"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/registry"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/spec"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/test"
+	"github.com/semistrict/ratel/pkg/roachprod/install"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/testutils/skip"
+	"github.com/semistrict/ratel/pkg/util/search"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/util/version"
+	"github.com/semistrict/ratel/pkg/workload/histogram"
+	"github.com/semistrict/ratel/pkg/workload/tpcc"
 	"github.com/stretchr/testify/require"
 )
 
@@ -88,7 +88,7 @@ type tpccOptions struct {
 	// EnableCircuitBreakers causes the kv.replica_circuit_breaker.slow_replication_threshold
 	// setting to be populated, which enables per-Replica circuit breakers.
 	//
-	// TODO(tbg): remove this once https://github.com/cockroachdb/cockroach/issues/74705 is completed.
+	// TODO(tbg): remove this once https://github.com/semistrict/ratel/issues/74705 is completed.
 	EnableCircuitBreakers bool
 }
 
@@ -750,7 +750,7 @@ func registerTPCC(r registry.Registry) {
 	registerTPCCBenchSpec(r, tpccBenchSpec{
 		Nodes:        9,
 		CPUs:         4,
-		HighMem:      true, // can OOM otherwise: https://github.com/cockroachdb/cockroach/issues/73376
+		HighMem:      true, // can OOM otherwise: https://github.com/semistrict/ratel/issues/73376
 		Distribution: multiRegion,
 		LoadConfig:   multiLoadgen,
 
@@ -794,7 +794,7 @@ func (d tpccBenchDistribution) zones() []string {
 		return []string{"us-central1-b"}
 	case multiZone:
 		// NB: us-central1-a has been causing issues, see:
-		// https://github.com/cockroachdb/cockroach/issues/66184
+		// https://github.com/semistrict/ratel/issues/66184
 		return []string{"us-central1-f", "us-central1-b", "us-central1-c"}
 	case multiRegion:
 		return []string{"us-east1-b", "us-west1-b", "europe-west2-b"}
@@ -876,7 +876,7 @@ func (s tpccBenchSpec) startOpts() (option.StartOpts, install.ClusterSettings) {
 	startOpts := option.DefaultStartOpts()
 	settings := install.MakeClusterSettings()
 	// Facilitate diagnosing out-of-memory conditions in tpccbench runs.
-	// See https://github.com/cockroachdb/cockroach/issues/75071.
+	// See https://github.com/semistrict/ratel/issues/75071.
 	settings.Env = append(settings.Env, "COCKROACH_MEMPROF_INTERVAL=15s")
 	if s.LoadConfig == singlePartitionedLoadgen {
 		settings.NumRacks = s.partitions()
@@ -1131,7 +1131,7 @@ func runTPCCBench(ctx context.Context, t test.Test, c cluster.Cluster, b tpccBen
 		// to recover without failing the line search.
 		if err := c.Reset(ctx, t.L()); err != nil {
 			// Reset() can flake sometimes, see for example:
-			// https://github.com/cockroachdb/cockroach/issues/61981#issuecomment-826838740
+			// https://github.com/semistrict/ratel/issues/61981#issuecomment-826838740
 			t.L().Printf("failed to reset VMs, proceeding anyway: %s", err)
 			_ = err // intentionally continuing
 		}
@@ -1401,7 +1401,7 @@ func registerTPCCBench(r registry.Registry) {
 			EstimatedMax:   40000,
 		},
 
-		// See https://github.com/cockroachdb/cockroach/issues/31409 for the next three specs.
+		// See https://github.com/semistrict/ratel/issues/31409 for the next three specs.
 		{
 			Nodes: 6,
 			CPUs:  16,

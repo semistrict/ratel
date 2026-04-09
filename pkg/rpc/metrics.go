@@ -14,7 +14,7 @@
 
 package rpc
 
-import "github.com/cockroachdb/cockroach/pkg/util/metric"
+import "github.com/semistrict/ratel/pkg/util/metric"
 
 // We want to have a way to track the number of connection
 // but we also want to have a way to know that connection health.

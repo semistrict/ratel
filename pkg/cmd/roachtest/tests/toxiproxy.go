@@ -26,10 +26,10 @@ import (
 	"time"
 
 	toxiproxy "github.com/Shopify/toxiproxy/client"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/cluster"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/option"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/test"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/cluster"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/option"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/test"
 )
 
 // cockroachToxiWrapper replaces the cockroach binary. It modifies the listening port so

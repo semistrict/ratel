@@ -15,7 +15,7 @@
 package storage
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/roachpb"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 )
 
@@ -106,7 +106,7 @@ import (
 //
 // Note that the interface is not currently designed such that raft log writes
 // avoid syncing to disk as discussed in
-// https://github.com/cockroachdb/cockroach/issues/17500#issuecomment-727094672
+// https://github.com/semistrict/ratel/issues/17500#issuecomment-727094672
 // and followup comments on that issue. However, having a clean storage
 // abstraction should be a reasonable step in that direction.
 //
@@ -211,7 +211,7 @@ import (
 //   One could possibly relax these split/merge invariants but the corner
 //   cases are very subtle and make it hard to reason about correctness.
 //   As an example, see the discussion about "not syncing for splits" in
-//   https://github.com/cockroachdb/cockroach/pull/72745#pullrequestreview-807989047
+//   https://github.com/semistrict/ratel/pull/72745#pullrequestreview-807989047
 //
 // INVARIANT (InterReplicaStateConsistency): The latest non-provisional
 // RangeDescriptors of replicas with state machine state have spans that do
@@ -409,7 +409,7 @@ import (
 // A crash after D1 will result in a replica either in state
 // RecoveryDeletingReplica or UninitializedStateMachine. For the latter, some
 // code above ReplicasStorage will eventually ask for the replica to be
-// cleaned up (see https://github.com/cockroachdb/cockroach/issues/73424 for
+// cleaned up (see https://github.com/semistrict/ratel/issues/73424 for
 // cleanup improvement). For the former, ReplicasStorage.Init will execute D2.
 //
 // ============================================================================

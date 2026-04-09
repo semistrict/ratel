@@ -5,14 +5,14 @@ package contentionpb
 
 import (
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	github_com_cockroachdb_cockroach_pkg_util_uuid "github.com/cockroachdb/cockroach/pkg/util/uuid"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	_ "github.com/gogo/protobuf/types"
 	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
+	github_com_cockroachdb_cockroach_pkg_roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb "github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	github_com_cockroachdb_cockroach_pkg_util_uuid "github.com/semistrict/ratel/pkg/util/uuid"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -35,9 +35,9 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 // about a single index.
 type IndexContentionEvents struct {
 	// TableID is the ID of the table experiencing contention.
-	TableID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"table_id,omitempty"`
+	TableID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"table_id,omitempty"`
 	// IndexID is the ID of the index experiencing contention.
-	IndexID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.IndexID `protobuf:"varint,2,opt,name=index_id,json=indexId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.IndexID" json:"index_id,omitempty"`
+	IndexID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.IndexID `protobuf:"varint,2,opt,name=index_id,json=indexId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.IndexID" json:"index_id,omitempty"`
 	// NumContentionEvents is the number of contention events that have happened
 	// on the index.
 	NumContentionEvents uint64 `protobuf:"varint,3,opt,name=num_contention_events,json=numContentionEvents,proto3" json:"num_contention_events,omitempty"`
@@ -84,7 +84,7 @@ var xxx_messageInfo_IndexContentionEvents proto.InternalMessageInfo
 // key.
 type SingleTxnContention struct {
 	// TxnID is the contending transaction.
-	TxnID github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,2,opt,name=txn_id,json=txnId,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/uuid.UUID" json:"txn_id"`
+	TxnID github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,2,opt,name=txn_id,json=txnId,proto3,customtype=github.com/semistrict/ratel/pkg/util/uuid.UUID" json:"txn_id"`
 	// Count is the number of times the corresponding transaction was
 	// encountered.
 	Count uint64 `protobuf:"varint,3,opt,name=count,proto3" json:"count,omitempty"`
@@ -122,7 +122,7 @@ var xxx_messageInfo_SingleTxnContention proto.InternalMessageInfo
 // a single key.
 type SingleKeyContention struct {
 	// Key is the key that other transactions conflicted on.
-	Key github_com_cockroachdb_cockroach_pkg_roachpb.Key `protobuf:"bytes,1,opt,name=key,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.Key" json:"key,omitempty"`
+	Key github_com_cockroachdb_cockroach_pkg_roachpb.Key `protobuf:"bytes,1,opt,name=key,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.Key" json:"key,omitempty"`
 	// Txns are all contending transactions that we kept track of. Note that some
 	// transactions could have been forgotten since we're keeping a limited LRU
 	// cache of them.
@@ -164,7 +164,7 @@ var xxx_messageInfo_SingleKeyContention proto.InternalMessageInfo
 // information for a single non-SQL key.
 type SingleNonSQLKeyContention struct {
 	// Key is the key that other transactions conflicted on.
-	Key github_com_cockroachdb_cockroach_pkg_roachpb.Key `protobuf:"bytes,1,opt,name=key,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.Key" json:"key,omitempty"`
+	Key github_com_cockroachdb_cockroach_pkg_roachpb.Key `protobuf:"bytes,1,opt,name=key,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.Key" json:"key,omitempty"`
 	// NumContentionEvents is the number of contention events that have happened
 	// on the key.
 	NumContentionEvents uint64 `protobuf:"varint,2,opt,name=num_contention_events,json=numContentionEvents,proto3" json:"num_contention_events,omitempty"`
@@ -260,12 +260,12 @@ func (m *SerializedRegistry) XXX_DiscardUnknown() {
 var xxx_messageInfo_SerializedRegistry proto.InternalMessageInfo
 
 type ResolvedTxnID struct {
-	TxnID github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,1,opt,name=txnID,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/uuid.UUID" json:"txnID"`
+	TxnID github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,1,opt,name=txnID,proto3,customtype=github.com/semistrict/ratel/pkg/util/uuid.UUID" json:"txnID"`
 	// txnFingerprintID is the corresponding transaction fingerprint ID of the
 	// txnID. However, if the transaction fingerprint ID of the txnID is not yet
 	// known, (i.e. when the transaction is still executing), this value is filled
 	// with roachpb.InvalidTransactionFingerprintID.
-	TxnFingerprintID github_com_cockroachdb_cockroach_pkg_roachpb.TransactionFingerprintID `protobuf:"varint,2,opt,name=txnFingerprintID,proto3,customtype=github.com/cockroachdb/cockroach/pkg/roachpb.TransactionFingerprintID" json:"txnFingerprintID"`
+	TxnFingerprintID github_com_cockroachdb_cockroach_pkg_roachpb.TransactionFingerprintID `protobuf:"varint,2,opt,name=txnFingerprintID,proto3,customtype=github.com/semistrict/ratel/pkg/roachpb.TransactionFingerprintID" json:"txnFingerprintID"`
 }
 
 func (m *ResolvedTxnID) Reset()         { *m = ResolvedTxnID{} }
@@ -299,9 +299,9 @@ var xxx_messageInfo_ResolvedTxnID proto.InternalMessageInfo
 
 type ExtendedContentionEvent struct {
 	BlockingEvent            roachpb.ContentionEvent                                               `protobuf:"bytes,1,opt,name=blocking_event,json=blockingEvent,proto3" json:"blocking_event"`
-	BlockingTxnFingerprintID github_com_cockroachdb_cockroach_pkg_roachpb.TransactionFingerprintID `protobuf:"varint,2,opt,name=blocking_txn_fingerprint_id,json=blockingTxnFingerprintId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.TransactionFingerprintID" json:"blocking_txn_fingerprint_id,omitempty"`
-	WaitingTxnID             github_com_cockroachdb_cockroach_pkg_util_uuid.UUID                   `protobuf:"bytes,3,opt,name=waiting_txn_id,json=waitingTxnId,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/uuid.UUID" json:"waiting_txn_id"`
-	WaitingTxnFingerprintID  github_com_cockroachdb_cockroach_pkg_roachpb.TransactionFingerprintID `protobuf:"varint,4,opt,name=waiting_txn_fingerprint_id,json=waitingTxnFingerprintId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.TransactionFingerprintID" json:"waiting_txn_fingerprint_id,omitempty"`
+	BlockingTxnFingerprintID github_com_cockroachdb_cockroach_pkg_roachpb.TransactionFingerprintID `protobuf:"varint,2,opt,name=blocking_txn_fingerprint_id,json=blockingTxnFingerprintId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.TransactionFingerprintID" json:"blocking_txn_fingerprint_id,omitempty"`
+	WaitingTxnID             github_com_cockroachdb_cockroach_pkg_util_uuid.UUID                   `protobuf:"bytes,3,opt,name=waiting_txn_id,json=waitingTxnId,proto3,customtype=github.com/semistrict/ratel/pkg/util/uuid.UUID" json:"waiting_txn_id"`
+	WaitingTxnFingerprintID  github_com_cockroachdb_cockroach_pkg_roachpb.TransactionFingerprintID `protobuf:"varint,4,opt,name=waiting_txn_fingerprint_id,json=waitingTxnFingerprintId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.TransactionFingerprintID" json:"waiting_txn_fingerprint_id,omitempty"`
 	CollectionTs             time.Time                                                             `protobuf:"bytes,5,opt,name=collection_ts,json=collectionTs,proto3,stdtime" json:"collection_ts"`
 }
 

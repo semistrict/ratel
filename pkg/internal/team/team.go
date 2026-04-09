@@ -22,8 +22,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cockroachdb/cockroach/pkg/internal/reporoot"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/internal/reporoot"
 	"gopkg.in/yaml.v2"
 )
 

@@ -17,8 +17,8 @@ package spanconfiglimiter
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/kv"
-	"github.com/cockroachdb/cockroach/pkg/spanconfig"
+	"github.com/semistrict/ratel/pkg/kv"
+	"github.com/semistrict/ratel/pkg/spanconfig"
 )
 
 var _ spanconfig.Limiter = &NoopLimiter{}

@@ -15,8 +15,8 @@
 package geomfn
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/geo"
-	"github.com/cockroachdb/cockroach/pkg/geo/geos"
+	"github.com/semistrict/ratel/pkg/geo"
+	"github.com/semistrict/ratel/pkg/geo/geos"
 )
 
 // Snap returns the input geometry with the vertices snapped to the target

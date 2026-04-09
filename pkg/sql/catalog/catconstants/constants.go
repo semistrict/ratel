@@ -17,7 +17,7 @@ package catconstants
 import (
 	"math"
 
-	"github.com/cockroachdb/cockroach/pkg/settings"
+	"github.com/semistrict/ratel/pkg/settings"
 )
 
 // ReportableAppNamePrefix indicates that the application name can be

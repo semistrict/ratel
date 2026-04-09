@@ -23,9 +23,9 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/cockroachdb/cockroach/pkg/roachprod/vm"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/roachprod/vm"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 // Both M5 and I3 machines expose their EBS or local SSD volumes as NVMe block
@@ -125,7 +125,7 @@ sudo service sshguard stop
 # starts randomly dropping connections.
 sudo sh -c 'echo "MaxStartups 64:30:128" >> /etc/ssh/sshd_config'
 # Crank up the logging for issues such as:
-# https://github.com/cockroachdb/cockroach/issues/36929
+# https://github.com/semistrict/ratel/issues/36929
 sudo sed -i'' 's/LogLevel.*$/LogLevel DEBUG3/' /etc/ssh/sshd_config
 sudo service sshd restart
 # increase the default maximum number of open file descriptors for

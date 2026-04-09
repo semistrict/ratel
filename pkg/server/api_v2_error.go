@@ -18,7 +18,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

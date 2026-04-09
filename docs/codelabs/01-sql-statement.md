@@ -17,7 +17,7 @@ good coverage of how to add tests, which this codelab ignores.
 Also, remember that for real feature development, you'll want to first write up
 an RFC describing the new feature as well as the proposed syntax, and make sure
 to get the approval of someone from @cockroachdb/sql-language.  There are also
-some guidelines on adding new syntax that you can read about on [#17569](https://github.com/cockroachdb/cockroach/pull/17569).
+some guidelines on adding new syntax that you can read about on [#17569](https://github.com/semistrict/ratel/pull/17569).
 
 ## Adding a SQL Statement
 
@@ -123,7 +123,7 @@ generators will provide assistance to users.  Let's give it a try.  First, we
 need to regenerate the file `sql.go`:
 
 ```text
-~/go/src/github.com/cockroachdb/cockroach$ make generate
+~/go/src/github.com/semistrict/ratel$ make generate
 ```
 
 Wait until the command finishes, then open `pkg/sql/parser/sql.go`, search for `frobnicate`, and see if there is
@@ -152,9 +152,9 @@ return unimplemented(sqllex, "frobnicate all")
 Next step is to compile the project:
 
 ```text
-~/go/src/github.com/cockroachdb/cockroach$ make build
+~/go/src/github.com/semistrict/ratel$ make build
 ...
-github.com/cockroachdb/cockroach
+github.com/semistrict/ratel
 ```
 
 Finally, let’s run a single-node Cockroach instance. Make sure you are at your `cockroachdb/cockroach` directory and
@@ -327,7 +327,7 @@ package sql
 import (
     "context"
 
-    "github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+    "github.com/semistrict/ratel/pkg/sql/sem/tree"
     "github.com/cockroachdb/errors"
 )
 
@@ -489,7 +489,7 @@ FROBNICATE ALL
 ----
 ```
 
-Back to the terminal, make sure you are at `~/go/src/github.com/cockroachdb/cockroach`,
+Back to the terminal, make sure you are at `~/go/src/github.com/semistrict/ratel`,
 and run `make test PKG=./pkg/sql/parser TESTS=TestParseDatadriven TESTFLAGS="-rewrite" FILES=grant_revoke`.
 The flag `TESTFLAGS="-rewrite"` is meant to automatically rewrite the datadriven test with the output it received.
 
@@ -565,7 +565,7 @@ SQL parser and execution engine.
 
 [Reference to all file changes in this tutorial](https://github.com/ZhouXing19/cockroach/commit/a3955335119816782da4f86e2962db147e3e95b0)
 
-[CONTRIBUTING.md]: https://github.com/cockroachdb/cockroach/blob/master/CONTRIBUTING.md
-[sql-function]: https://github.com/cockroachdb/cockroach/blob/master/docs/codelabs/00-sql-function.md
+[CONTRIBUTING.md]: https://github.com/semistrict/ratel/blob/master/CONTRIBUTING.md
+[sql-function]: https://github.com/semistrict/ratel/blob/master/docs/codelabs/00-sql-function.md
 [statements]: https://www.cockroachlabs.com/docs/stable/sql-statements.html
 [jargon-file]: http://www.catb.org/jargon/html/F/frobnicate.html

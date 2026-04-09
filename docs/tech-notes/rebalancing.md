@@ -387,23 +387,23 @@ haven't noticed it being a problem in practice.
   traditionally been the best way to debug rebalancing decisions after the
   fact (#34130).
 
-[#6782]: https://github.com/cockroachdb/cockroach/issues/6782
-[#12768]: https://github.com/cockroachdb/cockroach/issues/12768
-[#17979]: https://github.com/cockroachdb/cockroach/issues/17979
-[#19355]: https://github.com/cockroachdb/cockroach/issues/19355
-[#19985]: https://github.com/cockroachdb/cockroach/issues/19985
-[#22819]: https://github.com/cockroachdb/cockroach/pulls/22819
-[#25392]: https://github.com/cockroachdb/cockroach/issues/25392
-[#26059]: https://github.com/cockroachdb/cockroach/issues/26059
-[#26608]: https://github.com/cockroachdb/cockroach/pull/26608
-[#27349]: https://github.com/cockroachdb/cockroach/pull/27349
-[#28340]: https://github.com/cockroachdb/cockroach/pull/28340
-[#28852]: https://github.com/cockroachdb/cockroach/pull/28852
-[#28875]: https://github.com/cockroachdb/cockroach/pull/28875
-[#30441]: https://github.com/cockroachdb/cockroach/pull/30441
-[#31287]: https://github.com/cockroachdb/cockroach/issues/31287
-[#32949]: https://github.com/cockroachdb/cockroach/pull/32949
-[#33336]: https://github.com/cockroachdb/cockroach/pull/33336
-[#34126]: https://github.com/cockroachdb/cockroach/pull/34126
-[#34130]: https://github.com/cockroachdb/cockroach/issues/34130
+[#6782]: https://github.com/semistrict/ratel/issues/6782
+[#12768]: https://github.com/semistrict/ratel/issues/12768
+[#17979]: https://github.com/semistrict/ratel/issues/17979
+[#19355]: https://github.com/semistrict/ratel/issues/19355
+[#19985]: https://github.com/semistrict/ratel/issues/19985
+[#22819]: https://github.com/semistrict/ratel/pulls/22819
+[#25392]: https://github.com/semistrict/ratel/issues/25392
+[#26059]: https://github.com/semistrict/ratel/issues/26059
+[#26608]: https://github.com/semistrict/ratel/pull/26608
+[#27349]: https://github.com/semistrict/ratel/pull/27349
+[#28340]: https://github.com/semistrict/ratel/pull/28340
+[#28852]: https://github.com/semistrict/ratel/pull/28852
+[#28875]: https://github.com/semistrict/ratel/pull/28875
+[#30441]: https://github.com/semistrict/ratel/pull/30441
+[#31287]: https://github.com/semistrict/ratel/issues/31287
+[#32949]: https://github.com/semistrict/ratel/pull/32949
+[#33336]: https://github.com/semistrict/ratel/pull/33336
+[#34126]: https://github.com/semistrict/ratel/pull/34126
+[#34130]: https://github.com/semistrict/ratel/issues/34130
 [per-replica constraints]: https://www.cockroachlabs.com/docs/stable/configure-replication-zones.html#scope-of-constraints

@@ -17,18 +17,18 @@ package scplan
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/jobs/jobspb"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scerrors"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scop"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scplan/internal/opgen"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scplan/internal/rules"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scplan/internal/scgraph"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scplan/internal/scstage"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
+	"github.com/semistrict/ratel/pkg/jobs/jobspb"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scerrors"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scop"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scpb"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scplan/internal/opgen"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scplan/internal/rules"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scplan/internal/scgraph"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scplan/internal/scstage"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 )
 
 // Params holds the arguments for planning.

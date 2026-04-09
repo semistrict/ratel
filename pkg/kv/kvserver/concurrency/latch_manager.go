@@ -17,10 +17,10 @@ package concurrency
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/concurrency/poison"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/spanlatch"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/spanset"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/concurrency/poison"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/spanlatch"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/spanset"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // latchManagerImpl implements the latchManager interface.

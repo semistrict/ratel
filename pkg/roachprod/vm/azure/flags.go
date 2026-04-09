@@ -19,7 +19,7 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2019-07-01/compute"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/vm"
+	"github.com/semistrict/ratel/pkg/roachprod/vm"
 	"github.com/spf13/pflag"
 )
 

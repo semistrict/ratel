@@ -2,10 +2,10 @@
 - Status: in-progress
 - Start Date: 2018 4/11
 - Authors: Victor Chen
-- RFC PR: [#24377](https://github.com/cockroachdb/cockroach/pull/24377)
+- RFC PR: [#24377](https://github.com/semistrict/ratel/pull/24377)
 - Cockroach Issue:
-[#23912](https://github.com/cockroachdb/cockroach/issues/23912),
-[#22686](https://github.com/cockroachdb/cockroach/issues/22686)
+[#23912](https://github.com/semistrict/ratel/issues/23912),
+[#22686](https://github.com/semistrict/ratel/issues/22686)
 
 ## Summary
 
@@ -147,7 +147,7 @@ or decommission the down nodes.
 
 ## Drawbacks
 - Race condition
-[#24670](https://github.com/cockroachdb/cockroach/issues/24670) (future work):
+[#24670](https://github.com/semistrict/ratel/issues/24670) (future work):
   - Say an operator want to upgrade a cluster of 3 nodes from version 1.1 to
   2.0.
   - As soon as the operator just replaced the last node running v1.1 with a

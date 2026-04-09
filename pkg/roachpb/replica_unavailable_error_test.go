@@ -17,4 +17,4 @@ package roachpb_test
 // See TestReplicaUnavailableError in string_test.go; it needed to be moved there
 // for obscure reasons explained in:
 //
-// https://github.com/cockroachdb/cockroach/issues/75108
+// https://github.com/semistrict/ratel/issues/75108

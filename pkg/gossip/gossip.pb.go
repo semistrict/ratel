@@ -6,14 +6,14 @@ package gossip
 import (
 	context "context"
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	util "github.com/cockroachdb/cockroach/pkg/util"
-	hlc "github.com/cockroachdb/cockroach/pkg/util/hlc"
-	github_com_cockroachdb_cockroach_pkg_util_uuid "github.com/cockroachdb/cockroach/pkg/util/uuid"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
+	github_com_cockroachdb_cockroach_pkg_roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	util "github.com/semistrict/ratel/pkg/util"
+	hlc "github.com/semistrict/ratel/pkg/util/hlc"
+	github_com_cockroachdb_cockroach_pkg_util_uuid "github.com/semistrict/ratel/pkg/util/uuid"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -74,16 +74,16 @@ var xxx_messageInfo_BootstrapInfo proto.InternalMessageInfo
 // Request is the request struct passed with the Gossip RPC.
 type Request struct {
 	// Requesting node's ID.
-	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
 	// Address of the requesting client.
 	Addr util.UnresolvedAddr `protobuf:"bytes,2,opt,name=addr,proto3" json:"addr"`
 	// Map of high water timestamps from infos originating at other
 	// nodes, as seen by the requester.
-	HighWaterStamps map[github_com_cockroachdb_cockroach_pkg_roachpb.NodeID]int64 `protobuf:"bytes,3,rep,name=high_water_stamps,json=highWaterStamps,proto3,castkey=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"high_water_stamps" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
+	HighWaterStamps map[github_com_cockroachdb_cockroach_pkg_roachpb.NodeID]int64 `protobuf:"bytes,3,rep,name=high_water_stamps,json=highWaterStamps,proto3,castkey=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"high_water_stamps" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
 	// Delta of Infos originating at sender.
 	Delta map[string]*Info `protobuf:"bytes,4,rep,name=delta,proto3" json:"delta,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// Cluster ID to prevent illegal connections.
-	ClusterID github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,5,opt,name=cluster_id,json=clusterId,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/uuid.UUID" json:"cluster_id"`
+	ClusterID github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,5,opt,name=cluster_id,json=clusterId,proto3,customtype=github.com/semistrict/ratel/pkg/util/uuid.UUID" json:"cluster_id"`
 }
 
 func (m *Request) Reset()         { *m = Request{} }
@@ -119,19 +119,19 @@ var xxx_messageInfo_Request proto.InternalMessageInfo
 // Delta will be nil in the event that Alternate is set.
 type Response struct {
 	// Responding Node's ID.
-	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
 	// Address of the responding client.
 	Addr util.UnresolvedAddr `protobuf:"bytes,2,opt,name=addr,proto3" json:"addr"`
 	// Non-nil means client should retry with this address.
 	AlternateAddr *util.UnresolvedAddr `protobuf:"bytes,3,opt,name=alternate_addr,json=alternateAddr,proto3" json:"alternate_addr,omitempty"`
 	// Node ID of the alternate address, if alternate_addr is not nil.
-	AlternateNodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,4,opt,name=alternate_node_id,json=alternateNodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"alternate_node_id,omitempty"`
+	AlternateNodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,4,opt,name=alternate_node_id,json=alternateNodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"alternate_node_id,omitempty"`
 	// Delta of Infos which are fresh according to the map of Node info messages
 	// passed with the request.
 	Delta map[string]*Info `protobuf:"bytes,5,rep,name=delta,proto3" json:"delta,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// Map of high water timestamps from infos originating at other
 	// nodes, as seen by the responder.
-	HighWaterStamps map[github_com_cockroachdb_cockroach_pkg_roachpb.NodeID]int64 `protobuf:"bytes,6,rep,name=high_water_stamps,json=highWaterStamps,proto3,castkey=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"high_water_stamps" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
+	HighWaterStamps map[github_com_cockroachdb_cockroach_pkg_roachpb.NodeID]int64 `protobuf:"bytes,6,rep,name=high_water_stamps,json=highWaterStamps,proto3,castkey=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"high_water_stamps" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
 }
 
 func (m *Response) Reset()         { *m = Response{} }
@@ -164,7 +164,7 @@ func (m *Response) XXX_DiscardUnknown() {
 var xxx_messageInfo_Response proto.InternalMessageInfo
 
 type ConnStatus struct {
-	NodeID   github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	NodeID   github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
 	Address  string                                              `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
 	AgeNanos int64                                               `protobuf:"varint,3,opt,name=age_nanos,json=ageNanos,proto3" json:"age_nanos,omitempty"`
 }
@@ -334,7 +334,7 @@ func (m *ServerStatus) XXX_DiscardUnknown() {
 var xxx_messageInfo_ServerStatus proto.InternalMessageInfo
 
 type Connectivity struct {
-	SentinelNodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=sentinel_node_id,json=sentinelNodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"sentinel_node_id,omitempty"`
+	SentinelNodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=sentinel_node_id,json=sentinelNodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"sentinel_node_id,omitempty"`
 	ClientConns    []Connectivity_Conn                                 `protobuf:"bytes,2,rep,name=client_conns,json=clientConns,proto3" json:"client_conns"`
 }
 
@@ -367,8 +367,8 @@ func (m *Connectivity) XXX_DiscardUnknown() {
 var xxx_messageInfo_Connectivity proto.InternalMessageInfo
 
 type Connectivity_Conn struct {
-	SourceID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=source_id,json=sourceId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"source_id,omitempty"`
-	TargetID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,2,opt,name=target_id,json=targetId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"target_id,omitempty"`
+	SourceID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=source_id,json=sourceId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"source_id,omitempty"`
+	TargetID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,2,opt,name=target_id,json=targetId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"target_id,omitempty"`
 }
 
 func (m *Connectivity_Conn) Reset()         { *m = Connectivity_Conn{} }
@@ -448,9 +448,9 @@ type Info struct {
 	// Number of hops from originator.
 	Hops uint32 `protobuf:"varint,4,opt,name=hops,proto3" json:"hops,omitempty"`
 	// Originating node's ID.
-	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,5,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,5,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
 	// Peer node ID which passed this info.
-	PeerID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,6,opt,name=peer_id,json=peerId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"peer_id,omitempty"`
+	PeerID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,6,opt,name=peer_id,json=peerId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"peer_id,omitempty"`
 }
 
 func (m *Info) Reset()         { *m = Info{} }

@@ -14,7 +14,7 @@
 
 package uncertainty
 
-import "github.com/cockroachdb/cockroach/pkg/util/hlc"
+import "github.com/semistrict/ratel/pkg/util/hlc"
 
 // Interval represents a transaction's uncertainty interval.
 //

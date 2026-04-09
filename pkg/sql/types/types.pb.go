@@ -5,11 +5,11 @@ package types
 
 import (
 	fmt "fmt"
-	geopb "github.com/cockroachdb/cockroach/pkg/geo/geopb"
-	github_com_cockroachdb_cockroach_pkg_geo_geopb "github.com/cockroachdb/cockroach/pkg/geo/geopb"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	github_com_lib_pq_oid "github.com/lib/pq/oid"
+	geopb "github.com/semistrict/ratel/pkg/geo/geopb"
+	github_com_cockroachdb_cockroach_pkg_geo_geopb "github.com/semistrict/ratel/pkg/geo/geopb"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -564,7 +564,7 @@ var xxx_messageInfo_IntervalDurationField proto.InternalMessageInfo
 
 // GeoMetadata contains metadata associated with Geospatial data types.
 type GeoMetadata struct {
-	SRID      github_com_cockroachdb_cockroach_pkg_geo_geopb.SRID `protobuf:"varint,1,opt,name=srid,casttype=github.com/cockroachdb/cockroach/pkg/geo/geopb.SRID" json:"srid"`
+	SRID      github_com_cockroachdb_cockroach_pkg_geo_geopb.SRID `protobuf:"varint,1,opt,name=srid,casttype=github.com/semistrict/ratel/pkg/geo/geopb.SRID" json:"srid"`
 	ShapeType geopb.ShapeType                                     `protobuf:"varint,2,opt,name=shape_type,json=shapeType,enum=cockroach.geopb.ShapeType" json:"shape_type"`
 }
 

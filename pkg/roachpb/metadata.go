@@ -21,11 +21,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/humanizeutil"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
+	"github.com/semistrict/ratel/pkg/util"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/humanizeutil"
 )
 
 // NodeID is a custom type for a cockroach node ID. (not a raft node ID)
@@ -183,7 +183,7 @@ func (r *RangeDescriptor) Equal(other *RangeDescriptor) bool {
 	// Consider StickyBit: nil equal to StickyBit: &hlc.Timestamp{}. In
 	// particular, this is needed for forwards-compatibility with 22.2 prior to
 	// 22.2.3, see:
-	// https://github.com/cockroachdb/cockroach/issues/94834
+	// https://github.com/semistrict/ratel/issues/94834
 	var rStickyBit, otherStickyBit hlc.Timestamp
 	if r.StickyBit != nil {
 		rStickyBit = *r.StickyBit
@@ -476,7 +476,7 @@ func (r ReplicaDescriptor) GetType() ReplicaType {
 // generated version in order to consider Type: nil equal to Type: VOTER_FULL,
 // similarly to GetType(). In particular, this is necessary for
 // forwards-compatibility with 22.2 prior to 22.2.3, see:
-// https://github.com/cockroachdb/cockroach/issues/94834
+// https://github.com/semistrict/ratel/issues/94834
 func (r *ReplicaDescriptor) Equal(other interface{}) bool {
 	if other == nil {
 		return r == nil
@@ -507,7 +507,7 @@ func (r *ReplicaDescriptor) Equal(other interface{}) bool {
 	}
 	// NB: Consider Type: nil equal to Type: 0. In particular, this is needed for
 	// forwards-compatibility with 22.2 prior to 22.2.3, see:
-	// https://github.com/cockroachdb/cockroach/issues/94834
+	// https://github.com/semistrict/ratel/issues/94834
 	var rType, otherType ReplicaType
 	if r.Type != nil {
 		rType = *r.Type

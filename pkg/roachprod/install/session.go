@@ -23,11 +23,11 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/cockroachdb/cockroach/pkg/roachprod/config"
-	rperrors "github.com/cockroachdb/cockroach/pkg/roachprod/errors"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/logger"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/roachprod/config"
+	rperrors "github.com/semistrict/ratel/pkg/roachprod/errors"
+	"github.com/semistrict/ratel/pkg/roachprod/logger"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 )
 
 type session interface {
@@ -113,7 +113,7 @@ func newRemoteSession(l *logger.Logger, command *remoteCommand) *remoteSession {
 		// from dropping. (It is speculative that the absence of this caused
 		// problems, though there's some indication that we need them:
 		//
-		// https://github.com/cockroachdb/cockroach/issues/35337
+		// https://github.com/semistrict/ratel/issues/35337
 		"-o", "ServerAliveInterval=60",
 		// Timeout long connections so failure information is not lost by the roachtest
 		// context cancellation killing hanging roachprod processes.

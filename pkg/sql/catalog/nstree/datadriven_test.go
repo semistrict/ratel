@@ -17,8 +17,8 @@ package nstree
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	"github.com/cockroachdb/datadriven"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
 )
 
 const notFound = "not found"

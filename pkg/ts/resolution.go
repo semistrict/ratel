@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/ts/tspb"
+	"github.com/semistrict/ratel/pkg/ts/tspb"
 )
 
 // Resolution is used to enumerate the different resolution values supported by

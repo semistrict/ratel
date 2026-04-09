@@ -17,9 +17,9 @@ package flagstub
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/roachprod/logger"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/vm"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/roachprod/logger"
+	"github.com/semistrict/ratel/pkg/roachprod/vm"
 )
 
 // New wraps a delegate vm.Provider to only return its name and

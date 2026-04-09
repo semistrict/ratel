@@ -14,7 +14,7 @@
 
 package metric
 
-import "github.com/cockroachdb/cockroach/pkg/util/syncutil"
+import "github.com/semistrict/ratel/pkg/util/syncutil"
 
 // RuleRegistry is a list of all rules (AlertingRule and AggregationRule).
 //

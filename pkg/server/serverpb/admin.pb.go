@@ -7,23 +7,23 @@ import (
 	context "context"
 	encoding_binary "encoding/binary"
 	fmt "fmt"
-	zonepb "github.com/cockroachdb/cockroach/pkg/config/zonepb"
-	jobspb "github.com/cockroachdb/cockroach/pkg/jobs/jobspb"
-	kvserverpb "github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverpb"
-	livenesspb "github.com/cockroachdb/cockroach/pkg/kv/kvserver/liveness/livenesspb"
-	github_com_cockroachdb_cockroach_pkg_roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	enginepb "github.com/cockroachdb/cockroach/pkg/storage/enginepb"
-	catalog "github.com/cockroachdb/cockroach/pkg/ts/catalog"
-	metric "github.com/cockroachdb/cockroach/pkg/util/metric"
-	github_com_cockroachdb_cockroach_pkg_util_tracing_tracingpb "github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb"
-	tracingpb "github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
 	_ "github.com/gogo/protobuf/types"
 	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
+	zonepb "github.com/semistrict/ratel/pkg/config/zonepb"
+	jobspb "github.com/semistrict/ratel/pkg/jobs/jobspb"
+	kvserverpb "github.com/semistrict/ratel/pkg/kv/kvserver/kvserverpb"
+	livenesspb "github.com/semistrict/ratel/pkg/kv/kvserver/liveness/livenesspb"
+	github_com_cockroachdb_cockroach_pkg_roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb "github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	enginepb "github.com/semistrict/ratel/pkg/storage/enginepb"
+	catalog "github.com/semistrict/ratel/pkg/ts/catalog"
+	metric "github.com/semistrict/ratel/pkg/util/metric"
+	github_com_cockroachdb_cockroach_pkg_util_tracing_tracingpb "github.com/semistrict/ratel/pkg/util/tracing/tracingpb"
+	tracingpb "github.com/semistrict/ratel/pkg/util/tracing/tracingpb"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
@@ -288,7 +288,7 @@ type DatabaseDetailsResponse_Stats struct {
 	// of all tables across the cluster.
 	ApproximateDiskBytes uint64 `protobuf:"varint,3,opt,name=approximate_disk_bytes,json=approximateDiskBytes,proto3" json:"approximate_disk_bytes,omitempty"`
 	// node_ids is the ordered list of node ids on which data is stored.
-	NodeIDs []github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,4,rep,packed,name=node_ids,json=nodeIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_ids,omitempty"`
+	NodeIDs []github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,4,rep,packed,name=node_ids,json=nodeIds,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_ids,omitempty"`
 }
 
 func (m *DatabaseDetailsResponse_Stats) Reset()         { *m = DatabaseDetailsResponse_Stats{} }
@@ -659,7 +659,7 @@ type TableStatsResponse struct {
 	// cluster metadata), but could not be contacted during this request.
 	MissingNodes []TableStatsResponse_MissingNode `protobuf:"bytes,5,rep,name=missing_nodes,json=missingNodes,proto3" json:"missing_nodes"`
 	// node_ids is the ordered list of node ids on which the table data is stored.
-	NodeIDs []github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,7,rep,packed,name=node_ids,json=nodeIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_ids,omitempty"`
+	NodeIDs []github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,7,rep,packed,name=node_ids,json=nodeIds,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_ids,omitempty"`
 }
 
 func (m *TableStatsResponse) Reset()         { *m = TableStatsResponse{} }
@@ -1420,7 +1420,7 @@ var xxx_messageInfo_DrainResponse proto.InternalMessageInfo
 // DecommissionStatusRequest requests the decommissioning status for the
 // specified or, if none are specified, all nodes.
 type DecommissionStatusRequest struct {
-	NodeIDs []github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,rep,packed,name=node_ids,json=nodeIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_ids,omitempty"`
+	NodeIDs []github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,rep,packed,name=node_ids,json=nodeIds,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_ids,omitempty"`
 	// The number of decommissioning replicas to be reported.
 	NumReplicaReport int32 `protobuf:"varint,2,opt,name=num_replica_report,json=numReplicaReport,proto3" json:"num_replica_report,omitempty"`
 }
@@ -1459,7 +1459,7 @@ var xxx_messageInfo_DecommissionStatusRequest proto.InternalMessageInfo
 //
 // If no NodeIDs are given, it targets the recipient node.
 type DecommissionRequest struct {
-	NodeIDs          []github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,rep,packed,name=node_ids,json=nodeIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_ids,omitempty"`
+	NodeIDs          []github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,rep,packed,name=node_ids,json=nodeIds,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_ids,omitempty"`
 	TargetMembership livenesspb.MembershipStatus                           `protobuf:"varint,2,opt,name=target_membership,json=targetMembership,proto3,enum=cockroach.kv.kvserver.liveness.livenesspb.MembershipStatus" json:"target_membership,omitempty"`
 	// The number of decommissioning replicas to be reported.
 	NumReplicaReport int32 `protobuf:"varint,3,opt,name=num_replica_report,json=numReplicaReport,proto3" json:"num_replica_report,omitempty"`
@@ -1530,8 +1530,8 @@ func (m *DecommissionStatusResponse) XXX_DiscardUnknown() {
 var xxx_messageInfo_DecommissionStatusResponse proto.InternalMessageInfo
 
 type DecommissionStatusResponse_Replica struct {
-	ReplicaID github_com_cockroachdb_cockroach_pkg_roachpb.ReplicaID `protobuf:"varint,1,opt,name=replica_id,json=replicaId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.ReplicaID" json:"replica_id,omitempty"`
-	RangeID   github_com_cockroachdb_cockroach_pkg_roachpb.RangeID   `protobuf:"varint,2,opt,name=range_id,json=rangeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RangeID" json:"range_id,omitempty"`
+	ReplicaID github_com_cockroachdb_cockroach_pkg_roachpb.ReplicaID `protobuf:"varint,1,opt,name=replica_id,json=replicaId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.ReplicaID" json:"replica_id,omitempty"`
+	RangeID   github_com_cockroachdb_cockroach_pkg_roachpb.RangeID   `protobuf:"varint,2,opt,name=range_id,json=rangeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RangeID" json:"range_id,omitempty"`
 }
 
 func (m *DecommissionStatusResponse_Replica) Reset()         { *m = DecommissionStatusResponse_Replica{} }
@@ -1564,7 +1564,7 @@ func (m *DecommissionStatusResponse_Replica) XXX_DiscardUnknown() {
 var xxx_messageInfo_DecommissionStatusResponse_Replica proto.InternalMessageInfo
 
 type DecommissionStatusResponse_Status struct {
-	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
 	IsLive bool                                                `protobuf:"varint,2,opt,name=is_live,json=isLive,proto3" json:"is_live,omitempty"`
 	// The number of replicas on the node, computed by scanning meta2 ranges.
 	ReplicaCount int64 `protobuf:"varint,3,opt,name=replica_count,json=replicaCount,proto3" json:"replica_count,omitempty"`
@@ -1845,7 +1845,7 @@ var xxx_messageInfo_LivenessRequest proto.InternalMessageInfo
 // LivenessResponse contains the liveness status of each node on the cluster.
 type LivenessResponse struct {
 	Livenesses []livenesspb.Liveness                                                                 `protobuf:"bytes,1,rep,name=livenesses,proto3" json:"livenesses"`
-	Statuses   map[github_com_cockroachdb_cockroach_pkg_roachpb.NodeID]livenesspb.NodeLivenessStatus `protobuf:"bytes,2,rep,name=statuses,proto3,castkey=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"statuses" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3,enum=cockroach.kv.kvserver.liveness.livenesspb.NodeLivenessStatus"`
+	Statuses   map[github_com_cockroachdb_cockroach_pkg_roachpb.NodeID]livenesspb.NodeLivenessStatus `protobuf:"bytes,2,rep,name=statuses,proto3,castkey=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"statuses" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3,enum=cockroach.kv.kvserver.liveness.livenesspb.NodeLivenessStatus"`
 }
 
 func (m *LivenessResponse) Reset()         { *m = LivenessResponse{} }
@@ -1988,7 +1988,7 @@ type JobResponse struct {
 	Description       string                                                       `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
 	Statement         string                                                       `protobuf:"bytes,16,opt,name=statement,proto3" json:"statement,omitempty"`
 	Username          string                                                       `protobuf:"bytes,4,opt,name=username,proto3" json:"username,omitempty"`
-	DescriptorIDs     []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,5,rep,packed,name=descriptor_ids,json=descriptorIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"descriptor_ids,omitempty"`
+	DescriptorIDs     []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,5,rep,packed,name=descriptor_ids,json=descriptorIds,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"descriptor_ids,omitempty"`
 	Status            string                                                       `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
 	Created           *time.Time                                                   `protobuf:"bytes,7,opt,name=created,proto3,stdtime" json:"created,omitempty"`
 	Started           *time.Time                                                   `protobuf:"bytes,8,opt,name=started,proto3,stdtime" json:"started,omitempty"`
@@ -2514,7 +2514,7 @@ func (m *DataDistributionResponse_ZoneConfig) XXX_DiscardUnknown() {
 var xxx_messageInfo_DataDistributionResponse_ZoneConfig proto.InternalMessageInfo
 
 type DataDistributionResponse_TableInfo struct {
-	ReplicaCountByNodeId map[github_com_cockroachdb_cockroach_pkg_roachpb.NodeID]int64 `protobuf:"bytes,1,rep,name=replica_count_by_node_id,json=replicaCountByNodeId,proto3,castkey=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"replica_count_by_node_id,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
+	ReplicaCountByNodeId map[github_com_cockroachdb_cockroach_pkg_roachpb.NodeID]int64 `protobuf:"bytes,1,rep,name=replica_count_by_node_id,json=replicaCountByNodeId,proto3,castkey=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"replica_count_by_node_id,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
 	ZoneConfigId         int64                                                         `protobuf:"varint,2,opt,name=zone_config_id,json=zoneConfigId,proto3" json:"zone_config_id,omitempty"`
 	DroppedAt            *time.Time                                                    `protobuf:"bytes,3,opt,name=dropped_at,json=droppedAt,proto3,stdtime" json:"dropped_at,omitempty"`
 }
@@ -2652,12 +2652,12 @@ var xxx_messageInfo_MetricMetadataResponse proto.InternalMessageInfo
 type EnqueueRangeRequest struct {
 	// The node on which the queue should process the range. If node_id is 0,
 	// the request will be forwarded to all other nodes.
-	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
 	// The name of the replica queue to run the range through. Matched against
 	// each queue's name field. See the implementation of baseQueue for details.
 	Queue string `protobuf:"bytes,2,opt,name=queue,proto3" json:"queue,omitempty"`
 	// The ID of the range to run through the queue.
-	RangeID github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,3,opt,name=range_id,json=rangeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RangeID" json:"range_id,omitempty"`
+	RangeID github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,3,opt,name=range_id,json=rangeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RangeID" json:"range_id,omitempty"`
 	// If set, run the queue's process method without first checking whether the
 	// replica should be processed by calling shouldQueue.
 	SkipShouldQueue bool `protobuf:"varint,4,opt,name=skip_should_queue,json=skipShouldQueue,proto3" json:"skip_should_queue,omitempty"`
@@ -2726,7 +2726,7 @@ func (m *EnqueueRangeResponse) XXX_DiscardUnknown() {
 var xxx_messageInfo_EnqueueRangeResponse proto.InternalMessageInfo
 
 type EnqueueRangeResponse_Details struct {
-	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
 	// All trace events collected while processing the range in the queue.
 	Events []*TraceEvent `protobuf:"bytes,2,rep,name=events,proto3" json:"events,omitempty"`
 	// The error message from the queue's processing, if any.
@@ -3204,7 +3204,7 @@ type GetTraceRequest struct {
 	// snapshot. If a snapshot is not specified, information about currently
 	// opened spans is returned from the active spans registry.
 	SnapshotID    int64                                                               `protobuf:"varint,1,opt,name=snapshot_id,json=snapshotId,proto3" json:"snapshot_id,omitempty"`
-	TraceID       github_com_cockroachdb_cockroach_pkg_util_tracing_tracingpb.TraceID `protobuf:"varint,2,opt,name=trace_id,json=traceId,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb.TraceID" json:"trace_id"`
+	TraceID       github_com_cockroachdb_cockroach_pkg_util_tracing_tracingpb.TraceID `protobuf:"varint,2,opt,name=trace_id,json=traceId,proto3,customtype=github.com/semistrict/ratel/pkg/util/tracing/tracingpb.TraceID" json:"trace_id"`
 	RecordingType tracingpb.RecordingMode                                             `protobuf:"varint,3,opt,name=recording_type,json=recordingType,proto3,enum=cockroach.util.tracing.tracingpb.RecordingMode" json:"recording_type,omitempty"`
 }
 
@@ -3243,7 +3243,7 @@ type GetTraceResponse struct {
 	// 0, the trace was not retrieved from a registry, but directly from the
 	// active spans registry.
 	SnapshotID int64                                                               `protobuf:"varint,1,opt,name=snapshot_id,json=snapshotId,proto3" json:"snapshot_id,omitempty"`
-	TraceID    github_com_cockroachdb_cockroach_pkg_util_tracing_tracingpb.TraceID `protobuf:"varint,2,opt,name=trace_id,json=traceId,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb.TraceID" json:"trace_id"`
+	TraceID    github_com_cockroachdb_cockroach_pkg_util_tracing_tracingpb.TraceID `protobuf:"varint,2,opt,name=trace_id,json=traceId,proto3,customtype=github.com/semistrict/ratel/pkg/util/tracing/tracingpb.TraceID" json:"trace_id"`
 	// still_exists is set if any spans from this trace are currently present in
 	// the active spans registry.
 	//
@@ -3423,11 +3423,11 @@ var xxx_messageInfo_SpanTag proto.InternalMessageInfo
 type SetTraceRecordingTypeRequest struct {
 	// TraceID identifies the trace to toggle the recording of. It must always be
 	// specified.
-	TraceID github_com_cockroachdb_cockroach_pkg_util_tracing_tracingpb.TraceID `protobuf:"varint,1,opt,name=trace_id,json=traceId,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb.TraceID" json:"trace_id"`
+	TraceID github_com_cockroachdb_cockroach_pkg_util_tracing_tracingpb.TraceID `protobuf:"varint,1,opt,name=trace_id,json=traceId,proto3,customtype=github.com/semistrict/ratel/pkg/util/tracing/tracingpb.TraceID" json:"trace_id"`
 	// SpanID, if not zero, controls which spans in the trace get their recording
 	// mode set. If zero, all spans in the trace are updated. If not zero, only
 	// the respective span and its descendants get updated.
-	SpanID        github_com_cockroachdb_cockroach_pkg_util_tracing_tracingpb.SpanID `protobuf:"varint,2,opt,name=span_id,json=spanId,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb.SpanID" json:"span_id"`
+	SpanID        github_com_cockroachdb_cockroach_pkg_util_tracing_tracingpb.SpanID `protobuf:"varint,2,opt,name=span_id,json=spanId,proto3,customtype=github.com/semistrict/ratel/pkg/util/tracing/tracingpb.SpanID" json:"span_id"`
 	RecordingMode tracingpb.RecordingMode                                            `protobuf:"varint,3,opt,name=recording_mode,json=recordingMode,proto3,enum=cockroach.util.tracing.tracingpb.RecordingMode" json:"recording_mode,omitempty"`
 }
 

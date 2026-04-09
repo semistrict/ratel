@@ -347,8 +347,8 @@ configurable delay. The API forms are:
 				{
 					sourceCommitSha: "0f329965acccb3e771ec1657c7def9e881dc78bb",
 					title:           "PR #66328 - util/log: report the logging format at the start of new files",
-					body: `Related PR: https://github.com/cockroachdb/cockroach/pull/66328
-Commit: https://github.com/cockroachdb/cockroach/commit/0f329965acccb3e771ec1657c7def9e881dc78bb
+					body: `Related PR: https://github.com/semistrict/ratel/pull/66328
+Commit: https://github.com/semistrict/ratel/commit/0f329965acccb3e771ec1657c7def9e881dc78bb
 
 ---
 
@@ -359,8 +359,8 @@ now report the configured logging format.`,
 				{
 					sourceCommitSha: "e22a0ebb46806a0054115edbeef0d6205203eef5",
 					title:           "PR #66328 - util/log,logspy: make the logspy mechanism better (1 of 2)",
-					body: `Related PR: https://github.com/cockroachdb/cockroach/pull/66328
-Commit: https://github.com/cockroachdb/cockroach/commit/e22a0ebb46806a0054115edbeef0d6205203eef5
+					body: `Related PR: https://github.com/semistrict/ratel/pull/66328
+Commit: https://github.com/semistrict/ratel/commit/e22a0ebb46806a0054115edbeef0d6205203eef5
 
 ---
 
@@ -372,8 +372,8 @@ and a breach of auditability guarantees. This behavior has been corrected.`,
 				{
 					sourceCommitSha: "e22a0ebb46806a0054115edbeef0d6205203eef5",
 					title:           "PR #66328 - util/log,logspy: make the logspy mechanism better (2 of 2)",
-					body: `Related PR: https://github.com/cockroachdb/cockroach/pull/66328
-Commit: https://github.com/cockroachdb/cockroach/commit/e22a0ebb46806a0054115edbeef0d6205203eef5
+					body: `Related PR: https://github.com/semistrict/ratel/pull/66328
+Commit: https://github.com/semistrict/ratel/commit/e22a0ebb46806a0054115edbeef0d6205203eef5
 
 ---
 
@@ -398,8 +398,8 @@ Co-authored-by: Yevgeniy Miretskiy <yevgeniy@cockroachlabs.com>`,
 				{
 					sourceCommitSha: "44836265f924a14f8c996a714d954e0e7e35dff7",
 					title:           "PR #66328 - util/log,server/debug: new API `/debug/vmodule`, change `logspy` (1 of 2)",
-					body: `Related PR: https://github.com/cockroachdb/cockroach/pull/66328
-Commit: https://github.com/cockroachdb/cockroach/commit/44836265f924a14f8c996a714d954e0e7e35dff7
+					body: `Related PR: https://github.com/semistrict/ratel/pull/66328
+Commit: https://github.com/semistrict/ratel/commit/44836265f924a14f8c996a714d954e0e7e35dff7
 
 ---
 
@@ -433,8 +433,8 @@ the request started.`,
 				{
 					sourceCommitSha: "44836265f924a14f8c996a714d954e0e7e35dff7",
 					title:           "PR #66328 - util/log,server/debug: new API `/debug/vmodule`, change `logspy` (2 of 2)",
-					body: `Related PR: https://github.com/cockroachdb/cockroach/pull/66328
-Commit: https://github.com/cockroachdb/cockroach/commit/44836265f924a14f8c996a714d954e0e7e35dff7
+					body: `Related PR: https://github.com/semistrict/ratel/pull/66328
+Commit: https://github.com/semistrict/ratel/commit/44836265f924a14f8c996a714d954e0e7e35dff7
 
 ---
 
@@ -526,8 +526,8 @@ for existing columns will be injected successfully.`,
 				{
 					sourceCommitSha: "5ec9343b0e0a00bfd4603e55ca6533e2b77db2f9",
 					title:           "PR #79069 - sql: ignore non-existent columns when injecting stats",
-					body: `Related PR: https://github.com/cockroachdb/cockroach/pull/79069
-Commit: https://github.com/cockroachdb/cockroach/commit/5ec9343b0e0a00bfd4603e55ca6533e2b77db2f9
+					body: `Related PR: https://github.com/semistrict/ratel/pull/79069
+Commit: https://github.com/semistrict/ratel/commit/5ec9343b0e0a00bfd4603e55ca6533e2b77db2f9
 
 ---
 
@@ -562,8 +562,8 @@ values from the SHOW CHANGEFEED JOB output`,
 				{
 					sourceCommitSha: "88be04bd64283b1d77000a3f88588e603465e81b",
 					title:           "PR #79361 - changefeedccl: remove the default values from SHOW",
-					body: `Related PR: https://github.com/cockroachdb/cockroach/pull/79361
-Commit: https://github.com/cockroachdb/cockroach/commit/88be04bd64283b1d77000a3f88588e603465e81b
+					body: `Related PR: https://github.com/semistrict/ratel/pull/79361
+Commit: https://github.com/semistrict/ratel/commit/88be04bd64283b1d77000a3f88588e603465e81b
 
 ---
 
@@ -608,8 +608,8 @@ Release note (sql change): ` + "`ALTER TABLE ... INJECT STATISTICS ...`" + ` wil
 now docsIssue notices when the given statistics JSON includes non-existent
 columns, rather than resulting in an error. Any statistics in the JSON
 for existing columns will be injected successfully.`,
-			rns: []string{`Related PR: https://github.com/cockroachdb/cockroach/pull/79069
-Commit: https://github.com/cockroachdb/cockroach/commit/5ec9343b0e0a00bfd4603e55ca6533e2b77db2f9
+			rns: []string{`Related PR: https://github.com/semistrict/ratel/pull/79069
+Commit: https://github.com/semistrict/ratel/commit/5ec9343b0e0a00bfd4603e55ca6533e2b77db2f9
 
 ---
 
@@ -631,8 +631,8 @@ from being displayed.
 
 Release note (enterprise change): Remove the default
 values from the SHOW CHANGEFEED JOB output`,
-			rns: []string{`Related PR: https://github.com/cockroachdb/cockroach/pull/79361
-Commit: https://github.com/cockroachdb/cockroach/commit/88be04bd64283b1d77000a3f88588e603465e81b
+			rns: []string{`Related PR: https://github.com/semistrict/ratel/pull/79361
+Commit: https://github.com/semistrict/ratel/commit/88be04bd64283b1d77000a3f88588e603465e81b
 
 ---
 
@@ -677,8 +677,8 @@ constraint or an ` + "`IN`" + " condition in the filter.",
 Release note (cli change): When log entries are written to disk,
 the first few header lines written at the start of every new file
 now report the configured logging format.`,
-			rns: []string{`Related PR: https://github.com/cockroachdb/cockroach/pull/66328
-Commit: https://github.com/cockroachdb/cockroach/commit/0f329965acccb3e771ec1657c7def9e881dc78bb
+			rns: []string{`Related PR: https://github.com/semistrict/ratel/pull/66328
+Commit: https://github.com/semistrict/ratel/commit/0f329965acccb3e771ec1657c7def9e881dc78bb
 
 ---
 

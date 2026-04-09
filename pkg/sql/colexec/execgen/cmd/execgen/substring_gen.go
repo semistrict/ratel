@@ -20,7 +20,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/sql/types"
 )
 
 const substringTmpl = "pkg/sql/colexec/substring_tmpl.go"

@@ -17,7 +17,7 @@ package sqltelemetry
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/server/telemetry"
+	"github.com/semistrict/ratel/pkg/server/telemetry"
 )
 
 // BuiltinCounter creates a telemetry counter for a built-in function.

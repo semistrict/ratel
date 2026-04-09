@@ -1322,7 +1322,7 @@ SELECT * FROM generated_as_id_t ORDER BY a
 
 # TODO(janexing): In this INSERT ... ON CONFLICT ... DO UPDATE SET ... DEFAULT
 # edge case, the output is slightly different from PostgreSQL's output.
-# See also https://github.com/cockroachdb/cockroach/issues/69208.
+# See also https://github.com/semistrict/ratel/issues/69208.
 statement ok
 INSERT INTO generated_as_id_t (a) VALUES (1) ON CONFLICT (a) DO UPDATE SET b=DEFAULT;
 

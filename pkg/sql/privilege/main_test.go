@@ -14,6 +14,6 @@
 
 package privilege_test
 
-import _ "github.com/cockroachdb/cockroach/pkg/util/log"
+import _ "github.com/semistrict/ratel/pkg/util/log"
 
 //go:generate ../../util/leaktest/add-leaktest.sh *_test.go

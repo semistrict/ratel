@@ -17,7 +17,7 @@ package serverpb
 import (
 	context "context"
 
-	"github.com/cockroachdb/cockroach/pkg/util/errorutil"
+	"github.com/semistrict/ratel/pkg/util/errorutil"
 )
 
 // SQLStatusServer is a smaller version of the serverpb.StatusInterface which

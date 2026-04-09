@@ -25,16 +25,16 @@ import (
 	"path"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/cloud"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/server/telemetry"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/util/contextutil"
-	"github.com/cockroachdb/cockroach/pkg/util/ioctx"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/retry"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/cloud"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/server/telemetry"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/util/contextutil"
+	"github.com/semistrict/ratel/pkg/util/ioctx"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/retry"
 )
 
 func parseHTTPURL(
@@ -114,7 +114,7 @@ func (h *httpStorage) Settings() *cluster.Settings {
 }
 
 func (h *httpStorage) ReadFile(ctx context.Context, basename string) (ioctx.ReadCloserCtx, error) {
-	// https://github.com/cockroachdb/cockroach/issues/23859
+	// https://github.com/semistrict/ratel/issues/23859
 	stream, _, err := h.ReadFileAt(ctx, basename, 0)
 	return stream, err
 }

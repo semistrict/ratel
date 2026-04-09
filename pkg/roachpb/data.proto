@@ -109,7 +109,7 @@ message KeyValue {
 message StoreIdent {
   bytes cluster_id = 1 [(gogoproto.nullable) = false,
       (gogoproto.customname) = "ClusterID",
-      (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.UUID"];
+      (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/uuid.UUID"];
   int32 node_id = 2 [(gogoproto.customname) = "NodeID", (gogoproto.casttype) = "NodeID"];
   int32 store_id = 3 [(gogoproto.customname) = "StoreID", (gogoproto.casttype) = "StoreID"];
 }
@@ -157,7 +157,7 @@ message MergeTrigger {
   // mark for the keys previously owned by the subsumed range, though this role
   // is largely being... subsumed by the RightReadSummary.
   util.hlc.Timestamp freeze_start = 5 [(gogoproto.nullable) = false,
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/util/hlc.ClockTimestamp"];
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/util/hlc.ClockTimestamp"];
 
   // right_closed_timestamp is the closed timestamp of the RHS at the moment of
   // the subsumption. Because the SubsumeRequest synchronizes with all other
@@ -325,7 +325,7 @@ message ObservedTimestamp {
 
   int32 node_id = 1 [(gogoproto.customname) = "NodeID", (gogoproto.casttype) = "NodeID"];
   util.hlc.Timestamp timestamp = 2 [(gogoproto.nullable) = false,
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/util/hlc.ClockTimestamp"];
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/util/hlc.ClockTimestamp"];
 }
 
 // A Transaction is a unit of work performed on the database.
@@ -578,7 +578,7 @@ message SequencedWrite {
   bytes key = 1 [(gogoproto.casttype) = "Key"];
   // The sequence number of the request that created the write.
   int32 sequence = 2 [
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/storage/enginepb.TxnSeq"];
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/storage/enginepb.TxnSeq"];
 }
 
 // LeaseAcquisitionType indicates the type of lease acquisition event that
@@ -603,7 +603,7 @@ message Lease {
   // must be greater than the last lease expiration or the lease request
   // is considered invalid.
   util.hlc.Timestamp start = 1 [(gogoproto.nullable) = false,
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/util/hlc.ClockTimestamp"];
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/util/hlc.ClockTimestamp"];
 
   // The expiration is a timestamp at which the lease expires. This means that a
   // new lease can be granted for a later timestamp. This field is only set for
@@ -623,7 +623,7 @@ message Lease {
   // the rollout and some nodes after the rollout is serialized the same).
   // TODO(andrei): Make this non-nullable after the rollout.
   util.hlc.Timestamp proposed_ts  = 5 [(gogoproto.customname) = "ProposedTS",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/util/hlc.ClockTimestamp"];
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/util/hlc.ClockTimestamp"];
 
   // The epoch of the lease holder's node liveness entry. If this value is
   // non-zero, the expiration field is ignored.
@@ -663,7 +663,7 @@ message AbortSpanEntry {
   util.hlc.Timestamp timestamp = 2 [(gogoproto.nullable) = false];
   // The priority of the transaction.
   int32 priority = 3 [
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/storage/enginepb.TxnPriority"];
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/storage/enginepb.TxnPriority"];
 }
 
 // LeafTxnInputState is the state from a transaction coordinator
@@ -693,7 +693,7 @@ message LeafTxnInputState {
   // regardless of the current seqnum generated for writes. This is
   // updated via the (client.TxnSender).Step() operation.
   int32 read_seq_num = 10 [
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/storage/enginepb.TxnSeq"];
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/storage/enginepb.TxnSeq"];
 }
 
 // LeafTxnFinalState is the state from a leaf transaction coordinator
@@ -703,7 +703,7 @@ message LeafTxnFinalState {
   // txn is a copy of the transaction record.
   // TODO(knz,andrei): We don't actually need the fully txn
   // record. This can be simplified.
-  // See: https://github.com/cockroachdb/cockroach/issues/43192
+  // See: https://github.com/semistrict/ratel/issues/43192
   Transaction txn = 1 [(gogoproto.nullable) = false];
   reserved 2;
   // deprecated_command_count indicates that at least one request

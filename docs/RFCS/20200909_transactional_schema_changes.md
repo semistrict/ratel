@@ -1149,19 +1149,19 @@ CREATE TABLE
 * Dropping schema elements: How should drops interact with ongoing schema
   changes? Should they cancel them? How would we implement this?
 
-[#10735]: https://github.com/cockroachdb/cockroach/issues/10735
-[#35738]: https://github.com/cockroachdb/cockroach/issues/35738
-[#40581]: https://github.com/cockroachdb/cockroach/issues/40581
-[#42061]: https://github.com/cockroachdb/cockroach/issues/42061
-[#43057]: https://github.com/cockroachdb/cockroach/issues/43057
-[#44645]: https://github.com/cockroachdb/cockroach/issues/44645
-[#46541]: https://github.com/cockroachdb/cockroach/issues/46541
-[#47719]: https://github.com/cockroachdb/cockroach/issues/47719
-[#47989]: https://github.com/cockroachdb/cockroach/issues/47989
-[#52768]: https://github.com/cockroachdb/cockroach/issues/52768
-[#54477]: https://github.com/cockroachdb/cockroach/issues/54477
-[#54633]: https://github.com/cockroachdb/cockroach/issues/54633
-[#55047]: https://github.com/cockroachdb/cockroach/issues/55047
-[#55981]: https://github.com/cockroachdb/cockroach/issues/55981
+[#10735]: https://github.com/semistrict/ratel/issues/10735
+[#35738]: https://github.com/semistrict/ratel/issues/35738
+[#40581]: https://github.com/semistrict/ratel/issues/40581
+[#42061]: https://github.com/semistrict/ratel/issues/42061
+[#43057]: https://github.com/semistrict/ratel/issues/43057
+[#44645]: https://github.com/semistrict/ratel/issues/44645
+[#46541]: https://github.com/semistrict/ratel/issues/46541
+[#47719]: https://github.com/semistrict/ratel/issues/47719
+[#47989]: https://github.com/semistrict/ratel/issues/47989
+[#52768]: https://github.com/semistrict/ratel/issues/52768
+[#54477]: https://github.com/semistrict/ratel/issues/54477
+[#54633]: https://github.com/semistrict/ratel/issues/54633
+[#55047]: https://github.com/semistrict/ratel/issues/55047
+[#55981]: https://github.com/semistrict/ratel/issues/55981
 [online schema change RFC]: ./20151014_online_schema_change.md
 [F1 schema change paper]: https://pdfs.semanticscholar.org/5086/e7566a6b706c03f83a1638752b1a1c8209b7.pdf

@@ -21,12 +21,12 @@ package roachpb
 import (
 	encoding_binary "encoding/binary"
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_util_hlc "github.com/cockroachdb/cockroach/pkg/util/hlc"
-	hlc "github.com/cockroachdb/cockroach/pkg/util/hlc"
-	github_com_cockroachdb_cockroach_pkg_util_uuid "github.com/cockroachdb/cockroach/pkg/util/uuid"
 	errorspb "github.com/cockroachdb/errors/errorspb"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	github_com_cockroachdb_cockroach_pkg_util_hlc "github.com/semistrict/ratel/pkg/util/hlc"
+	hlc "github.com/semistrict/ratel/pkg/util/hlc"
+	github_com_cockroachdb_cockroach_pkg_util_uuid "github.com/semistrict/ratel/pkg/util/uuid"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -1387,7 +1387,7 @@ type TransactionRetryWithProtoRefreshError struct {
 	// The ID of the transaction being restarted. The client is supposed to check
 	// this against the ID of its transaction and make sure the retryable error
 	// is meant for its level and didn't escape from some inner transaction.
-	TxnID github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,2,opt,name=txn_id,json=txnId,customtype=github.com/cockroachdb/cockroach/pkg/util/uuid.UUID" json:"txn_id"`
+	TxnID github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,2,opt,name=txn_id,json=txnId,customtype=github.com/semistrict/ratel/pkg/util/uuid.UUID" json:"txn_id"`
 	// The Transaction that should be used by next attempts. Depending on the
 	// original cause of this method, this can either be the same Transaction as
 	// before, but with an incremented epoch and timestamp, or a completely new
@@ -2427,7 +2427,7 @@ type Error struct {
 	Index *ErrPosition `protobuf:"bytes,7,opt,name=index" json:"index,omitempty"`
 	// now is the current time at the node sending the response,
 	// which can be used by the receiver to update its local HLC.
-	Now github_com_cockroachdb_cockroach_pkg_util_hlc.ClockTimestamp `protobuf:"bytes,8,opt,name=now,casttype=github.com/cockroachdb/cockroach/pkg/util/hlc.ClockTimestamp" json:"now"`
+	Now github_com_cockroachdb_cockroach_pkg_util_hlc.ClockTimestamp `protobuf:"bytes,8,opt,name=now,casttype=github.com/semistrict/ratel/pkg/util/hlc.ClockTimestamp" json:"now"`
 }
 
 func (m *Error) Reset()      { *m = Error{} }

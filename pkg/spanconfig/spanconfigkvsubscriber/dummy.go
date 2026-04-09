@@ -17,9 +17,9 @@ package spanconfigkvsubscriber
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/spanconfig"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/spanconfig"
+	"github.com/semistrict/ratel/pkg/util/hlc"
 )
 
 // noopKVSubscriber is a KVSubscriber that no-ops and is always up-to-date.

@@ -24,11 +24,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
-	"github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/logtags"
 	"github.com/gogo/protobuf/types"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/util/tracing/tracingpb"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
 	otelsdk "go.opentelemetry.io/otel/sdk/trace"
@@ -421,7 +421,7 @@ func (tr *explodyNetTr) Finish() {
 // to check that `Span.detectUseAfterFinish` is called in the right places,
 // and serves as a regression test for issues such as:
 //
-// https://github.com/cockroachdb/cockroach/issues/58489#issuecomment-781263005
+// https://github.com/semistrict/ratel/issues/58489#issuecomment-781263005
 func TestSpan_UseAfterFinish(t *testing.T) {
 	// First, test with a Tracer configured to NOT panic on use-after-Finish.
 	t.Run("production settings", func(t *testing.T) {

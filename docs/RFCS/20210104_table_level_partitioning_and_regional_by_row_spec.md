@@ -2,7 +2,7 @@
 - Status: accepted
 - Start Date: 2021-01-04
 - Authors: Andrei Matei
-- RFC PR: [58440](https://github.com/cockroachdb/cockroach/pull/58440)
+- RFC PR: [58440](https://github.com/semistrict/ratel/pull/58440)
 - Cockroach Issue: 
 
 # Summary
@@ -36,7 +36,7 @@ be table-level for partitioning a single index (the PK).
 
 The table-level partitioning is also proposed as the formalism on which to build
 the important ["locality-optimized
-search"](https://github.com/cockroachdb/cockroach/issues/55185) feature of the
+search"](https://github.com/semistrict/ratel/issues/55185) feature of the
 query optimizer, and to expand its applicability beyond row-level regional table
 to all partitioned
 tables.
@@ -412,7 +412,7 @@ fact that region is a partitioning column would eventually lead to the optimizer
 planning a speculative lookup in the local region when a query by `(id)` is
 performed - more specifically, it’s the fact that the column is a partitioning
 column that triggers the [“locality optimized
-search”](https://github.com/cockroachdb/cockroach/issues/55185), not simply the
+search”](https://github.com/semistrict/ratel/issues/55185), not simply the
 fact that `region` is an enum. This seems to be a way to build the locality
 optimized search on top of more general partitioning concepts - and so then it
 could hopefully apply to all partitioned tables. This all is consistent with the
@@ -588,7 +588,7 @@ reason to hide it.
 
 (*) `HIDDEN` was considered as an alternative, but introducing new reserved
 keywords that are not always preceded by pre-existing reserved keyword is
-difficult for [technical reasons](https://github.com/cockroachdb/cockroach/pull/26644).
+difficult for [technical reasons](https://github.com/semistrict/ratel/pull/26644).
 
 What’s attractive about this is that, from the user’s perspective, the primary
 key is exactly as they’ve defined it: `(id)`. That leaves the door open for the

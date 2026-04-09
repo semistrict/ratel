@@ -17,7 +17,7 @@ package tree
 import (
 	"strconv"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // TenantID represents a tenant ID that can be pretty-printed.

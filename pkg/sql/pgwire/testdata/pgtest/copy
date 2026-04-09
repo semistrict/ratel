@@ -711,7 +711,7 @@ ReadyForQuery
 # the octal-encoded input for the bytea column is properly decoded -- that is
 # because of the way CRDB and PG process bytea literals, and *not* because of
 # CSV escaping.
-# Because of https://github.com/cockroachdb/cockroach/issues/26128 we cannot
+# Because of https://github.com/semistrict/ratel/issues/26128 we cannot
 # test the `\xAA` escape style with a bytea column.
 send
 Query {"String": "DROP TABLE IF EXISTS tb"}

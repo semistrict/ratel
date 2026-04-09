@@ -17,8 +17,8 @@ package geogfn
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/geo/geoprojbase"
 	"github.com/golang/geo/s2"
+	"github.com/semistrict/ratel/pkg/geo/geoprojbase"
 	"github.com/stretchr/testify/require"
 )
 

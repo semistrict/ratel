@@ -15,8 +15,8 @@
 package geomfn
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/geo"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/geo"
 	"github.com/twpayne/go-geom"
 )
 

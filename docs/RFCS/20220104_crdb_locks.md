@@ -4,8 +4,8 @@
 * Status: accepted
 * Start Date: 2022-01-04
 * Authors: Alex Sarkesian
-* RFC PR: [#75541](https://github.com/cockroachdb/cockroach/pull/75541)
-* Cockroach Issue: [#67589](https://github.com/cockroachdb/cockroach/issues/67589)
+* RFC PR: [#75541](https://github.com/semistrict/ratel/pull/75541)
+* Cockroach Issue: [#67589](https://github.com/semistrict/ratel/issues/67589)
 
 [TOC levels=1-3 markdown]: #
 
@@ -76,7 +76,7 @@ features, which are focused on showing historical contention (for requests that
 have already completed) over time, aggregated across queries and sessions, 
 rather than on current lock contention.  A feature to view point-in-time lock 
 state and contention is therefore currently missing, and has been 
-[requested in the past](https://github.com/cockroachdb/cockroach/issues/67589).
+[requested in the past](https://github.com/semistrict/ratel/issues/67589).
 
 There are a number of use cases for visualizing contention in a running 
 database or cluster, as elaborated below in [Use Cases](#use-cases).  These 
@@ -147,13 +147,13 @@ on this key will have waiting queries visible in `cluster_queries`, we will not
 be able to show that this `UPDATE` statement was the one that caused its 
 transaction to obtain the lock.
 5. **We do not track lock acquisition or lock wait start times.**  While 
-this is a current limitation, given that there has already been some [planned work](https://github.com/cockroachdb/cockroach/issues/67619)
+this is a current limitation, given that there has already been some [planned work](https://github.com/semistrict/ratel/issues/67619)
 around this, we could consider it in the scope of this work to include both of 
 these (and thus remove this limitation).
 
 # Technical Design
 
-The `crdb_internal.crdb_locks` table will be implemented as a [virtual schema table](https://github.com/cockroachdb/cockroach/blob/2b7ba8c72bd5031a5ae28945b5906ef0d407e6be/pkg/sql/crdb_internal.go) 
+The `crdb_internal.crdb_locks` table will be implemented as a [virtual schema table](https://github.com/semistrict/ratel/blob/2b7ba8c72bd5031a5ae28945b5906ef0d407e6be/pkg/sql/crdb_internal.go) 
 at the SQL level, and will be populated by making KV requests across the ranges 
 in the cluster.  Each KV request will be evaluated using the corresponding 
 range’s Concurrency Manager, which will populate the response.  These combined 
@@ -226,7 +226,7 @@ message LockWaiter {
 
 message LockStateInfo {
   int64 range_id = 2 [(gogoproto.customname) = "RangeID",
-      (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.RangeID"];
+      (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.RangeID"];
 
   Key locked_key = 1 [(gogoproto.nullable) = false];
   SpanScope span_scope = 2; // [GLOBAL, LOCAL]
@@ -294,7 +294,7 @@ replica is the leaseholder for the range.  Once at the evaluation stage, we can
 access the Concurrency Manager to grab the mutex for the Lock Table `btree` for 
 each key scope (Global keys, Local keys), clone a snapshot of the 
 (copy-on-write) btree, and then release the mutex 
-[(similarly to how this is done for collection of Lock Table metrics)](https://github.com/cockroachdb/cockroach/blob/55720d0a4c0dd8030cd19645461226d173eefc2e/pkg/kv/kvserver/concurrency/lock_table.go#L2682).  We 
+[(similarly to how this is done for collection of Lock Table metrics)](https://github.com/semistrict/ratel/blob/55720d0a4c0dd8030cd19645461226d173eefc2e/pkg/kv/kvserver/concurrency/lock_table.go#L2682).  We 
 can then iterate through all of the locks in the tree, populating the fields 
 necessary from the `lockState` object as well as each lock’s `lockWaitQueue`.
 
@@ -303,7 +303,7 @@ in the Lock Table only maintains minimal information about the transaction the
 lock is held by, we are unable to track the span requested by the transaction 
 and will need to use the individual key.  This is because the `lockState` 
 object does not track the `lockTableGuard`, which maintains the full 
-[`SpanSet` the request is asking for](https://github.com/cockroachdb/cockroach/blob/55720d0a4c0dd8030cd19645461226d173eefc2e/pkg/kv/kvserver/concurrency/lock_table.go#L343).  To 
+[`SpanSet` the request is asking for](https://github.com/semistrict/ratel/blob/55720d0a4c0dd8030cd19645461226d173eefc2e/pkg/kv/kvserver/concurrency/lock_table.go#L343).  To 
 avoid returning all of the keys that are contended, we may consider only 
 including keys that have readers/writers in the queues.  For instance, consider 
 if `txn1` has `Put` operations on keys `[a, d]` and `txn2` has `Put` operations 
@@ -313,7 +313,7 @@ on keys `[b, e]`; while keys `b, c, d` will appear in the lock table held by
 moment) on `b`.  [See example here](https://gist.github.com/AlexTalks/1227156558f853bdf7c91a7d7c359b97).
 
 **Note on Start Wait Time**: As the time that a transaction begins waiting on a 
-lock is only tracked [within the waiting Goroutine for the purposes of Contention Events](https://github.com/cockroachdb/cockroach/blob/52c2df4fb00d943328dc59df9dc210a40a556ab2/pkg/kv/kvserver/concurrency/lock_table_waiter.go#L165), 
+lock is only tracked [within the waiting Goroutine for the purposes of Contention Events](https://github.com/semistrict/ratel/blob/52c2df4fb00d943328dc59df9dc210a40a556ab2/pkg/kv/kvserver/concurrency/lock_table_waiter.go#L165), 
 and not maintained within the lock wait queue itself, we will need to modify 
 this if we want to be able to display the time spent waiting in our virtual 
 table view.  As this would be a highly useful feature, it is likely worth the 
@@ -321,7 +321,7 @@ time needed to make this change, but it does not exist at the moment.
 
 **Note on Lock Aquisition Time**: Similar to the above, we do not currently 
 track the time a lockholder acquires a lock.  This could be resolved by 
-incorporating the [planned work to track this](https://github.com/cockroachdb/cockroach/issues/67619) 
+incorporating the [planned work to track this](https://github.com/semistrict/ratel/issues/67619) 
 into the scope of this project.
 
 One last point worth noting is that while non-transactional lock holders will 
@@ -373,17 +373,17 @@ our implementation could map as follows:
 The biggest alternative solutions to observing contention is to utilize the 
 Active Tracing Spans Registry and the [Contention Events framework](https://www.cockroachlabs.com/docs/v21.2/performance-best-practices-overview#understanding-and-avoiding-transaction-contention).  The 
 Active Tracing Spans Registry, for which there is 
-[currently ongoing work to visualize with a UI](https://github.com/cockroachdb/cockroach/pull/74318), 
+[currently ongoing work to visualize with a UI](https://github.com/semistrict/ratel/pull/74318), 
 would be useful to show traces for currently active operations, including those 
 contending on locks, but does not specifically map to the use case a virtual 
 table like ``crdb_locks`` would provide.  That said, it will likely be worth it 
 to coordinate these efforts, as they can work together to better enable 
 CockroachDB users and developers.  The Contention Events framework 
 (i.e.`crdb_internal.cluster_contended_*` tables), for which there is 
-[also planned/ongoing work](https://github.com/cockroachdb/cockroach/pull/71965), 
+[also planned/ongoing work](https://github.com/semistrict/ratel/pull/71965), 
 is [extremely useful](https://www.cockroachlabs.com/blog/what-is-database-contention/) 
 for diagnosing contention in a cluster over time, but as Contention Events are 
-only [emitted in tracing spans](https://github.com/cockroachdb/cockroach/blob/52c2df4fb00d943328dc59df9dc210a40a556ab2/pkg/kv/kvserver/concurrency/lock_table_waiter.go#L894) 
+only [emitted in tracing spans](https://github.com/semistrict/ratel/blob/52c2df4fb00d943328dc59df9dc210a40a556ab2/pkg/kv/kvserver/concurrency/lock_table_waiter.go#L894) 
 _after_ a transaction has finished waiting on a lock, it does not provide 
 insight into what is _currently_ blocking a particular transaction.
 
@@ -404,7 +404,7 @@ potentially caused by) lock contention.  These failures, which are
 `TransactionRetryError`s with reason `RETRY_SERIALIZABLE`, 
 can include some information elaborating on what caused the serializability 
 failure, but do not include any information on the contention history of the 
-transaction.  Nonetheless, [improving these error messages is a goal](https://github.com/cockroachdb/cockroach/issues/41057).  Lock 
+transaction.  Nonetheless, [improving these error messages is a goal](https://github.com/semistrict/ratel/issues/41057).  Lock 
 contention, on the other hand, should not result in a user-visible error unless 
 the client sets a timeout on a given query.  If the user does not specify a 
 timeout, a query waiting on a lock could effectively be stalled indefinitely.  When 

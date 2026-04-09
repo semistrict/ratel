@@ -23,11 +23,11 @@ import (
 	"testing"
 
 	"github.com/alessio/shellescape"
-	"github.com/cockroachdb/cockroach/pkg/cmd/dev/io/exec"
-	"github.com/cockroachdb/cockroach/pkg/cmd/dev/io/os"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
 	"github.com/cockroachdb/datadriven"
 	"github.com/google/shlex"
+	"github.com/semistrict/ratel/pkg/cmd/dev/io/exec"
+	"github.com/semistrict/ratel/pkg/cmd/dev/io/os"
+	"github.com/semistrict/ratel/pkg/testutils"
 	"github.com/stretchr/testify/require"
 )
 

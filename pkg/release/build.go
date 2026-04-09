@@ -26,8 +26,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/build/util"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/build/util"
 )
 
 // BuildOptions is a set of options that may be applied to a build.

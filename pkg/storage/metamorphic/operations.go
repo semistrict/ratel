@@ -23,13 +23,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/storage"
-	"github.com/cockroachdb/cockroach/pkg/storage/enginepb"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/uint128"
-	"github.com/cockroachdb/cockroach/pkg/util/uuid"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/storage"
+	"github.com/semistrict/ratel/pkg/storage/enginepb"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/uint128"
+	"github.com/semistrict/ratel/pkg/util/uuid"
 )
 
 // opReference represents one operation; an opGenerator reference as well as
@@ -614,7 +614,7 @@ func (i iterSeekOp) run(ctx context.Context) string {
 			return "noop due to missing seekLT support in rocksdb batch iterators"
 		}
 		// RocksDB batch iterators do not account åfor lower bounds consistently:
-		// https://github.com/cockroachdb/cockroach/issues/44512
+		// https://github.com/semistrict/ratel/issues/44512
 		// In the meantime, ensure the SeekGE key >= lower bound.
 		lowerBound := iterInfo.lowerBound
 		if i.key.Key.Compare(lowerBound) < 0 {

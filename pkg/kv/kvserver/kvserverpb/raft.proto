@@ -29,11 +29,11 @@ import "gogoproto/gogo.proto";
 // raftpb.Message protos.
 message RaftHeartbeat {
   uint64 range_id = 1 [(gogoproto.customname) = "RangeID",
-      (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.RangeID"];
+      (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.RangeID"];
   uint32 from_replica_id = 2 [(gogoproto.customname) = "FromReplicaID",
-      (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.ReplicaID"];
+      (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.ReplicaID"];
   uint32 to_replica_id = 3 [(gogoproto.customname) = "ToReplicaID",
-      (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.ReplicaID"];
+      (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.ReplicaID"];
   uint64 term = 4;
   uint64 commit = 5;
   bool quiesce = 6;
@@ -60,10 +60,10 @@ message RaftHeartbeat {
 // descriptor's range ID must be zero.
 message RaftMessageRequest {
   uint64 range_id = 1 [(gogoproto.customname) = "RangeID",
-      (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.RangeID"];
+      (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.RangeID"];
   // Optionally, the start key of the sending replica. This is only populated
   // as a "hint" under certain conditions.
-  bytes range_start_key = 8 [(gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.RKey"];
+  bytes range_start_key = 8 [(gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.RKey"];
 
   roachpb.ReplicaDescriptor from_replica = 2 [(gogoproto.nullable) = false];
   roachpb.ReplicaDescriptor to_replica = 3 [(gogoproto.nullable) = false];
@@ -114,7 +114,7 @@ message RaftMessageResponseUnion {
 // may be used for certain error conditions.
 message RaftMessageResponse {
   uint64 range_id = 1 [(gogoproto.customname) = "RangeID",
-      (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.RangeID"];
+      (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.RangeID"];
 
   roachpb.ReplicaDescriptor from_replica = 2 [(gogoproto.nullable) = false];
   roachpb.ReplicaDescriptor to_replica = 3 [(gogoproto.nullable) = false];

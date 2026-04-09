@@ -15,9 +15,9 @@
 package rules
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scplan/internal/scgraph"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/screl"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scpb"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scplan/internal/scgraph"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/screl"
 )
 
 // This batch of rules ensures that descriptor elements, that is to say elements

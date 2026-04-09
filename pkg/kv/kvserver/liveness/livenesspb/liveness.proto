@@ -30,7 +30,7 @@ message Liveness {
   option (gogoproto.goproto_stringer) = false;
 
   int32 node_id = 1 [(gogoproto.customname) = "NodeID",
-      (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.NodeID"];
+      (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.NodeID"];
   // Epoch is a monotonically-increasing value for node liveness. It
   // may be incremented if the liveness record expires (current time
   // is later than the expiration timestamp).

@@ -20,9 +20,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/errors"
 	"github.com/prometheus/client_golang/prometheus/graphite"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 var errNoEndpoint = errors.New("external.graphite.endpoint is not set")

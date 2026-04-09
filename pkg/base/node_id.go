@@ -19,12 +19,12 @@ import (
 	"strconv"
 	"sync/atomic"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/cockroach/pkg/util/errorutil"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util"
+	"github.com/semistrict/ratel/pkg/util/errorutil"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 // NodeIDContainer is used to share a single roachpb.NodeID or
@@ -32,7 +32,7 @@ import (
 // and getting the value. Once a value is set, the value cannot
 // change.
 // Note: we plan to rename it to denote its generic nature, see
-// https://github.com/cockroachdb/cockroach/pull/73309
+// https://github.com/semistrict/ratel/pull/73309
 type NodeIDContainer struct {
 	_ util.NoCopy
 
@@ -76,7 +76,7 @@ func (n *NodeIDContainer) SafeValue() {}
 // code. See for example the `rpc` package, where server-to-server
 // RPCs get addressed with server IDs regardless of whether they are
 // KV nodes or SQL instances.
-// See also: https://github.com/cockroachdb/cockroach/pull/73309
+// See also: https://github.com/semistrict/ratel/pull/73309
 func (n *NodeIDContainer) Get() roachpb.NodeID {
 	return roachpb.NodeID(atomic.LoadInt32(&n.nodeID))
 }

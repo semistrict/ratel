@@ -21,8 +21,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/rel"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/rel"
+	"github.com/semistrict/ratel/pkg/testutils"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )

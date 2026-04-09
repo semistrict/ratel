@@ -14,7 +14,7 @@
 
 package colexecbase
 
-import "github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+import "github.com/semistrict/ratel/pkg/sql/sem/tree"
 
 // BinaryOverloadHelper is a utility struct used for templates of the binary
 // overloads that fall back to the row-based tree.Datum computation.

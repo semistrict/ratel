@@ -7,9 +7,9 @@ import (
 	bytes "bytes"
 	encoding_binary "encoding/binary"
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_sql_sem_catid "github.com/cockroachdb/cockroach/pkg/sql/sem/catid"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	github_com_cockroachdb_cockroach_pkg_sql_sem_catid "github.com/semistrict/ratel/pkg/sql/sem/catid"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -452,7 +452,7 @@ var xxx_messageInfo_ShardedDescriptor proto.InternalMessageInfo
 // ScheduledRowLevelTTLArgs represents the arguments for a row-level TTL
 // scheduled job.
 type ScheduledRowLevelTTLArgs struct {
-	TableID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=table_id,json=tableId,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/catid.DescID" json:"table_id"`
+	TableID github_com_cockroachdb_cockroach_pkg_sql_sem_catid.DescID `protobuf:"varint,1,opt,name=table_id,json=tableId,casttype=github.com/semistrict/ratel/pkg/sql/sem/catid.DescID" json:"table_id"`
 }
 
 func (m *ScheduledRowLevelTTLArgs) Reset()         { *m = ScheduledRowLevelTTLArgs{} }

@@ -24,9 +24,9 @@ package nilness_test
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/build/bazel"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
-	"github.com/cockroachdb/cockroach/pkg/testutils/lint/passes/nilness"
+	"github.com/semistrict/ratel/pkg/build/bazel"
+	"github.com/semistrict/ratel/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/testutils/lint/passes/nilness"
 	"golang.org/x/tools/go/analysis/analysistest"
 )
 

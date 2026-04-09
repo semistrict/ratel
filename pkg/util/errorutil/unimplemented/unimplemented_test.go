@@ -19,8 +19,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/build"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/build"
 )
 
 func TestUnimplemented(t *testing.T) {

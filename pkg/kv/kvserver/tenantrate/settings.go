@@ -17,8 +17,8 @@ package tenantrate
 import (
 	"runtime"
 
-	"github.com/cockroachdb/cockroach/pkg/settings"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/settings"
 )
 
 // Config contains the configuration of the rate limiter.

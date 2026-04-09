@@ -15,9 +15,9 @@
 package base_test
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/security/securitytest"
-	_ "github.com/cockroachdb/cockroach/pkg/util/log" // for flags
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/security/securitytest"
+	_ "github.com/semistrict/ratel/pkg/util/log" // for flags
 )
 
 func init() {

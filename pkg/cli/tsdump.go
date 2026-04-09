@@ -23,16 +23,16 @@ import (
 	"os"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/clierrorplus"
-	"github.com/cockroachdb/cockroach/pkg/ts"
-	"github.com/cockroachdb/cockroach/pkg/ts/tspb"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/cli/clierrorplus"
+	"github.com/semistrict/ratel/pkg/ts"
+	"github.com/semistrict/ratel/pkg/ts/tspb"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 	"github.com/spf13/cobra"
 )
 
 // TODO(knz): this struct belongs elsewhere.
-// See: https://github.com/cockroachdb/cockroach/issues/49509
+// See: https://github.com/semistrict/ratel/issues/49509
 var debugTimeSeriesDumpOpts = struct {
 	format   tsDumpFormat
 	from, to timestampValue

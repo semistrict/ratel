@@ -15,8 +15,8 @@
 package delegate
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catconstants"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/catalog/catconstants"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 )
 
 func (d *delegator) delegateShowTransactions(n *tree.ShowTransactions) (tree.Statement, error) {

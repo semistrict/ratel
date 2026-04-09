@@ -6,10 +6,10 @@ package tracingservicepb
 import (
 	context "context"
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_util_tracing_tracingpb "github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb"
-	tracingpb "github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	github_com_cockroachdb_cockroach_pkg_util_tracing_tracingpb "github.com/semistrict/ratel/pkg/util/tracing/tracingpb"
+	tracingpb "github.com/semistrict/ratel/pkg/util/tracing/tracingpb"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -30,7 +30,7 @@ var _ = math.Inf
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 type GetSpanRecordingsRequest struct {
-	TraceID github_com_cockroachdb_cockroach_pkg_util_tracing_tracingpb.TraceID `protobuf:"varint,1,opt,name=trace_id,json=traceId,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb.TraceID" json:"trace_id"`
+	TraceID github_com_cockroachdb_cockroach_pkg_util_tracing_tracingpb.TraceID `protobuf:"varint,1,opt,name=trace_id,json=traceId,proto3,customtype=github.com/semistrict/ratel/pkg/util/tracing/tracingpb.TraceID" json:"trace_id"`
 }
 
 func (m *GetSpanRecordingsRequest) Reset()         { *m = GetSpanRecordingsRequest{} }

@@ -15,8 +15,8 @@
 package rangefeed
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/interval"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/interval"
 )
 
 // Filter informs the producer of logical operations of the information that a

@@ -29,11 +29,11 @@ message IndexContentionEvents {
 
   // TableID is the ID of the table experiencing contention.
   uint32 table_id = 1 [(gogoproto.customname) = "TableID",
-                       (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"];
+                       (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"];
 
   // IndexID is the ID of the index experiencing contention.
   uint32 index_id = 2 [(gogoproto.customname) = "IndexID",
-                       (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.IndexID"];
+                       (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.IndexID"];
 
   // NumContentionEvents is the number of contention events that have happened
   // on the index.
@@ -61,7 +61,7 @@ message SingleTxnContention {
   // TxnID is the contending transaction.
   bytes txn_id = 2 [(gogoproto.nullable) = false,
                      (gogoproto.customname) = "TxnID",
-                     (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.UUID"];
+                     (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/uuid.UUID"];
 
   // Count is the number of times the corresponding transaction was
   // encountered.
@@ -74,7 +74,7 @@ message SingleKeyContention {
   option (gogoproto.goproto_stringer) = false;
 
   // Key is the key that other transactions conflicted on.
-  bytes key = 1 [(gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.Key"];
+  bytes key = 1 [(gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.Key"];
 
   // Txns are all contending transactions that we kept track of. Note that some
   // transactions could have been forgotten since we're keeping a limited LRU
@@ -91,7 +91,7 @@ message SingleNonSQLKeyContention {
   option (gogoproto.goproto_stringer) = false;
 
   // Key is the key that other transactions conflicted on.
-  bytes key = 1 [(gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.Key"];
+  bytes key = 1 [(gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.Key"];
 
   // NumContentionEvents is the number of contention events that have happened
   // on the key.
@@ -138,7 +138,7 @@ message SerializedRegistry {
 
 message ResolvedTxnID {
   bytes txnID = 1 [
-    (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.UUID",
+    (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/uuid.UUID",
     (gogoproto.nullable) = false
   ];
 
@@ -147,7 +147,7 @@ message ResolvedTxnID {
   // known, (i.e. when the transaction is still executing), this value is filled
   // with roachpb.InvalidTransactionFingerprintID.
   uint64 txnFingerprintID = 2 [(gogoproto.customname) = "TxnFingerprintID",
-    (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/roachpb.TransactionFingerprintID",
+    (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/roachpb.TransactionFingerprintID",
     (gogoproto.nullable) = false];
 }
 
@@ -158,17 +158,17 @@ message ExtendedContentionEvent {
   ];
   uint64 blocking_txn_fingerprint_id = 2 [
     (gogoproto.customname) = "BlockingTxnFingerprintID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.TransactionFingerprintID"
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.TransactionFingerprintID"
   ];
 
   bytes waiting_txn_id = 3 [
     (gogoproto.customname) = "WaitingTxnID",
-    (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.UUID",
+    (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/uuid.UUID",
     (gogoproto.nullable) = false
   ];
   uint64 waiting_txn_fingerprint_id = 4 [
     (gogoproto.customname) = "WaitingTxnFingerprintID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.TransactionFingerprintID"
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.TransactionFingerprintID"
   ];
 
    google.protobuf.Timestamp collection_ts = 5 [

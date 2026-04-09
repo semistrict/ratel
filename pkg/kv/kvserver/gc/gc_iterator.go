@@ -15,10 +15,10 @@
 package gc
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/rditer"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/storage"
-	"github.com/cockroachdb/cockroach/pkg/util/bufalloc"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/rditer"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/storage"
+	"github.com/semistrict/ratel/pkg/util/bufalloc"
 )
 
 // gcIterator wraps an rditer.ReplicaMVCCDataIterator which it reverse iterates for

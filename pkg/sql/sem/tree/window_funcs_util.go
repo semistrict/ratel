@@ -15,8 +15,8 @@
 package tree
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree/treewindow"
-	"github.com/cockroachdb/cockroach/pkg/util/ring"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree/treewindow"
+	"github.com/semistrict/ratel/pkg/util/ring"
 )
 
 // PeerGroupChecker can check if a pair of row indices within a partition are

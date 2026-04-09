@@ -17,7 +17,7 @@ package scrun
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scexec"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scexec"
 )
 
 // JobTxnFunc is used to run a transactional stage of a schema change on

@@ -18,8 +18,8 @@ import (
 	"bytes"
 	"math"
 
-	"github.com/cockroachdb/cockroach/pkg/util/encoding"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util/encoding"
 )
 
 // MakeSubordinateKey builds a subordinate key for a single array element. The

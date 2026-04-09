@@ -26,15 +26,15 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/build"
-	"github.com/cockroachdb/cockroach/pkg/roachprod"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/config"
-	rperrors "github.com/cockroachdb/cockroach/pkg/roachprod/errors"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/install"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/logger"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/ui"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/vm"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/build"
+	"github.com/semistrict/ratel/pkg/roachprod"
+	"github.com/semistrict/ratel/pkg/roachprod/config"
+	rperrors "github.com/semistrict/ratel/pkg/roachprod/errors"
+	"github.com/semistrict/ratel/pkg/roachprod/install"
+	"github.com/semistrict/ratel/pkg/roachprod/logger"
+	"github.com/semistrict/ratel/pkg/roachprod/ui"
+	"github.com/semistrict/ratel/pkg/roachprod/vm"
 	"github.com/spf13/cobra"
 )
 

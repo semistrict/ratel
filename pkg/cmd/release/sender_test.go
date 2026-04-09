@@ -53,7 +53,7 @@ func TestPickSHA(t *testing.T) {
 		SHA:              "0fd6eead6c6eb7b2529deb39197cc3c95e93ded8",
 		TrackingIssue:    "REL-111",
 		TrackingIssueURL: htmltemplate.URL("https://cockroachlabs.atlassian.net/browse/REL-111"),
-		DiffURL:          "https://github.com/cockroachdb/cockroach/compare/v21.1.13...0fd6eead6c6eb7b2529deb39197cc3c95e93ded8",
+		DiffURL:          "https://github.com/semistrict/ratel/compare/v21.1.13...0fd6eead6c6eb7b2529deb39197cc3c95e93ded8",
 	}
 	require.NoError(t, sendMailPickSHA(
 		args, sendOpts{templatesDir: "templates"},

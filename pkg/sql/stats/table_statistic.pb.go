@@ -5,11 +5,11 @@ package stats
 
 import (
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	_ "github.com/gogo/protobuf/types"
 	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
+	github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb "github.com/semistrict/ratel/pkg/sql/catalog/descpb"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -34,14 +34,14 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 // serialized in a backup.
 type TableStatisticProto struct {
 	// The ID of the table.
-	TableID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"table_id,omitempty"`
+	TableID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"table_id,omitempty"`
 	// The ID for this statistic.  It need not be globally unique,
 	// but must be unique for this table.
 	StatisticID uint64 `protobuf:"varint,2,opt,name=statistic_id,json=statisticId,proto3" json:"statistic_id,omitempty"`
 	// Optional user-defined name for the statistic.
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	// The column ID(s) for which this statistic is generated.
-	ColumnIDs []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ColumnID `protobuf:"varint,4,rep,packed,name=column_ids,json=columnIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ColumnID" json:"column_ids,omitempty"`
+	ColumnIDs []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ColumnID `protobuf:"varint,4,rep,packed,name=column_ids,json=columnIds,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ColumnID" json:"column_ids,omitempty"`
 	// The time at which the statistic was created.
 	CreatedAt time.Time `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3,stdtime" json:"created_at"`
 	// The total number of rows in the table.

@@ -18,9 +18,9 @@ import (
 	"context"
 	"path/filepath"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/elastic/gosigar"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 func computeStoreProperties(

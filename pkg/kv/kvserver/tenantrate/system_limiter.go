@@ -17,7 +17,7 @@ package tenantrate
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/multitenant/tenantcostmodel"
+	"github.com/semistrict/ratel/pkg/multitenant/tenantcostmodel"
 )
 
 // systemLimiter implements Limiter for the use of tracking metrics for the

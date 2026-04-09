@@ -2,7 +2,7 @@
 
 Last generated at 2020-12-12T08:08:04+11:00.
 
-Contributions from: [cockroach](https://github.com/cockroachdb/cockroach), [pebble](https://github.com/cockroachdb/pebble), [docs](https://github.com/cockroachdb/docs), [activerecord-cockroachdb-adapter](https://github.com/cockroachdb/activerecord-cockroachdb-adapter), [cockroach-go](https://github.com/cockroachdb/cockroach-go), [cockroach-operator](https://github.com/cockroachdb/cockroach-operator), [django-cockroachdb](https://github.com/cockroachdb/django-cockroachdb), [sequelize-cockroachdb](https://github.com/cockroachdb/sequelize-cockroachdb), [sqlalchemy-cockroachdb](https://github.com/cockroachdb/sqlalchemy-cockroachdb).
+Contributions from: [cockroach](https://github.com/semistrict/ratel), [pebble](https://github.com/cockroachdb/pebble), [docs](https://github.com/cockroachdb/docs), [activerecord-cockroachdb-adapter](https://github.com/cockroachdb/activerecord-cockroachdb-adapter), [cockroach-go](https://github.com/cockroachdb/cockroach-go), [cockroach-operator](https://github.com/semistrict/ratel-operator), [django-cockroachdb](https://github.com/cockroachdb/django-cockroachdb), [sequelize-cockroachdb](https://github.com/cockroachdb/sequelize-cockroachdb), [sqlalchemy-cockroachdb](https://github.com/cockroachdb/sqlalchemy-cockroachdb).
 
 ## All-Time External Contributors
 

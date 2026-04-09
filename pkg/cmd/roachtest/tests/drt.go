@@ -19,16 +19,16 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/prometheus"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/logger"
-	"github.com/cockroachdb/cockroach/pkg/util/retry"
 	"github.com/cockroachdb/errors"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/prometheus"
+	"github.com/semistrict/ratel/pkg/roachprod/logger"
+	"github.com/semistrict/ratel/pkg/util/retry"
 )
 
-//go:generate mockgen -package tests -destination drt_generated_test.go github.com/cockroachdb/cockroach/pkg/cmd/roachtest/prometheus Client
+//go:generate mockgen -package tests -destination drt_generated_test.go github.com/semistrict/ratel/pkg/cmd/roachtest/prometheus Client
 
 type tpccChaosEventProcessor struct {
 	workloadInstances []workloadInstance

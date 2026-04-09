@@ -17,7 +17,7 @@ package clisqlshell
 import (
 	"os"
 
-	"github.com/cockroachdb/cockroach/pkg/server/pgurl"
+	"github.com/semistrict/ratel/pkg/server/pgurl"
 )
 
 // Shell represents an interactive shell

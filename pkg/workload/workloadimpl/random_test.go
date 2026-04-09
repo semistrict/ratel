@@ -17,8 +17,8 @@ package workloadimpl_test
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
-	"github.com/cockroachdb/cockroach/pkg/workload/workloadimpl"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/workload/workloadimpl"
 	"golang.org/x/exp/rand"
 )
 

@@ -32,7 +32,7 @@ chmod +x cockroach.linux-2.6.32-gnu-amd64
 
 artifacts=$PWD/artifacts/$(date +"%Y%m%d")-${TC_BUILD_ID}
 mkdir -p "$artifacts"
-# See https://github.com/cockroachdb/cockroach/issues/54570#issuecomment-706324593
+# See https://github.com/semistrict/ratel/issues/54570#issuecomment-706324593
 chmod o+rwx "${artifacts}"
 
 # NB: Teamcity has a 7920 minute timeout that, when reached,

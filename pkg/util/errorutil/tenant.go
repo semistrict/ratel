@@ -14,7 +14,7 @@
 
 package errorutil
 
-import "github.com/cockroachdb/cockroach/pkg/util/errorutil/unimplemented"
+import "github.com/semistrict/ratel/pkg/util/errorutil/unimplemented"
 
 // UnsupportedWithMultiTenancy returns an error suitable for returning when an
 // operation could not be carried out due to the SQL server running in

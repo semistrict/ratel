@@ -23,15 +23,15 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/util/version"
 	"github.com/cockroachdb/errors"
 	"github.com/google/go-github/github"
+	"github.com/semistrict/ratel/pkg/util/version"
 	"golang.org/x/oauth2"
 )
 
 const (
 	// CockroachPkgPrefix is the crdb package prefix.
-	CockroachPkgPrefix = "github.com/cockroachdb/cockroach/pkg/"
+	CockroachPkgPrefix = "github.com/semistrict/ratel/pkg/"
 	// Based on the following observed API response the maximum here is 1<<16-1.
 	// We shouldn't usually get near that limit but if we do, better to post a
 	// clipped issue.
@@ -238,7 +238,7 @@ func (o *Options) IsReleaseBranch() bool {
 // everything known about the test failure in a predigested form.
 type TemplateData struct {
 	PostRequest
-	// This is foo/bar instead of github.com/cockroachdb/cockroach/pkg/foo/bar.
+	// This is foo/bar instead of github.com/semistrict/ratel/pkg/foo/bar.
 	PackageNameShort string
 	// Parameters includes relevant test or build parameters, such as
 	// build tags or cluster configuration

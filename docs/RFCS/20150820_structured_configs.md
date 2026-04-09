@@ -1,8 +1,8 @@
 - Feature Name: Configs for structured data
 - Status: completed
 - Start Date: 2015-08-19
-- RFC PR: [#2183](https://github.com/cockroachdb/cockroach/pull/2183)
-- Cockroach Issue: [#2090](https://github.com/cockroachdb/cockroach/issues/2090)
+- RFC PR: [#2183](https://github.com/semistrict/ratel/pull/2183)
+- Cockroach Issue: [#2090](https://github.com/semistrict/ratel/issues/2090)
 
 # Summary
 
@@ -24,9 +24,9 @@ The following configs currently exist:
 # Prerequisites
 
 Complete implementation of this RFC depends on the following:
-* Gossip system database: [#2179](https://github.com/cockroachdb/cockroach/issues/2179)
-* Disable KV endpoint: [#2089](https://github.com/cockroachdb/cockroach/issues/2089)
-* Usage accounting: [#2185](https://github.com/cockroachdb/cockroach/issues/2185)
+* Gossip system database: [#2179](https://github.com/semistrict/ratel/issues/2179)
+* Disable KV endpoint: [#2089](https://github.com/semistrict/ratel/issues/2089)
+* Usage accounting: [#2185](https://github.com/semistrict/ratel/issues/2185)
 
 # Detailed design
 
@@ -45,13 +45,13 @@ The accounting table applies to databases and potentially to tables as well.
 Its contents have yet to be determined.
 
 The initial use of this table will be usage limits (a.k.a quotas). Actual usage
-storage is still TBD, see: [#2185](https://github.com/cockroachdb/cockroach/issues/2185).
+storage is still TBD, see: [#2185](https://github.com/semistrict/ratel/issues/2185).
 
 #### Permissions
 
 The permissions table is only used for the KV endpoint. It will not be migrated
 to the structured data API and will instead be removed after
-[#2089](https://github.com/cockroachdb/cockroach/issues/2089) is resolved.
+[#2089](https://github.com/semistrict/ratel/issues/2089) is resolved.
 
 #### Users
 
@@ -121,9 +121,9 @@ in multiple steps:
 | Configuration | Implementation date |
 |---------------|---------------------|
 | accounting    | immediately         |
-| permissions   | after [#2089](https://github.com/cockroachdb/cockroach/issues/2089) |
+| permissions   | after [#2089](https://github.com/semistrict/ratel/issues/2089) |
 | users         | immediately         |
-| zones         | after [#2179](https://github.com/cockroachdb/cockroach/issues/2179) |
+| zones         | after [#2179](https://github.com/semistrict/ratel/issues/2179) |
 
 # Drawbacks
 

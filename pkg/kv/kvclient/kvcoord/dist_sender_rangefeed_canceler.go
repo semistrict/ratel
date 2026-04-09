@@ -20,7 +20,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 )
 
 // stuckRangeFeedCanceler are a defense-in-depth mechanism to restart rangefeeds that have
@@ -45,7 +45,7 @@ import (
 // to ping(), i.e. in the common case of no stuck rangefeeds, it will ~immediately
 // pick up the new value and apply it.
 //
-// [^1]: https://github.com/cockroachdb/cockroach/issues/86818
+// [^1]: https://github.com/semistrict/ratel/issues/86818
 type stuckRangeFeedCanceler struct {
 	threshold       func() time.Duration
 	cancel          context.CancelFunc

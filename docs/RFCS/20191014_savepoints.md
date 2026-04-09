@@ -2,9 +2,9 @@
 - Status: in-progress
 - Start Date: 2019-10-14
 - Authors: andrei knz, with technical input from nathan tbg lucy radu
-- RFC PR: [#41569](https://github.com/cockroachdb/cockroach/pull/41569)
-- Supporting tech note: [#42116](https://github.com/cockroachdb/cockroach/pull/42116) or [here](../tech-notes/txn_coord_sender.md) after this PR merges.
-- Cockroach Issue: [#10735](https://github.com/cockroachdb/cockroach/issues/10735)
+- RFC PR: [#41569](https://github.com/semistrict/ratel/pull/41569)
+- Supporting tech note: [#42116](https://github.com/semistrict/ratel/pull/42116) or [here](../tech-notes/txn_coord_sender.md) after this PR merges.
+- Cockroach Issue: [#10735](https://github.com/semistrict/ratel/issues/10735)
 
 **Remember, you can submit a PR with your RFC before the text is
 complete. Refer to the [README](README.md#rfc-process) for details.**
@@ -403,7 +403,7 @@ Initial analysis, pre-impl, suggests the following Work to be performed:
 - [SQL metadata](#Savepoints-and-schema-changes):
   - evict entries from desc caches upon savepoint rollback
 - [Storage changes to support rollbacks](#Savepoint-rollbacks-MVCC-and-storage):
-  - https://github.com/cockroachdb/cockroach/issues/41612
+  - https://github.com/semistrict/ratel/issues/41612
   - extend the txn proto with a list of ignored seqnum ranges
   - extend the MVCC read logic to skip over ignored seqnum ranges
   - extend the intent resolution logic to skip over ignored seqnum ranges
@@ -528,7 +528,7 @@ with the range of seqnums generated from the point the savepoint
 was last established, to the point of the rollback.
 
 This storage-specific part of the work is described in this issue:
-https://github.com/cockroachdb/cockroach/issues/41612
+https://github.com/semistrict/ratel/issues/41612
 
 ## TxnCoordSender changes
 
@@ -542,7 +542,7 @@ https://github.com/cockroachdb/cockroach/issues/41612
 ### Background: Txn interface between SQL and KV
 
 This RFC assumes understanding from the TxnCoordSender tech note at
-[#42116](https://github.com/cockroachdb/cockroach/pull/42116) or
+[#42116](https://github.com/semistrict/ratel/pull/42116) or
 [here](../tech-notes/txn_coord_sender.md) after this PR merges.
 
 ### Overview of TxnCoordSender changes

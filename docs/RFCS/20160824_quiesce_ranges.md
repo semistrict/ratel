@@ -3,7 +3,7 @@
 - Start Date: 2016-06-24
 - Authors: David Taylor, Daniel Harrison, Tobias Schottdorf
 - RFC PR: #8811
-- Cockroach Issue: [#357](https://github.com/cockroachdb/cockroach/issues/357)
+- Cockroach Issue: [#357](https://github.com/semistrict/ratel/issues/357)
 
 
 # Summary

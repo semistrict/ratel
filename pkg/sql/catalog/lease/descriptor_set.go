@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
 )
 
 // descriptorSet maintains an ordered set of descriptorVersionState objects

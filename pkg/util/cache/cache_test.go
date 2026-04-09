@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/biogo/store/llrb"
-	_ "github.com/cockroachdb/cockroach/pkg/util/log" // for flags
+	_ "github.com/semistrict/ratel/pkg/util/log" // for flags
 )
 
 type testKey string

@@ -14,7 +14,7 @@
 
 package tests
 
-import "github.com/cockroachdb/cockroach/pkg/cmd/roachtest/cluster"
+import "github.com/semistrict/ratel/pkg/cmd/roachtest/cluster"
 
 func ifLocal(c cluster.Cluster, trueVal, falseVal string) string {
 	if c.IsLocal() {

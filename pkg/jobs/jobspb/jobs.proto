@@ -123,7 +123,7 @@ message StreamReplicationDetails {
   // ID of the protected timestamp record that protects the above spans
   bytes protected_timestamp_record = 2 [
     (gogoproto.customname) = "ProtectedTimestampRecord",
-    (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.UUID"
+    (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/uuid.UUID"
   ];
 }
 
@@ -141,7 +141,7 @@ message SchedulePTSChainingRecord {
 
   bytes protected_timestamp_record = 1 [
    (gogoproto.customname) = "ProtectedTimestampRecord",
-   (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.UUID"
+   (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/uuid.UUID"
   ];
 
   PTSAction action = 2;
@@ -187,7 +187,7 @@ message BackupDetails {
   // reconciliation loop to ensure that protected timestamps are cleaned up.
   bytes protected_timestamp_record = 7 [
     (gogoproto.customname) = "ProtectedTimestampRecord",
-    (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.UUID"
+    (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/uuid.UUID"
   ];
 
   // CollectionURI is the path to the collection into which this backup is being
@@ -215,7 +215,7 @@ message BackupDetails {
   // ResolvedCompleteDbs contains the DBs in ResolvedTargets that are "complete"
   // as discussed in backup and restore planning checks.
   repeated uint32 resolved_complete_dbs = 18 [
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"
   ];
 
   // RequestedTargets contains descriptors resolved from any explicit targets
@@ -252,15 +252,15 @@ message BackupProgress {
 message DescriptorRewrite {
   uint32 id = 1 [
     (gogoproto.customname) = "ID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"
   ];
   uint32 parent_id = 2 [
     (gogoproto.customname) = "ParentID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"
   ];
   uint32 parent_schema_id = 5 [
     (gogoproto.customname) = "ParentSchemaID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"
   ];
   // ToExisting represents whether this descriptor is being remapped to a
   // descriptor that already exists in the cluster.
@@ -277,7 +277,7 @@ message RestoreDetails {
   reserved 1;
   util.hlc.Timestamp end_time = 4 [(gogoproto.nullable) = false];
   map<uint32, DescriptorRewrite> descriptor_rewrites = 2 [
-    (gogoproto.castkey) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"
+    (gogoproto.castkey) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"
   ];
   // URIs contains one URI for each backup (full or incremental) corresponding
   // to the location of the main BACKUP manifest. For partitioned backups, each
@@ -317,18 +317,18 @@ message RestoreDetails {
   // the job have been transactionally updated after the data was restored.
   bool descriptors_published = 10;
   int32 descriptor_coverage = 11 [
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/sem/tree.DescriptorCoverage"
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/sem/tree.DescriptorCoverage"
   ];
   BackupEncryptionOptions encryption = 12;
 
   message RevalidateIndex {
     uint32 id = 1 [
       (gogoproto.customname) = "TableID",
-      (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"
+      (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"
     ];
     uint32 parent_id = 2 [
       (gogoproto.customname) = "IndexID",
-      (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.IndexID"
+      (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.IndexID"
     ];
   }
   repeated RevalidateIndex revalidate_indexes = 18 [(gogoproto.nullable) = false];
@@ -344,7 +344,7 @@ message RestoreDetails {
   // DatabaseModifiers contains extra modifications to make to the databases
   // being restored.
   map<uint32, DatabaseModifier> database_modifiers = 19 [
-    (gogoproto.castkey) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"
+    (gogoproto.castkey) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"
   ];
 
   // DebugPauseOn describes the events that the job should pause itself on for debugging purposes.
@@ -405,7 +405,7 @@ message ImportDetails {
   int64 walltime = 5;
   uint32 parent_id = 6 [
     (gogoproto.customname) = "ParentID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"
   ];
   string backup_path = 7;
 
@@ -434,7 +434,7 @@ message ImportDetails {
   // reconciliation loop to ensure that protected timestamps are cleaned up.
   bytes protected_timestamp_record = 22 [
     (gogoproto.customname) = "ProtectedTimestampRecord",
-    (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.UUID"
+    (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/uuid.UUID"
   ];
 
   // DefaultIntSize is the integer type that a "naked" int will be resolved
@@ -445,7 +445,7 @@ message ImportDetails {
   // If the database being imported into is a multi-region database, then this
   // field stores the databases' primary region.
   string database_primary_region = 27 [
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb.RegionName"
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/catpb.RegionName"
   ];
 
   // next val: 28
@@ -501,7 +501,7 @@ message ImportProgress {
 
 // TypeSchemaChangeDetails is the job detail information for a type schema change job.
 message TypeSchemaChangeDetails {
-  uint32 type_id = 1 [(gogoproto.customname) = "TypeID", (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"];
+  uint32 type_id = 1 [(gogoproto.customname) = "TypeID", (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"];
   // TransitioningMembers is a list of enum members, represented by their
   // physical representation, that are transitioning in the current job. This
   // is used to group transitions together and ensure that rollback is limited
@@ -535,7 +535,7 @@ message BackfillProgress {
   // ID is the ID of the descriptor to which this checkpoint corresponds.
   uint32 id = 1 [
     (gogoproto.customname) = "TableID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"
   ];
 
   // SourceIndexID is the ID of the source index for the backfill.
@@ -543,14 +543,14 @@ message BackfillProgress {
   // a merge.
   uint32 source_index_id = 2 [
     (gogoproto.customname) = "SourceIndexID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.IndexID"
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.IndexID"
   ];
 
   // DestIndexIDs is the set of IDs which are being backfilled from the
   // SourceIndexID.
   repeated uint32 dest_index_ids = 3 [
     (gogoproto.customname) = "DestIndexIDs",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.IndexID"
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.IndexID"
   ];
 
   // MinimumWriteTimestamp is the timestamp at which a backfill may want to
@@ -594,7 +594,7 @@ enum Status {
 
 message DroppedTableDetails {
   string name = 1;
-  uint32 ID = 2 [(gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"];
+  uint32 ID = 2 [(gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"];
   Status status = 3;
 }
 
@@ -618,13 +618,13 @@ message DroppedTableDetails {
 message SchemaChangeGCDetails {
   message DroppedIndex {
     int64 index_id = 1 [(gogoproto.customname) = "IndexID",
-                       (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.IndexID"];
+                       (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.IndexID"];
     int64 drop_time = 2;
   }
 
   message DroppedID {
     int64 id = 1 [(gogoproto.customname) = "ID",
-                 (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"];
+                 (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"];
     int64 drop_time = 2;
   }
 
@@ -639,7 +639,7 @@ message SchemaChangeGCDetails {
   // If dropping indexes, the table ID which has those indexes. If dropping a
   // database, the database ID.
   int64 parent_id = 3 [(gogoproto.customname) = "ParentID",
-                      (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"];
+                      (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"];
 
   message DroppedTenant {
     uint64 id = 1 [(gogoproto.customname) = "ID"];
@@ -663,14 +663,14 @@ message SchemaChangeDetails {
   // dropped_types holds the set of types to drop as part of a DROP DATABASE
   // statement. We collect the types here rather than creating individual DROP
   // TYPE jobs for each dropped type.
-  repeated uint32 dropped_types = 8 [(gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"];
+  repeated uint32 dropped_types = 8 [(gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"];
   // dropped_schemas holds the set of schemas to drop as part of a DROP SCHEMA
   // or DROP DATABASE cascade statement.
-  repeated uint32 dropped_schemas = 9 [(gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"];
+  repeated uint32 dropped_schemas = 9 [(gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"];
   // The descriptor ID of the dropped database which created this job.
   uint32 dropped_database_id = 4 [
     (gogoproto.customname) = "DroppedDatabaseID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"
   ];
   // desc_id is the target descriptor for this schema change. Note that this ID
   // is not always a table ID! We allow referencing any descriptor here to allow
@@ -678,10 +678,10 @@ message SchemaChangeDetails {
   // only draining names and existing leases. This allows us to implement the
   // simple schema changes on SchemaDescriptors and DatabaseDescriptors without
   // implementing a new job for each.
-  uint32 desc_id = 5 [(gogoproto.customname) = "DescID", (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"];
+  uint32 desc_id = 5 [(gogoproto.customname) = "DescID", (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"];
   // table_mutation_id is the mutation ID that the schema changer is to process. It is
   // only set when desc_id references a TableDescriptor.
-  uint32 table_mutation_id = 6 [(gogoproto.customname) = "TableMutationID", (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.MutationID"];
+  uint32 table_mutation_id = 6 [(gogoproto.customname) = "TableMutationID", (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.MutationID"];
   // The format version of the schema change job details. This is used to
   // distinguish between jobs as they existed in 19.2 and earlier versions
   // (controlled and updated by a SchemaChanger) and jobs as they exist in 20.1
@@ -712,13 +712,13 @@ message SchemaChangeGCProgress {
 
   message IndexProgress {
     int64 index_id = 1 [(gogoproto.customname) = "IndexID",
-                       (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.IndexID"];
+                       (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.IndexID"];
     Status status = 2;
   }
 
   message TableProgress {
     int64 id = 1 [(gogoproto.customname) = "ID",
-                 (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"];
+                 (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"];
     Status status = 2;
   }
 
@@ -763,7 +763,7 @@ message ChangefeedTargetSpecification {
 
   TargetType type = 1;
   uint32 table_id = 2 [(gogoproto.customname) = "TableID",
-  (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"];
+  (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"];
   string family_name = 3;
   string statement_time_name = 4;
 
@@ -776,7 +776,7 @@ message ChangefeedDetails {
   // renames can be tolerated and derived topic names remain immutable.
   //
   map<uint32, ChangefeedTargetTable> tables = 6 [
-    (gogoproto.castkey) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID",
+    (gogoproto.castkey) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID",
     (gogoproto.casttype) = "ChangefeedTargets",
     (gogoproto.nullable) = false
   ];
@@ -861,7 +861,7 @@ message ChangefeedProgress {
   // released accordingly.
   bytes protected_timestamp_record = 3 [
     (gogoproto.customname) = "ProtectedTimestampRecord",
-    (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.UUID",
+    (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/uuid.UUID",
     (gogoproto.nullable) = false
   ];
 }
@@ -874,7 +874,7 @@ message CreateStatsDetails {
   message ColStat {
     repeated uint32 column_ids = 1 [
       (gogoproto.customname) = "ColumnIDs",
-      (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ColumnID"
+      (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ColumnID"
     ];
 
     // Indicates whether this column stat should include a histogram.
@@ -920,7 +920,7 @@ message AutoSQLStatsCompactionProgress {
 message RowLevelTTLDetails {
   uint32 table_id = 1 [
     (gogoproto.customname) = "TableID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"
   ];
   google.protobuf.Timestamp cutoff = 2 [(gogoproto.nullable)=false, (gogoproto.stdtime) = true];
 }
@@ -932,7 +932,7 @@ message Payload {
   string description = 1;
   // If empty, the description is assumed to be the statement.
   repeated string statement = 16;
-  string username_proto = 2 [(gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/security.SQLUsernameProto"];
+  string username_proto = 2 [(gogoproto.casttype) = "github.com/semistrict/ratel/pkg/security.SQLUsernameProto"];
   // For consistency with the SQL timestamp type, which has microsecond
   // precision, we avoid the timestamp.Timestamp WKT, which has nanosecond
   // precision, and use microsecond integers directly.
@@ -941,7 +941,7 @@ message Payload {
   reserved 5;
   repeated uint32 descriptor_ids = 6 [
     (gogoproto.customname) = "DescriptorIDs",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"
   ];
   reserved 7;
   // TODO (lucy): Deprecate the string error field and move to using the encoded
@@ -991,7 +991,7 @@ message Payload {
   // has been restored into a different cluster, which might mean it should
   // terminate, pause or update some other state.
   bytes creation_cluster_id = 35 [(gogoproto.nullable) = false, (gogoproto.customname) = "CreationClusterID",
-    (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.UUID"];
+    (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/uuid.UUID"];
 
   // CreationClusterVersion is populated at creation time with the then-active
   // cluster version, in case a job resuming later needs to use this information
@@ -1039,7 +1039,7 @@ message Progress {
     RowLevelTTLProgress row_level_ttl = 25 [(gogoproto.customname)="RowLevelTTL"];
   }
 
-  uint64 trace_id = 21 [(gogoproto.nullable) = false, (gogoproto.customname) = "TraceID", (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb.TraceID"];
+  uint64 trace_id = 21 [(gogoproto.nullable) = false, (gogoproto.customname) = "TraceID", (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/tracing/tracingpb.TraceID"];
 }
 
 enum Type {
@@ -1085,7 +1085,7 @@ message RetriableExecutionFailure {
   // ExecutionEndMicros is the timestamp at which this execution concluded.
   int64 execution_end_micros = 3;
   // InstanceID is the instance which coordinated the execution.
-  int32 instance_id = 4 [(gogoproto.customname) = "InstanceID", (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/base.SQLInstanceID", (gogoproto.nullable) = false];
+  int32 instance_id = 4 [(gogoproto.customname) = "InstanceID", (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/base.SQLInstanceID", (gogoproto.nullable) = false];
   // Error stores the structured error which occurred. It might be nil if it
   // was too large. In that case, the TruncatedError will be populated.
   errorspb.EncodedError error = 5;

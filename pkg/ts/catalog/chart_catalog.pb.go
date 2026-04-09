@@ -5,11 +5,11 @@ package catalog
 
 import (
 	fmt "fmt"
-	tspb "github.com/cockroachdb/cockroach/pkg/ts/tspb"
 	_ "github.com/gogo/protobuf/gogoproto"
 	github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
 	proto "github.com/gogo/protobuf/proto"
 	_go "github.com/prometheus/client_model/go"
+	tspb "github.com/semistrict/ratel/pkg/ts/tspb"
 	io "io"
 	math "math"
 	math_bits "math/bits"

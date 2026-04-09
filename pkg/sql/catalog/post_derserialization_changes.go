@@ -14,7 +14,7 @@
 
 package catalog
 
-import "github.com/cockroachdb/cockroach/pkg/util"
+import "github.com/semistrict/ratel/pkg/util"
 
 // PostDeserializationChangeType is used to indicate the type of
 // PostDeserializationChange which occurred for a descriptor.

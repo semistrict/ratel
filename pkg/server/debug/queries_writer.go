@@ -18,9 +18,9 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/cockroachdb/cockroach/pkg/server/serverpb"
-	"github.com/cockroachdb/cockroach/pkg/util/encoding/csv"
-	"github.com/cockroachdb/cockroach/pkg/util/uint128"
+	"github.com/semistrict/ratel/pkg/server/serverpb"
+	"github.com/semistrict/ratel/pkg/util/encoding/csv"
+	"github.com/semistrict/ratel/pkg/util/uint128"
 )
 
 var csvHeader = []string{

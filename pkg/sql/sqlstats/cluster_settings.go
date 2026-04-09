@@ -17,7 +17,7 @@ package sqlstats
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/settings"
+	"github.com/semistrict/ratel/pkg/settings"
 )
 
 // StmtStatsEnable determines whether to collect per-statement statistics.

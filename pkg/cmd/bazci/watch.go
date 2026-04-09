@@ -25,8 +25,8 @@ import (
 	"strings"
 	"time"
 
-	bazelutil "github.com/cockroachdb/cockroach/pkg/build/util"
 	"github.com/cockroachdb/errors"
+	bazelutil "github.com/semistrict/ratel/pkg/build/util"
 )
 
 // fileMetadata captures the relevant stats associated with a given file

@@ -15,14 +15,14 @@
 package descpb
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catconstants"
-	"github.com/cockroachdb/cockroach/pkg/sql/protoreflect"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/catid"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/cockroach/pkg/util/encoding"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/sql/catalog/catconstants"
+	"github.com/semistrict/ratel/pkg/sql/protoreflect"
+	"github.com/semistrict/ratel/pkg/sql/sem/catid"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/util"
+	"github.com/semistrict/ratel/pkg/util/encoding"
 )
 
 // ToEncodingDirection converts a direction from the proto to an encoding.Direction.
@@ -66,10 +66,10 @@ const (
 	// https://www.cockroachlabs.com/blog/sql-in-cockroachdb-mapping-table-data-to-key-value-storage/.
 	BaseFormatVersion
 	// FamilyFormatVersion corresponds to the row-group encoding described in
-	// https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20151214_sql_column_families.md
+	// https://github.com/semistrict/ratel/blob/master/docs/RFCS/20151214_sql_column_families.md
 	FamilyFormatVersion
 	// InterleavedFormatVersion corresponds to the encoding described in
-	// https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20160624_sql_interleaved_tables.md
+	// https://github.com/semistrict/ratel/blob/master/docs/RFCS/20160624_sql_interleaved_tables.md
 	InterleavedFormatVersion
 )
 

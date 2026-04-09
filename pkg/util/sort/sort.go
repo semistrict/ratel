@@ -24,7 +24,7 @@ package sort
 import (
 	"sort"
 
-	"github.com/cockroachdb/cockroach/pkg/util/cancelchecker"
+	"github.com/semistrict/ratel/pkg/util/cancelchecker"
 )
 
 // The next few sorting functions are largely unmodified

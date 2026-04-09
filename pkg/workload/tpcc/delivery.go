@@ -22,10 +22,10 @@ import (
 	"sync/atomic"
 
 	"github.com/cockroachdb/cockroach-go/v2/crdb/crdbpgx"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
-	"github.com/cockroachdb/cockroach/pkg/workload"
 	"github.com/cockroachdb/errors"
 	"github.com/jackc/pgx/v4"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/workload"
 	"golang.org/x/exp/rand"
 )
 

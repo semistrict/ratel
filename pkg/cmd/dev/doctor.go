@@ -26,7 +26,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/dev/io/exec"
+	"github.com/semistrict/ratel/pkg/cmd/dev/io/exec"
 	"github.com/spf13/cobra"
 )
 

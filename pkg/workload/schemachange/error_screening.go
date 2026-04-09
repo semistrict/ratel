@@ -19,9 +19,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/errors"
 	"github.com/jackc/pgx/v4"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 )
 
 func (og *operationGenerator) tableExists(

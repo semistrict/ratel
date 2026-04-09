@@ -18,10 +18,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/cluster"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/registry"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/test"
-	"github.com/cockroachdb/cockroach/pkg/util/version"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/cluster"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/registry"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/test"
+	"github.com/semistrict/ratel/pkg/util/version"
 )
 
 func registerSchemaChangeMixedVersions(r registry.Registry) {
@@ -63,7 +63,7 @@ func runSchemaChangeWorkloadStep(loadNode, maxOps, concurrency int) versionStep 
 			// The workload is still in development and occasionally discovers schema
 			// change errors so for now we don't fail on them but only on panics, server
 			// crashes, deadlocks, etc.
-			// TODO(spaskob): remove when https://github.com/cockroachdb/cockroach/issues/47430
+			// TODO(spaskob): remove when https://github.com/semistrict/ratel/issues/47430
 			// is closed.
 			"--tolerate-errors=true",
 			fmt.Sprintf("--max-ops %d", maxOps),

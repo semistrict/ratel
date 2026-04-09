@@ -28,25 +28,25 @@ import (
 	"strings"
 	"time"
 
-	cloudstorage "github.com/cockroachdb/cockroach/pkg/cloud"
-	"github.com/cockroachdb/cockroach/pkg/cloud/amazon"
-	"github.com/cockroachdb/cockroach/pkg/cloud/gcp"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/cluster"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/option"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/registry"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/spec"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/test"
-	"github.com/cockroachdb/cockroach/pkg/jobs"
-	"github.com/cockroachdb/cockroach/pkg/jobs/jobspb"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/install"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
-	"github.com/cockroachdb/cockroach/pkg/util/retry"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
-	"github.com/cockroachdb/cockroach/pkg/util/version"
-	"github.com/cockroachdb/cockroach/pkg/workload/histogram"
 	"github.com/cockroachdb/errors"
+	cloudstorage "github.com/semistrict/ratel/pkg/cloud"
+	"github.com/semistrict/ratel/pkg/cloud/amazon"
+	"github.com/semistrict/ratel/pkg/cloud/gcp"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/cluster"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/option"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/registry"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/spec"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/test"
+	"github.com/semistrict/ratel/pkg/jobs"
+	"github.com/semistrict/ratel/pkg/jobs/jobspb"
+	"github.com/semistrict/ratel/pkg/roachprod/install"
+	"github.com/semistrict/ratel/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/protoutil"
+	"github.com/semistrict/ratel/pkg/util/retry"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/util/version"
+	"github.com/semistrict/ratel/pkg/workload/histogram"
 	"github.com/stretchr/testify/require"
 )
 
@@ -213,7 +213,7 @@ func waitForJobToHaveStatus(
 ) {
 	if err := retry.ForDuration(time.Minute*1, func() error {
 		// TODO(adityamaru): This is unfortunate and can be deleted once
-		// https://github.com/cockroachdb/cockroach/pull/79666 is backported to
+		// https://github.com/semistrict/ratel/pull/79666 is backported to
 		// 21.2 and the mixed version map for roachtests is bumped to the 21.2
 		// patch release with the backport.
 		//
@@ -325,7 +325,7 @@ func registerBackupMixedVersion(r registry.Registry) {
 			}
 
 			// TODO(adityamaru): This is unfortunate and can be deleted once
-			// https://github.com/cockroachdb/cockroach/pull/79666 is backported to
+			// https://github.com/semistrict/ratel/pull/79666 is backported to
 			// 21.2 and the mixed version map for roachtests is bumped to the 21.2
 			// patch release with the backport.
 			//

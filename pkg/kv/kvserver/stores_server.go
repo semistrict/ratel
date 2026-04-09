@@ -19,11 +19,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/storage"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/retry"
 	"github.com/cockroachdb/redact"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/storage"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/retry"
 )
 
 // Server implements PerReplicaServer.
@@ -121,7 +121,7 @@ func (is Server) WaitForApplication(
 				// index, so before returning ensure that rocksdb has synced
 				// everything up to this point to disk.
 				//
-				// https://github.com/cockroachdb/cockroach/issues/33120
+				// https://github.com/semistrict/ratel/issues/33120
 				return storage.WriteSyncNoop(s.engine)
 			}
 		}

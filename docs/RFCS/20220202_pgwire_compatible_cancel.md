@@ -2,8 +2,8 @@
 - Status: draft
 - Start Date: 2022-02-02
 - Authors: Rafi Shamim
-- RFC PR: https://github.com/cockroachdb/cockroach/pull/75870
-- Cockroach Issue: https://github.com/cockroachdb/cockroach/issues/41335
+- RFC PR: https://github.com/semistrict/ratel/pull/75870
+- Cockroach Issue: https://github.com/semistrict/ratel/issues/41335
 
 ## Dedication
 
@@ -80,8 +80,8 @@ query will finish soon, and improves the odds that it will fail with an error
 message instead of succeeding."
 
 There have been internal discussions about this in [April
-2020](https://github.com/cockroachdb/cockroach/pull/34520#discussion_r407414290),
-[July 2021](https://github.com/cockroachdb/cockroach/pull/67501), and [January
+2020](https://github.com/semistrict/ratel/pull/34520#discussion_r407414290),
+[July 2021](https://github.com/semistrict/ratel/pull/67501), and [January
 2022](https://cockroachlabs.slack.com/archives/CGA9F858R/p1643382222564939).
 
 
@@ -92,7 +92,7 @@ There have been internal discussions about this in [April
 
 The connExecutor will be updated to generate a random 64-bit integer
 (BackendKeyData) when it is initialized, and register it with the server’s
-[SessionRegistry](https://github.com/cockroachdb/cockroach/blob/a434c8418c36dbeb64e73588bcd4dd5b248c3238/pkg/sql/conn_executor.go#L1692).
+[SessionRegistry](https://github.com/semistrict/ratel/blob/a434c8418c36dbeb64e73588bcd4dd5b248c3238/pkg/sql/conn_executor.go#L1692).
 If the SQL node's 32-bit SQLInstanceID fits in 11 bits, then the leading bit of
 the BackendKeyData is set to 0, and the following 11 bits are set to the
 SQLInstanceID. Otherwise, the leading bit is set to 1, and the next 31 bits are

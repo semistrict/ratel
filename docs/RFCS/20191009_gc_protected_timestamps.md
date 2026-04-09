@@ -31,7 +31,7 @@ sink receiving the data.
 
 For workloads which update rows frequently throughout a single day this GC
 policy can have huge costs for query execution 
-([#17229](https://github.com/cockroachdb/cockroach/issues/17229)).
+([#17229](https://github.com/semistrict/ratel/issues/17229)).
 
 One particularly pernicious interaction with garbage collection relates to the
 use of `IMPORT INTO`. These jobs can fail or be canceled. In
@@ -168,7 +168,7 @@ GC TTLs are defined in
 [Zone Configurations](https://www.cockroachlabs.com/docs/stable/configure-replication-zones.html).
 Leaseholders decide whether to run GC based based on a heuristic which estimates
 how much garbage would be collected if GC were to run (see 
-[this comment](https://github.com/cockroachdb/cockroach/blob/cc439f0a319031d4dc70de35243f376aed6f3d9f/pkg/storage/gc_queue.go#L188-L264)).
+[this comment](https://github.com/semistrict/ratel/blob/cc439f0a319031d4dc70de35243f376aed6f3d9f/pkg/storage/gc_queue.go#L188-L264)).
 set the GC Threshold
 to the node's current reading of its clock less the GC TTL. Adapting this
 heuristic to protected timestamps is an open issue in this RFC. The naive
@@ -466,7 +466,7 @@ message Record {
 
   // ID uniquely identifies this row.
   bytes id = 1 [
-    (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.UUID",
+    (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/uuid.UUID",
     (gogoproto.nullable) = false,
     (gogoproto.customname) = "ID"
   ];

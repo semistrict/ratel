@@ -20,9 +20,9 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 )
 
 // singleRangeBatch contains parts of the originally enqueued requests that have

@@ -15,8 +15,8 @@
 package descpb
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 )
 
 // PrettyString returns the locking strength as a user-readable string.

@@ -18,13 +18,13 @@ import (
 	"context"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/storage"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/retry"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/storage"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/retry"
 )
 
 var errRetry = errors.New("retry: orphaned replica")
@@ -255,7 +255,7 @@ func (s *Store) tryGetOrCreateReplica(
 		//   raft group (say by broadcasting to all nodes in the cluster), and if
 		//   the ReplicaID is stale, would allow the node to remove the HardState
 		//   and RaftReplicaID. See
-		//   https://github.com/cockroachdb/cockroach/issues/75740.
+		//   https://github.com/semistrict/ratel/issues/75740.
 		//
 		//   There is a concern that there could be some replica that survived
 		//   from v21.2 to v22.1 to v22.2 in unitialized state and will be

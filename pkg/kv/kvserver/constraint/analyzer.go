@@ -17,7 +17,7 @@ package constraint
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // AnalyzedConstraints represents the result or AnalyzeConstraints(). It

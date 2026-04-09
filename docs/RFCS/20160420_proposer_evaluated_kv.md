@@ -2,19 +2,19 @@
 - Status: completed
 - Start Date: 2016-04-19
 - Authors: Tobias Schottdorf
-- RFC PR: [#6166](https://github.com/cockroachdb/cockroach/pull/6166)
-- Cockroach Issue: [#6290](https://github.com/cockroachdb/cockroach/pull/6290)
+- RFC PR: [#6166](https://github.com/semistrict/ratel/pull/6166)
+- Cockroach Issue: [#6290](https://github.com/semistrict/ratel/pull/6290)
 
 # Summary
 
 Pursue an idea by @spencerkimball brought up in the context of
-[#5985](https://github.com/cockroachdb/cockroach/pull/5985): move the bulk of
+[#5985](https://github.com/semistrict/ratel/pull/5985): move the bulk of
 the logic involved in applying commands to a Replica upstream of Raft.
 
 # Motivation
 
 The [first exploration of
-migrations](https://github.com/cockroachdb/cockroach/pull/5985) highlighted
+migrations](https://github.com/semistrict/ratel/pull/5985) highlighted
 the complexity concomitant with migrations on top of the current Raft execution
 model.
 

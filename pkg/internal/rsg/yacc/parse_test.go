@@ -18,9 +18,9 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/build/bazel"
+	"github.com/semistrict/ratel/pkg/build/bazel"
 	// Needed for the -verbosity flag on circleci tests.
-	_ "github.com/cockroachdb/cockroach/pkg/util/log"
+	_ "github.com/semistrict/ratel/pkg/util/log"
 )
 
 var sqlYPath string

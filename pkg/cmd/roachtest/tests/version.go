@@ -20,13 +20,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/cluster"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/option"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/registry"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/test"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/install"
-	"github.com/cockroachdb/cockroach/pkg/util/version"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/cluster"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/option"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/registry"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/test"
+	"github.com/semistrict/ratel/pkg/roachprod/install"
+	"github.com/semistrict/ratel/pkg/util/version"
 )
 
 // TODO(tbg): remove this test. Use the harness in versionupgrade.go
@@ -105,7 +105,7 @@ func registerVersion(r registry.Registry) {
 					// checks but unfortunately our versioning story for these
 					// checks had been broken for a long time. See:
 					//
-					// https://github.com/cockroachdb/cockroach/issues/37737#issuecomment-496026918
+					// https://github.com/semistrict/ratel/issues/37737#issuecomment-496026918
 					if !strings.HasPrefix(binaryVersion, "2.") {
 						if err := c.CheckReplicaDivergenceOnDB(ctx, t.L(), db); err != nil {
 							return errors.Wrapf(err, "node %d", i)

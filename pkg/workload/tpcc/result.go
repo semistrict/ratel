@@ -17,9 +17,9 @@ package tpcc
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/workload/histogram"
 	"github.com/cockroachdb/errors"
 	"github.com/codahale/hdrhistogram"
+	"github.com/semistrict/ratel/pkg/workload/histogram"
 )
 
 // SpecWarehouseFactor is the default maximum per-warehouse newOrder

@@ -15,9 +15,9 @@
 package sql
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/rowexec"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/sql/rowexec"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 )
 
 // subquery represents a subquery expression in an expression tree

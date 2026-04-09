@@ -49,7 +49,7 @@ i8  CREATE TABLE public.i8 (
       CONSTRAINT i8_pkey PRIMARY KEY (rowid ASC)
     )
 
-# https://github.com/cockroachdb/cockroach/issues/32846
+# https://github.com/semistrict/ratel/issues/32846
 subtest issue_32846
 
 statement ok

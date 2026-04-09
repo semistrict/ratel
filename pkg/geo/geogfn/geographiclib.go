@@ -15,8 +15,8 @@
 package geogfn
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/geo/geographiclib"
 	"github.com/golang/geo/s2"
+	"github.com/semistrict/ratel/pkg/geo/geographiclib"
 )
 
 // spheroidDistance returns the s12 (meter) component of spheroid.Inverse from s2 Points.

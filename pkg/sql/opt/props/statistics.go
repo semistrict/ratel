@@ -21,9 +21,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/olekukonko/tablewriter"
+	"github.com/semistrict/ratel/pkg/sql/opt"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 )
 
 // Statistics is a collection of measurements and statistics that is used by

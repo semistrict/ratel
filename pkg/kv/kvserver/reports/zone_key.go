@@ -17,8 +17,8 @@ package reports
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/config"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/config"
 )
 
 // ZoneKey is the index of the first level in the constraint conformance report.

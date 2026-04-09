@@ -18,7 +18,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/props"
+	"github.com/semistrict/ratel/pkg/sql/opt/props"
 )
 
 func TestCardinality(t *testing.T) {

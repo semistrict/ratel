@@ -24,8 +24,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/lib/pq/oid"
+	"github.com/semistrict/ratel/pkg/sql/types"
 )
 
 // RDBMS options

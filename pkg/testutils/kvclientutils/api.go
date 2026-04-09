@@ -14,7 +14,7 @@
 
 package kvclientutils
 
-import "github.com/cockroachdb/cockroach/pkg/roachpb"
+import "github.com/semistrict/ratel/pkg/roachpb"
 
 // StrToCPutExistingValue takes a string that was written using, say, a Put and
 // returns the bytes that can be passed to a Batch.CPut() as the expected value

@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/util/randutil"
+	"github.com/semistrict/ratel/pkg/util/randutil"
 )
 
 func TestFastIntSet(t *testing.T) {

@@ -29,9 +29,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/contextutil"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/log/severity"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/errors/oserror"
 	"github.com/docker/distribution/reference"
@@ -44,6 +41,9 @@ import (
 	"github.com/docker/go-connections/nat"
 	isatty "github.com/mattn/go-isatty"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/semistrict/ratel/pkg/util/contextutil"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/log/severity"
 )
 
 // Retrieve the IP address of docker itself.

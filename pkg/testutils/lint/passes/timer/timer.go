@@ -73,7 +73,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		if !ok {
 			return false
 		}
-		if named.Obj().Type().String() != "github.com/cockroachdb/cockroach/pkg/util/timeutil.Timer" {
+		if named.Obj().Type().String() != "github.com/semistrict/ratel/pkg/util/timeutil.Timer" {
 			return false
 		}
 		return true

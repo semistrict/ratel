@@ -25,8 +25,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/rand"
 )
@@ -75,8 +75,8 @@ func makeTenantCerts(t *testing.T, tenant uint64) (certsDir string, cleanup func
 // the tenant CA.
 //
 // This foreshadows upcoming work on multi-tenancy, see:
-// https://github.com/cockroachdb/cockroach/issues/49105
-// https://github.com/cockroachdb/cockroach/issues/47898
+// https://github.com/semistrict/ratel/issues/49105
+// https://github.com/semistrict/ratel/issues/47898
 func TestTenantCertificates(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	t.Run("embedded-certs", func(t *testing.T) {

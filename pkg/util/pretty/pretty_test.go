@@ -17,7 +17,7 @@ package pretty_test
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/util/pretty"
+	"github.com/semistrict/ratel/pkg/util/pretty"
 )
 
 // Example_align demonstrates alignment.

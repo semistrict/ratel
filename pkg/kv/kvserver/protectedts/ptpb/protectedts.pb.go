@@ -5,12 +5,12 @@ package ptpb
 
 import (
 	fmt "fmt"
-	roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	hlc "github.com/cockroachdb/cockroach/pkg/util/hlc"
-	github_com_cockroachdb_cockroach_pkg_util_uuid "github.com/cockroachdb/cockroach/pkg/util/uuid"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb "github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	hlc "github.com/semistrict/ratel/pkg/util/hlc"
+	github_com_cockroachdb_cockroach_pkg_util_uuid "github.com/semistrict/ratel/pkg/util/uuid"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	io "io"
 	math "math"
@@ -107,7 +107,7 @@ var xxx_messageInfo_Metadata proto.InternalMessageInfo
 // Record corresponds to a protected timestamp.
 type Record struct {
 	// ID uniquely identifies this row.
-	ID github_com_cockroachdb_cockroach_pkg_util_uuid.Bytes `protobuf:"bytes,1,opt,name=id,proto3,casttype=github.com/cockroachdb/cockroach/pkg/util/uuid.Bytes" json:"id,omitempty"`
+	ID github_com_cockroachdb_cockroach_pkg_util_uuid.Bytes `protobuf:"bytes,1,opt,name=id,proto3,casttype=github.com/semistrict/ratel/pkg/util/uuid.Bytes" json:"id,omitempty"`
 	// Timestamp is the timestamp which is protected.
 	Timestamp hlc.Timestamp `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp"`
 	// Mode specifies whether this record protects all values live at timestamp
@@ -312,7 +312,7 @@ func (*Target) XXX_OneofWrappers() []interface{} {
 type Target_SchemaObjectsTarget struct {
 	// IDs are the descriptor IDs of the schema objects being protected by this
 	// Record. This field will only contain database and table IDs.
-	IDs []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,1,rep,packed,name=ids,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"ids,omitempty"`
+	IDs []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,1,rep,packed,name=ids,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"ids,omitempty"`
 }
 
 func (m *Target_SchemaObjectsTarget) Reset()         { *m = Target_SchemaObjectsTarget{} }

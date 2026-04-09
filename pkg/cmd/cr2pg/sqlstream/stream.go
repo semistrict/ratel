@@ -19,11 +19,11 @@ import (
 	"bufio"
 	"io"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/parser"
+	"github.com/semistrict/ratel/pkg/sql/parser"
 	// Include this because the parser assumes builtin functions exist.
-	_ "github.com/cockroachdb/cockroach/pkg/sql/sem/builtins"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/errors"
+	_ "github.com/semistrict/ratel/pkg/sql/sem/builtins"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 )
 
 // Modified from importer/read_import_pgdump.go.

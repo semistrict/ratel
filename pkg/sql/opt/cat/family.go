@@ -14,7 +14,7 @@
 
 package cat
 
-import "github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+import "github.com/semistrict/ratel/pkg/sql/sem/tree"
 
 // Family is an interface to a table row-group, exposing only the information
 // needed by the query optimizer. In the current layout tables expose exactly

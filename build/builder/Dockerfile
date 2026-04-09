@@ -200,7 +200,7 @@ RUN apt-get purge -y \
 
 RUN rm -rf /tmp/* /var/lib/apt/lists/*
 
-RUN ln -s /go/src/github.com/cockroachdb/cockroach/build/builder/mkrelease.sh /usr/local/bin/mkrelease \
+RUN ln -s /go/src/github.com/semistrict/ratel/build/builder/mkrelease.sh /usr/local/bin/mkrelease \
   && ln -s /usr/bin/bazel-3.6.0 /usr/bin/bazel
 
 RUN curl -fsSL https://github.com/benesch/autouseradd/releases/download/1.2.0/autouseradd-1.2.0-amd64.tar.gz -o autouseradd.tar.gz \

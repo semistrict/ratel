@@ -18,8 +18,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/util/log/logconfig"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util/log/logconfig"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 )

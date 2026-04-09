@@ -20,9 +20,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/geo/geopb"
 	"github.com/cockroachdb/datadriven"
 	"github.com/golang/geo/s2"
+	"github.com/semistrict/ratel/pkg/geo/geopb"
 )
 
 func nameArg(t *testing.T, d *datadriven.TestData) string {

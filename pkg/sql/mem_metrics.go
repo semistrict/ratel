@@ -17,7 +17,7 @@ package sql
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
+	"github.com/semistrict/ratel/pkg/util/metric"
 )
 
 // BaseMemoryMetrics contains a max histogram and a current count of the

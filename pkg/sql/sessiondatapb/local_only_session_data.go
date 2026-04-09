@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/util/admission"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util/admission"
 )
 
 // ExperimentalDistSQLPlanningMode controls if and when the opt-driven DistSQL

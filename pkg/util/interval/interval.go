@@ -30,8 +30,8 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/util/envutil"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util/envutil"
 )
 
 // ErrInvertedRange is returned if an interval is used where the start value is greater

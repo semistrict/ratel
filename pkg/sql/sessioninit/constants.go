@@ -15,8 +15,8 @@
 package sessioninit
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 )
 
 // UsersTableName represents system.users.

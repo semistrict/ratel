@@ -17,7 +17,7 @@ package optional_test
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/util/optional"
+	"github.com/semistrict/ratel/pkg/util/optional"
 	"github.com/stretchr/testify/require"
 )
 

@@ -15,9 +15,9 @@
 package types
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/oidext"
 	"github.com/cockroachdb/errors"
 	"github.com/lib/pq/oid"
+	"github.com/semistrict/ratel/pkg/sql/oidext"
 )
 
 // Convenience list of pre-constructed OID-related types.

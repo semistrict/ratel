@@ -17,7 +17,7 @@ package geomfn
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/geo"
+	"github.com/semistrict/ratel/pkg/geo"
 )
 
 var (

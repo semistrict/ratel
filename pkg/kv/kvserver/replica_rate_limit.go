@@ -17,8 +17,8 @@ package kvserver
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/multitenant/tenantcostmodel"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/multitenant/tenantcostmodel"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // maybeRateLimitBatch may block the batch waiting to be rate-limited. Note that

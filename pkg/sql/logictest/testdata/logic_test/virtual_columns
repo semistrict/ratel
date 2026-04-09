@@ -1,5 +1,5 @@
-# Test that we don't allow FAMILY constraints with virtual columns.
-statement error virtual computed column "v" cannot be part of a family
+# Test that FAMILY syntax is no longer accepted.
+statement error at or near "FAMILY": syntax error
 CREATE TABLE t (
   a INT PRIMARY KEY,
   b INT,
@@ -7,7 +7,7 @@ CREATE TABLE t (
   FAMILY (a, b, v)
 )
 
-statement error virtual computed column "v" cannot be part of a family
+statement error at or near "FAMILY": syntax error
 CREATE TABLE t (
   a INT PRIMARY KEY,
   b INT,

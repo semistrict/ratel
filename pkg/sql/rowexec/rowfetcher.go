@@ -59,6 +59,7 @@ type rowFetcher interface {
 	NextRowInto(
 		ctx context.Context, destination rowenc.EncDatumRow, colIdxMap catalog.TableColMap,
 	) (ok bool, err error)
+	RowPassesArrayEqualsAnyFilter() bool
 
 	// PartialKey is not stat-related but needs to be supported.
 	PartialKey(nCols int) (roachpb.Key, error)

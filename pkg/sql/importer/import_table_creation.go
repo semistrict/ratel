@@ -129,7 +129,6 @@ func MakeSimpleTableDescriptor(
 	for i := range create.Defs {
 		switch def := create.Defs[i].(type) {
 		case *tree.CheckConstraintTableDef,
-			*tree.FamilyTableDef,
 			*tree.UniqueConstraintTableDef:
 			// ignore
 		case *tree.IndexTableDef:

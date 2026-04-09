@@ -30,6 +30,7 @@ import (
 // ValidateForwardIndexesFn callback function for validating forward indexes.
 type ValidateForwardIndexesFn func(
 	ctx context.Context,
+	codec keys.SQLCodec,
 	tbl catalog.TableDescriptor,
 	indexes []catalog.Index,
 	runHistoricalTxn sqlutil.HistoricalInternalExecTxnRunner,
@@ -82,7 +83,9 @@ func (iv indexValidator) ValidateForwardIndexes(
 	}
 	const withFirstMutationPublic = true
 	const gatherAllInvalid = false
-	return iv.validateForwardIndexes(ctx, tbl, indexes, txnRunner, withFirstMutationPublic, gatherAllInvalid, override)
+	return iv.validateForwardIndexes(
+		ctx, iv.codec, tbl, indexes, txnRunner, withFirstMutationPublic, gatherAllInvalid, override,
+	)
 }
 
 // ValidateInvertedIndexes checks that the indexes have entries for all the rows.

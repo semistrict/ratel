@@ -35,9 +35,6 @@ const (
 		w_zip       char(9)       not null,
 		w_tax       decimal(4,4)  not null,
 		w_ytd       decimal(12,2) not null`
-	tpccWarehouseColumnFamiliesSuffix = `
-		family      f1 (w_id, w_name, w_street_1, w_street_2, w_city, w_state, w_zip, w_ytd),
-		family      f2 (w_tax)`
 
 	// DISTRICT table.
 	tpccDistrictSchemaBase = `(
@@ -53,10 +50,6 @@ const (
 		d_ytd        decimal(12,2) not null,
 		d_next_o_id  integer       not null,
 		primary key  (d_w_id, d_id)`
-	tpccDistrictColumnFamiliesSuffix = `
-		family       static    (d_w_id, d_id, d_name, d_street_1, d_street_2, d_city, d_state, d_zip),
-		family       dynamic_1 (d_ytd),
-		family       dynamic_2 (d_next_o_id, d_tax)`
 
 	// CUSTOMER table.
 	tpccCustomerSchemaBase = `(
@@ -83,12 +76,6 @@ const (
 		c_data         varchar(500)  not null,
 		primary key        (c_w_id, c_d_id, c_id),
 		index customer_idx (c_w_id, c_d_id, c_last, c_first)`
-	tpccCustomerColumnFamiliesSuffix = `
-		family static      (
-			c_id, c_d_id, c_w_id, c_first, c_middle, c_last, c_street_1, c_street_2,
-			c_city, c_state, c_zip, c_phone, c_since, c_credit, c_credit_lim, c_discount
-		),
-		family dynamic (c_balance, c_ytd_payment, c_payment_cnt, c_data, c_delivery_cnt)`
 
 	// HISTORY table.
 	tpccHistorySchemaBase = `(
@@ -187,7 +174,6 @@ const (
 
 type schemaOptions struct {
 	fkClause       string
-	familyClause   string
 	columnClause   string
 	localityClause string
 }
@@ -198,14 +184,6 @@ func maybeAddFkSuffix(fks bool, suffix string) makeSchemaOption {
 	return func(o *schemaOptions) {
 		if fks {
 			o.fkClause = suffix
-		}
-	}
-}
-
-func maybeAddColumnFamiliesSuffix(separateColumnFamilies bool, suffix string) makeSchemaOption {
-	return func(o *schemaOptions) {
-		if separateColumnFamilies {
-			o.familyClause = suffix
 		}
 	}
 }
@@ -244,9 +222,6 @@ func makeSchema(base string, opts ...makeSchemaOption) string {
 	ret := base
 	if o.fkClause != "" {
 		ret += "," + o.fkClause
-	}
-	if o.familyClause != "" {
-		ret += "," + o.familyClause
 	}
 	if o.columnClause != "" {
 		ret += "," + o.columnClause

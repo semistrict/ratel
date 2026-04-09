@@ -631,16 +631,8 @@ type optTable struct {
 
 	zone cat.Zone
 
-	// family is the inlined wrapper for the table's primary family. The primary
-	// family is the first family explicitly specified by the user. If no families
-	// were explicitly specified, then the primary family is synthesized.
+	// family is the inlined wrapper for the table's sole family.
 	primaryFamily optFamily
-
-	// families are the inlined wrappers for the table's non-primary families,
-	// which are all the families specified by the user after the first. The
-	// primary family is kept separate since the common case is that there's just
-	// one family.
-	families []optFamily
 
 	uniqueConstraints []optUniqueConstraint
 
@@ -904,11 +896,7 @@ func newOptTable(
 		return nil
 	})
 
-	ot.primaryFamily.init(ot, &desc.GetFamilies()[0])
-	ot.families = make([]optFamily, len(desc.GetFamilies())-1)
-	for i := range ot.families {
-		ot.families[i].init(ot, &desc.GetFamilies()[i+1])
-	}
+	ot.primaryFamily.init(ot, &desc.GetRowGroups()[0])
 
 	// Synthesize any check constraints for user defined types.
 	var synthesizedChecks []cat.CheckConstraint
@@ -1130,15 +1118,15 @@ func (ot *optTable) Check(i int) cat.CheckConstraint {
 
 // FamilyCount is part of the cat.Table interface.
 func (ot *optTable) FamilyCount() int {
-	return 1 + len(ot.families)
+	return 1
 }
 
 // Family is part of the cat.Table interface.
 func (ot *optTable) Family(i int) cat.Family {
-	if i == 0 {
-		return &ot.primaryFamily
+	if i != 0 {
+		panic(errors.AssertionFailedf("family ordinal %d out of range", i))
 	}
-	return &ot.families[i-1]
+	return &ot.primaryFamily
 }
 
 // OutboundForeignKeyCount is part of the cat.Table interface.
@@ -1601,18 +1589,18 @@ func (os *optTableStat) Histogram() []cat.HistogramBucket {
 	return os.stat.Histogram
 }
 
-// optFamily is a wrapper around descpb.ColumnFamilyDescriptor that keeps a
+// optFamily is a wrapper around descpb.RowGroupDescriptor that keeps a
 // reference to the table wrapper.
 type optFamily struct {
 	tab  *optTable
-	desc *descpb.ColumnFamilyDescriptor
+	desc *descpb.RowGroupDescriptor
 }
 
 var _ cat.Family = &optFamily{}
 
 // init can be used instead of newOptFamily when we have a pre-allocated
 // instance (e.g. as part of a bigger struct).
-func (oi *optFamily) init(tab *optTable, desc *descpb.ColumnFamilyDescriptor) {
+func (oi *optFamily) init(tab *optTable, desc *descpb.RowGroupDescriptor) {
 	oi.tab = tab
 	oi.desc = desc
 }
@@ -1829,7 +1817,7 @@ type optVirtualTable struct {
 	// synthesized primary index.
 	indexes []optVirtualIndex
 
-	// family is a synthesized primary family.
+	// family is a synthesized primary row-group.
 	family optVirtualFamily
 
 	// colMap is a mapping from unique ColumnID to column ordinal within the

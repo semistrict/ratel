@@ -32,16 +32,13 @@ import (
 
 // NewColSpanAssembler returns a ColSpanAssembler operator that is able to
 // generate lookup spans from input batches.
-// See JoinReaderSpec for more info on fetchSpec and splitFamilyIDs.
 func NewColSpanAssembler(
 	codec keys.SQLCodec,
 	allocator *colmem.Allocator,
 	fetchSpec *descpb.IndexFetchSpec,
-	splitFamilyIDs []descpb.FamilyID,
 	inputTypes []*types.T,
 ) ColSpanAssembler {
 	sa := spanAssemblerPool.Get().(*spanAssembler)
-	sa.colFamStartKeys, sa.colFamEndKeys = getColFamilyEncodings(splitFamilyIDs)
 	keyPrefix := rowenc.MakeIndexKeyPrefix(codec, fetchSpec.TableID, fetchSpec.IndexID)
 	sa.scratchKey = append(sa.scratchKey[:0], keyPrefix...)
 	sa.prefixLength = len(keyPrefix)
@@ -139,13 +136,6 @@ type spanAssembler struct {
 	// spanCols is used to iterate through the input columns that contain the
 	// key encodings during span construction.
 	spanCols []*coldata.Bytes
-
-	// colFamStartKeys and colFamEndKeys is the list of start and end key suffixes
-	// for the column families that should be scanned. The spans will be split to
-	// scan over each family individually. Note that it is not necessarily
-	// possible to break a span into family scans (in which case these slices are
-	// empty).
-	colFamStartKeys, colFamEndKeys []roachpb.Key
 }
 
 var _ ColSpanAssembler = (*spanAssembler)(nil)
@@ -163,54 +153,22 @@ func (sa *spanAssembler) ConsumeBatch(batch coldata.Batch, startIdx, endIdx int)
 	oldKeyBytes := sa.keyBytes
 	oldSpansBytes := sa.spansBytes
 
-	if len(sa.colFamStartKeys) == 0 {
-		// The spans cannot be split into column family spans, so there will be
-		// exactly one span for each input row.
-		for i := 0; i < (endIdx - startIdx); i++ {
-			sa.scratchKey = sa.scratchKey[:sa.prefixLength]
-			for j := range sa.spanCols {
-				// The encoding for each primary key column has previously been
-				// calculated and stored in an input column.
-				sa.scratchKey = append(sa.scratchKey, sa.spanCols[j].Get(i)...)
-			}
-			var span roachpb.Span
-			span.Key = make(roachpb.Key, 0, len(sa.scratchKey))
-			span.Key = append(span.Key, sa.scratchKey...)
-			sa.keyBytes += len(span.Key)
-			span.EndKey = make(roachpb.Key, 0, len(sa.scratchKey)+1)
-			span.EndKey = append(span.EndKey, sa.scratchKey...)
-			span.EndKey = span.EndKey.PrefixEnd()
-			sa.keyBytes += len(span.EndKey)
-			sa.spans = append(sa.spans, span)
+	for i := 0; i < (endIdx - startIdx); i++ {
+		sa.scratchKey = sa.scratchKey[:sa.prefixLength]
+		for j := range sa.spanCols {
+			// The encoding for each primary key column has previously been
+			// calculated and stored in an input column.
+			sa.scratchKey = append(sa.scratchKey, sa.spanCols[j].Get(i)...)
 		}
-	} else {
-		// The span for each row can be split into a series of column family spans,
-		// which have the column family ID as a suffix. Individual column family
-		// spans can be served as Get requests, which are more efficient than Scan
-		// requests.
-		for i := 0; i < (endIdx - startIdx); i++ {
-			sa.scratchKey = sa.scratchKey[:sa.prefixLength]
-			for j := range sa.spanCols {
-				// The encoding for each primary key column has previously been
-				// calculated and stored in an input column.
-				sa.scratchKey = append(sa.scratchKey, sa.spanCols[j].Get(i)...)
-			}
-			for j := range sa.colFamStartKeys {
-				var span roachpb.Span
-				span.Key = make(roachpb.Key, 0, len(sa.scratchKey)+len(sa.colFamStartKeys[j]))
-				span.Key = append(span.Key, sa.scratchKey...)
-				span.Key = append(span.Key, sa.colFamStartKeys[j]...)
-				sa.keyBytes += len(span.Key)
-				// The end key may be nil, in which case the span is a point lookup.
-				if len(sa.colFamEndKeys[j]) > 0 {
-					span.EndKey = make(roachpb.Key, 0, len(sa.scratchKey)+len(sa.colFamEndKeys[j]))
-					span.EndKey = append(span.EndKey, sa.scratchKey...)
-					span.EndKey = append(span.EndKey, sa.colFamEndKeys[j]...)
-					sa.keyBytes += len(span.EndKey)
-				}
-				sa.spans = append(sa.spans, span)
-			}
-		}
+		var span roachpb.Span
+		span.Key = make(roachpb.Key, 0, len(sa.scratchKey))
+		span.Key = append(span.Key, sa.scratchKey...)
+		sa.keyBytes += len(span.Key)
+		span.EndKey = make(roachpb.Key, 0, len(sa.scratchKey)+1)
+		span.EndKey = append(span.EndKey, sa.scratchKey...)
+		span.EndKey = span.EndKey.PrefixEnd()
+		sa.keyBytes += len(span.EndKey)
+		sa.spans = append(sa.spans, span)
 	}
 
 	// Account for the memory allocated for the span slice and keys.
@@ -276,28 +234,4 @@ func (sa *spanAssembler) Release() {
 		scratchKey:   sa.scratchKey[:0],
 	}
 	spanAssemblerPool.Put(sa)
-}
-
-// getColFamilyEncodings returns two lists of keys of the same length. Each pair
-// of keys at the same index corresponds to the suffixes of the start and end
-// keys of a span over a specific column family (or adjacent column families).
-// If the returned lists are empty, the spans cannot be split into separate
-// family spans.
-func getColFamilyEncodings(splitFamilyIDs []descpb.FamilyID) (startKeys, endKeys []roachpb.Key) {
-	if len(splitFamilyIDs) == 0 {
-		return nil, nil
-	}
-	for i, familyID := range splitFamilyIDs {
-		var key roachpb.Key
-		key = keys.MakeFamilyKey(key, uint32(familyID))
-		if i > 0 && familyID-1 == splitFamilyIDs[i-1] && endKeys != nil {
-			// This column family is adjacent to the previous one. We can merge
-			// the two spans into one.
-			endKeys[len(endKeys)-1] = key.PrefixEnd()
-		} else {
-			startKeys = append(startKeys, key)
-			endKeys = append(endKeys, nil)
-		}
-	}
-	return startKeys, endKeys
 }

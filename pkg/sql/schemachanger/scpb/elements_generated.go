@@ -175,37 +175,6 @@ func FindColumnDefaultExpression(b ElementStatusIterator) (current Status, targe
 	return current, target, element
 }
 
-func (e ColumnFamily) element() {}
-
-// ForEachColumnFamily iterates over elements of type ColumnFamily.
-func ForEachColumnFamily(
-	b ElementStatusIterator, fn func(current Status, target TargetStatus, e *ColumnFamily),
-) {
-	if b == nil {
-		return
-	}
-	b.ForEachElementStatus(func(current Status, target TargetStatus, e Element) {
-		if elt, ok := e.(*ColumnFamily); ok {
-			fn(current, target, elt)
-		}
-	})
-}
-
-// FindColumnFamily finds the first element of type ColumnFamily.
-func FindColumnFamily(b ElementStatusIterator) (current Status, target TargetStatus, element *ColumnFamily) {
-	if b == nil {
-		return current, target, element
-	}
-	b.ForEachElementStatus(func(c Status, t TargetStatus, e Element) {
-		if elt, ok := e.(*ColumnFamily); ok {
-			element = elt
-			current = c
-			target = t
-		}
-	})
-	return current, target, element
-}
-
 func (e ColumnName) element() {}
 
 // ForEachColumnName iterates over elements of type ColumnName.

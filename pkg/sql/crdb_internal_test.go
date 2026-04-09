@@ -77,7 +77,7 @@ func TestGetAllNamesInternal(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	names, err := sql.TestingGetAllNames(ctx, nil, s.InternalExecutor().(*sql.InternalExecutor))
+	names, err := sql.TestingGetAllNames(ctx, nil, keys.SystemSQLCodec)
 	require.NoError(t, err)
 
 	assert.Equal(t, descpb.NameInfo{ParentID: 999, ParentSchemaID: 444, Name: "bob"}, names[9999])
@@ -230,8 +230,8 @@ CREATE TABLE t.test (k INT);
 	col := cdd.ColumnDescriptor
 	col.ID = tableDesc.NextColumnID
 	tableDesc.NextColumnID++
-	tableDesc.Families[0].ColumnNames = append(tableDesc.Families[0].ColumnNames, col.Name)
-	tableDesc.Families[0].ColumnIDs = append(tableDesc.Families[0].ColumnIDs, col.ID)
+	tableDesc.RowGroups[0].ColumnNames = append(tableDesc.RowGroups[0].ColumnNames, col.Name)
+	tableDesc.RowGroups[0].ColumnIDs = append(tableDesc.RowGroups[0].ColumnIDs, col.ID)
 	tableDesc.Columns = append(tableDesc.Columns, *col)
 	tableDesc.PrimaryIndex.StoreColumnIDs = append(tableDesc.PrimaryIndex.StoreColumnIDs, col.ID)
 	tableDesc.PrimaryIndex.StoreColumnNames = append(tableDesc.PrimaryIndex.StoreColumnNames, col.Name)

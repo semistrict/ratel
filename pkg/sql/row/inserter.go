@@ -159,19 +159,17 @@ func (ri *Inserter) InsertRow(
 	}
 
 	// We don't want to insert any empty k/v's, so set includeEmpty to false.
-	// Consider the following case:
-	// TABLE t (
-	//   x INT PRIMARY KEY, y INT, z INT, w INT,
-	//   INDEX (y) STORING (z, w),
-	//   FAMILY (x), FAMILY (y), FAMILY (z), FAMILY (w)
-	//)
-	// If we are to insert row (1, 2, 3, NULL), the k/v pair for
-	// index i that encodes column w would have an empty value,
-	// because w is null, and the sole resident of that family.
-	// We don't want to insert empty k/v's like this, so we
-	// set includeEmpty to false.
+	// Consider an index entry with a stored column whose value is NULL. We don't
+	// want to emit an empty value KV for that entry, so includeEmpty stays false.
 	primaryIndexKey, secondaryIndexEntries, err := ri.Helper.encodeIndexes(
 		ri.InsertColIDtoRowIndex, values, pm.IgnoreForPut, false /* includeEmpty */)
+	if err != nil {
+		return err
+	}
+
+	subEntries, err := ri.Helper.encodeSubordinateKeys(
+		primaryIndexKey, ri.InsertColIDtoRowIndex, values,
+	)
 	if err != nil {
 		return err
 	}
@@ -181,9 +179,16 @@ func (ri *Inserter) InsertRow(
 		&ri.Helper, primaryIndexKey, ri.InsertCols,
 		values, ri.InsertColIDtoRowIndex,
 		ri.marshaled, ri.InsertColIDtoRowIndex,
+		subEntries,
 		&ri.key, &ri.value, ri.valueBuf, putFn, overwrite, traceKV)
 	if err != nil {
 		return err
+	}
+
+	// Write subordinate keys for array columns.
+	for i := range subEntries {
+		e := &subEntries[i]
+		putFn(ctx, b, &e.Key, &e.Value, traceKV)
 	}
 
 	putFn = insertInvertedPutFn

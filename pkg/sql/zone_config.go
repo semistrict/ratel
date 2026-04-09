@@ -32,8 +32,11 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/tabledesc"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
+	"github.com/cockroachdb/cockroach/pkg/sql/rowenc/valueside"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/sqlerrors"
+	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
 	"github.com/cockroachdb/errors"
 )
 
@@ -44,6 +47,35 @@ func init() {
 }
 
 var errNoZoneConfigApplies = errors.New("no zone config applies")
+
+func decodeZoneConfigValue(zoneVal *roachpb.Value) (*zonepb.ZoneConfig, error) {
+	var zone zonepb.ZoneConfig
+	switch zoneVal.GetTag() {
+	case roachpb.ValueType_BYTES:
+		if err := zoneVal.GetProto(&zone); err != nil {
+			return nil, err
+		}
+	case roachpb.ValueType_TUPLE:
+		tupleBytes, err := zoneVal.GetTuple()
+		if err != nil {
+			return nil, err
+		}
+		var alloc tree.DatumAlloc
+		datum, remaining, err := valueside.Decode(&alloc, types.Bytes, tupleBytes)
+		if err != nil {
+			return nil, err
+		}
+		if len(remaining) != 0 {
+			return nil, errors.AssertionFailedf("unexpected trailing bytes in zone config tuple")
+		}
+		if err := protoutil.Unmarshal([]byte(tree.MustBeDBytes(datum)), &zone); err != nil {
+			return nil, err
+		}
+	default:
+		return nil, errors.Newf("unsupported zone config value tag %s", zoneVal.GetTag())
+	}
+	return &zone, nil
+}
 
 // getZoneConfig recursively looks up entries in system.zones until an
 // entry that applies to the object with the specified id is
@@ -74,17 +106,17 @@ func getZoneConfig(
 			return 0, nil, 0, nil, err
 		} else if zoneVal != nil {
 			// We found a matching entry.
-			var zone zonepb.ZoneConfig
-			if err := zoneVal.GetProto(&zone); err != nil {
+			zone, err := decodeZoneConfigValue(zoneVal)
+			if err != nil {
 				return 0, nil, 0, nil, err
 			}
 			// If the zone isn't a subzone placeholder, we're done.
 			if !zone.IsSubzonePlaceholder() {
-				return id, &zone, 0, nil, nil
+				return id, zone, 0, nil, nil
 			}
 			// If the zone is just a placeholder for subzones, keep recursing
 			// up the hierarchy.
-			placeholder = &zone
+			placeholder = zone
 			placeholderID = id
 		}
 	}

@@ -90,7 +90,7 @@ func TestCollectionWriteDescToBatch(t *testing.T) {
 			Columns: []descpb.ColumnDescriptor{
 				{ID: 1, Name: "a", Type: types.Int},
 			},
-			Families: []descpb.ColumnFamilyDescriptor{
+			RowGroups: []descpb.RowGroupDescriptor{
 				{
 					ID:              0,
 					Name:            "primary",
@@ -112,7 +112,7 @@ func TestCollectionWriteDescToBatch(t *testing.T) {
 			Privileges:       catpb.NewBasePrivilegeDescriptor(security.AdminRoleName()),
 			NextColumnID:     2,
 			NextConstraintID: 2,
-			NextFamilyID:     1,
+			NextRowGroupID:   1,
 			NextIndexID:      2,
 			NextMutationID:   1,
 			FormatVersion:    descpb.InterleavedFormatVersion,

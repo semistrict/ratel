@@ -56,8 +56,8 @@ func TestSafeMessage(t *testing.T) {
 				"State: PUBLIC, " +
 				"NextColumnID: 2, " +
 				"Columns: [{ID: 1, TypeID: 20, Null: false, Hidden: true, HasDefault: true}], " +
-				"NextFamilyID: 1, " +
-				"Families: [{ID: 0, Columns: [1]}], " +
+				"NextRowGroupID: 1, " +
+				"RowGroups: [{ID: 0, Columns: [1]}], " +
 				"PrimaryIndex: 1, " +
 				"NextIndexID: 2, " +
 				"Indexes: [{ID: 1, Unique: true, KeyColumns: [{ID: 1, Dir: ASC}]}]" +
@@ -76,8 +76,8 @@ func TestSafeMessage(t *testing.T) {
 				`{ID: 2, TypeID: 20, Null: true}, ` +
 				`{ID: 3, TypeID: 25, Null: true, IsComputed: true}` +
 				`], ` +
-				`NextFamilyID: 1, ` +
-				`Families: [{ID: 0, Columns: [1, 2, 3, 5]}], ` +
+				`NextRowGroupID: 1, ` +
+				`RowGroups: [{ID: 0, Columns: [1, 2, 3, 5]}], ` +
 				`MutationJobs: [` +
 				`{MutationID: 1, JobID: 12345}, ` +
 				`{MutationID: 2, JobID: 67890}, ` +
@@ -241,8 +241,8 @@ func TestSafeMessage(t *testing.T) {
 				mutable.PrimaryIndex.StoreColumnNames = append(mutable.PrimaryIndex.StoreColumnNames, "c")
 				mutable.NextColumnID = 6
 				mutable.NextIndexID = 4
-				mutable.Families[0].ColumnNames = append(mutable.Families[0].ColumnNames, "c")
-				mutable.Families[0].ColumnIDs = append(mutable.Families[0].ColumnIDs, 5)
+				mutable.RowGroups[0].ColumnNames = append(mutable.RowGroups[0].ColumnNames, "c")
+				mutable.RowGroups[0].ColumnIDs = append(mutable.RowGroups[0].ColumnIDs, 5)
 				mutable.ModificationTime = hlc.Timestamp{WallTime: 1e9}
 				mutable.TestingSetClusterVersion(*mutable.TableDesc())
 				return mutable.ImmutableCopy().(catalog.TableDescriptor)
@@ -259,8 +259,8 @@ func TestSafeMessage(t *testing.T) {
 				"State: PUBLIC, " +
 				"NextColumnID: 2, " +
 				"Columns: [{ID: 1, TypeID: 20, Null: false, Hidden: true, HasDefault: true}], " +
-				"NextFamilyID: 1, " +
-				"Families: [{ID: 0, Columns: [1]}], " +
+				"NextRowGroupID: 1, " +
+				"RowGroups: [{ID: 0, Columns: [1]}], " +
 				"PrimaryIndex: 1, " +
 				"NextIndexID: 2, " +
 				"Indexes: [{ID: 1, Unique: true, KeyColumns: [{ID: 1, Dir: ASC}]}]" +

@@ -32,7 +32,6 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/sqlerrors"
 	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/util"
 	"github.com/cockroachdb/cockroach/pkg/util/encoding"
 	"github.com/cockroachdb/cockroach/pkg/util/json"
 	"github.com/cockroachdb/cockroach/pkg/util/mon"
@@ -158,184 +157,16 @@ func MakeSpanFromEncDatums(
 	return roachpb.Span{Key: startKey, EndKey: startKey.PrefixEnd()}, containsNull, nil
 }
 
-// NeededColumnFamilyIDs returns the minimal set of column families required to
-// retrieve neededCols for the specified table and index. The returned descpb.FamilyIDs
-// are in sorted order.
-func NeededColumnFamilyIDs(
-	neededColOrdinals util.FastIntSet, table catalog.TableDescriptor, index catalog.Index,
-) []descpb.FamilyID {
-	if table.NumFamilies() == 1 {
-		return []descpb.FamilyID{table.GetFamilies()[0].ID}
-	}
-
-	// Build some necessary data structures for column metadata.
-	columns := table.DeletableColumns()
-	colIdxMap := catalog.ColumnIDToOrdinalMap(columns)
-	var indexedCols util.FastIntSet
-	var compositeCols util.FastIntSet
-	var extraCols util.FastIntSet
-	for i := 0; i < index.NumKeyColumns(); i++ {
-		columnID := index.GetKeyColumnID(i)
-		columnOrdinal := colIdxMap.GetDefault(columnID)
-		indexedCols.Add(columnOrdinal)
-	}
-	for i := 0; i < index.NumCompositeColumns(); i++ {
-		columnID := index.GetCompositeColumnID(i)
-		columnOrdinal := colIdxMap.GetDefault(columnID)
-		compositeCols.Add(columnOrdinal)
-	}
-	for i := 0; i < index.NumKeySuffixColumns(); i++ {
-		columnID := index.GetKeySuffixColumnID(i)
-		columnOrdinal := colIdxMap.GetDefault(columnID)
-		extraCols.Add(columnOrdinal)
-	}
-
-	// The column family with ID 0 is special because it always has a KV entry.
-	// Other column families will omit a value if all their columns are null, so
-	// we may need to retrieve family 0 to use as a sentinel for distinguishing
-	// between null values and the absence of a row. Also, secondary indexes store
-	// values here for composite and "extra" columns. ("Extra" means primary key
-	// columns which are not indexed.)
-	var family0 *descpb.ColumnFamilyDescriptor
-	hasSecondaryEncoding := index.GetEncodingType() == descpb.SecondaryIndexEncoding
-
-	// First iterate over the needed columns and look for a few special cases:
-	// * columns which can be decoded from the key and columns whose value is stored
-	//   in family 0.
-	// * certain system columns, like the MVCC timestamp column require all of the
-	//   column families to be scanned to produce a value.
-	family0Needed := false
-	mvccColumnRequested := false
-	nc := neededColOrdinals.Copy()
-	neededColOrdinals.ForEach(func(columnOrdinal int) {
-		if indexedCols.Contains(columnOrdinal) && !compositeCols.Contains(columnOrdinal) {
-			// We can decode this column from the index key, so no particular family
-			// is needed.
-			nc.Remove(columnOrdinal)
-		}
-		if hasSecondaryEncoding && (compositeCols.Contains(columnOrdinal) ||
-			extraCols.Contains(columnOrdinal)) {
-			// Secondary indexes store composite and "extra" column values in family
-			// 0.
-			family0Needed = true
-			nc.Remove(columnOrdinal)
-		}
-		// System column ordinals are larger than the number of columns.
-		if columnOrdinal >= len(columns) {
-			mvccColumnRequested = true
-		}
-	})
-
-	// If the MVCC timestamp column was requested, then bail out.
-	if mvccColumnRequested {
-		families := make([]descpb.FamilyID, 0, table.NumFamilies())
-		_ = table.ForeachFamily(func(family *descpb.ColumnFamilyDescriptor) error {
-			families = append(families, family.ID)
-			return nil
-		})
-		return families
-	}
-
-	secondaryStoredColumnIDs := index.CollectSecondaryStoredColumnIDs()
-
-	// Iterate over the column families to find which ones contain needed columns.
-	// We also keep track of whether all of the needed families' columns are
-	// nullable, since this means we need column family 0 as a sentinel, even if
-	// none of its columns are needed.
-	var neededFamilyIDs []descpb.FamilyID
-	allFamiliesNullable := true
-	_ = table.ForeachFamily(func(family *descpb.ColumnFamilyDescriptor) error {
-		needed := false
-		nullable := true
-		if family.ID == 0 {
-			// Set column family 0 aside in case we need it as a sentinel.
-			family0 = family
-			if family0Needed {
-				needed = true
-			}
-			nullable = false
-		}
-		for _, columnID := range family.ColumnIDs {
-			if needed && !nullable {
-				// Nothing left to check.
-				break
-			}
-			columnOrdinal := colIdxMap.GetDefault(columnID)
-			if nc.Contains(columnOrdinal) {
-				needed = true
-			}
-			if !columns[columnOrdinal].IsNullable() && !indexedCols.Contains(columnOrdinal) {
-				// This column is non-nullable and is not indexed, thus, if it
-				// is stored in the value part of the KV entry (which is the
-				// case for the primary indexes as well as when the column is
-				// included in STORING clause of the secondary index), the
-				// column family is non-nullable too.
-				//
-				// Note that for unique secondary indexes more columns might be
-				// included in the value part (namely "key suffix" columns when
-				// the indexed columns have a NULL value), but we choose to
-				// ignore those here. This is needed for correctness, and as a
-				// result we might fetch the zeroth column family when it turns
-				// out to be not needed.
-				if index.Primary() || secondaryStoredColumnIDs.Contains(columnID) {
-					nullable = false
-				}
-			}
-		}
-		if needed {
-			neededFamilyIDs = append(neededFamilyIDs, family.ID)
-			allFamiliesNullable = allFamiliesNullable && nullable
-		}
-		return nil
-	})
-	if family0 == nil {
-		panic(errors.AssertionFailedf("column family 0 not found"))
-	}
-
-	// If all the needed families are nullable, we also need family 0 as a
-	// sentinel. Note that this is only the case if family 0 was not already added
-	// to neededFamilyIDs.
-	if allFamiliesNullable {
-		// Prepend family 0.
-		neededFamilyIDs = append(neededFamilyIDs, 0)
-		copy(neededFamilyIDs[1:], neededFamilyIDs)
-		neededFamilyIDs[0] = family0.ID
-	}
-
-	return neededFamilyIDs
-}
-
-// SplitRowKeyIntoFamilySpans splits a key representing a single row point
-// lookup into separate disjoint spans that request only the particular column
-// families from neededFamilies instead of requesting all the families. It is up
-// to the client to ensure the requested span represents a single row lookup and
-// that the span splitting is appropriate (see CanSplitSpanIntoFamilySpans).
+// SplitRowKeyIntoRowSpans converts a single-row lookup into the corresponding
+// KV span in the single-family layout.
 //
-// The returned spans might or might not have EndKeys set. If they are for a
-// single key, they will not have EndKeys set.
-//
-// Note that this function will still return a family-specific span even if the
-// input span is for a table that has just a single column family, so that the
-// caller can have a precise key to send via a GetRequest if desired.
+// The returned span is a prefix span over the row-group-0 key so that
+// subordinate keys beneath the row sentinel are also included.
 //
 // The function accepts a slice of spans to append to.
-func SplitRowKeyIntoFamilySpans(
-	appendTo roachpb.Spans, key roachpb.Key, neededFamilies []descpb.FamilyID,
-) roachpb.Spans {
-	key = key[:len(key):len(key)] // avoid mutation and aliasing
-	for i, familyID := range neededFamilies {
-		var famSpan roachpb.Span
-		famSpan.Key = keys.MakeFamilyKey(key, uint32(familyID))
-		// Don't set the EndKey yet, because a column family on its own can be
-		// fetched using a GetRequest.
-		if i > 0 && familyID == neededFamilies[i-1]+1 {
-			// This column family is adjacent to the previous one. We can merge
-			// the two spans into one.
-			appendTo[len(appendTo)-1].EndKey = famSpan.Key.PrefixEnd()
-		} else {
-			appendTo = append(appendTo, famSpan)
-		}
-	}
+func SplitRowKeyIntoRowSpans(appendTo roachpb.Spans, key roachpb.Key) roachpb.Spans {
+	rowKey := keys.MakeFamilyKey(key[:len(key):len(key)], 0)
+	appendTo = append(appendTo, roachpb.Span{Key: rowKey, EndKey: roachpb.Key(rowKey).PrefixEnd()})
 	return appendTo
 }
 
@@ -497,7 +328,7 @@ type IndexEntry struct {
 	Key   roachpb.Key
 	Value roachpb.Value
 	// Only used for forward indexes.
-	Family descpb.FamilyID
+	RowGroup descpb.RowGroupID
 }
 
 // valueEncodedColumn represents a composite or stored column of a secondary
@@ -861,66 +692,25 @@ func EncodePrimaryIndex(
 		return nil, MakeNullPKError(tableDesc, index, colMap, values)
 	}
 	indexedColumns := index.CollectKeyColumnIDs()
-	var entryValue []byte
-	indexEntries := make([]IndexEntry, 0, tableDesc.NumFamilies())
-	var columnsToEncode []valueEncodedColumn
-	var called bool
-	if err := tableDesc.ForeachFamily(func(family *descpb.ColumnFamilyDescriptor) error {
-		if !called {
-			called = true
-		} else {
-			indexKey = indexKey[:len(indexKey):len(indexKey)]
-			entryValue = entryValue[:0]
-			columnsToEncode = columnsToEncode[:0]
+	rowGroup := tableDesc.GetRowGroups()[0]
+	columnsToEncode := make([]valueEncodedColumn, 0, len(rowGroup.ColumnIDs))
+	for _, colID := range rowGroup.ColumnIDs {
+		if !indexedColumns.Contains(colID) {
+			columnsToEncode = append(columnsToEncode, valueEncodedColumn{id: colID})
+			continue
 		}
-		familyKey := keys.MakeFamilyKey(indexKey, uint32(family.ID))
-		// The decoders expect that column family 0 is encoded with a TUPLE value tag, so we
-		// don't want to use the untagged value encoding.
-		if len(family.ColumnIDs) == 1 && family.ColumnIDs[0] == family.DefaultColumnID && family.ID != 0 {
-			datum := findColumnValue(family.DefaultColumnID, colMap, values)
-			// We want to include this column if its value is non-null or
-			// we were requested to include all of the columns.
-			if datum != tree.DNull || includeEmpty {
-				col, err := tableDesc.FindColumnWithID(family.DefaultColumnID)
-				if err != nil {
-					return err
-				}
-				value, err := valueside.MarshalLegacy(col.GetType(), datum)
-				if err != nil {
-					return err
-				}
-				indexEntries = append(indexEntries, IndexEntry{Key: familyKey, Value: value, Family: family.ID})
-			}
-			return nil
+		if cdatum, ok := values[colMap.GetDefault(colID)].(tree.CompositeDatum); ok && cdatum.IsComposite() {
+			columnsToEncode = append(columnsToEncode, valueEncodedColumn{id: colID, isComposite: true})
 		}
-
-		for _, colID := range family.ColumnIDs {
-			if !indexedColumns.Contains(colID) {
-				columnsToEncode = append(columnsToEncode, valueEncodedColumn{id: colID})
-				continue
-			}
-			if cdatum, ok := values[colMap.GetDefault(colID)].(tree.CompositeDatum); ok {
-				if cdatum.IsComposite() {
-					columnsToEncode = append(columnsToEncode, valueEncodedColumn{id: colID, isComposite: true})
-					continue
-				}
-			}
-		}
-		sort.Sort(byID(columnsToEncode))
-		entryValue, err = writeColumnValues(entryValue, colMap, values, columnsToEncode)
-		if err != nil {
-			return err
-		}
-		if family.ID != 0 && len(entryValue) == 0 && !includeEmpty {
-			return nil
-		}
-		entry := IndexEntry{Key: familyKey, Family: family.ID}
-		entry.Value.SetTuple(entryValue)
-		indexEntries = append(indexEntries, entry)
-		return nil
-	}); err != nil {
+	}
+	sort.Sort(byID(columnsToEncode))
+	entryValue, err := writeColumnValues(nil, colMap, values, columnsToEncode)
+	if err != nil {
 		return nil, err
 	}
+	indexEntries := make([]IndexEntry, 1)
+	indexEntries[0] = IndexEntry{Key: keys.MakeFamilyKey(indexKey, 0), RowGroup: 0}
+	indexEntries[0].Value.SetTuple(entryValue)
 
 	if index.UseDeletePreservingEncoding() {
 		if err := wrapIndexEntries(indexEntries); err != nil {
@@ -1008,53 +798,11 @@ func EncodeSecondaryIndex(
 			key = append(key, extraKey...)
 		}
 
-		if tableDesc.NumFamilies() == 1 ||
-			secondaryIndex.GetType() == descpb.IndexDescriptor_INVERTED ||
-			secondaryIndex.GetVersion() == descpb.BaseIndexFormatVersion {
-			// We do all computation that affects indexes with families in a separate code path to avoid performance
-			// regression for tables without column families.
-			entry, err := encodeSecondaryIndexNoFamilies(secondaryIndex, colMap, key, values, extraKey)
-			if err != nil {
-				return []IndexEntry{}, err
-			}
-			entries = append(entries, entry)
-		} else {
-			// This is only executed once as len(secondaryKeys) = 1 for non inverted secondary indexes.
-			// Create a mapping of family ID to stored columns.
-			// TODO (rohany): we want to share this information across calls to EncodeSecondaryIndex --
-			//  its not easy to do this right now. It would be nice if the index descriptor or table descriptor
-			//  had this information computed/cached for us.
-			familyToColumns := make(map[descpb.FamilyID][]valueEncodedColumn)
-			addToFamilyColMap := func(id descpb.FamilyID, column valueEncodedColumn) {
-				if _, ok := familyToColumns[id]; !ok {
-					familyToColumns[id] = []valueEncodedColumn{}
-				}
-				familyToColumns[id] = append(familyToColumns[id], column)
-			}
-			// Ensure that column family 0 always generates a k/v pair.
-			familyToColumns[0] = []valueEncodedColumn{}
-			// All composite columns are stored in family 0.
-			for i := 0; i < secondaryIndex.NumCompositeColumns(); i++ {
-				id := secondaryIndex.GetCompositeColumnID(i)
-				addToFamilyColMap(0, valueEncodedColumn{id: id, isComposite: true})
-			}
-			_ = tableDesc.ForeachFamily(func(family *descpb.ColumnFamilyDescriptor) error {
-				for i := 0; i < secondaryIndex.NumSecondaryStoredColumns(); i++ {
-					id := secondaryIndex.GetStoredColumnID(i)
-					for _, col := range family.ColumnIDs {
-						if id == col {
-							addToFamilyColMap(family.ID, valueEncodedColumn{id: id, isComposite: false})
-						}
-					}
-				}
-				return nil
-			})
-			entries, err = encodeSecondaryIndexWithFamilies(
-				familyToColumns, secondaryIndex, colMap, key, values, extraKey, entries, includeEmpty)
-			if err != nil {
-				return []IndexEntry{}, err
-			}
+		entry, err := encodeSecondaryIndexValue(secondaryIndex, colMap, key, values, extraKey)
+		if err != nil {
+			return []IndexEntry{}, err
 		}
+		entries = append(entries, entry)
 	}
 
 	if secondaryIndex.UseDeletePreservingEncoding() {
@@ -1066,93 +814,10 @@ func EncodeSecondaryIndex(
 	return entries, nil
 }
 
-// encodeSecondaryIndexWithFamilies generates a k/v pair for
-// each family/column pair in familyMap. The row parameter will be
-// modified by the function, so copy it before using. includeEmpty
-// controls whether or not k/v's with empty values will be returned.
-// The returned indexEntries are in family sorted order.
-func encodeSecondaryIndexWithFamilies(
-	familyMap map[descpb.FamilyID][]valueEncodedColumn,
-	index catalog.Index,
-	colMap catalog.TableColMap,
-	key []byte,
-	row []tree.Datum,
-	extraKeyCols []byte,
-	results []IndexEntry,
-	includeEmpty bool,
-) ([]IndexEntry, error) {
-	var (
-		value []byte
-		err   error
-	)
-	origKeyLen := len(key)
-	// TODO (rohany): is there a natural way of caching this information as well?
-	// We have to iterate over the map in sorted family order. Other parts of the code
-	// depend on a per-call consistent order of keys generated.
-	familyIDs := make([]int, 0, len(familyMap))
-	for familyID := range familyMap {
-		familyIDs = append(familyIDs, int(familyID))
-	}
-	sort.Ints(familyIDs)
-	for _, familyID := range familyIDs {
-		storedColsInFam := familyMap[descpb.FamilyID(familyID)]
-		// Ensure that future appends to key will cause a copy and not overwrite
-		// existing key values.
-		key = key[:origKeyLen:origKeyLen]
-
-		// If we aren't storing any columns in this family and we are not the first family,
-		// skip onto the next family. We need to write family 0 no matter what to ensure
-		// that each row has at least one entry in the DB.
-		if len(storedColsInFam) == 0 && familyID != 0 {
-			continue
-		}
-
-		sort.Sort(byID(storedColsInFam))
-
-		key = keys.MakeFamilyKey(key, uint32(familyID))
-		if index.IsUnique() && familyID == 0 {
-			// Note that a unique secondary index that contains a NULL column value
-			// will have extraKey appended to the key and stored in the value. We
-			// require extraKey to be appended to the key in order to make the key
-			// unique. We could potentially get rid of the duplication here but at
-			// the expense of complicating scanNode when dealing with unique
-			// secondary indexes.
-			value = extraKeyCols
-		} else {
-			// The zero value for an index-value is a 0-length bytes value.
-			value = []byte{}
-		}
-
-		value, err = writeColumnValues(value, colMap, row, storedColsInFam)
-		if err != nil {
-			return []IndexEntry{}, err
-		}
-		entry := IndexEntry{Key: key, Family: descpb.FamilyID(familyID)}
-		// If we aren't looking at family 0 and don't have a value,
-		// don't include an entry for this k/v.
-		if familyID != 0 && len(value) == 0 && !includeEmpty {
-			continue
-		}
-		// If we are looking at family 0, encode the data as BYTES, as it might
-		// include encoded primary key columns. For other families, use the
-		// tuple encoding for the value.
-		if familyID == 0 {
-			entry.Value.SetBytes(value)
-		} else {
-			entry.Value.SetTuple(value)
-		}
-		results = append(results, entry)
-	}
-	return results, nil
-}
-
-// encodeSecondaryIndexNoFamilies takes a mostly constructed
-// secondary index key (without the family/sentinel at
-// the end), and appends the 0 family sentinel to it, and
-// constructs the value portion of the index. This function
-// performs the index encoding version before column
-// families were introduced onto secondary indexes.
-func encodeSecondaryIndexNoFamilies(
+// encodeSecondaryIndexValue takes a mostly constructed secondary index key
+// (without the trailing row-group sentinel), appends the sentinel for row-group
+// 0, and constructs the value portion of the index.
+func encodeSecondaryIndexValue(
 	index catalog.Index,
 	colMap catalog.TableColMap,
 	key []byte,
@@ -1163,7 +828,6 @@ func encodeSecondaryIndexNoFamilies(
 		value []byte
 		err   error
 	)
-	// If we aren't encoding index keys with families, all index keys use the sentinel family 0.
 	key = keys.MakeFamilyKey(key, 0)
 	if index.IsUnique() {
 		// Note that a unique secondary index that contains a NULL column value
@@ -1178,7 +842,6 @@ func encodeSecondaryIndexNoFamilies(
 		value = []byte{}
 	}
 	var cols []valueEncodedColumn
-	// Since we aren't encoding data with families, we just encode all stored and composite columns in the value.
 	for i := 0; i < index.NumSecondaryStoredColumns(); i++ {
 		id := index.GetStoredColumnID(i)
 		cols = append(cols, valueEncodedColumn{id: id, isComposite: false})
@@ -1197,7 +860,7 @@ func encodeSecondaryIndexNoFamilies(
 	if err != nil {
 		return IndexEntry{}, err
 	}
-	entry := IndexEntry{Key: key, Family: 0}
+	entry := IndexEntry{Key: key, RowGroup: 0}
 	entry.Value.SetBytes(value)
 	return entry, nil
 }
@@ -1255,8 +918,7 @@ func EncodeSecondaryIndexes(
 			return secondaryIndexEntries, 0, err
 		}
 		// Normally, each index will have exactly one entry. However, inverted
-		// indexes can have 0 or >1 entries, as well as secondary indexes which
-		// store columns from multiple column families.
+		// indexes can have 0 or >1 entries.
 		//
 		// The memory monitor has already accounted for cap(secondaryIndexEntries).
 		// If the number of index entries are going to cause the

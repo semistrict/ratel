@@ -394,15 +394,8 @@ func alterColumnTypeGeneral(
 		OwnsSequenceIds: col.ColumnDesc().OwnsSequenceIds,
 		ComputeExpr:     newColComputeExpr,
 	}
-	// Ensure new column is created in the same column family as the original
-	// so backfiller writes to the same column family.
-	family, err := tableDesc.GetFamilyOfColumn(col.GetID())
-	if err != nil {
-		return err
-	}
-
 	if err := tableDesc.AddColumnToFamilyMaybeCreate(
-		newCol.Name, family.Name, false, false); err != nil {
+		newCol.Name, tabledesc.FamilyPrimaryName, false, false); err != nil {
 		return err
 	}
 

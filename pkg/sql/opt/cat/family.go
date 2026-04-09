@@ -16,36 +16,37 @@ package cat
 
 import "github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 
-// Family is an interface to a table column family, exposing only the
-// information needed by the query optimizer.
+// Family is an interface to a table row-group, exposing only the information
+// needed by the query optimizer. In the current layout tables expose exactly
+// one such group.
 type Family interface {
 	// ID is the stable identifier for this family that is guaranteed to be
 	// unique within the owning table. See the comment for StableID for more
 	// detail.
 	ID() StableID
 
-	// Name is the name of the family.
+	// Name is the name of the row-group.
 	Name() tree.Name
 
 	// Table returns a reference to the table with which this family is
 	// associated.
 	Table() Table
 
-	// ColumnCount returns the number of columns in the family.
+	// ColumnCount returns the number of columns in the row-group.
 	ColumnCount() int
 
-	// Column returns the ith FamilyColumn within the family, where
+	// Column returns the ith FamilyColumn within the row-group, where
 	// i < ColumnCount.
 	Column(i int) FamilyColumn
 }
 
-// FamilyColumn describes a single column that is part of a family definition.
+// FamilyColumn describes a single column that is part of a row-group.
 type FamilyColumn struct {
 	// Column is a reference to the column returned by Table.Column, given the
 	// column ordinal.
 	*Column
 
-	// Ordinal is the ordinal position of the family column in the table. It is
+	// Ordinal is the ordinal position of the row-group column in the table. It is
 	// always >= 0 and < Table.ColumnCount.
 	Ordinal int
 }

@@ -632,23 +632,21 @@ type MutationPrivate struct {
 	// columns. The count and order of columns corresponds to the count and order
 	// of the target table's columns, including in-progress schema mutation
 	// columns. If any column ID is zero, then that column will not take part in
-	// the update operation (e.g. columns in unreferenced column family).
+	// the update operation.
 	//
 	// Fetch columns are referenced by update, computed, and constraint
-	// expressions. They're also needed to formulate the final key/value pairs;
-	// updating even one column in a family requires the entire value to be
-	// reformulated. For example:
+	// expressions. They're also needed to formulate the final key/value pairs.
+	// For example:
 	//
 	//   CREATE TABLE abcd (
-	//     a INT PRIMARY KEY, b INT, c INT, d INT, e INT,
-	//     FAMILY (a, b), FAMILY (c, d), FAMILY (e))
+	//     a INT PRIMARY KEY, b INT, c INT, d INT, e INT)
 	//   UPDATE ab SET c=c+1
 	//
-	// The (a, c, d) columns need to be fetched from the store in order to satisfy
+	// The (a, c) columns need to be fetched from the store in order to satisfy
 	// the UPDATE query. The "a" column is needed because it's in the primary key.
 	// The "c" column is needed because its value is used as part of computing an
-	// updated value, and the "d" column is needed because it's in the same family
-	// as "c". Taking all this into account, FetchCols would contain this list:
+	// updated value. Taking all this into account, FetchCols would contain this
+	// list:
 	// [a_colid, 0, c_colid, d_colid, 0].
 	FetchCols opt.OptionalColList
 

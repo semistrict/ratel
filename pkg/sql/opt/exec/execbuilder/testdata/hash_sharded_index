@@ -520,7 +520,6 @@ CREATE TABLE sharded_primary_with_many_column_types  (
     da    DATE,
     inet  INET,
     vb    VARBIT,
-    FAMILY (i2, i4, i8, f4, f8, s, c, b, dc, ival, oid, tstz, ts, da, inet, vb),
     PRIMARY KEY (i2, i4, i8, f4, f8, s, c, b, dc, ival, oid, tstz, ts, da, inet, vb) USING HASH WITH (bucket_count=7)
 );
 
@@ -626,8 +625,7 @@ subtest test_hash_index_unique_constraint_pkey
 statement ok
 CREATE TABLE t_hash_indexed (
   a INT8 PRIMARY KEY USING HASH WITH (bucket_count=8),
-  b INT8 NOT NULL,
-  FAMILY (a, b)
+  b INT8 NOT NULL
 );
 
 query T
@@ -845,8 +843,7 @@ DROP TABLE IF EXISTS t_hash_indexed;
 statement ok
 CREATE TABLE t_hash_indexed (
   a INT8 PRIMARY KEY,
-  b INT8 NOT NULL,
-  FAMILY (a, b)
+  b INT8 NOT NULL
 );
 
 statement ok
@@ -1366,8 +1363,7 @@ CREATE TABLE t_parent_pk (
 statement ok
 CREATE TABLE t_child_pk (
   id INT PRIMARY KEY,
-  pid INT REFERENCES t_parent_pk (id),
-  FAMILY fam_0 (id, pid)
+  pid INT REFERENCES t_parent_pk (id)
 );
 
 query T
@@ -1426,8 +1422,7 @@ vectorized: true
 statement ok
 CREATE TABLE t_parent_sec (
   id INT PRIMARY KEY,
-  real_id INT,
-  FAMILY fam_0 (id, real_id)
+  real_id INT
 )
 
 statement ok
@@ -1436,8 +1431,7 @@ CREATE UNIQUE INDEX idx_t_parent_sec_real_id ON t_parent_sec (real_id) USING HAS
 statement ok
 CREATE TABLE t_child_sec (
   id INT PRIMARY KEY,
-  pid INT REFERENCES t_parent_sec (real_id),
-  FAMILY fam_0 (id, pid)
+  pid INT REFERENCES t_parent_sec (real_id)
 );
 
 query T

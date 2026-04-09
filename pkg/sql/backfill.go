@@ -1438,6 +1438,7 @@ func (sc *SchemaChanger) validateIndexes(ctx context.Context) error {
 		grp.GoCtx(func(ctx context.Context) error {
 			return ValidateForwardIndexes(
 				ctx,
+				sc.execCfg.Codec,
 				tableDesc,
 				forwardIndexes,
 				runHistoricalTxn,
@@ -1674,6 +1675,7 @@ func countExpectedRowsForInvertedIndex(
 // change after a backfill.
 func ValidateForwardIndexes(
 	ctx context.Context,
+	codec keys.SQLCodec,
 	tableDesc catalog.TableDescriptor,
 	indexes []catalog.Index,
 	runHistoricalTxn sqlutil.HistoricalInternalExecTxnRunner,
@@ -1697,7 +1699,9 @@ func ValidateForwardIndexes(
 
 		grp.GoCtx(func(ctx context.Context) error {
 			start := timeutil.Now()
-			idxLen, err := countIndexRowsAndMaybeCheckUniqueness(ctx, tableDesc, idx, withFirstMutationPublic, runHistoricalTxn, execOverride)
+			idxLen, err := countIndexRowsAndMaybeCheckUniqueness(
+				ctx, codec, tableDesc, idx, withFirstMutationPublic, runHistoricalTxn, execOverride,
+			)
 			if err != nil {
 				return err
 			}
@@ -1829,6 +1833,7 @@ func populateExpectedCounts(
 
 func countIndexRowsAndMaybeCheckUniqueness(
 	ctx context.Context,
+	codec keys.SQLCodec,
 	tableDesc catalog.TableDescriptor,
 	idx catalog.Index,
 	withFirstMutationPublic bool,
@@ -1876,15 +1881,34 @@ func countIndexRowsAndMaybeCheckUniqueness(
 		desc = fakeDesc
 	}
 
-	// Retrieve the row count in the index.
 	var idxLen int64
-	if err := runHistoricalTxn(ctx, func(ctx context.Context, txn *kv.Txn, ie sqlutil.InternalExecutor) error {
-		query := fmt.Sprintf(`SELECT count(1) FROM [%d AS t]@[%d]`, desc.GetID(), idx.GetID())
-		// If the index is a partial index the predicate must be added
-		// as a filter to the query to force scanning the index.
-		if idx.IsPartial() {
-			query = fmt.Sprintf(`%s WHERE %s`, query, idx.GetPredicate())
+	if idx.IsPartial() {
+		// Count partial-index entries directly from KV during validation.
+		// This avoids planner-heavy SQL over a synthetic "first mutation public"
+		// descriptor while still verifying the exact number of backfilled keys.
+		span := tableDesc.IndexSpan(codec, idx.GetID())
+		key := span.Key
+		endKey := span.EndKey
+		if err := runHistoricalTxn(ctx, func(
+			ctx context.Context, txn *kv.Txn, _ sqlutil.InternalExecutor,
+		) error {
+			for {
+				kvs, err := txn.Scan(ctx, key, endKey, 1000000)
+				if err != nil {
+					return err
+				}
+				if len(kvs) == 0 {
+					break
+				}
+				idxLen += int64(len(kvs))
+				key = kvs[len(kvs)-1].Key.PrefixEnd()
+			}
+			return nil
+		}); err != nil {
+			return 0, err
 		}
+	} else if err := runHistoricalTxn(ctx, func(ctx context.Context, txn *kv.Txn, ie sqlutil.InternalExecutor) error {
+		query := fmt.Sprintf(`SELECT count(1) FROM [%d AS t]@[%d]`, desc.GetID(), idx.GetID())
 		return ie.WithSyntheticDescriptors([]catalog.Descriptor{desc}, func() error {
 			row, err := ie.QueryRowEx(ctx, "verify-idx-count", txn, execOverride, query)
 			if err != nil {
@@ -1894,28 +1918,27 @@ func countIndexRowsAndMaybeCheckUniqueness(
 				return errors.New("failed to verify index count")
 			}
 			idxLen = int64(tree.MustBeDInt(row[0]))
-
-			// For implicitly partitioned unique indexes, we need to independently
-			// validate that the non-implicitly partitioned columns are unique.
-			if idx.IsUnique() && idx.GetPartitioning().NumImplicitColumns() > 0 && !skipUniquenessChecks {
-				if err := validateUniqueConstraint(
-					ctx,
-					tableDesc,
-					idx.GetName(),
-					idx.IndexDesc().KeyColumnIDs[idx.GetPartitioning().NumImplicitColumns():],
-					idx.GetPredicate(),
-					ie,
-					txn,
-					security.NodeUserName(),
-					false, /* preExisting */
-				); err != nil {
-					return err
-				}
-			}
 			return nil
 		})
 	}); err != nil {
 		return 0, err
+	}
+	if idx.IsUnique() && idx.GetPartitioning().NumImplicitColumns() > 0 && !skipUniquenessChecks {
+		if err := runHistoricalTxn(ctx, func(ctx context.Context, txn *kv.Txn, ie sqlutil.InternalExecutor) error {
+			return validateUniqueConstraint(
+				ctx,
+				tableDesc,
+				idx.GetName(),
+				idx.IndexDesc().KeyColumnIDs[idx.GetPartitioning().NumImplicitColumns():],
+				idx.GetPredicate(),
+				ie,
+				txn,
+				security.NodeUserName(),
+				false, /* preExisting */
+			)
+		}); err != nil {
+			return 0, err
+		}
 	}
 	return idxLen, nil
 }

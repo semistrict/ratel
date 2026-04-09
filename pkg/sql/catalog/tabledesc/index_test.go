@@ -590,7 +590,7 @@ func TestSecKeyLatestIndexDescriptorVersion(t *testing.T) {
 			{ID: 2, Name: "c2"},
 			{ID: 3, Name: "c3"},
 		},
-		Families: []descpb.ColumnFamilyDescriptor{
+		RowGroups: []descpb.RowGroupDescriptor{
 			{ID: 0, Name: "fam_0", ColumnIDs: []descpb.ColumnID{1, 2, 3}, ColumnNames: []string{"c1", "c2", "c3"}},
 		},
 		PrimaryIndex: descpb.IndexDescriptor{

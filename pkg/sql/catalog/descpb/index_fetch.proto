@@ -59,19 +59,6 @@ message IndexFetchSpec {
     optional bool is_inverted = 4 [(gogoproto.nullable) = false];
   }
 
-  // FamilyDefaultColumn specifies the default column ID for a given family ID.
-  message FamilyDefaultColumn {
-    optional uint32 family_id = 1 [(gogoproto.nullable) = false,
-                                   (gogoproto.customname) = "FamilyID",
-                                   (gogoproto.casttype) = "FamilyID"];
-
-    // DefaultColumnID is the implicit column ID when a single value is encoded
-    // for the family. See ColumnFamilyDescriptor.DefaultColumnID.
-    optional uint32 default_column_id = 2 [(gogoproto.nullable) = false,
-                                           (gogoproto.customname) = "DefaultColumnID",
-                                           (gogoproto.casttype) = "ColumnID"];
-  }
-
   // Version is used to allow providing backward compatibility if this spec
   // changes. The intention is that one day this proto will be passed to KV scan
   // requests, in which case the DistSQL versioning will not suffice.
@@ -114,14 +101,11 @@ message IndexFetchSpec {
   // index ID.
   optional uint32 key_prefix_length = 11 [(gogoproto.nullable) = false];
 
-  optional uint32 max_family_id = 12 [(gogoproto.nullable) = false,
-                                      (gogoproto.customname) = "MaxFamilyID",
-                                      (gogoproto.casttype) = "FamilyID"];
-
-  // FamilyDefaultColumns contains the default column IDs for families with a
-  // default column. This is used to decode values that use the single column
-  // optimization (where the column ID is omitted).
-  repeated FamilyDefaultColumn family_default_columns = 13 [(gogoproto.nullable) = false];
+  // DefaultColumnID is the implicit column ID when a single value is encoded
+  // without its column ID in the value payload.
+  optional uint32 default_column_id = 12 [(gogoproto.nullable) = false,
+                                          (gogoproto.customname) = "DefaultColumnID",
+                                          (gogoproto.casttype) = "ColumnID"];
 
   // KeyAndSuffixColumns contains all the key and suffix columns, in order.
   repeated KeyColumn key_and_suffix_columns = 14 [(gogoproto.nullable) = false];

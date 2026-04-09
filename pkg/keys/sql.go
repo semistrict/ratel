@@ -126,7 +126,7 @@ func (e sqlEncoder) DescMetadataPrefix() roachpb.Key {
 func (e sqlEncoder) DescMetadataKey(descID uint32) roachpb.Key {
 	k := e.DescMetadataPrefix()
 	k = encoding.EncodeUvarintAscending(k, uint64(descID))
-	return MakeFamilyKey(k, DescriptorTableDescriptorColFamID)
+	return MakeFamilyKey(k, 0)
 }
 
 // TenantMetadataKey returns the key for the tenant metadata in the
@@ -140,8 +140,8 @@ func (e sqlEncoder) TenantMetadataKey(tenID roachpb.TenantID) roachpb.Key {
 // SequenceKey returns the key used to store the value of a sequence.
 func (e sqlEncoder) SequenceKey(tableID uint32) roachpb.Key {
 	k := e.IndexPrefix(tableID, SequenceIndexID)
-	k = encoding.EncodeUvarintAscending(k, 0)    // Primary key value
-	k = MakeFamilyKey(k, SequenceColumnFamilyID) // Column family
+	k = encoding.EncodeUvarintAscending(k, 0)      // Primary key value
+	k = MakeFamilyKey(k, SequenceColumnRowGroupID) // Row-group suffix
 	return k
 }
 
@@ -164,7 +164,7 @@ func (e sqlEncoder) ZoneKeyPrefix(id uint32) roachpb.Key {
 // ZoneKey returns the key for id's entry in the system.zones table.
 func (e sqlEncoder) ZoneKey(id uint32) roachpb.Key {
 	k := e.ZoneKeyPrefix(id)
-	return MakeFamilyKey(k, uint32(ZonesTableConfigColumnID))
+	return MakeFamilyKey(k, 0)
 }
 
 // MigrationKeyPrefix returns the key prefix to store all migration details.

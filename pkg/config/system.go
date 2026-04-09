@@ -27,7 +27,11 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/systemschema"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/tabledesc"
+	"github.com/cockroachdb/cockroach/pkg/sql/rowenc/valueside"
+	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
 	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
 )
 
@@ -75,6 +79,35 @@ type zoneEntry struct {
 	// combined value in GetZoneConfigForObject, which is only used by the
 	// optimizer.
 	combined *zonepb.ZoneConfig
+}
+
+func decodeZoneConfigValue(v *roachpb.Value) (*zonepb.ZoneConfig, error) {
+	var zone zonepb.ZoneConfig
+	switch v.GetTag() {
+	case roachpb.ValueType_BYTES:
+		if err := v.GetProto(&zone); err != nil {
+			return nil, err
+		}
+	case roachpb.ValueType_TUPLE:
+		tupleBytes, err := v.GetTuple()
+		if err != nil {
+			return nil, err
+		}
+		var alloc tree.DatumAlloc
+		datum, remaining, err := valueside.Decode(&alloc, types.Bytes, tupleBytes)
+		if err != nil {
+			return nil, err
+		}
+		if len(remaining) != 0 {
+			return nil, fmt.Errorf("unexpected trailing bytes in zone config tuple")
+		}
+		if err := protoutil.Unmarshal([]byte(tree.MustBeDBytes(datum)), &zone); err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("unsupported zone config value tag %s", v.GetTag())
+	}
+	return &zone, nil
 }
 
 // SystemConfig embeds a SystemConfigEntries message which contains an
@@ -591,8 +624,8 @@ func (s *SystemConfig) systemTenantTableBoundarySplitKey(
 			if zoneVal == nil {
 				continue
 			}
-			var zone zonepb.ZoneConfig
-			if err := zoneVal.GetProto(&zone); err != nil {
+			zone, err := decodeZoneConfigValue(zoneVal)
+			if err != nil {
 				// An error while decoding the zone proto is unfortunate, but logging a
 				// message here would be excessively spammy. Just move on, which
 				// effectively assumes there are no subzones for this table.

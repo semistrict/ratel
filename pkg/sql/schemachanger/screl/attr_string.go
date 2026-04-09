@@ -10,20 +10,19 @@ func _() {
 	var x [1]struct{}
 	_ = x[DescID-1]
 	_ = x[IndexID-2]
-	_ = x[ColumnFamilyID-3]
-	_ = x[ColumnID-4]
-	_ = x[ConstraintID-5]
-	_ = x[Name-6]
-	_ = x[ReferencedDescID-7]
-	_ = x[TargetStatus-8]
-	_ = x[CurrentStatus-9]
-	_ = x[Element-10]
-	_ = x[Target-11]
+	_ = x[ColumnID-3]
+	_ = x[ConstraintID-4]
+	_ = x[Name-5]
+	_ = x[ReferencedDescID-6]
+	_ = x[TargetStatus-7]
+	_ = x[CurrentStatus-8]
+	_ = x[Element-9]
+	_ = x[Target-10]
 }
 
-const _Attr_name = "DescIDIndexIDColumnFamilyIDColumnIDConstraintIDNameReferencedDescIDTargetStatusCurrentStatusElementTarget"
+const _Attr_name = "DescIDIndexIDColumnIDConstraintIDNameReferencedDescIDTargetStatusCurrentStatusElementTarget"
 
-var _Attr_index = [...]uint8{0, 6, 13, 27, 35, 47, 51, 67, 79, 92, 99, 105}
+var _Attr_index = [...]uint8{0, 6, 13, 21, 33, 37, 53, 65, 78, 85, 91}
 
 func (i Attr) String() string {
 	i -= 1

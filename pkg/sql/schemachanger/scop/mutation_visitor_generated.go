@@ -59,7 +59,6 @@ type MutationVisitor interface {
 	RemoveSchemaParent(context.Context, RemoveSchemaParent) error
 	AddIndexPartitionInfo(context.Context, AddIndexPartitionInfo) error
 	LogEvent(context.Context, LogEvent) error
-	AddColumnFamily(context.Context, AddColumnFamily) error
 	AddColumnDefaultExpression(context.Context, AddColumnDefaultExpression) error
 	RemoveColumnDefaultExpression(context.Context, RemoveColumnDefaultExpression) error
 	AddColumnOnUpdateExpression(context.Context, AddColumnOnUpdateExpression) error
@@ -249,11 +248,6 @@ func (op AddIndexPartitionInfo) Visit(ctx context.Context, v MutationVisitor) er
 // Visit is part of the MutationOp interface.
 func (op LogEvent) Visit(ctx context.Context, v MutationVisitor) error {
 	return v.LogEvent(ctx, op)
-}
-
-// Visit is part of the MutationOp interface.
-func (op AddColumnFamily) Visit(ctx context.Context, v MutationVisitor) error {
-	return v.AddColumnFamily(ctx, op)
 }
 
 // Visit is part of the MutationOp interface.

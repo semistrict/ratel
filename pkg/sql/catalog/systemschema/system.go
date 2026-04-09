@@ -98,8 +98,7 @@ CREATE TABLE system.role_options (
 	username STRING NOT NULL,
 	option STRING NOT NULL,
 	value STRING,
-	CONSTRAINT "primary" PRIMARY KEY (username, option),
-	FAMILY "primary" (username, option, value)
+	CONSTRAINT "primary" PRIMARY KEY (username, option)
 )`
 
 	// Zone settings per DB/Table.
@@ -116,8 +115,7 @@ CREATE TABLE system.settings (
 	value             STRING    NOT NULL,
 	"lastUpdated"     TIMESTAMP NOT NULL DEFAULT now(),
 	"valueType"       STRING,
-	CONSTRAINT "primary" PRIMARY KEY (name),
-	FAMILY (name, value, "lastUpdated", "valueType")
+	CONSTRAINT "primary" PRIMARY KEY (name)
 );`
 
 	DescIDSequenceSchema = `
@@ -128,8 +126,7 @@ CREATE TABLE system.tenants (
 	id     INT8 NOT NULL,
 	active BOOL NOT NULL DEFAULT true,
 	info   BYTES,
-	CONSTRAINT "primary" PRIMARY KEY (id),
-	FAMILY "primary" (id, active, info)
+	CONSTRAINT "primary" PRIMARY KEY (id)
 );`
 )
 
@@ -183,10 +180,8 @@ CREATE TABLE system.ui (
 	// JobsRunStatsIdxPredicate is the predicate in jobs_run_stats_idx in JobsTable.
 	JobsRunStatsIdxPredicate = `status IN ('running':::STRING, 'reverting':::STRING, 'pending':::STRING, 'pause-requested':::STRING, 'cancel-requested':::STRING)`
 
-	// Note: this schema is changed in a migration (a progress column is added in
-	// a separate family).
-	// NB: main column family uses old, pre created_by_type/created_by_id columns, named.
-	// This is done to minimize migration work required.
+	// NB: the hard-coded descriptor layout preserves the historical columns even
+	// though the SQL literal is now single-family.
 	JobsTableSchema = `
 CREATE TABLE system.jobs (
 	id                INT8      DEFAULT unique_rowid(),
@@ -208,10 +203,7 @@ CREATE TABLE system.jobs (
     status,
     created
   ) STORING(last_run, num_runs, claim_instance_id)
-    WHERE ` + JobsRunStatsIdxPredicate + `,
-	FAMILY fam_0_id_status_created_payload (id, status, created, payload, created_by_type, created_by_id),
-	FAMILY progress (progress),
-	FAMILY claim (claim_session_id, claim_instance_id, num_runs, last_run)
+    WHERE ` + JobsRunStatsIdxPredicate + `
 );`
 
 	// web_sessions are used to track authenticated user actions over stateless
@@ -232,8 +224,7 @@ CREATE TABLE system.web_sessions (
 	INDEX ("expiresAt"),
 	INDEX ("createdAt"),
   INDEX ("revokedAt"),
-  INDEX ("lastUsedAt"),
-	FAMILY (id, "hashedSecret", username, "createdAt", "expiresAt", "revokedAt", "lastUsedAt", "auditInfo")
+  INDEX ("lastUsedAt")
 );`
 
 	// table_statistics is used to track statistics collected about individual
@@ -257,8 +248,7 @@ CREATE TABLE system.table_statistics (
 	"nullCount"     INT8       NOT NULL,
 	histogram       BYTES,
 	"avgSize"       INT8       NOT NULL DEFAULT 0,
-	CONSTRAINT "primary" PRIMARY KEY ("tableID", "statisticID"),
-	FAMILY "fam_0_tableID_statisticID_name_columnIDs_createdAt_rowCount_distinctCount_nullCount_histogram" ("tableID", "statisticID", name, "columnIDs", "createdAt", "rowCount", "distinctCount", "nullCount", histogram, "avgSize")
+	CONSTRAINT "primary" PRIMARY KEY ("tableID", "statisticID")
 );`
 
 	// locations are used to map a locality specified by a node to geographic
@@ -269,8 +259,7 @@ CREATE TABLE system.locations (
   "localityValue" STRING,
   latitude        DECIMAL(18,15) NOT NULL,
   longitude       DECIMAL(18,15) NOT NULL,
-  CONSTRAINT "primary" PRIMARY KEY ("localityKey", "localityValue"),
-  FAMILY ("localityKey", "localityValue", latitude, longitude)
+  CONSTRAINT "primary" PRIMARY KEY ("localityKey", "localityValue")
 );`
 
 	// role_members stores relationships between roles (role->role and role->user).
@@ -298,8 +287,7 @@ CREATE TABLE system.comments (
 	ReportsMetaTableSchema = `
 CREATE TABLE system.reports_meta (
 	id INT8 NOT NULL, "generated" TIMESTAMPTZ NOT NULL,
-	CONSTRAINT "primary" PRIMARY KEY (id ASC),
-	FAMILY "primary" (id, "generated")
+	CONSTRAINT "primary" PRIMARY KEY (id ASC)
 );`
 
 	// replication_constraint_stats stores replication constraint statistics
@@ -319,8 +307,7 @@ CREATE TABLE system.replication_constraint_stats (
 		TIMESTAMPTZ NULL,
 	violating_ranges
 		INT8 NOT NULL,
-	CONSTRAINT "primary" PRIMARY KEY (zone_id ASC, subzone_id ASC, type ASC, config ASC),
-	FAMILY "primary" (zone_id, subzone_id, type, config, report_id, violation_start, violating_ranges)
+	CONSTRAINT "primary" PRIMARY KEY (zone_id ASC, subzone_id ASC, type ASC, config ASC)
 );`
 
 	// replication_critical_localities stores replication critical localities
@@ -336,8 +323,7 @@ CREATE TABLE system.replication_critical_localities (
 		INT8 NOT NULL,
 	at_risk_ranges
 		INT8 NOT NULL,
-	CONSTRAINT "primary" PRIMARY KEY (zone_id ASC, subzone_id ASC, locality ASC),
-	FAMILY "primary" (zone_id, subzone_id, locality, report_id, at_risk_ranges)
+	CONSTRAINT "primary" PRIMARY KEY (zone_id ASC, subzone_id ASC, locality ASC)
 );`
 
 	// replication_stats stores replication statistics
@@ -357,16 +343,7 @@ CREATE TABLE system.replication_stats (
 		INT8 NOT NULL,
 	over_replicated_ranges
 		INT8 NOT NULL,
-	CONSTRAINT "primary" PRIMARY KEY (zone_id, subzone_id),
-	FAMILY "primary" (
-		zone_id,
-		subzone_id,
-		report_id,
-		total_ranges,
-		unavailable_ranges,
-		under_replicated_ranges,
-		over_replicated_ranges
-	)
+	CONSTRAINT "primary" PRIMARY KEY (zone_id, subzone_id)
 );`
 
 	// protected_ts_meta stores a single row of metadata for the protectedts
@@ -379,8 +356,7 @@ CREATE TABLE system.protected_ts_meta (
    num_spans   INT8 NOT NULL,
    total_bytes INT8 NOT NULL,
    CONSTRAINT check_singleton  CHECK (singleton),
-   CONSTRAINT "primary" PRIMARY KEY (singleton),
-	 FAMILY "primary" (singleton, version, num_records, num_spans, total_bytes)
+   CONSTRAINT "primary" PRIMARY KEY (singleton)
 );`
 
 	ProtectedTimestampsRecordsTableSchema = `
@@ -393,8 +369,7 @@ CREATE TABLE system.protected_ts_records (
    spans     BYTES NOT NULL,
    verified  BOOL NOT NULL DEFAULT (false),
    target    BYTES,         -- target is an encoded protobuf that specifies what the pts record will protect
-   CONSTRAINT "primary" PRIMARY KEY (id),
-	 FAMILY "primary" (id, ts, meta_type, meta, num_spans, spans, verified, target)
+   CONSTRAINT "primary" PRIMARY KEY (id)
 );`
 
 	StatementBundleChunksTableSchema = `
@@ -402,8 +377,7 @@ CREATE TABLE system.statement_bundle_chunks (
    id          INT8 DEFAULT unique_rowid(),
 	 description STRING,
 	 data        BYTES NOT NULL,
-	 CONSTRAINT "primary" PRIMARY KEY (id),
-	 FAMILY "primary" (id, description, data)
+	 CONSTRAINT "primary" PRIMARY KEY (id)
 );`
 
 	StatementDiagnosticsRequestsTableSchema = `
@@ -416,9 +390,7 @@ CREATE TABLE system.statement_diagnostics_requests(
 	min_execution_latency INTERVAL NULL,
 	expires_at TIMESTAMPTZ NULL,
 	CONSTRAINT "primary" PRIMARY KEY (id),
-	INDEX completed_idx_v2 (completed, id) STORING (statement_fingerprint, min_execution_latency, expires_at),
-
-	FAMILY "primary" (id, completed, statement_fingerprint, statement_diagnostics_id, requested_at, min_execution_latency, expires_at)
+	INDEX completed_idx_v2 (completed, id) STORING (statement_fingerprint, min_execution_latency, expires_at)
 );`
 
 	StatementDiagnosticsTableSchema = `
@@ -430,9 +402,7 @@ create table system.statement_diagnostics(
   trace JSONB,
   bundle_chunks INT ARRAY,
 	error STRING,
-	CONSTRAINT "primary" PRIMARY KEY (id),
-
-	FAMILY "primary" (id, statement_fingerprint, statement, collected_at, trace, bundle_chunks, error)
+	CONSTRAINT "primary" PRIMARY KEY (id)
 );`
 
 	ScheduledJobsTableSchema = `
@@ -449,21 +419,14 @@ CREATE TABLE system.scheduled_jobs (
     execution_args   BYTES NOT NULL,
 
     CONSTRAINT "primary" PRIMARY KEY (schedule_id),
-    INDEX "next_run_idx" (next_run),
-
- 	 FAMILY sched (schedule_id, next_run, schedule_state),
- 	 FAMILY other (
-       schedule_name, created, owner, schedule_expr, 
-       schedule_details, executor_type, execution_args 
-    )
+    INDEX "next_run_idx" (next_run)
 )`
 
 	SqllivenessTableSchema = `
 CREATE TABLE system.sqlliveness (
     session_id       BYTES NOT NULL,
     expiration       DECIMAL NOT NULL,
-    CONSTRAINT "primary" PRIMARY KEY (session_id),
-  	FAMILY fam0_session_id_expiration (session_id, expiration)
+    CONSTRAINT "primary" PRIMARY KEY (session_id)
 )`
 
 	MigrationsTableSchema = `
@@ -473,7 +436,6 @@ CREATE TABLE system.migrations (
     patch        INT8 NOT NULL,
     internal     INT8 NOT NULL,
     completed_at TIMESTAMPTZ NOT NULL,
- 	 FAMILY "primary" (major, minor, patch, internal, completed_at),
     CONSTRAINT "primary" PRIMARY KEY (major, minor, patch, internal)
 )`
 
@@ -482,8 +444,7 @@ CREATE TABLE system.join_tokens (
     id           UUID NOT NULL,
     secret       BYTES NOT NULL,
     expiration   TIMESTAMPTZ NOT NULL,
-    CONSTRAINT "primary" PRIMARY KEY (id),
- 	 FAMILY "primary" (id, secret, expiration)
+    CONSTRAINT "primary" PRIMARY KEY (id)
 )`
 
 	// TODO(azhng): Currently we choose number of bucket for hash-sharding to be
@@ -510,20 +471,7 @@ CREATE TABLE system.statement_statistics (
 
     CONSTRAINT "primary" PRIMARY KEY (aggregated_ts, fingerprint_id, transaction_fingerprint_id, plan_hash, app_name, node_id)
       USING HASH WITH (bucket_count=8),
-    INDEX "fingerprint_stats_idx" (fingerprint_id, transaction_fingerprint_id),
-		FAMILY "primary" (
-			crdb_internal_aggregated_ts_app_name_fingerprint_id_node_id_plan_hash_transaction_fingerprint_id_shard_8,
-			aggregated_ts,
-			fingerprint_id,
-			transaction_fingerprint_id,
-			plan_hash,
-			app_name,
-			node_id,
-			agg_interval,
-			metadata,
-			statistics,
-			plan
-		)
+    INDEX "fingerprint_stats_idx" (fingerprint_id, transaction_fingerprint_id)
 )
 `
 
@@ -544,17 +492,7 @@ CREATE TABLE system.transaction_statistics (
 
     CONSTRAINT "primary" PRIMARY KEY (aggregated_ts, fingerprint_id, app_name, node_id)
       USING HASH WITH (bucket_count=8),
-    INDEX "fingerprint_stats_idx" (fingerprint_id),
-		FAMILY "primary" (
-			crdb_internal_aggregated_ts_app_name_fingerprint_id_node_id_shard_8,
-			aggregated_ts,
-			fingerprint_id,
-			app_name,
-			node_id,
-			agg_interval,
-			metadata,
-			statistics
-		)
+    INDEX "fingerprint_stats_idx" (fingerprint_id)
 );
 `
 	DatabaseRoleSettingsTableSchema = `
@@ -562,12 +500,7 @@ CREATE TABLE system.database_role_settings (
     database_id  OID NOT NULL,
     role_name    STRING NOT NULL,
     settings     STRING[] NOT NULL,
-    CONSTRAINT "primary" PRIMARY KEY (database_id, role_name),
-		FAMILY "primary" (
-			database_id,
-      role_name,
-      settings
-		)
+    CONSTRAINT "primary" PRIMARY KEY (database_id, role_name)
 );`
 
 	TenantUsageTableSchema = `
@@ -625,13 +558,6 @@ CREATE TABLE system.tenant_usage (
   -- Current shares value for this instance.
   instance_shares FLOAT,
 
-  FAMILY "primary" (
-    tenant_id, instance_id, next_instance_id, last_update,
-    ru_burst_limit, ru_refill_rate, ru_current, current_share_sum,
-    total_consumption,
-    instance_lease, instance_seq, instance_shares
-  ),
-
 	CONSTRAINT "primary" PRIMARY KEY (tenant_id, instance_id)
 )`
 
@@ -640,8 +566,7 @@ CREATE TABLE system.sql_instances (
     id           INT NOT NULL,
     addr         STRING,
     session_id   BYTES,
-    CONSTRAINT "primary" PRIMARY KEY (id),
-    FAMILY "primary" (id, addr, session_id)
+    CONSTRAINT "primary" PRIMARY KEY (id)
 )`
 
 	SpanConfigurationsTableSchema = `
@@ -650,8 +575,7 @@ CREATE TABLE system.span_configurations (
     end_key      BYTES NOT NULL,
     config        BYTES NOT NULL,
     CONSTRAINT "primary" PRIMARY KEY (start_key),
-    CONSTRAINT check_bounds CHECK (start_key < end_key),
-    FAMILY "primary" (start_key, end_key, config)
+    CONSTRAINT check_bounds CHECK (start_key < end_key)
 )`
 
 	TenantSettingsTableSchema = `
@@ -668,8 +592,7 @@ CREATE TABLE system.tenant_settings (
 
 	-- reason is unused for now.
 	reason       STRING,
-	CONSTRAINT "primary" PRIMARY KEY (tenant_id, name),
-	FAMILY (tenant_id, name, value, last_updated, value_type, reason)
+	CONSTRAINT "primary" PRIMARY KEY (tenant_id, name)
 );`
 
 	WasmFunctionsTableSchema = `
@@ -686,8 +609,7 @@ CREATE TABLE system.wasm_functions (
 	memory_limit   INT8 NOT NULL DEFAULT 16777216,
 	owner          STRING NOT NULL,
 	created_at     TIMESTAMP NOT NULL DEFAULT now(),
-	CONSTRAINT "primary" PRIMARY KEY (database_id, schema_id, function_name, arg_types),
-	FAMILY "primary" (database_id, schema_id, function_name, arg_types, return_type, wasm_module, wat_source, export_name, fuel_limit, memory_limit, owner, created_at)
+	CONSTRAINT "primary" PRIMARY KEY (database_id, schema_id, function_name, arg_types)
 );`
 
 	SpanCountTableSchema = `
@@ -695,8 +617,7 @@ CREATE TABLE system.span_count (
 	singleton  BOOL DEFAULT TRUE,
 	span_count INT NOT NULL,
 	CONSTRAINT "primary" PRIMARY KEY (singleton),
-	CONSTRAINT single_row CHECK (singleton),
-	FAMILY "primary" (singleton, span_count)
+	CONSTRAINT single_row CHECK (singleton)
 );`
 )
 
@@ -761,9 +682,50 @@ func systemTable(
 	name catconstants.SystemTableName,
 	id descpb.ID,
 	columns []descpb.ColumnDescriptor,
-	families []descpb.ColumnFamilyDescriptor,
+	rowGroups []descpb.RowGroupDescriptor,
 	indexes ...descpb.IndexDescriptor,
 ) descpb.TableDescriptor {
+	var historicalDefaultColumnID descpb.ColumnID
+	for _, rowGroup := range rowGroups {
+		if rowGroup.DefaultColumnID == 0 {
+			continue
+		}
+		if historicalDefaultColumnID == 0 {
+			historicalDefaultColumnID = rowGroup.DefaultColumnID
+			continue
+		}
+		// Keep the single-family descriptor conservative when the historical
+		// layout had multiple family-local default columns.
+		historicalDefaultColumnID = 0
+		break
+	}
+	primaryKeyColumns := make(map[descpb.ColumnID]struct{}, len(indexes[0].KeyColumnIDs))
+	for _, colID := range indexes[0].KeyColumnIDs {
+		primaryKeyColumns[colID] = struct{}{}
+	}
+	primaryFamily := descpb.RowGroupDescriptor{
+		ID:   0,
+		Name: tabledesc.FamilyPrimaryName,
+	}
+	var valueColumnCount int
+	for _, col := range columns {
+		if col.Virtual {
+			continue
+		}
+		primaryFamily.ColumnNames = append(primaryFamily.ColumnNames, col.Name)
+		primaryFamily.ColumnIDs = append(primaryFamily.ColumnIDs, col.ID)
+		if _, ok := primaryKeyColumns[col.ID]; ok {
+			continue
+		}
+		valueColumnCount++
+	}
+	// A merged one-family descriptor can only retain a historical family default
+	// when there is still exactly one non-PK value column encoded in that family.
+	if historicalDefaultColumnID != 0 && valueColumnCount == 1 {
+		primaryFamily.DefaultColumnID = historicalDefaultColumnID
+	}
+	rowGroups = []descpb.RowGroupDescriptor{primaryFamily}
+
 	tbl := descpb.TableDescriptor{
 		Name:                    string(name),
 		ID:                      id,
@@ -771,7 +733,7 @@ func systemTable(
 		UnexposedParentSchemaID: keys.SystemPublicSchemaID,
 		Version:                 1,
 		Columns:                 columns,
-		Families:                families,
+		RowGroups:               rowGroups,
 		PrimaryIndex:            indexes[0],
 		Indexes:                 indexes[1:],
 		FormatVersion:           descpb.InterleavedFormatVersion,
@@ -785,9 +747,9 @@ func systemTable(
 			tbl.NextColumnID = col.ID + 1
 		}
 	}
-	for _, fam := range families {
-		if tbl.NextFamilyID <= fam.ID {
-			tbl.NextFamilyID = fam.ID + 1
+	for _, rowGroup := range rowGroups {
+		if tbl.NextRowGroupID <= rowGroup.ID {
+			tbl.NextRowGroupID = rowGroup.ID + 1
 		}
 	}
 	for i, idx := range indexes {
@@ -856,8 +818,7 @@ var (
 
 	// NamespaceTable is the descriptor for the namespace table. Note that this
 	// table should only be written to via KV puts, not via the SQL layer. Some
-	// code assumes that it only has KV entries for column family 4, not the
-	// "sentinel" column family 0 which would be written by SQL.
+	// low-level code still assumes the legacy namespace KV shape.
 	NamespaceTable = registerSystemTable(
 		NamespaceTableSchema,
 		systemTable(
@@ -869,9 +830,9 @@ var (
 				{Name: "name", ID: 3, Type: types.String},
 				{Name: "id", ID: 4, Type: types.Int, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{Name: "primary", ID: 0, ColumnNames: []string{"parentID", "parentSchemaID", "name"}, ColumnIDs: []descpb.ColumnID{1, 2, 3}},
-				{Name: "fam_4_id", ID: catconstants.NamespaceTableFamilyID, ColumnNames: []string{"id"}, ColumnIDs: []descpb.ColumnID{4}, DefaultColumnID: 4},
+				{Name: "fam_4_id", ID: catconstants.NamespaceTableRowGroupID, ColumnNames: []string{"id"}, ColumnIDs: []descpb.ColumnID{4}, DefaultColumnID: 4},
 			},
 			descpb.IndexDescriptor{
 				Name:                "primary",
@@ -893,7 +854,7 @@ var (
 				{Name: "id", ID: 1, Type: types.Int},
 				{Name: "descriptor", ID: keys.DescriptorTableDescriptorColID, Type: types.Bytes, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				// The id of the first col fam is hardcoded in keys.MakeDescMetadataKey().
 				{Name: "primary", ID: 0, ColumnNames: []string{"id"}, ColumnIDs: singleID1},
 				{
@@ -924,7 +885,7 @@ var (
 				{Name: "hashedPassword", ID: 2, Type: types.Bytes, Nullable: true},
 				{Name: "isRole", ID: 3, Type: types.Bool, DefaultExpr: &falseBoolString},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{Name: "primary", ID: 0, ColumnNames: []string{"username"}, ColumnIDs: singleID1},
 				{Name: "fam_2_hashedPassword", ID: 2, ColumnNames: []string{"hashedPassword"}, ColumnIDs: []descpb.ColumnID{2}, DefaultColumnID: 2},
 				{Name: "fam_3_isRole", ID: 3, ColumnNames: []string{"isRole"}, ColumnIDs: []descpb.ColumnID{3}, DefaultColumnID: 3},
@@ -942,7 +903,7 @@ var (
 				{Name: "id", ID: 1, Type: types.Int},
 				{Name: "config", ID: keys.ZonesTableConfigColumnID, Type: types.Bytes, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{Name: "primary", ID: 0, ColumnNames: []string{"id"}, ColumnIDs: singleID1},
 				{Name: "fam_2_config", ID: keys.ZonesTableConfigColFamID, ColumnNames: []string{"config"},
 					ColumnIDs: []descpb.ColumnID{keys.ZonesTableConfigColumnID}, DefaultColumnID: keys.ZonesTableConfigColumnID},
@@ -970,7 +931,7 @@ var (
 				{Name: "lastUpdated", ID: 3, Type: types.Timestamp, DefaultExpr: &nowString},
 				{Name: "valueType", ID: 4, Type: types.String, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:        "fam_0_name_value_lastUpdated_valueType",
 					ID:          0,
@@ -990,9 +951,9 @@ var (
 			[]descpb.ColumnDescriptor{
 				{Name: tabledesc.SequenceColumnName, ID: tabledesc.SequenceColumnID, Type: types.Int},
 			},
-			[]descpb.ColumnFamilyDescriptor{{
+			[]descpb.RowGroupDescriptor{{
 				Name:            "primary",
-				ID:              keys.SequenceColumnFamilyID,
+				ID:              keys.SequenceColumnRowGroupID,
 				ColumnNames:     []string{tabledesc.SequenceColumnName},
 				ColumnIDs:       []descpb.ColumnID{tabledesc.SequenceColumnID},
 				DefaultColumnID: tabledesc.SequenceColumnID,
@@ -1014,7 +975,7 @@ var (
 				CacheSize: 1,
 			}
 			tbl.NextColumnID = 0
-			tbl.NextFamilyID = 0
+			tbl.NextRowGroupID = 0
 			tbl.NextIndexID = 0
 			tbl.NextMutationID = 0
 			// Sequences never exposed their internal constraints,
@@ -1040,7 +1001,7 @@ var (
 				// tenant in a cluster back to the corresponding user ID in CC.
 				{Name: "info", ID: 3, Type: types.Bytes, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{{
+			[]descpb.RowGroupDescriptor{{
 				Name:        "primary",
 				ID:          0,
 				ColumnNames: []string{"id", "active", "info"},
@@ -1068,7 +1029,7 @@ var (
 				{Name: "nodeID", ID: 3, Type: types.Int},
 				{Name: "expiration", ID: 4, Type: types.Timestamp},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{Name: "primary", ID: 0, ColumnNames: []string{"descID", "version", "nodeID", "expiration"}, ColumnIDs: []descpb.ColumnID{1, 2, 3, 4}},
 			},
 			descpb.IndexDescriptor{
@@ -1100,7 +1061,7 @@ var (
 				{Name: "info", ID: 5, Type: types.String, Nullable: true},
 				{Name: "uniqueID", ID: 6, Type: types.Bytes, DefaultExpr: &uuidV4String},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{Name: "primary", ID: 0, ColumnNames: []string{"timestamp", "uniqueID"}, ColumnIDs: []descpb.ColumnID{1, 6}},
 				{Name: "fam_2_eventType", ID: 2, ColumnNames: []string{"eventType"}, ColumnIDs: []descpb.ColumnID{2}, DefaultColumnID: 2},
 				{Name: "fam_3_targetID", ID: 3, ColumnNames: []string{"targetID"}, ColumnIDs: []descpb.ColumnID{3}, DefaultColumnID: 3},
@@ -1134,7 +1095,7 @@ var (
 				{Name: "info", ID: 6, Type: types.String, Nullable: true},
 				{Name: "uniqueID", ID: 7, Type: types.Int, DefaultExpr: &uniqueRowIDString},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{Name: "primary", ID: 0, ColumnNames: []string{"timestamp", "uniqueID"}, ColumnIDs: []descpb.ColumnID{1, 7}},
 				{Name: "fam_2_rangeID", ID: 2, ColumnNames: []string{"rangeID"}, ColumnIDs: []descpb.ColumnID{2}, DefaultColumnID: 2},
 				{Name: "fam_3_storeID", ID: 3, ColumnNames: []string{"storeID"}, ColumnIDs: []descpb.ColumnID{3}, DefaultColumnID: 3},
@@ -1163,7 +1124,7 @@ var (
 				{Name: "value", ID: 2, Type: types.Bytes, Nullable: true},
 				{Name: "lastUpdated", ID: 3, Type: types.Timestamp},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{Name: "primary", ID: 0, ColumnNames: []string{"key"}, ColumnIDs: singleID1},
 				{Name: "fam_2_value", ID: 2, ColumnNames: []string{"value"}, ColumnIDs: []descpb.ColumnID{2}, DefaultColumnID: 2},
 				{Name: "fam_3_lastUpdated", ID: 3, ColumnNames: []string{"lastUpdated"}, ColumnIDs: []descpb.ColumnID{3}, DefaultColumnID: 3},
@@ -1192,7 +1153,7 @@ var (
 				{Name: "num_runs", ID: 10, Type: types.Int, Nullable: true},
 				{Name: "last_run", ID: 11, Type: types.Timestamp, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					// NB: We are using family name that existed prior to adding created_by_type and
 					// created_by_id columns.  This is done to minimize and simplify migration work
@@ -1270,7 +1231,7 @@ var (
 				{Name: "lastUsedAt", ID: 7, Type: types.Timestamp, DefaultExpr: &nowString},
 				{Name: "auditInfo", ID: 8, Type: types.String, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name: "fam_0_id_hashedSecret_username_createdAt_expiresAt_revokedAt_lastUsedAt_auditInfo",
 					ID:   0,
@@ -1348,7 +1309,7 @@ var (
 				{Name: "histogram", ID: 9, Type: types.Bytes, Nullable: true},
 				{Name: "avgSize", ID: 10, Type: types.Int, DefaultExpr: &zeroIntString},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name: "fam_0_tableID_statisticID_name_columnIDs_createdAt_rowCount_distinctCount_nullCount_histogram",
 					ID:   0,
@@ -1391,7 +1352,7 @@ var (
 				{Name: "latitude", ID: 3, Type: latLonDecimal},
 				{Name: "longitude", ID: 4, Type: latLonDecimal},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:        "fam_0_localityKey_localityValue_latitude_longitude",
 					ID:          0,
@@ -1420,7 +1381,7 @@ var (
 				{Name: "member", ID: 2, Type: types.String},
 				{Name: "isAdmin", ID: 3, Type: types.Bool},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:        "primary",
 					ID:          0,
@@ -1477,7 +1438,7 @@ var (
 				{Name: "sub_id", ID: 3, Type: types.Int},
 				{Name: "comment", ID: 4, Type: types.String},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{Name: "primary", ID: 0, ColumnNames: []string{"type", "object_id", "sub_id"}, ColumnIDs: []descpb.ColumnID{1, 2, 3}},
 				{Name: "fam_4_comment", ID: 4, ColumnNames: []string{"comment"}, ColumnIDs: []descpb.ColumnID{4}, DefaultColumnID: 4},
 			},
@@ -1511,7 +1472,7 @@ var (
 				{Name: "id", ID: 1, Type: types.Int},
 				{Name: "generated", ID: 2, Type: types.TimestampTZ},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:            "primary",
 					ID:              0,
@@ -1550,7 +1511,7 @@ var (
 				{Name: "violation_start", ID: 6, Type: types.TimestampTZ, Nullable: true},
 				{Name: "violating_ranges", ID: 7, Type: types.Int},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name: "primary",
 					ID:   0,
@@ -1593,7 +1554,7 @@ var (
 				{Name: "report_id", ID: 4, Type: types.Int},
 				{Name: "at_risk_ranges", ID: 5, Type: types.Int},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name: "primary",
 					ID:   0,
@@ -1637,7 +1598,7 @@ var (
 				{Name: "under_replicated_ranges", ID: 6, Type: types.Int},
 				{Name: "over_replicated_ranges", ID: 7, Type: types.Int},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name: "primary",
 					ID:   0,
@@ -1680,7 +1641,7 @@ var (
 				{Name: "num_spans", ID: 4, Type: types.Int},
 				{Name: "total_bytes", ID: 5, Type: types.Int},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:        "primary",
 					ColumnNames: []string{"singleton", "version", "num_records", "num_spans", "total_bytes"},
@@ -1725,7 +1686,7 @@ var (
 				// tenants or a schema objects (databases/tables).
 				{Name: "target", ID: 8, Type: types.Bytes, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:        "primary",
 					ColumnNames: []string{"id", "ts", "meta_type", "meta", "num_spans", "spans", "verified", "target"},
@@ -1755,7 +1716,7 @@ var (
 				{Name: "option", ID: 2, Type: types.String},
 				{Name: "value", ID: 3, Type: types.String, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:            "primary",
 					ColumnNames:     []string{"username", "option", "value"},
@@ -1783,7 +1744,7 @@ var (
 				{Name: "description", ID: 2, Type: types.String, Nullable: true},
 				{Name: "data", ID: 3, Type: types.Bytes},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:        "primary",
 					ColumnNames: []string{"id", "description", "data"},
@@ -1809,7 +1770,7 @@ var (
 				{Name: "min_execution_latency", ID: 6, Type: types.Interval, Nullable: true},
 				{Name: "expires_at", ID: 7, Type: types.TimestampTZ, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:        "primary",
 					ColumnNames: []string{"id", "completed", "statement_fingerprint", "statement_diagnostics_id", "requested_at", "min_execution_latency", "expires_at"},
@@ -1846,7 +1807,7 @@ var (
 				{Name: "bundle_chunks", ID: 6, Type: types.IntArray, Nullable: true},
 				{Name: "error", ID: 7, Type: types.String, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name: "primary",
 					ColumnNames: []string{"id", "statement_fingerprint", "statement",
@@ -1877,7 +1838,7 @@ var (
 				{Name: "executor_type", ID: 9, Type: types.String, Nullable: false},
 				{Name: "execution_args", ID: 10, Type: types.Bytes, Nullable: false},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:        "sched",
 					ID:          0,
@@ -1917,7 +1878,7 @@ var (
 				{Name: "session_id", ID: 1, Type: types.Bytes, Nullable: false},
 				{Name: "expiration", ID: 2, Type: types.Decimal, Nullable: false},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:            "fam0_session_id_expiration",
 					ID:              0,
@@ -1944,7 +1905,7 @@ var (
 				{Name: "internal", ID: 4, Type: types.Int, Nullable: false},
 				{Name: "completed_at", ID: 5, Type: types.TimestampTZ, Nullable: false},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:            "primary",
 					ID:              0,
@@ -1979,7 +1940,7 @@ var (
 				{Name: "secret", ID: 2, Type: types.Bytes, Nullable: false},
 				{Name: "expiration", ID: 3, Type: types.TimestampTZ, Nullable: false},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:            "primary",
 					ID:              0,
@@ -2027,7 +1988,7 @@ var (
 					Hidden:      true,
 				},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name: "primary",
 					ID:   0,
@@ -2131,7 +2092,7 @@ var (
 					Hidden:      true,
 				},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name: "primary",
 					ID:   0,
@@ -2219,7 +2180,7 @@ var (
 				{Name: "role_name", ID: 2, Type: types.String, Nullable: false},
 				{Name: "settings", ID: 3, Type: types.StringArray, Nullable: false},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:            "primary",
 					ID:              0,
@@ -2264,7 +2225,7 @@ var (
 				{Name: "instance_seq", ID: 11, Type: types.Int, Nullable: true},
 				{Name: "instance_shares", ID: 12, Type: types.Float, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name: "primary",
 					ID:   0,
@@ -2305,7 +2266,7 @@ var (
 				{Name: "addr", ID: 2, Type: types.String, Nullable: true},
 				{Name: "session_id", ID: 3, Type: types.Bytes, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:            "primary",
 					ID:              0,
@@ -2329,7 +2290,7 @@ var (
 				{Name: "end_key", ID: 2, Type: types.Bytes},
 				{Name: "config", ID: 3, Type: types.Bytes},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:        "primary",
 					ID:          0,
@@ -2370,7 +2331,7 @@ var (
 				{Name: "value_type", ID: 5, Type: types.String},
 				{Name: "reason", ID: 6, Type: types.String, Nullable: true},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:        "fam_0_tenant_id_name_value_last_updated_value_type_reason",
 					ID:          0,
@@ -2412,7 +2373,7 @@ var (
 				{Name: "owner", ID: 11, Type: types.String},
 				{Name: "created_at", ID: 12, Type: types.Timestamp, DefaultExpr: &nowString},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:        "primary",
 					ID:          0,
@@ -2446,7 +2407,7 @@ var (
 				{Name: "singleton", ID: 1, Type: types.Bool, DefaultExpr: &trueBoolString},
 				{Name: "span_count", ID: 2, Type: types.Int},
 			},
-			[]descpb.ColumnFamilyDescriptor{
+			[]descpb.RowGroupDescriptor{
 				{
 					Name:            "primary",
 					ID:              0,

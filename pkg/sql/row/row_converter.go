@@ -44,18 +44,11 @@ func (i KVInserter) CPut(key, value interface{}, expValue []byte) {
 
 // Del is not implemented.
 func (i KVInserter) Del(key ...interface{}) {
-	// This is called when there are multiple column families to ensure that
-	// existing data is cleared. With the exception of IMPORT INTO, the entire
-	// existing keyspace in any IMPORT is guaranteed to be empty, so we don't have
-	// to worry about it.
+	// IMPORT starts from empty keyspace, and IMPORT INTO disallows overwriting an
+	// existing row, so row conversion never needs to emit deletes here.
 	//
-	// IMPORT INTO disallows overwriting an existing row, so we're also okay here.
-	// The reason this works is that row existence is precisely defined as whether
-	// column family 0 exists, meaning that we write column family 0 even if all
-	// the non-pk columns in it are NULL. It follows that either the row does
-	// exist and the imported column family 0 will conflict (and the IMPORT INTO
-	// will fail) or the row does not exist (and thus the column families are all
-	// empty).
+	// Row existence is defined by the presence of the primary row KV, which we
+	// always write even if all non-key columns are NULL.
 }
 
 // Put method of the putter interface.
@@ -423,7 +416,7 @@ func NewDatumRowConverter(
 		return nil, errors.New("unexpected hidden column")
 	}
 
-	padding := 2 * (len(tableDesc.PublicNonPrimaryIndexes()) + len(tableDesc.GetFamilies()))
+	padding := 2 * (len(tableDesc.PublicNonPrimaryIndexes()) + 1)
 	c.BatchCap = kvDatumRowConverterBatchSize + padding
 	c.KvBatch.KVs = make([]roachpb.KeyValue, 0, c.BatchCap)
 	c.KvBatch.MemSize = 0

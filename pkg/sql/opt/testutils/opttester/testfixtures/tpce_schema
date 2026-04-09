@@ -87,9 +87,7 @@ CREATE TABLE holding_summary (
     hs_ca_id  INT8 NOT NULL,
     hs_s_symb VARCHAR(15) NOT NULL,
     hs_qty    INT4 NOT NULL,
-    PRIMARY KEY (hs_ca_id, hs_s_symb),
-    FAMILY static  (hs_ca_id, hs_s_symb),
-    FAMILY dynamic (hs_qty)
+    PRIMARY KEY (hs_ca_id, hs_s_symb)
 );
 ----
 
@@ -114,9 +112,7 @@ CREATE TABLE broker (
     b_st_id      VARCHAR(4) NOT NULL,
     b_name       VARCHAR(49) NOT NULL,
     b_num_trades INT8 NOT NULL,
-    b_comm_total DECIMAL(12,2) NOT NULL,
-    FAMILY static  (b_id, b_st_id, b_name),
-    FAMILY dynamic (b_comm_total, b_num_trades)
+    b_comm_total DECIMAL(12,2) NOT NULL
 );
 ----
 
@@ -175,10 +171,7 @@ CREATE TABLE trade (
     t_chrg        DECIMAL(10,2) NOT NULL CHECK (t_chrg >= 0),
     t_comm        DECIMAL(10,2) NOT NULL CHECK (t_comm >= 0),
     t_tax         DECIMAL(10,2) NOT NULL CHECK (t_tax  >= 0),
-    t_lifo        BOOL NOT NULL,
-    FAMILY static   (t_id),
-    FAMILY dynamic1 (t_comm, t_dts, t_st_id, t_trade_price, t_exec_name, t_tt_id, t_is_cash, t_s_symb, t_qty, t_bid_price, t_ca_id, t_chrg, t_lifo),
-    FAMILY dynamic2 (t_tax)
+    t_lifo        BOOL NOT NULL
 );
 ----
 
@@ -304,9 +297,7 @@ CREATE TABLE news_item (
     ni_item     BYTEA NOT NULL,
     ni_dts      TIMESTAMP NOT NULL,
     ni_source   VARCHAR(30) NOT NULL,
-    ni_author   VARCHAR(30),
-    FAMILY static (ni_id, ni_headline, ni_summary, ni_dts, ni_source, ni_author),
-    FAMILY blob   (ni_item)
+    ni_author   VARCHAR(30)
 );
 ----
 

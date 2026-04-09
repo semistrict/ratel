@@ -21,7 +21,6 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/catid"
-	"github.com/cockroachdb/cockroach/pkg/util/iterutil"
 	"github.com/cockroachdb/errors"
 )
 
@@ -217,14 +216,6 @@ func (w *walkCtx) walkRelation(tbl catalog.TableDescriptor) {
 		})
 	}
 	if !tbl.IsSequence() {
-		_ = tbl.ForeachFamily(func(family *descpb.ColumnFamilyDescriptor) error {
-			w.ev(scpb.Status_PUBLIC, &scpb.ColumnFamily{
-				TableID:  tbl.GetID(),
-				FamilyID: family.ID,
-				Name:     family.Name,
-			})
-			return nil
-		})
 		for _, col := range tbl.AllColumns() {
 			if col.IsSystemColumn() {
 				continue
@@ -330,13 +321,6 @@ func (w *walkCtx) walkColumn(tbl catalog.TableDescriptor, col catalog.Column) {
 			IsNullable: col.IsNullable(),
 			IsVirtual:  col.IsVirtual(),
 		}
-		_ = tbl.ForeachFamily(func(family *descpb.ColumnFamilyDescriptor) error {
-			if catalog.MakeTableColSet(family.ColumnIDs...).Contains(col.GetID()) {
-				columnType.FamilyID = family.ID
-				return iterutil.StopIteration()
-			}
-			return nil
-		})
 		typeT, err := newTypeT(col.GetType())
 		onErrPanic(err)
 		columnType.TypeT = *typeT

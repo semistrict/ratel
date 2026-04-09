@@ -281,9 +281,9 @@ func TestStreamerCorrectlyDiscardsResponses(t *testing.T) {
 	}
 }
 
-// TestStreamerColumnFamilies verifies that the Streamer works correctly with
-// large rows and multiple column families. The goal is to make sure that KVs
-// from different rows are not intertwined.
+// TestStreamerWideRows verifies that the Streamer works correctly with large
+// rows. The goal is to make sure that KVs from different rows are not
+// intertwined.
 func TestStreamerWideRows(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
@@ -303,7 +303,7 @@ func TestStreamerWideRows(t *testing.T) {
 	const blobSize = 10 * initialAvgResponseSize
 	const numRows = 2
 
-	_, err = db.Exec("CREATE TABLE t (pk INT PRIMARY KEY, k INT, blob1 STRING, blob2 STRING, INDEX (k), FAMILY (pk, k, blob1), FAMILY (blob2))")
+	_, err = db.Exec("CREATE TABLE t (pk INT PRIMARY KEY, k INT, blob1 STRING, blob2 STRING, INDEX (k))")
 	require.NoError(t, err)
 	for i := 0; i < numRows; i++ {
 		if i > 0 {
@@ -385,9 +385,7 @@ func TestStreamerEmptyScans(t *testing.T) {
 	defer s.Stopper().Stop(ctx)
 
 	// Create a dummy table for which we know the encoding of valid keys.
-	// Although not strictly necessary, we set up two column families since with
-	// a single family in production a Get request would have been used.
-	_, err := db.Exec("CREATE TABLE t (pk INT PRIMARY KEY, k INT, blob STRING, INDEX (k), FAMILY (pk, k), FAMILY (blob))")
+	_, err := db.Exec("CREATE TABLE t (pk INT PRIMARY KEY, k INT, blob STRING, INDEX (k))")
 	require.NoError(t, err)
 
 	// Split the table into 5 ranges and populate the range cache.
@@ -415,7 +413,7 @@ func TestStreamerEmptyScans(t *testing.T) {
 
 	getStreamer := func() *Streamer {
 		s := getStreamer(ctx, s, math.MaxInt64, nil /* acc */)
-		// There are two column families in the table.
+		// This test table can produce two KVs per row.
 		s.Init(OutOfOrder, Hints{UniqueRequests: true}, 2 /* maxKeysPerRow */, nil /* engine */, nil /* diskMonitor */)
 		return s
 	}

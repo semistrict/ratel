@@ -37,7 +37,7 @@ func (dir IndexDescriptor_Direction) ToEncodingDirection() (encoding.Direction, 
 	}
 }
 
-// ID, ColumnID, FamilyID, and IndexID are all uint32, but are each given a
+// ID, ColumnID, RowGroupID, and IndexID are all uint32, but are each given a
 // type alias to prevent accidental use of one of the types where
 // another is expected.
 
@@ -65,7 +65,7 @@ const (
 	// BaseFormatVersion corresponds to the encoding described in
 	// https://www.cockroachlabs.com/blog/sql-in-cockroachdb-mapping-table-data-to-key-value-storage/.
 	BaseFormatVersion
-	// FamilyFormatVersion corresponds to the encoding described in
+	// FamilyFormatVersion corresponds to the row-group encoding described in
 	// https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20151214_sql_column_families.md
 	FamilyFormatVersion
 	// InterleavedFormatVersion corresponds to the encoding described in
@@ -73,8 +73,8 @@ const (
 	InterleavedFormatVersion
 )
 
-// FamilyID is a custom type for ColumnFamilyDescriptor IDs.
-type FamilyID = catid.FamilyID
+// RowGroupID is a custom type for physical row-group IDs.
+type RowGroupID = catid.RowGroupID
 
 // IndexID is a custom type for IndexDescriptor IDs.
 type IndexID = catid.IndexID
@@ -96,11 +96,11 @@ func (IndexDescriptorVersion) SafeValue() {}
 
 const (
 	// BaseIndexFormatVersion corresponds to the original encoding of secondary indexes that
-	// don't respect table level column family definitions. We allow the 0 value of the type to
+	// don't respect table-level row-group metadata. We allow the 0 value of the type to
 	// have a value so that existing index descriptors are denoted as having the base format.
 	BaseIndexFormatVersion IndexDescriptorVersion = iota
 	// SecondaryIndexFamilyFormatVersion corresponds to the encoding of secondary indexes that
-	// use table level column family definitions.
+	// use table-level row-group metadata.
 	SecondaryIndexFamilyFormatVersion
 	// EmptyArraysInInvertedIndexesVersion corresponds to the encoding of secondary indexes
 	// that is identical to SecondaryIndexFamilyFormatVersion, but also includes a key encoding

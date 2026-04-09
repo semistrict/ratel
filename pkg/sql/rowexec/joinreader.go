@@ -103,8 +103,7 @@ type joinReader struct {
 	limitedMemMonitor *mon.BytesMonitor
 	diskMonitor       *mon.BytesMonitor
 
-	fetchSpec      descpb.IndexFetchSpec
-	splitFamilyIDs []descpb.FamilyID
+	fetchSpec descpb.IndexFetchSpec
 
 	// Indicates that the join reader should maintain the ordering of the input
 	// stream. This is applicable to both lookup joins and index joins. For lookup
@@ -316,7 +315,6 @@ func newJoinReader(
 
 	jr := &joinReader{
 		fetchSpec:                         spec.FetchSpec,
-		splitFamilyIDs:                    spec.SplitFamilyIDs,
 		maintainOrdering:                  spec.MaintainOrdering,
 		input:                             input,
 		lookupCols:                        lookupCols,
@@ -518,7 +516,6 @@ func (jr *joinReader) initJoinReaderStrategy(
 			flowCtx.EvalCtx,
 			flowCtx.Codec(),
 			&jr.fetchSpec,
-			jr.splitFamilyIDs,
 			keyToInputRowIndices,
 			jr.lookupCols,
 			&spanGeneratorMemAcc,
@@ -552,7 +549,6 @@ func (jr *joinReader) initJoinReaderStrategy(
 				flowCtx.EvalCtx,
 				flowCtx.Codec(),
 				&jr.fetchSpec,
-				jr.splitFamilyIDs,
 				len(jr.input.OutputTypes()),
 				&jr.lookupExpr,
 				fetchedOrdToIndexKeyOrd,
@@ -568,7 +564,6 @@ func (jr *joinReader) initJoinReaderStrategy(
 				flowCtx.EvalCtx,
 				flowCtx.Codec(),
 				&jr.fetchSpec,
-				jr.splitFamilyIDs,
 				len(jr.input.OutputTypes()),
 				&jr.lookupExpr,
 				&jr.remoteLookupExpr,

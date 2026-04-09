@@ -141,13 +141,11 @@ func TestScanBatches(t *testing.T) {
 			a INT,
 			b INT,
 			v STRING,
-			PRIMARY KEY (a, b),
-			FAMILY (a),
-			FAMILY (b)
+			PRIMARY KEY (a, b)
 		);`
 
-	// The table will have one key for the even rows, and two keys for the odd rows.
-	numKeys := 3 * numAs * numBs / 2
+	// In the single-family layout each row has one KV.
+	numKeys := numAs * numBs
 	batchByteSizes := []int{1, 2, 5, 13, 100, numKeys, numKeys * 5, numKeys * 100}
 
 	for _, batchBytesSize := range batchByteSizes {

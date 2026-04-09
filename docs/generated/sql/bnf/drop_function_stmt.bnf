@@ -1,0 +1,3 @@
+drop_function_stmt ::=
+	'DROP' 'FUNCTION' name '(' opt_func_param_list ')'
+	| 'DROP' 'FUNCTION' 'IF' 'EXISTS' name '(' opt_func_param_list ')'

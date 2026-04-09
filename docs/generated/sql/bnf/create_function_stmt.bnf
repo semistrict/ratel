@@ -1,0 +1,4 @@
+create_function_stmt ::=
+	'CREATE' 'FUNCTION' name '(' opt_func_param_list ')' name simple_typename 'LANGUAGE' name 'AS' 'SCONST' name
+	| 'CREATE' 'FUNCTION' name '(' opt_func_param_list ')' name simple_typename 'LANGUAGE' name 'AS' 'SCONST'
+	| 'CREATE' 'FUNCTION' name '(' opt_func_param_list ')' name simple_typename 'AS' 'SCONST' 'LANGUAGE' name

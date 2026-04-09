@@ -322,10 +322,10 @@ INSERT INTO foo VALUES (1), (10), (100);
 				// Cheat and jump right to DELETE_AND_WRITE_ONLY.
 				mut.Mutations[len(mut.Mutations)-1].State = descpb.DescriptorMutation_DELETE_AND_WRITE_ONLY
 
-				mut.Families[0].ColumnIDs = append(mut.Families[0].ColumnIDs,
+				mut.RowGroups[0].ColumnIDs = append(mut.RowGroups[0].ColumnIDs,
 					columnWithDefault.ID,
 					computedColumnNotInPrimaryIndex.ID)
-				mut.Families[0].ColumnNames = append(mut.Families[0].ColumnNames,
+				mut.RowGroups[0].ColumnNames = append(mut.RowGroups[0].ColumnNames,
 					columnWithDefault.Name,
 					computedColumnNotInPrimaryIndex.Name)
 

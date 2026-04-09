@@ -32,7 +32,3 @@ col_qualification ::=
 	| 'GENERATED_ALWAYS' 'ALWAYS' 'AS' 'IDENTITY'
 	| 'GENERATED_BY_DEFAULT' 'BY' 'DEFAULT' 'AS' 'IDENTITY'
 	| 'COLLATE' collation_name
-	| 'FAMILY' family_name
-	| 'CREATE' 'FAMILY' family_name
-	| 'CREATE' 'FAMILY'
-	| 'CREATE' 'IF' 'NOT' 'EXISTS' 'FAMILY' family_name

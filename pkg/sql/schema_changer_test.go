@@ -635,8 +635,8 @@ CREATE UNIQUE INDEX vidx ON t.test (v);
 
 	ctx := context.Background()
 
-	// number of keys == 2 * number of rows; 1 column family and 1 index entry
-	// for each row.
+	// number of keys == 2 * number of rows; 1 row KV and 1 index entry for each
+	// row.
 	if err := sqltestutils.CheckTableKeyCount(ctx, kvDB, 2, maxValue); err != nil {
 		t.Fatal(err)
 	}
@@ -811,8 +811,8 @@ CREATE UNIQUE INDEX vidx ON t.test (v);
 
 	ctx := context.Background()
 
-	// number of keys == 2 * number of rows; 1 column family and 1 index entry
-	// for each row.
+	// number of keys == 2 * number of rows; 1 row KV and 1 index entry for each
+	// row.
 	if err := sqltestutils.CheckTableKeyCount(ctx, kvDB, 2, maxValue); err != nil {
 		t.Fatal(err)
 	}
@@ -1754,7 +1754,7 @@ CREATE TABLE t.test (k INT PRIMARY KEY, v INT);
 	}
 
 	// A schema change that fails.
-	if _, err := sqlDB.Exec(`ALTER TABLE t.test ADD column d INT DEFAULT 0 CREATE FAMILY F3, ADD CHECK (d >= 0)`); !testutils.IsError(err, `permanent failure`) {
+	if _, err := sqlDB.Exec(`ALTER TABLE t.test ADD column d INT DEFAULT 0, ADD CHECK (d >= 0)`); !testutils.IsError(err, `permanent failure`) {
 		t.Fatalf("err = %s", err)
 	}
 
@@ -1774,7 +1774,7 @@ CREATE TABLE t.test (k INT PRIMARY KEY, v INT);
 	//  2. If the number of index entries we added does not equal the table
 	//     row count, we detect we've violated the constraint.
 	if _, err := sqlDB.Exec(
-		`ALTER TABLE t.test ADD column e INT DEFAULT 0 UNIQUE CREATE FAMILY F4, ADD CHECK (e >= 0)`,
+		`ALTER TABLE t.test ADD column e INT DEFAULT 0 UNIQUE, ADD CHECK (e >= 0)`,
 	); !testutils.IsError(err, ` violates unique constraint`) {
 		t.Fatalf("err = %s", err)
 	}
@@ -2059,8 +2059,7 @@ CREATE TABLE t.test (k INT PRIMARY KEY, v INT8);
 // This test checks backward compatibility with old data that contains
 // sentinel kv pairs at the start of each table row. Cockroachdb used
 // to write table rows with sentinel values in the past. When a new column
-// is added to such a table with the new column included in the same
-// column family as the primary key columns, the sentinel kv pairs
+// is added to such a table in the single-family layout, the sentinel kv pairs
 // start representing this new column. This test checks that the sentinel
 // values represent NULL column values, and that an UPDATE to such
 // a column works correctly.
@@ -2075,13 +2074,12 @@ func TestParseSentinelValueWithNewColumnInSentinelFamily(t *testing.T) {
 CREATE DATABASE t;
 CREATE TABLE t.test (
 	k INT PRIMARY KEY,
-	FAMILY F1 (k)
 );
 `); err != nil {
 		t.Fatal(err)
 	}
 	tableDesc := desctestutils.TestingGetPublicTableDescriptor(kvDB, keys.SystemSQLCodec, "t", "test")
-	if tableDesc.GetFamilies()[0].DefaultColumnID != 0 {
+	if tableDesc.GetRowGroups()[0].DefaultColumnID != 0 {
 		t.Fatalf("default column id not set properly: %s", tableDesc)
 	}
 
@@ -2117,13 +2115,12 @@ CREATE TABLE t.test (
 		}
 	}
 
-	// Add a new column that gets added to column family 0,
-	// updating DefaultColumnID.
-	if _, err := sqlDB.Exec(`ALTER TABLE t.test ADD COLUMN v INT FAMILY F1`); err != nil {
+	// Add a new column in the single-family layout, updating DefaultColumnID.
+	if _, err := sqlDB.Exec(`ALTER TABLE t.test ADD COLUMN v INT`); err != nil {
 		t.Fatal(err)
 	}
 	tableDesc = desctestutils.TestingGetPublicTableDescriptor(kvDB, keys.SystemSQLCodec, "t", "test")
-	if tableDesc.GetFamilies()[0].DefaultColumnID != 2 {
+	if tableDesc.GetRowGroups()[0].DefaultColumnID != 2 {
 		t.Fatalf("default column id not set properly: %s", tableDesc)
 	}
 
@@ -2298,7 +2295,7 @@ func TestSchemaUniqueColumnDropFailure(t *testing.T) {
 
 	if _, err := sqlDB.Exec(`
 CREATE DATABASE t;
-CREATE TABLE t.test (k INT PRIMARY KEY, v INT UNIQUE DEFAULT 23 CREATE FAMILY F3);
+CREATE TABLE t.test (k INT PRIMARY KEY, v INT UNIQUE DEFAULT 23);
 `); err != nil {
 		t.Fatal(err)
 	}
@@ -2819,8 +2816,7 @@ func TestPrimaryKeyChangeWithOperations(t *testing.T) {
 	sqlRunner.Exec(t, `
 CREATE TABLE t.test (
 	x INT PRIMARY KEY, y INT NOT NULL, z INT, a INT, b INT,
-	c INT, d INT, FAMILY (x), FAMILY (y), FAMILY (z),
-	FAMILY (a, b), FAMILY (c), FAMILY (d)
+	c INT, d INT
 );
 `)
 	// Insert into the table.
@@ -3033,8 +3029,7 @@ CREATE TABLE t.test (
 	z INT,
 	a INT,
 	b INT,
-	c INT,
-	FAMILY (x), FAMILY (y), FAMILY (z, a), FAMILY (b), FAMILY (c)
+	c INT
 )
 `); err != nil {
 		t.Fatal(err)
@@ -3478,8 +3473,7 @@ CREATE TABLE t.test (
     k INT8 NOT NULL,
     v INT8,
     length INT8 NOT NULL,
-    CONSTRAINT "primary" PRIMARY KEY (k),
-    FAMILY "primary" (k, v, length)
+    CONSTRAINT "primary" PRIMARY KEY (k)
 );
 INSERT INTO t.test (k, v, length) VALUES (0, 1, 1);
 INSERT INTO t.test (k, v, length) VALUES (1, 2, 1);
@@ -3572,8 +3566,7 @@ CREATE TABLE t.test (
     v INT8,
     length INT8 NOT NULL,
     CONSTRAINT "primary" PRIMARY KEY (k),
-    INDEX v_idx (v),
-    FAMILY "primary" (k, v, length)
+    INDEX v_idx (v)
 );
 INSERT INTO t.test (k, v, length) VALUES (0, 1, 1);
 INSERT INTO t.test (k, v, length) VALUES (1, 2, 1);
@@ -4844,11 +4837,11 @@ func TestCancelSchemaChange(t *testing.T) {
 		// Set to true if the rollback returns in a running, waiting status.
 		isGC bool
 	}{
-		{`ALTER TABLE t.public.test ADD COLUMN x DECIMAL DEFAULT 1.4::DECIMAL CREATE FAMILY f2, ADD CHECK (x >= 0)`,
+		{`ALTER TABLE t.public.test ADD COLUMN x DECIMAL DEFAULT 1.4::DECIMAL, ADD CHECK (x >= 0)`,
 			true, false},
 		{`CREATE INDEX foo ON t.public.test (v)`,
 			true, true},
-		{`ALTER TABLE t.public.test ADD COLUMN x DECIMAL DEFAULT 1.2::DECIMAL CREATE FAMILY f3, ADD CHECK (x >= 0)`,
+		{`ALTER TABLE t.public.test ADD COLUMN x DECIMAL DEFAULT 1.2::DECIMAL, ADD CHECK (x >= 0)`,
 			false, false},
 		{`CREATE INDEX foo ON t.public.test (v)`,
 			false, true},
@@ -8072,9 +8065,9 @@ func TestOperationAtRandomStateTransition(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{
-			name: "update during alter table with multiple column families",
+			name: "update during alter table",
 			setupSQL: `CREATE DATABASE t;
-CREATE TABLE t.test (pk INT PRIMARY KEY, a INT NOT NULL, b INT, FAMILY (pk, a), FAMILY (b));
+CREATE TABLE t.test (pk INT PRIMARY KEY, a INT NOT NULL, b INT);
 INSERT INTO t.test (pk, a, b) VALUES (1, 1, 1), (2, 2, 2), (3, 3, 3);
 `,
 			schemaChangeSQL: `ALTER TABLE t.test ALTER PRIMARY KEY USING COLUMNS (a)`,
@@ -8091,16 +8084,13 @@ INSERT INTO t.test (pk, a, b) VALUES (1, 1, 1), (2, 2, 2), (3, 3, 3);
 			},
 		},
 		{
-			name: "update during add index with multiple column families",
+			name: "update during add index",
 			setupSQL: `CREATE DATABASE t;
 CREATE TABLE t.test (
     pk INT PRIMARY KEY,
     a INT,
     b INT,
-    c INT NOT NULL,
-    FAMILY (pk, a),
-    FAMILY (b),
-    FAMILY (c));
+    c INT NOT NULL);
 INSERT INTO t.test (pk, a, b, c) VALUES (1, 1, 1, 1), (2, 2, 2, 2);
 `,
 			schemaChangeSQL: `CREATE INDEX tidx ON t.test (a) STORING (b, c)`,

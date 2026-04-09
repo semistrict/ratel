@@ -280,18 +280,9 @@ func (ru *Updater) UpdateRow(
 
 	for i, index := range ru.Helper.Indexes {
 		// We don't want to insert any empty k/v's, so set includeEmpty to false.
-		// Consider the following case:
-		// TABLE t (
-		//   x INT PRIMARY KEY, y INT, z INT, w INT,
-		//   INDEX (y) STORING (z, w),
-		//   FAMILY (x), FAMILY (y), FAMILY (z), FAMILY (w)
-		//)
-		// If we are to perform an update on row (1, 2, 3, NULL), the k/v pair
-		// for index i that encodes column w would have an empty value because w
-		// is null and the sole resident of that family. We want to ensure that
-		// we don't insert empty k/v pairs during the process of the update, so
-		// set includeEmpty to false while generating the old and new index
-		// entries.
+		// Consider an index entry with a stored column whose value is NULL. We
+		// don't want to emit empty value KVs while generating the old and new
+		// index entries, so includeEmpty stays false.
 		//
 		// Also, we don't build entries for old and new values if the index
 		// exists in ignoreIndexesForDel and ignoreIndexesForPut, respectively.
@@ -380,14 +371,64 @@ func (ru *Updater) UpdateRow(
 		return ru.newValues, nil
 	}
 
+	newSubEntries, err := ru.Helper.encodeSubordinateKeys(
+		primaryIndexKey, ru.FetchColIDtoRowIndex, ru.newValues,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	// Add the new values.
 	ru.valueBuf, err = prepareInsertOrUpdateBatch(ctx, batch,
 		&ru.Helper, primaryIndexKey, ru.FetchCols,
 		ru.newValues, ru.FetchColIDtoRowIndex,
 		ru.marshaled, ru.UpdateColIDtoRowIndex,
+		newSubEntries,
 		&ru.key, &ru.value, ru.valueBuf, insertPutFn, true /* overwrite */, traceKV)
 	if err != nil {
 		return nil, err
+	}
+
+	// Update subordinate keys for array columns. Put all new entries
+	// (overwrites any existing values at the same indices), then delete
+	// entries for indices that no longer exist (array shrunk).
+	for i := range newSubEntries {
+		e := &newSubEntries[i]
+		insertPutFn(ctx, batch, &e.Key, &e.Value, traceKV)
+	}
+	// Delete stale subordinate keys from old array values that are longer
+	// than the new ones.
+	for _, col := range ru.Helper.TableDesc.PublicColumns() {
+		if !ru.Helper.isArrayColumn(col.GetID()) {
+			continue
+		}
+		oldIdx, ok := ru.FetchColIDtoRowIndex.Get(col.GetID())
+		if !ok {
+			continue
+		}
+		oldArr, _ := oldValues[oldIdx].(*tree.DArray)
+		oldLen := 0
+		if oldArr != nil {
+			oldLen = oldArr.Len()
+		}
+		newIdx, ok := ru.FetchColIDtoRowIndex.Get(col.GetID())
+		if !ok {
+			continue
+		}
+		newArr, _ := ru.newValues[newIdx].(*tree.DArray)
+		newLen := 0
+		if newArr != nil {
+			newLen = newArr.Len()
+		}
+		if oldLen > newLen {
+			staleKeys := rowenc.SubordinateKeysForColumn(primaryIndexKey, col.GetID(), oldLen)
+			for i := newLen; i < oldLen; i++ {
+				if traceKV {
+					log.VEventf(ctx, 2, "Del %s", staleKeys[i])
+				}
+				batch.Del(staleKeys[i])
+			}
+		}
 	}
 
 	// Update secondary indexes.
@@ -411,10 +452,10 @@ func (ru *Updater) UpdateRow(
 			// insert that new k/v.
 			for oldIdx < len(oldEntries) && newIdx < len(newEntries) {
 				oldEntry, newEntry := &oldEntries[oldIdx], &newEntries[newIdx]
-				if oldEntry.Family == newEntry.Family {
+				if oldEntry.RowGroup == newEntry.RowGroup {
 					// If the families are equal, then check if the keys have changed. If so, delete the old key.
 					// Then, issue a CPut for the new value of the key if the value has changed.
-					// Because the indexes will always have a k/v for family 0, it suffices to only
+					// Because the indexes will always have a K/V for row-group 0, it suffices to only
 					// add foreign key checks in this case, because we are guaranteed to enter here.
 					oldIdx++
 					newIdx++
@@ -451,10 +492,10 @@ func (ru *Updater) UpdateRow(
 						}
 						batch.CPutAllowingIfNotExists(newEntry.Key, &newEntry.Value, expValue)
 					}
-				} else if oldEntry.Family < newEntry.Family {
-					if oldEntry.Family == descpb.FamilyID(0) {
+				} else if oldEntry.RowGroup < newEntry.RowGroup {
+					if oldEntry.RowGroup == descpb.RowGroupID(0) {
 						return nil, errors.AssertionFailedf(
-							"index entry for family 0 for table %s, index %s was not generated",
+							"index entry for row-group 0 for table %s, index %s was not generated",
 							ru.Helper.TableDesc.GetName(), index.GetName(),
 						)
 					}
@@ -465,9 +506,9 @@ func (ru *Updater) UpdateRow(
 					}
 					oldIdx++
 				} else {
-					if newEntry.Family == descpb.FamilyID(0) {
+					if newEntry.RowGroup == descpb.RowGroupID(0) {
 						return nil, errors.AssertionFailedf(
-							"index entry for family 0 for table %s, index %s was not generated",
+							"index entry for row-group 0 for table %s, index %s was not generated",
 							ru.Helper.TableDesc.GetName(), index.GetName(),
 						)
 					}

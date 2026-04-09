@@ -1,0 +1,148 @@
+subtest reverse_scan_order
+
+statement ok
+CREATE TABLE t (id INT PRIMARY KEY, vals INT[])
+
+statement ok
+INSERT INTO t VALUES (1, ARRAY[10, 20, 30]), (2, ARRAY[40, 50])
+
+query T
+SELECT array_to_string(vals, ',', 'NULL') FROM t ORDER BY id DESC
+----
+40,50
+10,20,30
+
+statement ok
+DROP TABLE t
+
+subtest projection_and_filter_vectorized
+
+statement ok
+SET distsql = always
+
+statement ok
+SET vectorize = on
+
+statement ok
+CREATE TABLE t (id INT PRIMARY KEY, vals INT[])
+
+statement ok
+INSERT INTO t VALUES
+  (1, ARRAY[10, 20]),
+  (2, ARRAY[30]),
+  (3, ARRAY[20, 40]),
+  (4, NULL)
+
+query T
+SELECT array_to_string(vals, ',', 'NULL') FROM t WHERE 20 = ANY(vals) ORDER BY id DESC
+----
+20,40
+10,20
+
+statement ok
+DROP TABLE t
+
+subtest unsupported_any_fallback_vectorized
+
+statement ok
+CREATE TABLE t (id INT PRIMARY KEY, vals INT[])
+
+statement ok
+INSERT INTO t VALUES
+  (1, ARRAY[10, 20]),
+  (2, ARRAY[20, 40]),
+  (3, ARRAY[10]),
+  (4, NULL)
+
+query I
+SELECT id FROM t WHERE id * 10 = ANY(vals) ORDER BY id
+----
+1
+2
+
+statement ok
+DROP TABLE t
+
+subtest residual_filter_vectorized
+
+statement ok
+CREATE TABLE t (id INT PRIMARY KEY, flag BOOL, vals INT[])
+
+statement ok
+INSERT INTO t VALUES
+  (1, true, ARRAY[20, 30]),
+  (2, false, ARRAY[20, 40]),
+  (3, true, ARRAY[10]),
+  (4, true, NULL)
+
+query I
+SELECT id FROM t WHERE 20 = ANY(vals) AND flag ORDER BY id
+----
+1
+
+statement ok
+DROP TABLE t
+
+subtest null_filter_vectorized
+
+statement ok
+CREATE TABLE t (id INT PRIMARY KEY, vals INT[])
+
+statement ok
+INSERT INTO t VALUES
+  (1, ARRAY[20]),
+  (2, ARRAY[NULL, 30]),
+  (3, ARRAY[NULL, 20]),
+  (4, NULL),
+  (5, ARRAY[]::INT[]),
+  (6, ARRAY[30])
+
+query I
+SELECT id FROM t WHERE 20 = ANY(vals) ORDER BY id
+----
+1
+3
+
+query I
+SELECT id FROM t WHERE NULL = ANY(vals) ORDER BY id
+----
+
+statement ok
+DROP TABLE t
+
+subtest join_reverse_order_vectorized
+
+statement ok
+CREATE TABLE users (id INT PRIMARY KEY, name STRING, tags STRING[])
+
+statement ok
+CREATE TABLE posts (id INT PRIMARY KEY, user_id INT, title STRING)
+
+statement ok
+INSERT INTO users VALUES
+  (1, 'alice', ARRAY['admin','editor']),
+  (2, 'bob', ARRAY['viewer','author'])
+
+statement ok
+INSERT INTO posts VALUES
+  (1, 1, 'Hello'),
+  (2, 2, 'World'),
+  (3, 1, 'Again'),
+  (4, 2, 'More')
+
+query TT
+SELECT title, array_to_string(tags, ',', 'NULL')
+FROM users u
+JOIN posts p ON p.user_id = u.id
+ORDER BY u.id DESC, p.id DESC
+----
+More	viewer,author
+World	viewer,author
+Again	admin,editor
+Hello	admin,editor
+
+statement ok
+DROP TABLE posts
+
+statement ok
+DROP TABLE users

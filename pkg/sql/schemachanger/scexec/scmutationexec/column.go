@@ -70,14 +70,12 @@ func (m *visitor) SetAddedColumnType(ctx context.Context, op scop.SetAddedColumn
 		col.UsesSequenceIds = ce.UsesSequenceIDs
 	}
 	if col.ComputeExpr == nil || !col.Virtual {
-		for i := range tbl.Families {
-			fam := &tbl.Families[i]
-			if fam.ID == op.ColumnType.FamilyID {
-				fam.ColumnIDs = append(fam.ColumnIDs, col.ID)
-				fam.ColumnNames = append(fam.ColumnNames, col.Name)
-				break
-			}
+		if len(tbl.RowGroups) == 0 {
+			return errors.AssertionFailedf("table %d has no primary row group", tbl.ID)
 		}
+		rowGroup := &tbl.RowGroups[0]
+		rowGroup.ColumnIDs = append(rowGroup.ColumnIDs, col.ID)
+		rowGroup.ColumnNames = append(rowGroup.ColumnNames, col.Name)
 	}
 	return nil
 }
@@ -189,22 +187,6 @@ func (m *visitor) MakeColumnAbsent(ctx context.Context, op scop.MakeColumnAbsent
 	}
 	col := mut.GetColumn()
 	tbl.RemoveColumnFromFamilyAndPrimaryIndex(col.ID)
-	return nil
-}
-
-func (m *visitor) AddColumnFamily(ctx context.Context, op scop.AddColumnFamily) error {
-	tbl, err := m.checkOutTable(ctx, op.TableID)
-	if err != nil {
-		return err
-	}
-	family := descpb.ColumnFamilyDescriptor{
-		Name: op.Name,
-		ID:   op.FamilyID,
-	}
-	tbl.AddFamily(family)
-	if family.ID >= tbl.NextFamilyID {
-		tbl.NextFamilyID = family.ID + 1
-	}
 	return nil
 }
 

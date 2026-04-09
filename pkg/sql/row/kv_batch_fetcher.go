@@ -20,6 +20,7 @@ import (
 
 	"github.com/cockroachdb/cockroach/pkg/kv"
 	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/concurrency/lock"
+	"github.com/cockroachdb/cockroach/pkg/multitenant"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catalogkeys"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
@@ -385,7 +386,10 @@ func (f *txnKVFetcher) fetch(ctx context.Context) error {
 		f.batchResponseAccountedFor = returnedBytes
 	}
 	// Do admission control after we've accounted for the response bytes.
-	if br != nil && f.responseAdmissionQ != nil {
+	if br != nil &&
+		f.responseAdmissionQ != nil &&
+		f.requestAdmissionHeader.Source == roachpb.AdmissionHeader_FROM_SQL &&
+		!multitenant.HasTenantCostControlExemption(ctx) {
 		responseAdmission := admission.WorkInfo{
 			TenantID:   roachpb.SystemTenantID,
 			Priority:   admission.WorkPriority(f.requestAdmissionHeader.Priority),

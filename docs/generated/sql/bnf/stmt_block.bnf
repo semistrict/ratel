@@ -161,6 +161,7 @@ create_stmt ::=
 	| create_changefeed_stmt
 	| create_replication_stream_stmt
 	| create_extension_stmt
+	| create_function_stmt
 
 delete_stmt ::=
 	opt_with_clause 'DELETE' 'FROM' table_expr_opt_alias_idx opt_where_clause opt_sort_clause opt_limit_clause returning_clause
@@ -169,6 +170,7 @@ drop_stmt ::=
 	drop_ddl_stmt
 	| drop_role_stmt
 	| drop_schedule_stmt
+	| drop_function_stmt
 
 explain_stmt ::=
 	'EXPLAIN' explainable_stmt
@@ -540,6 +542,11 @@ create_extension_stmt ::=
 	'CREATE' 'EXTENSION' 'IF' 'NOT' 'EXISTS' name
 	| 'CREATE' 'EXTENSION' name
 
+create_function_stmt ::=
+	'CREATE' 'FUNCTION' name '(' opt_func_param_list ')' name simple_typename 'LANGUAGE' name 'AS' 'SCONST' name
+	| 'CREATE' 'FUNCTION' name '(' opt_func_param_list ')' name simple_typename 'LANGUAGE' name 'AS' 'SCONST'
+	| 'CREATE' 'FUNCTION' name '(' opt_func_param_list ')' name simple_typename 'AS' 'SCONST' 'LANGUAGE' name
+
 opt_with_clause ::=
 	with_clause
 	| 
@@ -578,6 +585,10 @@ drop_role_stmt ::=
 drop_schedule_stmt ::=
 	'DROP' 'SCHEDULE' a_expr
 	| 'DROP' 'SCHEDULES' select_stmt
+
+drop_function_stmt ::=
+	'DROP' 'FUNCTION' name '(' opt_func_param_list ')'
+	| 'DROP' 'FUNCTION' 'IF' 'EXISTS' name '(' opt_func_param_list ')'
 
 explainable_stmt ::=
 	preparable_stmt
@@ -1645,6 +1656,19 @@ opt_with_replication_options ::=
 	| 'WITH' 'OPTIONS' '(' replication_options_list ')'
 	| 
 
+opt_func_param_list ::=
+	func_param_list
+	| 
+
+simple_typename ::=
+	general_type_name
+	| '@' iconst32
+	| complex_type_name
+	| const_typename
+	| bit_with_length
+	| character_with_length
+	| interval_type
+
 with_clause ::=
 	'WITH' cte_list
 	| 'WITH' 'RECURSIVE' cte_list
@@ -2268,6 +2292,38 @@ changefeed_target ::=
 replication_options_list ::=
 	( replication_options ) ( ( ',' replication_options ) )*
 
+func_param_list ::=
+	( func_param ) ( ( ',' func_param ) )*
+
+general_type_name ::=
+	type_function_name_no_crdb_extra
+
+iconst32 ::=
+	'ICONST'
+
+complex_type_name ::=
+	general_type_name '.' unrestricted_name
+	| general_type_name '.' unrestricted_name '.' unrestricted_name
+
+const_typename ::=
+	numeric
+	| bit_without_length
+	| character_without_length
+	| const_datetime
+	| const_geo
+
+bit_with_length ::=
+	'BIT' opt_varying '(' iconst32 ')'
+	| 'VARBIT' '(' iconst32 ')'
+
+character_with_length ::=
+	character_base '(' iconst32 ')'
+
+interval_type ::=
+	'INTERVAL'
+	| 'INTERVAL' interval_qualifier
+	| 'INTERVAL' '(' iconst32 ')'
+
 cte_list ::=
 	( common_table_expr ) ( ( ',' common_table_expr ) )*
 
@@ -2500,15 +2556,6 @@ reserved_keyword ::=
 	| 'WITH'
 	| cockroachdb_extra_reserved_keyword
 
-simple_typename ::=
-	general_type_name
-	| '@' iconst32
-	| complex_type_name
-	| const_typename
-	| bit_with_length
-	| character_with_length
-	| interval_type
-
 opt_array_bounds ::=
 	'[' ']'
 	| 
@@ -2619,19 +2666,9 @@ func_name_no_crdb_extra ::=
 	type_function_name_no_crdb_extra
 	| prefixed_column_path
 
-const_typename ::=
-	numeric
-	| bit_without_length
-	| character_without_length
-	| const_datetime
-	| const_geo
-
 opt_interval_qualifier ::=
 	interval_qualifier
 	| 
-
-iconst32 ::=
-	'ICONST'
 
 func_application ::=
 	func_name '(' ')'
@@ -2781,7 +2818,7 @@ partition_by_table ::=
 	| 'PARTITION' 'ALL' 'BY' partition_by_inner
 
 create_as_table_defs ::=
-	( column_name create_as_col_qual_list ) ( ( ',' column_name create_as_col_qual_list | ',' family_def | ',' create_as_constraint_def ) )*
+	( column_name create_as_col_qual_list ) ( ( ',' column_name create_as_col_qual_list | ',' create_as_constraint_def ) )*
 
 enum_val_list ::=
 	( 'SCONST' ) ( ( ',' 'SCONST' ) )*
@@ -2792,6 +2829,80 @@ family_name ::=
 replication_options ::=
 	'CURSOR' '=' a_expr
 	| 'DETACHED'
+
+func_param ::=
+	name simple_typename
+
+type_function_name_no_crdb_extra ::=
+	'identifier'
+	| unreserved_keyword
+	| type_func_name_no_crdb_extra_keyword
+
+numeric ::=
+	'INT'
+	| 'INTEGER'
+	| 'SMALLINT'
+	| 'BIGINT'
+	| 'REAL'
+	| 'FLOAT' opt_float
+	| 'DOUBLE' 'PRECISION'
+	| 'DECIMAL' opt_numeric_modifiers
+	| 'DEC' opt_numeric_modifiers
+	| 'NUMERIC' opt_numeric_modifiers
+	| 'BOOLEAN'
+
+bit_without_length ::=
+	'BIT'
+	| 'BIT' 'VARYING'
+	| 'VARBIT'
+
+character_without_length ::=
+	character_base
+
+const_datetime ::=
+	'DATE'
+	| 'TIME' opt_timezone
+	| 'TIME' '(' iconst32 ')' opt_timezone
+	| 'TIMETZ'
+	| 'TIMETZ' '(' iconst32 ')'
+	| 'TIMESTAMP' opt_timezone
+	| 'TIMESTAMP' '(' iconst32 ')' opt_timezone
+	| 'TIMESTAMPTZ'
+	| 'TIMESTAMPTZ' '(' iconst32 ')'
+
+const_geo ::=
+	'GEOGRAPHY'
+	| 'GEOMETRY'
+	| 'BOX2D'
+	| 'GEOMETRY' '(' geo_shape_type ')'
+	| 'GEOGRAPHY' '(' geo_shape_type ')'
+	| 'GEOMETRY' '(' geo_shape_type ',' signed_iconst ')'
+	| 'GEOGRAPHY' '(' geo_shape_type ',' signed_iconst ')'
+
+opt_varying ::=
+	'VARYING'
+	| 
+
+character_base ::=
+	char_aliases
+	| char_aliases 'VARYING'
+	| 'VARCHAR'
+	| 'STRING'
+
+interval_qualifier ::=
+	'YEAR'
+	| 'MONTH'
+	| 'DAY'
+	| 'HOUR'
+	| 'MINUTE'
+	| interval_second
+	| 'YEAR' 'TO' 'MONTH'
+	| 'DAY' 'TO' 'HOUR'
+	| 'DAY' 'TO' 'MINUTE'
+	| 'DAY' 'TO' interval_second
+	| 'HOUR' 'TO' 'MINUTE'
+	| 'HOUR' 'TO' interval_second
+	| 'MINUTE' 'TO' interval_second
 
 common_table_expr ::=
 	table_alias_name opt_column_list 'AS' '(' preparable_stmt ')'
@@ -2909,25 +3020,6 @@ type_func_name_no_crdb_extra_keyword ::=
 	| 'RIGHT'
 	| 'SIMILAR'
 
-general_type_name ::=
-	type_function_name_no_crdb_extra
-
-complex_type_name ::=
-	general_type_name '.' unrestricted_name
-	| general_type_name '.' unrestricted_name '.' unrestricted_name
-
-bit_with_length ::=
-	'BIT' opt_varying '(' iconst32 ')'
-	| 'VARBIT' '(' iconst32 ')'
-
-character_with_length ::=
-	character_base '(' iconst32 ')'
-
-interval_type ::=
-	'INTERVAL'
-	| 'INTERVAL' interval_qualifier
-	| 'INTERVAL' '(' iconst32 ')'
-
 user_priority ::=
 	'LOW'
 	| 'NORMAL'
@@ -2992,67 +3084,6 @@ password_clause ::=
 valid_until_clause ::=
 	'VALID' 'UNTIL' string_or_placeholder
 	| 'VALID' 'UNTIL' 'NULL'
-
-type_function_name_no_crdb_extra ::=
-	'identifier'
-	| unreserved_keyword
-	| type_func_name_no_crdb_extra_keyword
-
-numeric ::=
-	'INT'
-	| 'INTEGER'
-	| 'SMALLINT'
-	| 'BIGINT'
-	| 'REAL'
-	| 'FLOAT' opt_float
-	| 'DOUBLE' 'PRECISION'
-	| 'DECIMAL' opt_numeric_modifiers
-	| 'DEC' opt_numeric_modifiers
-	| 'NUMERIC' opt_numeric_modifiers
-	| 'BOOLEAN'
-
-bit_without_length ::=
-	'BIT'
-	| 'BIT' 'VARYING'
-	| 'VARBIT'
-
-character_without_length ::=
-	character_base
-
-const_datetime ::=
-	'DATE'
-	| 'TIME' opt_timezone
-	| 'TIME' '(' iconst32 ')' opt_timezone
-	| 'TIMETZ'
-	| 'TIMETZ' '(' iconst32 ')'
-	| 'TIMESTAMP' opt_timezone
-	| 'TIMESTAMP' '(' iconst32 ')' opt_timezone
-	| 'TIMESTAMPTZ'
-	| 'TIMESTAMPTZ' '(' iconst32 ')'
-
-const_geo ::=
-	'GEOGRAPHY'
-	| 'GEOMETRY'
-	| 'BOX2D'
-	| 'GEOMETRY' '(' geo_shape_type ')'
-	| 'GEOGRAPHY' '(' geo_shape_type ')'
-	| 'GEOMETRY' '(' geo_shape_type ',' signed_iconst ')'
-	| 'GEOGRAPHY' '(' geo_shape_type ',' signed_iconst ')'
-
-interval_qualifier ::=
-	'YEAR'
-	| 'MONTH'
-	| 'DAY'
-	| 'HOUR'
-	| 'MINUTE'
-	| interval_second
-	| 'YEAR' 'TO' 'MONTH'
-	| 'DAY' 'TO' 'HOUR'
-	| 'DAY' 'TO' 'MINUTE'
-	| 'DAY' 'TO' interval_second
-	| 'HOUR' 'TO' 'MINUTE'
-	| 'HOUR' 'TO' interval_second
-	| 'MINUTE' 'TO' interval_second
 
 func_name ::=
 	type_function_name
@@ -3135,18 +3166,70 @@ storage_parameter ::=
 table_elem ::=
 	column_def
 	| index_def
-	| family_def
 	| table_constraint opt_validate_behavior
 	| 'LIKE' table_name like_table_option_list
 
 create_as_col_qual_list ::=
 	(  ) ( ( create_as_col_qualification ) )*
 
-family_def ::=
-	'FAMILY' opt_family_name '(' name_list ')'
-
 create_as_constraint_def ::=
 	create_as_constraint_elem
+
+opt_float ::=
+	'(' 'ICONST' ')'
+	| 
+
+opt_numeric_modifiers ::=
+	'(' iconst32 ')'
+	| '(' iconst32 ',' iconst32 ')'
+	| 
+
+opt_timezone ::=
+	'WITH' 'TIME' 'ZONE'
+	| 'WITHOUT' 'TIME' 'ZONE'
+	| 
+
+geo_shape_type ::=
+	'POINT'
+	| 'POINTM'
+	| 'POINTZ'
+	| 'POINTZM'
+	| 'LINESTRING'
+	| 'LINESTRINGM'
+	| 'LINESTRINGZ'
+	| 'LINESTRINGZM'
+	| 'POLYGON'
+	| 'POLYGONM'
+	| 'POLYGONZ'
+	| 'POLYGONZM'
+	| 'MULTIPOINT'
+	| 'MULTIPOINTM'
+	| 'MULTIPOINTZ'
+	| 'MULTIPOINTZM'
+	| 'MULTILINESTRING'
+	| 'MULTILINESTRINGM'
+	| 'MULTILINESTRINGZ'
+	| 'MULTILINESTRINGZM'
+	| 'MULTIPOLYGON'
+	| 'MULTIPOLYGONM'
+	| 'MULTIPOLYGONZ'
+	| 'MULTIPOLYGONZM'
+	| 'GEOMETRYCOLLECTION'
+	| 'GEOMETRYCOLLECTIONM'
+	| 'GEOMETRYCOLLECTIONZ'
+	| 'GEOMETRYCOLLECTIONZM'
+	| 'GEOMETRY'
+	| 'GEOMETRYM'
+	| 'GEOMETRYZ'
+	| 'GEOMETRYZM'
+
+char_aliases ::=
+	'CHAR'
+	| 'CHARACTER'
+
+interval_second ::=
+	'SECOND'
+	| 'SECOND' '(' iconst32 ')'
 
 materialize_clause ::=
 	'MATERIALIZED'
@@ -3209,16 +3292,6 @@ join_qual ::=
 rowsfrom_list ::=
 	( rowsfrom_item ) ( ( ',' rowsfrom_item ) )*
 
-opt_varying ::=
-	'VARYING'
-	| 
-
-character_base ::=
-	char_aliases
-	| char_aliases 'VARYING'
-	| 'VARCHAR'
-	| 'STRING'
-
 opt_column ::=
 	'COLUMN'
 	| 
@@ -3273,58 +3346,6 @@ storage_parameter_key_list ::=
 
 partition_by_index ::=
 	partition_by
-
-opt_float ::=
-	'(' 'ICONST' ')'
-	| 
-
-opt_numeric_modifiers ::=
-	'(' iconst32 ')'
-	| '(' iconst32 ',' iconst32 ')'
-	| 
-
-opt_timezone ::=
-	'WITH' 'TIME' 'ZONE'
-	| 'WITHOUT' 'TIME' 'ZONE'
-	| 
-
-geo_shape_type ::=
-	'POINT'
-	| 'POINTM'
-	| 'POINTZ'
-	| 'POINTZM'
-	| 'LINESTRING'
-	| 'LINESTRINGM'
-	| 'LINESTRINGZ'
-	| 'LINESTRINGZM'
-	| 'POLYGON'
-	| 'POLYGONM'
-	| 'POLYGONZ'
-	| 'POLYGONZM'
-	| 'MULTIPOINT'
-	| 'MULTIPOINTM'
-	| 'MULTIPOINTZ'
-	| 'MULTIPOINTZM'
-	| 'MULTILINESTRING'
-	| 'MULTILINESTRINGM'
-	| 'MULTILINESTRINGZ'
-	| 'MULTILINESTRINGZM'
-	| 'MULTIPOLYGON'
-	| 'MULTIPOLYGONM'
-	| 'MULTIPOLYGONZ'
-	| 'MULTIPOLYGONZM'
-	| 'GEOMETRYCOLLECTION'
-	| 'GEOMETRYCOLLECTIONM'
-	| 'GEOMETRYCOLLECTIONZ'
-	| 'GEOMETRYCOLLECTIONZM'
-	| 'GEOMETRY'
-	| 'GEOMETRYM'
-	| 'GEOMETRYZ'
-	| 'GEOMETRYZM'
-
-interval_second ::=
-	'SECOND'
-	| 'SECOND' '(' iconst32 ')'
 
 type_function_name ::=
 	'identifier'
@@ -3401,10 +3422,6 @@ like_table_option_list ::=
 
 create_as_col_qualification ::=
 	create_as_col_qualification_elem
-	| 'FAMILY' family_name
-
-opt_family_name ::=
-	opt_name
 
 create_as_constraint_elem ::=
 	'PRIMARY' 'KEY' '(' create_as_params ')' opt_with_storage_parameter_list
@@ -3421,10 +3438,6 @@ join_outer ::=
 
 rowsfrom_item ::=
 	func_expr_windowless
-
-char_aliases ::=
-	'CHAR'
-	| 'CHARACTER'
 
 col_qual_list ::=
 	(  ) ( ( col_qualification ) )*
@@ -3494,10 +3507,6 @@ col_qualification ::=
 	'CONSTRAINT' constraint_name col_qualification_elem
 	| col_qualification_elem
 	| 'COLLATE' collation_name
-	| 'FAMILY' family_name
-	| 'CREATE' 'FAMILY' family_name
-	| 'CREATE' 'FAMILY'
-	| 'CREATE' 'IF' 'NOT' 'EXISTS' 'FAMILY' family_name
 
 reference_on_update ::=
 	'ON' 'UPDATE' reference_action

@@ -612,7 +612,7 @@ func (desc *wrapper) ValidateSelf(vea catalog.ValidationErrorAccumulator) {
 
 	// TODO(dt): Validate each column only appears at-most-once in any FKs.
 
-	// Only validate column families, constraints, and indexes if this is
+	// Only validate physical row-group metadata, constraints, and indexes if this is
 	// actually a table, not if it's just a view.
 	if desc.IsPhysicalTable() {
 		newErrs := []error{
@@ -886,77 +886,43 @@ func (desc *wrapper) validateColumns(
 func (desc *wrapper) validateColumnFamilies(
 	columnIDs map[descpb.ColumnID]*descpb.ColumnDescriptor,
 ) error {
-	if len(desc.Families) < 1 {
-		return errors.Newf("at least 1 column family must be specified")
+	if len(desc.RowGroups) != 1 {
+		return errors.Newf("tables must have exactly 1 physical row group, found %d", len(desc.RowGroups))
 	}
-	if desc.Families[0].ID != descpb.FamilyID(0) {
-		return errors.Newf("the 0th family must have ID 0")
+	rowGroup := &desc.RowGroups[0]
+	if rowGroup.ID != descpb.RowGroupID(0) {
+		return errors.Newf("the only physical row group must have ID 0")
 	}
-
-	familyNames := map[string]struct{}{}
-	familyIDs := map[descpb.FamilyID]string{}
-	colIDToFamilyID := map[descpb.ColumnID]descpb.FamilyID{}
-	for i := range desc.Families {
-		family := &desc.Families[i]
-		if err := catalog.ValidateName(family.Name, "family"); err != nil {
-			return err
+	if err := catalog.ValidateName(rowGroup.Name, "family"); err != nil {
+		return err
+	}
+	if rowGroup.ID >= desc.NextRowGroupID {
+		return errors.Newf("family %q invalid family ID (%d) > next family ID (%d)",
+			rowGroup.Name, rowGroup.ID, desc.NextRowGroupID)
+	}
+	if len(rowGroup.ColumnIDs) != len(rowGroup.ColumnNames) {
+		return errors.Newf("mismatched column ID size (%d) and name size (%d)",
+			len(rowGroup.ColumnIDs), len(rowGroup.ColumnNames))
+	}
+	colIDToRowGroupID := map[descpb.ColumnID]descpb.RowGroupID{}
+	for i, colID := range rowGroup.ColumnIDs {
+		col, ok := columnIDs[colID]
+		if !ok {
+			return errors.Newf("family %q contains unknown column \"%d\"", rowGroup.Name, colID)
 		}
-
-		if i != 0 {
-			prevFam := desc.Families[i-1]
-			if family.ID < prevFam.ID {
-				return errors.Newf(
-					"family %s at index %d has id %d less than family %s at index %d with id %d",
-					family.Name, i, family.ID, prevFam.Name, i-1, prevFam.ID)
-			}
+		if col.Name != rowGroup.ColumnNames[i] {
+			return errors.Newf("family %q column %d should have name %q, but found name %q",
+				rowGroup.Name, colID, col.Name, rowGroup.ColumnNames[i])
 		}
-
-		if _, ok := familyNames[family.Name]; ok {
-			return errors.Newf("duplicate family name: %q", family.Name)
+		if col.Virtual {
+			return errors.Newf("virtual computed column %q cannot be part of the physical row group", col.Name)
 		}
-		familyNames[family.Name] = struct{}{}
-
-		if other, ok := familyIDs[family.ID]; ok {
-			return errors.Newf("family %q duplicate ID of family %q: %d",
-				family.Name, other, family.ID)
-		}
-		familyIDs[family.ID] = family.Name
-
-		if family.ID >= desc.NextFamilyID {
-			return errors.Newf("family %q invalid family ID (%d) > next family ID (%d)",
-				family.Name, family.ID, desc.NextFamilyID)
-		}
-
-		if len(family.ColumnIDs) != len(family.ColumnNames) {
-			return errors.Newf("mismatched column ID size (%d) and name size (%d)",
-				len(family.ColumnIDs), len(family.ColumnNames))
-		}
-
-		for i, colID := range family.ColumnIDs {
-			col, ok := columnIDs[colID]
-			if !ok {
-				return errors.Newf("family %q contains unknown column \"%d\"", family.Name, colID)
-			}
-			if col.Name != family.ColumnNames[i] {
-				return errors.Newf("family %q column %d should have name %q, but found name %q",
-					family.Name, colID, col.Name, family.ColumnNames[i])
-			}
-			if col.Virtual {
-				return errors.Newf("virtual computed column %q cannot be part of a family", col.Name)
-			}
-		}
-
-		for _, colID := range family.ColumnIDs {
-			if famID, ok := colIDToFamilyID[colID]; ok {
-				return errors.Newf("column %d is in both family %d and %d", colID, famID, family.ID)
-			}
-			colIDToFamilyID[colID] = family.ID
-		}
+		colIDToRowGroupID[colID] = rowGroup.ID
 	}
 	for colID, colDesc := range columnIDs {
 		if !colDesc.Virtual {
-			if _, ok := colIDToFamilyID[colID]; !ok {
-				return errors.Newf("column %q is not in any column family", colDesc.Name)
+			if _, ok := colIDToRowGroupID[colID]; !ok {
+				return errors.Newf("column %q is not in the physical row group", colDesc.Name)
 			}
 		}
 	}

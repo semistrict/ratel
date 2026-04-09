@@ -31,6 +31,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/rowenc"
 	"github.com/cockroachdb/cockroach/pkg/sql/rowenc/rowencpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/cockroachdb/cockroach/pkg/util"
 	"github.com/cockroachdb/cockroach/pkg/util/encoding"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
@@ -49,7 +50,7 @@ const (
 var maxRowSizeLog = settings.RegisterByteSizeSetting(
 	settings.TenantWritable,
 	"sql.guardrails.max_row_size_log",
-	"maximum size of row (or column family if multiple column families are in use) that SQL can "+
+	"maximum size of row data that SQL can "+
 		"write to the database, above which an event is logged to SQL_PERF (or SQL_INTERNAL_PERF "+
 		"if the mutating statement was internal); use 0 to disable",
 	kvserver.MaxCommandSizeDefault,
@@ -72,7 +73,7 @@ var maxRowSizeLog = settings.RegisterByteSizeSetting(
 var maxRowSizeErr = settings.RegisterByteSizeSetting(
 	settings.TenantWritable,
 	"sql.guardrails.max_row_size_err",
-	"maximum size of row (or column family if multiple column families are in use) that SQL can "+
+	"maximum size of row data that SQL can "+
 		"write to the database, above which an error is returned; use 0 to disable",
 	512<<20, /* 512 MiB */
 	func(size int64) error {
@@ -105,10 +106,14 @@ type rowHelper struct {
 	secIndexValDirs  [][]encoding.Direction
 
 	// Computed and cached.
-	primaryIndexKeyPrefix []byte
-	primaryIndexKeyCols   catalog.TableColSet
-	primaryIndexValueCols catalog.TableColSet
-	sortedColumnFamilies  map[descpb.FamilyID][]descpb.ColumnID
+	primaryIndexKeyPrefix       []byte
+	primaryIndexKeyCols         catalog.TableColSet
+	primaryIndexValueCols       catalog.TableColSet
+	sortedPrimaryRowGroupColIDs []descpb.ColumnID
+
+	// arrayColIDs is the set of column IDs with array types. Computed lazily.
+	arrayColIDs     catalog.TableColSet
+	arrayColIDsInit bool
 
 	// Used to check row size.
 	maxRowSizeLog, maxRowSizeErr uint32
@@ -249,33 +254,65 @@ func (rh *rowHelper) skipColumnNotInPrimaryIndexValue(
 		// Composite columns are encoded in both the key and the value.
 		return !cdatum.IsComposite(), nil
 	}
-	// Skip primary key columns as their values are encoded in the key of
-	// each family. Family 0 is guaranteed to exist and acts as a
-	// sentinel.
+	// Skip primary key columns as their values are encoded in the row key.
 	return true, nil
 }
 
-func (rh *rowHelper) sortedColumnFamily(famID descpb.FamilyID) ([]descpb.ColumnID, bool) {
-	if rh.sortedColumnFamilies == nil {
-		rh.sortedColumnFamilies = make(map[descpb.FamilyID][]descpb.ColumnID, rh.TableDesc.NumFamilies())
-
-		_ = rh.TableDesc.ForeachFamily(func(family *descpb.ColumnFamilyDescriptor) error {
-			colIDs := append([]descpb.ColumnID{}, family.ColumnIDs...)
-			sort.Sort(descpb.ColumnIDs(colIDs))
-			rh.sortedColumnFamilies[family.ID] = colIDs
-			return nil
-		})
+func (rh *rowHelper) sortedPrimaryRowGroup() []descpb.ColumnID {
+	if rh.sortedPrimaryRowGroupColIDs == nil {
+		colIDs := append([]descpb.ColumnID{}, rh.TableDesc.GetRowGroups()[0].ColumnIDs...)
+		sort.Sort(descpb.ColumnIDs(colIDs))
+		rh.sortedPrimaryRowGroupColIDs = colIDs
 	}
-	colIDs, ok := rh.sortedColumnFamilies[famID]
-	return colIDs, ok
+	return rh.sortedPrimaryRowGroupColIDs
 }
 
-// checkRowSize compares the size of a primary key column family against the
-// max_row_size limits.
+// isArrayColumn returns true if the given column ID is an array column.
+// The set of array columns is computed lazily on first call.
+func (rh *rowHelper) isArrayColumn(colID descpb.ColumnID) bool {
+	if !rh.arrayColIDsInit {
+		for _, col := range rh.TableDesc.PublicColumns() {
+			if col.GetType().Family() == types.ArrayFamily {
+				rh.arrayColIDs.Add(col.GetID())
+			}
+		}
+		rh.arrayColIDsInit = true
+	}
+	return rh.arrayColIDs.Contains(colID)
+}
+
+// encodeSubordinateKeys returns subordinate key entries for all array columns
+// in the given row values. The primaryIndexKey is the PK prefix before row-group
+// encoding.
+func (rh *rowHelper) encodeSubordinateKeys(
+	primaryIndexKey []byte,
+	colIDtoRowIndex catalog.TableColMap,
+	values []tree.Datum,
+) ([]rowenc.IndexEntry, error) {
+	return rowenc.EncodeSubordinateKeys(rh.TableDesc, primaryIndexKey, colIDtoRowIndex, values)
+}
+
+// checkRowSize compares the size of a row KV against the max_row_size limits.
 func (rh *rowHelper) checkRowSize(
-	ctx context.Context, key *roachpb.Key, value *roachpb.Value, family descpb.FamilyID,
+	ctx context.Context, key *roachpb.Key, value *roachpb.Value, rowGroup descpb.RowGroupID,
+) error {
+	return rh.checkRowSizeWithSubordinates(ctx, key, value, rowGroup, nil /* subordinateEntries */)
+}
+
+// checkRowSizeWithSubordinates compares the size of a logical row against the
+// max_row_size limits. subordinateEntries, when present, are included in the
+// total to account for array elements stored in subordinate KVs.
+func (rh *rowHelper) checkRowSizeWithSubordinates(
+	ctx context.Context,
+	key *roachpb.Key,
+	value *roachpb.Value,
+	rowGroup descpb.RowGroupID,
+	subordinateEntries []rowenc.IndexEntry,
 ) error {
 	size := uint32(len(*key)) + uint32(len(value.RawBytes))
+	for i := range subordinateEntries {
+		size += uint32(len(subordinateEntries[i].Key)) + uint32(len(subordinateEntries[i].Value.RawBytes))
+	}
 	shouldLog := rh.maxRowSizeLog != 0 && size > rh.maxRowSizeLog
 	shouldErr := rh.maxRowSizeErr != 0 && size > rh.maxRowSizeErr
 	if !shouldLog && !shouldErr {
@@ -284,7 +321,7 @@ func (rh *rowHelper) checkRowSize(
 	details := eventpb.CommonLargeRowDetails{
 		RowSize:    size,
 		TableID:    uint32(rh.TableDesc.GetID()),
-		FamilyID:   uint32(family),
+		RowGroupID: uint32(rowGroup),
 		PrimaryKey: keys.PrettyPrint(rh.primIndexValDirs, *key),
 	}
 	if rh.internal && shouldErr {

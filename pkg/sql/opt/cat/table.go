@@ -108,14 +108,11 @@ type Table interface {
 	// Check returns the ith check constraint, where i < CheckCount.
 	Check(i int) CheckConstraint
 
-	// FamilyCount returns the number of column families present on the table.
-	// There is always at least one primary family (always family 0) where columns
-	// go if they are not explicitly assigned to another family. The primary
-	// family is the first family that was explicitly specified by the user, or
-	// is a synthesized family if no families were explicitly specified.
+	// FamilyCount returns the number of physical row-groups present on the
+	// table. In the current layout this is always 1.
 	FamilyCount() int
 
-	// Family returns the interface for the ith column family, where
+	// Family returns the interface for the ith row-group, where
 	// i < FamilyCount.
 	Family(i int) Family
 

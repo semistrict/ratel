@@ -88,16 +88,16 @@ var validationMap = []struct {
 			"UnexposedParentSchemaID": {
 				status: todoIAmKnowinglyAddingTechDebt,
 				reason: "initial import: TODO(features): add validation"},
-			"Columns":      {status: iSolemnlySwearThisFieldIsValidated},
-			"NextColumnID": {status: iSolemnlySwearThisFieldIsValidated},
-			"Families":     {status: iSolemnlySwearThisFieldIsValidated},
-			"NextFamilyID": {status: thisFieldReferencesNoObjects},
-			"PrimaryIndex": {status: iSolemnlySwearThisFieldIsValidated},
-			"Indexes":      {status: iSolemnlySwearThisFieldIsValidated},
-			"NextIndexID":  {status: iSolemnlySwearThisFieldIsValidated},
-			"Privileges":   {status: iSolemnlySwearThisFieldIsValidated},
-			"Mutations":    {status: iSolemnlySwearThisFieldIsValidated},
-			"Lease":        {status: thisFieldReferencesNoObjects},
+			"Columns":        {status: iSolemnlySwearThisFieldIsValidated},
+			"NextColumnID":   {status: iSolemnlySwearThisFieldIsValidated},
+			"RowGroups":      {status: iSolemnlySwearThisFieldIsValidated},
+			"NextRowGroupID": {status: thisFieldReferencesNoObjects},
+			"PrimaryIndex":   {status: iSolemnlySwearThisFieldIsValidated},
+			"Indexes":        {status: iSolemnlySwearThisFieldIsValidated},
+			"NextIndexID":    {status: iSolemnlySwearThisFieldIsValidated},
+			"Privileges":     {status: iSolemnlySwearThisFieldIsValidated},
+			"Mutations":      {status: iSolemnlySwearThisFieldIsValidated},
+			"Lease":          {status: thisFieldReferencesNoObjects},
 			"NextMutationID": {
 				status: todoIAmKnowinglyAddingTechDebt,
 				reason: "initial import: TODO(schema): add validation"},
@@ -420,11 +420,11 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1}, ColumnNames: []string{"bar"}},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 1,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
 			}},
 		{`duplicate column name: "bar"`,
 			descpb.TableDescriptor{
@@ -462,7 +462,7 @@ func TestValidateTableDesc(t *testing.T) {
 				},
 				NextColumnID: 2,
 			}},
-		{`at least 1 column family must be specified`,
+		{`tables must have exactly 1 physical row group, found 0`,
 			descpb.TableDescriptor{
 				ID:            2,
 				ParentID:      1,
@@ -484,7 +484,7 @@ func TestValidateTableDesc(t *testing.T) {
 				},
 				NextColumnID: 2,
 			}},
-		{`the 0th family must have ID 0`,
+		{`the only physical row group must have ID 0`,
 			descpb.TableDescriptor{
 				ID:            2,
 				ParentID:      1,
@@ -493,12 +493,12 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 1},
 				},
 				NextColumnID: 2,
 			}},
-		{`duplicate family name: "baz"`,
+		{`tables must have exactly 1 physical row group, found 2`,
 			descpb.TableDescriptor{
 				ID:            2,
 				ParentID:      1,
@@ -507,14 +507,14 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "baz"},
 					{ID: 1, Name: "baz"},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 2,
+				NextColumnID:   2,
+				NextRowGroupID: 2,
 			}},
-		{`family "qux" duplicate ID of family "baz": 0`,
+		{`tables must have exactly 1 physical row group, found 2`,
 			descpb.TableDescriptor{
 				ID:            2,
 				ParentID:      1,
@@ -523,14 +523,14 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "baz"},
 					{ID: 0, Name: "qux"},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 2,
+				NextColumnID:   2,
+				NextRowGroupID: 2,
 			}},
-		{`duplicate family name: "baz"`,
+		{`tables must have exactly 1 physical row group, found 2`,
 			descpb.TableDescriptor{
 				ID:            2,
 				ParentID:      1,
@@ -539,12 +539,12 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "baz"},
 					{ID: 3, Name: "baz"},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 2,
+				NextColumnID:   2,
+				NextRowGroupID: 2,
 			}},
 		{`mismatched column ID size (1) and name size (0)`,
 			descpb.TableDescriptor{
@@ -555,11 +555,11 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "baz", ColumnIDs: []descpb.ColumnID{1}},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 1,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
 			}},
 		{`family "baz" contains unknown column "2"`,
 			descpb.TableDescriptor{
@@ -570,11 +570,11 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "baz", ColumnIDs: []descpb.ColumnID{2}, ColumnNames: []string{"bar"}},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 1,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
 			}},
 		{`family "baz" column 1 should have name "bar", but found name "qux"`,
 			descpb.TableDescriptor{
@@ -585,13 +585,13 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "baz", ColumnIDs: []descpb.ColumnID{1}, ColumnNames: []string{"qux"}},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 1,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
 			}},
-		{`column "bar" is not in any column family`,
+		{`column "bar" is not in the physical row group`,
 			descpb.TableDescriptor{
 				ID:            2,
 				ParentID:      1,
@@ -600,13 +600,13 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "baz"},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 1,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
 			}},
-		{`column 1 is in both family 0 and 1`,
+		{`tables must have exactly 1 physical row group, found 2`,
 			descpb.TableDescriptor{
 				ID:            2,
 				ParentID:      1,
@@ -615,14 +615,14 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "baz", ColumnIDs: []descpb.ColumnID{1}, ColumnNames: []string{"bar"}},
 					{ID: 1, Name: "qux", ColumnIDs: []descpb.ColumnID{1}, ColumnNames: []string{"bar"}},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 2,
+				NextColumnID:   2,
+				NextRowGroupID: 2,
 			}},
-		{`virtual computed column "virt" cannot be part of a family`,
+		{`tables must have exactly 1 physical row group, found 2`,
 			descpb.TableDescriptor{
 				ID:            2,
 				ParentID:      1,
@@ -632,12 +632,12 @@ func TestValidateTableDesc(t *testing.T) {
 					{ID: 1, Name: "bar"},
 					{ID: 2, Name: "virt", ComputeExpr: &computedExpr, Virtual: true},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "fam1", ColumnIDs: []descpb.ColumnID{1}, ColumnNames: []string{"bar"}},
 					{ID: 1, Name: "fam2", ColumnIDs: []descpb.ColumnID{2}, ColumnNames: []string{"virt"}},
 				},
-				NextColumnID: 3,
-				NextFamilyID: 2,
+				NextColumnID:   3,
+				NextRowGroupID: 2,
 			}},
 		{`table must contain a primary key`,
 			descpb.TableDescriptor{
@@ -648,14 +648,14 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1}, ColumnNames: []string{"bar"}},
 				},
 				PrimaryIndex: descpb.IndexDescriptor{
 					ID:                  0,
 					KeyColumnDirections: []descpb.IndexDescriptor_Direction{descpb.IndexDescriptor_ASC}},
-				NextColumnID: 2,
-				NextFamilyID: 1,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
 			}},
 		{`invalid index ID 0`,
 			descpb.TableDescriptor{
@@ -666,14 +666,14 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1}, ColumnNames: []string{"bar"}},
 				},
 				PrimaryIndex: descpb.IndexDescriptor{ID: 0, Name: "bar",
 					KeyColumnIDs:        []descpb.ColumnID{0},
 					KeyColumnDirections: []descpb.IndexDescriptor_Direction{descpb.IndexDescriptor_ASC}},
-				NextColumnID: 2,
-				NextFamilyID: 1,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
 			}},
 		{`index "bar" must contain at least 1 column`,
 			descpb.TableDescriptor{
@@ -684,7 +684,7 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1}, ColumnNames: []string{"bar"}},
 				},
 				PrimaryIndex: descpb.IndexDescriptor{
@@ -696,9 +696,9 @@ func TestValidateTableDesc(t *testing.T) {
 				Indexes: []descpb.IndexDescriptor{
 					{ID: 2, Name: "bar"},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 1,
-				NextIndexID:  3,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
+				NextIndexID:    3,
 			}},
 		{`mismatched column IDs (1) and names (0)`,
 			descpb.TableDescriptor{
@@ -709,13 +709,13 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1}, ColumnNames: []string{"bar"}},
 				},
-				PrimaryIndex: descpb.IndexDescriptor{ID: 1, Name: "bar", KeyColumnIDs: []descpb.ColumnID{1}},
-				NextColumnID: 2,
-				NextFamilyID: 1,
-				NextIndexID:  2,
+				PrimaryIndex:   descpb.IndexDescriptor{ID: 1, Name: "bar", KeyColumnIDs: []descpb.ColumnID{1}},
+				NextColumnID:   2,
+				NextRowGroupID: 1,
+				NextIndexID:    2,
 			}},
 		{`mismatched column IDs (1) and names (2)`,
 			descpb.TableDescriptor{
@@ -727,16 +727,16 @@ func TestValidateTableDesc(t *testing.T) {
 					{ID: 1, Name: "bar"},
 					{ID: 2, Name: "blah"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1, 2}, ColumnNames: []string{"bar", "blah"}},
 				},
 				PrimaryIndex: descpb.IndexDescriptor{ID: 1, Name: "bar",
 					KeyColumnIDs: []descpb.ColumnID{1}, KeyColumnNames: []string{"bar", "blah"},
 					KeyColumnDirections: []descpb.IndexDescriptor_Direction{descpb.IndexDescriptor_ASC},
 				},
-				NextColumnID: 3,
-				NextFamilyID: 1,
-				NextIndexID:  2,
+				NextColumnID:   3,
+				NextRowGroupID: 1,
+				NextIndexID:    2,
 			}},
 		{`duplicate index name: "bar"`,
 			descpb.TableDescriptor{
@@ -747,7 +747,7 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1}, ColumnNames: []string{"bar"}},
 				},
 				PrimaryIndex: descpb.IndexDescriptor{ID: 1, Name: "bar",
@@ -762,9 +762,9 @@ func TestValidateTableDesc(t *testing.T) {
 						KeyColumnDirections: []descpb.IndexDescriptor_Direction{descpb.IndexDescriptor_ASC},
 					},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 1,
-				NextIndexID:  3,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
+				NextIndexID:    3,
 			}},
 		{`index "blah" duplicate ID of index "bar": 1`,
 			descpb.TableDescriptor{
@@ -775,7 +775,7 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1}, ColumnNames: []string{"bar"}},
 				},
 				PrimaryIndex: descpb.IndexDescriptor{ID: 1, Name: "bar", KeyColumnIDs: []descpb.ColumnID{1},
@@ -790,9 +790,9 @@ func TestValidateTableDesc(t *testing.T) {
 						KeyColumnDirections: []descpb.IndexDescriptor_Direction{descpb.IndexDescriptor_ASC},
 					},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 1,
-				NextIndexID:  2,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
+				NextIndexID:    2,
 			}},
 		{`index "bar" column "bar" should have ID 1, but found ID 2`,
 			descpb.TableDescriptor{
@@ -803,16 +803,16 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1}, ColumnNames: []string{"bar"}},
 				},
 				PrimaryIndex: descpb.IndexDescriptor{ID: 1, Name: "bar", KeyColumnIDs: []descpb.ColumnID{2},
 					KeyColumnNames:      []string{"bar"},
 					KeyColumnDirections: []descpb.IndexDescriptor_Direction{descpb.IndexDescriptor_ASC},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 1,
-				NextIndexID:  2,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
+				NextIndexID:    2,
 			}},
 		{`index "bar" contains unknown column "blah"`,
 			descpb.TableDescriptor{
@@ -823,16 +823,16 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1}, ColumnNames: []string{"bar"}},
 				},
 				PrimaryIndex: descpb.IndexDescriptor{ID: 1, Name: "bar", KeyColumnIDs: []descpb.ColumnID{1},
 					KeyColumnNames:      []string{"blah"},
 					KeyColumnDirections: []descpb.IndexDescriptor_Direction{descpb.IndexDescriptor_ASC},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 1,
-				NextIndexID:  2,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
+				NextIndexID:    2,
 			}},
 		{`mismatched column IDs (1) and directions (0)`,
 			descpb.TableDescriptor{
@@ -843,15 +843,15 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1}, ColumnNames: []string{"bar"}},
 				},
 				PrimaryIndex: descpb.IndexDescriptor{ID: 1, Name: "bar", KeyColumnIDs: []descpb.ColumnID{1},
 					KeyColumnNames: []string{"blah"},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 1,
-				NextIndexID:  2,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
+				NextIndexID:    2,
 			}},
 		{`mismatched STORING column IDs (1) and names (0)`,
 			descpb.TableDescriptor{
@@ -863,7 +863,7 @@ func TestValidateTableDesc(t *testing.T) {
 					{ID: 1, Name: "c1"},
 					{ID: 2, Name: "c2"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{
 						ID:          0,
 						Name:        "fam",
@@ -878,9 +878,9 @@ func TestValidateTableDesc(t *testing.T) {
 					KeyColumnDirections: []descpb.IndexDescriptor_Direction{descpb.IndexDescriptor_ASC},
 					StoreColumnIDs:      []descpb.ColumnID{2},
 				},
-				NextColumnID: 3,
-				NextFamilyID: 1,
-				NextIndexID:  2,
+				NextColumnID:   3,
+				NextRowGroupID: 1,
+				NextIndexID:    2,
 			}},
 		{`index "secondary" contains stored column "quux" with unknown ID 123`,
 			descpb.TableDescriptor{
@@ -892,7 +892,7 @@ func TestValidateTableDesc(t *testing.T) {
 					{ID: 1, Name: "bar"},
 					{ID: 2, Name: "baz"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1, 2}, ColumnNames: []string{"bar", "baz"}},
 				},
 				PrimaryIndex: descpb.IndexDescriptor{
@@ -913,9 +913,9 @@ func TestValidateTableDesc(t *testing.T) {
 					StoreColumnIDs:      []descpb.ColumnID{123},
 					StoreColumnNames:    []string{"quux"},
 				}},
-				NextColumnID: 3,
-				NextFamilyID: 1,
-				NextIndexID:  3,
+				NextColumnID:   3,
+				NextRowGroupID: 1,
+				NextIndexID:    3,
 			}},
 		{`index "secondary" stored column ID 2 should have name "baz", but found name "quux"`,
 			descpb.TableDescriptor{
@@ -928,7 +928,7 @@ func TestValidateTableDesc(t *testing.T) {
 					{ID: 2, Name: "baz"},
 					{ID: 3, Name: "quux"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{{
+				RowGroups: []descpb.RowGroupDescriptor{{
 					ID:          0,
 					Name:        "primary",
 					ColumnIDs:   []descpb.ColumnID{1, 2, 3},
@@ -953,9 +953,9 @@ func TestValidateTableDesc(t *testing.T) {
 					StoreColumnIDs:      []descpb.ColumnID{2},
 					StoreColumnNames:    []string{"quux"},
 				}},
-				NextColumnID: 4,
-				NextFamilyID: 1,
-				NextIndexID:  3,
+				NextColumnID:   4,
+				NextRowGroupID: 1,
+				NextIndexID:    3,
 			}},
 		{`index "secondary" key suffix column ID 123 is invalid`,
 			descpb.TableDescriptor{
@@ -967,7 +967,7 @@ func TestValidateTableDesc(t *testing.T) {
 					{ID: 1, Name: "bar"},
 					{ID: 2, Name: "baz"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1, 2}, ColumnNames: []string{"bar", "baz"}},
 				},
 				PrimaryIndex: descpb.IndexDescriptor{
@@ -987,9 +987,9 @@ func TestValidateTableDesc(t *testing.T) {
 					KeyColumnDirections: []descpb.IndexDescriptor_Direction{descpb.IndexDescriptor_ASC},
 					KeySuffixColumnIDs:  []descpb.ColumnID{123},
 				}},
-				NextColumnID: 3,
-				NextFamilyID: 1,
-				NextIndexID:  3,
+				NextColumnID:   3,
+				NextRowGroupID: 1,
+				NextIndexID:    3,
 			}},
 		{`index "primary" contains deprecated foreign key representation`,
 			descpb.TableDescriptor{
@@ -1000,7 +1000,7 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1}, ColumnNames: []string{"bar"}},
 				},
 				PrimaryIndex: descpb.IndexDescriptor{ID: 1, Name: "primary",
@@ -1012,7 +1012,7 @@ func TestValidateTableDesc(t *testing.T) {
 					ConstraintID:        1,
 				},
 				NextColumnID:     2,
-				NextFamilyID:     1,
+				NextRowGroupID:   1,
 				NextIndexID:      2,
 				NextConstraintID: 2,
 			}},
@@ -1027,7 +1027,7 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1}, ColumnNames: []string{"bar"}},
 				},
 				PrimaryIndex: descpb.IndexDescriptor{
@@ -1039,9 +1039,9 @@ func TestValidateTableDesc(t *testing.T) {
 					EncodingType: descpb.PrimaryIndexEncoding,
 					Version:      descpb.LatestIndexDescriptorVersion,
 				},
-				NextColumnID: 2,
-				NextFamilyID: 1,
-				NextIndexID:  3,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
+				NextIndexID:    3,
 			}},
 		{`index "foo_crdb_internal_bar_shard_5_bar_idx" refers to non-existent shard column "does not exist"`,
 			descpb.TableDescriptor{
@@ -1053,7 +1053,7 @@ func TestValidateTableDesc(t *testing.T) {
 					{ID: 1, Name: "bar"},
 					{ID: 2, Name: "crdb_internal_bar_shard_5"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary",
 						ColumnIDs:   []descpb.ColumnID{1, 2},
 						ColumnNames: []string{"bar", "crdb_internal_bar_shard_5"},
@@ -1082,9 +1082,9 @@ func TestValidateTableDesc(t *testing.T) {
 						},
 					},
 				},
-				NextColumnID: 3,
-				NextFamilyID: 1,
-				NextIndexID:  3,
+				NextColumnID:   3,
+				NextRowGroupID: 1,
+				NextIndexID:    3,
 			}},
 		{`TableID mismatch for unique without index constraint "bar_unique": "1" doesn't match descriptor: "2"`,
 			descpb.TableDescriptor{
@@ -1095,14 +1095,14 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary",
 						ColumnIDs:   []descpb.ColumnID{1},
 						ColumnNames: []string{"bar"},
 					},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 1,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
 				UniqueWithoutIndexConstraints: []descpb.UniqueWithoutIndexConstraint{
 					{
 						TableID:   1,
@@ -1120,14 +1120,14 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary",
 						ColumnIDs:   []descpb.ColumnID{1},
 						ColumnNames: []string{"bar"},
 					},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 1,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
 				UniqueWithoutIndexConstraints: []descpb.UniqueWithoutIndexConstraint{
 					{
 						TableID:   2,
@@ -1145,14 +1145,14 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary",
 						ColumnIDs:   []descpb.ColumnID{1},
 						ColumnNames: []string{"bar"},
 					},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 1,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
 				UniqueWithoutIndexConstraints: []descpb.UniqueWithoutIndexConstraint{
 					{
 						TableID:   2,
@@ -1170,14 +1170,14 @@ func TestValidateTableDesc(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary",
 						ColumnIDs:   []descpb.ColumnID{1},
 						ColumnNames: []string{"bar"},
 					},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 1,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
 				PrimaryIndex: descpb.IndexDescriptor{
 					ID: 1, ConstraintID: 1, Name: "primary", KeyColumnIDs: []descpb.ColumnID{1}, KeyColumnNames: []string{"bar"},
 					KeyColumnDirections: []descpb.IndexDescriptor_Direction{descpb.IndexDescriptor_ASC}},
@@ -1217,14 +1217,14 @@ func TestValidateTableDesc(t *testing.T) {
 						KeySuffixColumnIDs:  []descpb.ColumnID{3},
 					},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary",
 						ColumnIDs:   []descpb.ColumnID{1, 2},
 						ColumnNames: []string{"c1", "c2"},
 					},
 				},
 				NextColumnID:     4,
-				NextFamilyID:     1,
+				NextRowGroupID:   1,
 				NextIndexID:      3,
 				NextConstraintID: 2,
 			}},
@@ -1257,7 +1257,7 @@ func TestValidateTableDesc(t *testing.T) {
 						KeySuffixColumnIDs:  []descpb.ColumnID{},
 					},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary",
 						ColumnIDs:   []descpb.ColumnID{1, 2},
 						ColumnNames: []string{"c1", "c2"},
@@ -1307,7 +1307,7 @@ func TestValidateTableDesc(t *testing.T) {
 					},
 				},
 				NextColumnID:     4,
-				NextFamilyID:     1,
+				NextRowGroupID:   1,
 				NextIndexID:      5,
 				NextConstraintID: 2,
 				Privileges:       catpb.NewBasePrivilegeDescriptor(security.AdminRoleName()),
@@ -1340,7 +1340,7 @@ func TestValidateTableDesc(t *testing.T) {
 						KeySuffixColumnIDs:  []descpb.ColumnID{3},
 					},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary",
 						ColumnIDs:   []descpb.ColumnID{1, 2},
 						ColumnNames: []string{"c1", "c2"},
@@ -1388,10 +1388,10 @@ func TestValidateTableDesc(t *testing.T) {
 						State:     descpb.DescriptorMutation_DELETE_ONLY,
 					},
 				},
-				NextColumnID: 4,
-				NextFamilyID: 1,
-				NextIndexID:  5,
-				Privileges:   catpb.NewBasePrivilegeDescriptor(security.AdminRoleName()),
+				NextColumnID:   4,
+				NextRowGroupID: 1,
+				NextIndexID:    5,
+				Privileges:     catpb.NewBasePrivilegeDescriptor(security.AdminRoleName()),
 			}},
 		{`index "new_sec" cannot store virtual column "c3"`,
 			descpb.TableDescriptor{
@@ -1421,7 +1421,7 @@ func TestValidateTableDesc(t *testing.T) {
 						KeySuffixColumnIDs:  []descpb.ColumnID{1, 3},
 					},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary",
 						ColumnIDs:   []descpb.ColumnID{1, 2},
 						ColumnNames: []string{"c1", "c2"},
@@ -1469,10 +1469,10 @@ func TestValidateTableDesc(t *testing.T) {
 						State:     descpb.DescriptorMutation_DELETE_ONLY,
 					},
 				},
-				NextColumnID: 4,
-				NextFamilyID: 1,
-				NextIndexID:  5,
-				Privileges:   catpb.NewBasePrivilegeDescriptor(security.AdminRoleName()),
+				NextColumnID:   4,
+				NextRowGroupID: 1,
+				NextIndexID:    5,
+				Privileges:     catpb.NewBasePrivilegeDescriptor(security.AdminRoleName()),
 			}},
 		{`index "sec" cannot store virtual column "v"`,
 			descpb.TableDescriptor{
@@ -1485,7 +1485,7 @@ func TestValidateTableDesc(t *testing.T) {
 					{ID: 2, Name: "c2"},
 					{ID: 3, Name: "v", ComputeExpr: &computedExpr, Virtual: true},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1, 2}, ColumnNames: []string{"c1", "c2"}},
 				},
 				PrimaryIndex: descpb.IndexDescriptor{
@@ -1503,9 +1503,9 @@ func TestValidateTableDesc(t *testing.T) {
 						StoreColumnIDs:      []descpb.ColumnID{3},
 					},
 				},
-				NextColumnID: 4,
-				NextFamilyID: 1,
-				NextIndexID:  3,
+				NextColumnID:   4,
+				NextRowGroupID: 1,
+				NextIndexID:    3,
 			}},
 		{`index "sec" has column ID 2 present in: [KeyColumnIDs StoreColumnIDs]`,
 			descpb.TableDescriptor{
@@ -1517,7 +1517,7 @@ func TestValidateTableDesc(t *testing.T) {
 					{ID: 1, Name: "c1"},
 					{ID: 2, Name: "c2"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1, 2}, ColumnNames: []string{"c1", "c2"}},
 				},
 				PrimaryIndex: descpb.IndexDescriptor{
@@ -1536,9 +1536,9 @@ func TestValidateTableDesc(t *testing.T) {
 						Version:             descpb.LatestIndexDescriptorVersion,
 					},
 				},
-				NextColumnID: 3,
-				NextFamilyID: 1,
-				NextIndexID:  3,
+				NextColumnID:   3,
+				NextRowGroupID: 1,
+				NextIndexID:    3,
 			}},
 		{`computed column "bar" cannot also have an ON UPDATE expression`,
 			descpb.TableDescriptor{
@@ -1554,11 +1554,11 @@ func TestValidateTableDesc(t *testing.T) {
 						OnUpdateExpr: proto.String("'blah'"),
 					},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1}, ColumnNames: []string{"bar"}},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 1,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
 			}},
 		{`both generated identity and on update expression specified for column "bar"`,
 			descpb.TableDescriptor{
@@ -1574,11 +1574,11 @@ func TestValidateTableDesc(t *testing.T) {
 						OnUpdateExpr:            proto.String("'blah'"),
 					},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1}, ColumnNames: []string{"bar"}},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 1,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
 			}},
 		{`both generated identity and on update expression specified for column "bar"`,
 			descpb.TableDescriptor{
@@ -1594,11 +1594,11 @@ func TestValidateTableDesc(t *testing.T) {
 						OnUpdateExpr:            proto.String("'blah'"),
 					},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1}, ColumnNames: []string{"bar"}},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 1,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
 			}},
 		{`conflicting NULL/NOT NULL declarations for column "bar"`,
 			descpb.TableDescriptor{
@@ -1792,7 +1792,7 @@ func TestValidateTableDesc(t *testing.T) {
 					{ID: 1, Name: "c1"},
 					{ID: 2, Name: "c2"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1, 2}, ColumnNames: []string{"c1", "c2"}},
 				},
 				PrimaryIndex: descpb.IndexDescriptor{
@@ -1816,9 +1816,9 @@ func TestValidateTableDesc(t *testing.T) {
 						UseDeletePreservingEncoding: true,
 					},
 				},
-				NextColumnID: 3,
-				NextIndexID:  3,
-				NextFamilyID: 1,
+				NextColumnID:   3,
+				NextIndexID:    3,
+				NextRowGroupID: 1,
 			}},
 		{`public index "primary" is using the delete preserving encoding`,
 			descpb.TableDescriptor{
@@ -1830,7 +1830,7 @@ func TestValidateTableDesc(t *testing.T) {
 					{ID: 1, Name: "c1"},
 					{ID: 2, Name: "c2"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1, 2}, ColumnNames: []string{"c1", "c2"}},
 				},
 				PrimaryIndex: descpb.IndexDescriptor{
@@ -1844,9 +1844,9 @@ func TestValidateTableDesc(t *testing.T) {
 					EncodingType:                descpb.PrimaryIndexEncoding,
 					UseDeletePreservingEncoding: true,
 				},
-				NextColumnID: 3,
-				NextIndexID:  2,
-				NextFamilyID: 1,
+				NextColumnID:   3,
+				NextIndexID:    2,
+				NextRowGroupID: 1,
 			},
 		},
 		{`column ID 123 found in depended-on-by references, no such column in this relation`,
@@ -1940,14 +1940,14 @@ func TestValidateTableDesc(t *testing.T) {
 					EncodingType:        descpb.PrimaryIndexEncoding,
 					ConstraintID:        1,
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary",
 						ColumnIDs:   []descpb.ColumnID{1},
 						ColumnNames: []string{"a"},
 					},
 				},
 				NextColumnID:      2,
-				NextFamilyID:      1,
+				NextRowGroupID:    1,
 				NextIndexID:       5,
 				NextConstraintID:  2,
 				Privileges:        catpb.NewBasePrivilegeDescriptor(security.AdminRoleName()),
@@ -2031,16 +2031,16 @@ func TestPrimaryKeyCannotBeVirtualBefore22_1(t *testing.T) {
 						KeySuffixColumnIDs:  []descpb.ColumnID{1, 3},
 					},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary",
 						ColumnIDs:   []descpb.ColumnID{1, 2},
 						ColumnNames: []string{"c1", "c2"},
 					},
 				},
-				Mutations:    []descpb.DescriptorMutation{},
-				NextColumnID: 4,
-				NextFamilyID: 1,
-				NextIndexID:  5,
+				Mutations:      []descpb.DescriptorMutation{},
+				NextColumnID:   4,
+				NextRowGroupID: 1,
+				NextIndexID:    5,
 			},
 		},
 		{
@@ -2072,7 +2072,7 @@ func TestPrimaryKeyCannotBeVirtualBefore22_1(t *testing.T) {
 						KeySuffixColumnIDs:  []descpb.ColumnID{1, 3},
 					},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary",
 						ColumnIDs:   []descpb.ColumnID{1, 2},
 						ColumnNames: []string{"c1", "c2"},
@@ -2120,9 +2120,9 @@ func TestPrimaryKeyCannotBeVirtualBefore22_1(t *testing.T) {
 						State:     descpb.DescriptorMutation_DELETE_ONLY,
 					},
 				},
-				NextColumnID: 4,
-				NextFamilyID: 1,
-				NextIndexID:  5,
+				NextColumnID:   4,
+				NextRowGroupID: 1,
+				NextIndexID:    5,
 			},
 		},
 	}
@@ -2777,14 +2777,14 @@ func TestValidateConstraintID(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1}, ColumnNames: []string{"bar"}},
 				},
 				PrimaryIndex: descpb.IndexDescriptor{
 					ID: 1, Name: "primary", KeyColumnIDs: []descpb.ColumnID{1}, KeyColumnNames: []string{"bar"},
 					KeyColumnDirections: []descpb.IndexDescriptor_Direction{descpb.IndexDescriptor_ASC}},
-				NextColumnID: 2,
-				NextFamilyID: 1,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
 				Privileges: catpb.NewPrivilegeDescriptor(
 					security.PublicRoleName(),
 					privilege.SchemaPrivileges,
@@ -2800,7 +2800,7 @@ func TestValidateConstraintID(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1}, ColumnNames: []string{"bar"}},
 				},
 				PrimaryIndex: descpb.IndexDescriptor{
@@ -2813,8 +2813,8 @@ func TestValidateConstraintID(t *testing.T) {
 						Unique:              true,
 					},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 1,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
 				Privileges: catpb.NewPrivilegeDescriptor(
 					security.PublicRoleName(),
 					privilege.SchemaPrivileges,
@@ -2830,7 +2830,7 @@ func TestValidateConstraintID(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1}, ColumnNames: []string{"bar"}},
 				},
 				PrimaryIndex: descpb.IndexDescriptor{
@@ -2839,8 +2839,8 @@ func TestValidateConstraintID(t *testing.T) {
 				UniqueWithoutIndexConstraints: []descpb.UniqueWithoutIndexConstraint{
 					{Name: "bad"},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 1,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
 				Privileges: catpb.NewPrivilegeDescriptor(
 					security.PublicRoleName(),
 					privilege.SchemaPrivileges,
@@ -2856,7 +2856,7 @@ func TestValidateConstraintID(t *testing.T) {
 				Columns: []descpb.ColumnDescriptor{
 					{ID: 1, Name: "bar"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1}, ColumnNames: []string{"bar"}},
 				},
 				PrimaryIndex: descpb.IndexDescriptor{
@@ -2865,8 +2865,8 @@ func TestValidateConstraintID(t *testing.T) {
 				Checks: []*descpb.TableDescriptor_CheckConstraint{
 					{Name: "bad"},
 				},
-				NextColumnID: 2,
-				NextFamilyID: 1,
+				NextColumnID:   2,
+				NextRowGroupID: 1,
 				Privileges: catpb.NewPrivilegeDescriptor(
 					security.PublicRoleName(),
 					privilege.SchemaPrivileges,

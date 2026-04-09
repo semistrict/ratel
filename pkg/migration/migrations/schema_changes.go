@@ -259,44 +259,44 @@ func hasIndex(storedTable, expectedTable catalog.TableDescriptor, indexName stri
 	return true, nil
 }
 
-// hasColumnFamily returns true if storedTable already has the given column
-// family, comparing with expectedTable. storedTable descriptor must be read
+// hasRowGroup returns true if storedTable already has the given row group,
+// comparing with expectedTable. storedTable descriptor must be read
 // from system storage as compared to reading from the systemschema package. On
 // the contrary, expectedTable must be accessed directly from systemschema
 // package. This function returns an error if the column doesn't exist in the
 // expectedTable descriptor.
-func hasColumnFamily(
-	storedTable, expectedTable catalog.TableDescriptor, colFamily string,
+func hasRowGroup(
+	storedTable, expectedTable catalog.TableDescriptor, rowGroupName string,
 ) (bool, error) {
-	var storedFamily, expectedFamily *descpb.ColumnFamilyDescriptor
-	for _, fam := range storedTable.GetFamilies() {
-		if fam.Name == colFamily {
-			storedFamily = &fam
+	var storedRowGroup, expectedRowGroup *descpb.RowGroupDescriptor
+	for _, rowGroup := range storedTable.GetRowGroups() {
+		if rowGroup.Name == rowGroupName {
+			storedRowGroup = &rowGroup
 			break
 		}
 	}
-	if storedFamily == nil {
+	if storedRowGroup == nil {
 		return false, nil
 	}
 
-	for _, fam := range expectedTable.GetFamilies() {
-		if fam.Name == colFamily {
-			expectedFamily = &fam
+	for _, rowGroup := range expectedTable.GetRowGroups() {
+		if rowGroup.Name == rowGroupName {
+			expectedRowGroup = &rowGroup
 			break
 		}
 	}
-	if expectedFamily == nil {
-		return false, errors.Errorf("column family %s does not exist", colFamily)
+	if expectedRowGroup == nil {
+		return false, errors.Errorf("row group %s does not exist", rowGroupName)
 	}
 
 	// Check that columns match.
-	storedFamilyCols := storedFamily.ColumnNames
-	expectedFamilyCols := expectedFamily.ColumnNames
-	if len(storedFamilyCols) != len(expectedFamilyCols) {
+	storedRowGroupCols := storedRowGroup.ColumnNames
+	expectedRowGroupCols := expectedRowGroup.ColumnNames
+	if len(storedRowGroupCols) != len(expectedRowGroupCols) {
 		return false, nil
 	}
-	for i, storedCol := range storedFamilyCols {
-		if storedCol != expectedFamilyCols[i] {
+	for i, storedCol := range storedRowGroupCols {
+		if storedCol != expectedRowGroupCols[i] {
 			return false, nil
 		}
 	}

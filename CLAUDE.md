@@ -104,6 +104,15 @@ SQL queries parse into AST -> optimize via cost-based optimizer -> execute as KV
 
 ## Key Conventions
 
+- **Copyright headers**: Use `Copyright <year> The Ratel Authors` in copyright headers for all new files. Do not use `The Cockroach Authors` for new code. Existing files retain their original headers.
+
+```go
+// Copyright 2026 The Ratel Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// ...
+```
+
 - All Go dependencies are vendored in `vendor/`. Tools install to local `bin/` directory.
 - Build variables can be persisted in `customenv.mk` at the repo root.
 - `build/defs.mk` caches computed values; deleted automatically when stale.

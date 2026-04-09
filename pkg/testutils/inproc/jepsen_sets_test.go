@@ -70,29 +70,37 @@ func TestSyncJepsenSetsSplit(t *testing.T) {
 	})
 }
 
+func TestSyncJepsenSetsRestart(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runJepsenSetsWorkload(t, runJepsenSetsRestartNemesis)
+	})
+}
+
 func runJepsenSetsWorkload(t *testing.T, nemesis jepsenBankNemesisFunc) {
 	t.Helper()
 
-	c := inproc.StartCluster(t, 3)
-	defer c.Stop()
+	c := startSyncCluster(t, 3)
+	defer stopSyncCluster(c)
 
 	ctx := t.Context()
 	workerDB := c.ServerConn(0)
+	defer func() { _ = workerDB.Close() }()
 	workerDB.SetMaxOpenConns(1)
 	workerDB.SetMaxIdleConns(1)
 	configureJepsenBankSession(t, ctx, workerDB)
 
 	nemesisDB := c.ServerConn(0)
-	nemesisDB.SetMaxOpenConns(1)
-	nemesisDB.SetMaxIdleConns(1)
-	configureJepsenBankSession(t, ctx, nemesisDB)
+	if nemesisDB != workerDB {
+		defer func() { _ = nemesisDB.Close() }()
+		nemesisDB.SetMaxOpenConns(1)
+		nemesisDB.SetMaxIdleConns(1)
+		configureJepsenBankSession(t, ctx, nemesisDB)
+	}
 
 	setupJepsenSetsTable(t, ctx, workerDB)
-
 	stopCh := make(chan struct{})
 	history := &jepsenSetsHistory{}
 	keys := newJepsenKeyTracker()
-
 	var wg sync.WaitGroup
 	const workers = 2
 	for i := 0; i < workers; i++ {
@@ -102,7 +110,6 @@ func runJepsenSetsWorkload(t *testing.T, nemesis jepsenBankNemesisFunc) {
 			runJepsenSetsWorker(ctx, stopCh, proc, workerDB, history, keys)
 		}(i)
 	}
-
 	if nemesis != nil {
 		wg.Add(1)
 		go func() {
@@ -110,8 +117,7 @@ func runJepsenSetsWorkload(t *testing.T, nemesis jepsenBankNemesisFunc) {
 			nemesis(ctx, stopCh, c, nemesisDB, nil, keys)
 		}()
 	}
-
-	time.Sleep(5 * time.Second)
+	time.Sleep(jepsenWorkloadDuration)
 	close(stopCh)
 	wg.Wait()
 
@@ -212,6 +218,31 @@ func runJepsenSetsSplitNemesis(
 			if _, err := db.ExecContext(ctx, `ALTER TABLE jepsen_set SPLIT AT VALUES ($1)`, key); err == nil {
 				alreadySplit[key] = struct{}{}
 			}
+		}
+	}
+}
+
+func runJepsenSetsRestartNemesis(
+	ctx context.Context,
+	stopCh <-chan struct{},
+	c *inproc.Cluster,
+	_ *gosql.DB,
+	_ *jepsenBankHistory,
+	_ *jepsenKeyTracker,
+) {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-stopCh:
+			return
+		case <-ticker.C:
+			c.StopNode(2)
+			if !waitOrStop(stopCh, 250*time.Millisecond) {
+				return
+			}
+			_ = c.RestartNodeE(2)
 		}
 	}
 }

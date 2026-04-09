@@ -67,15 +67,23 @@ func (h *jepsenCommentsHistory) Snapshot() []jepsenCommentsOp {
 
 func TestSyncJepsenCommentsSplit(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		runJepsenCommentsWorkload(t)
+		runJepsenCommentsWorkload(t, runJepsenCommentsSplitNemesis)
 	})
 }
 
-func runJepsenCommentsWorkload(t *testing.T) {
+func TestSyncJepsenCommentsRestart(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runJepsenCommentsWorkload(t, runJepsenCommentsRestartNemesis)
+	})
+}
+
+func runJepsenCommentsWorkload(
+	t *testing.T, nemesis func(context.Context, <-chan struct{}, *inproc.Cluster, *gosql.DB, *jepsenKeyTracker),
+) {
 	t.Helper()
 
-	c := inproc.StartCluster(t, 3)
-	defer c.Stop()
+	c := startSyncCluster(t, 3)
+	defer stopSyncCluster(c)
 
 	ctx := t.Context()
 	workerDB := c.ServerConn(0)
@@ -89,11 +97,9 @@ func runJepsenCommentsWorkload(t *testing.T) {
 	configureJepsenBankSession(t, ctx, nemesisDB)
 
 	setupJepsenCommentsTables(t, ctx, workerDB)
-
 	stopCh := make(chan struct{})
 	history := &jepsenCommentsHistory{}
 	keys := newJepsenKeyTracker()
-
 	var wg sync.WaitGroup
 	const workers = 2
 	for i := 0; i < workers; i++ {
@@ -103,14 +109,14 @@ func runJepsenCommentsWorkload(t *testing.T) {
 			runJepsenCommentsWorker(ctx, stopCh, proc, workerDB, history, keys)
 		}(i)
 	}
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		runJepsenCommentsSplitNemesis(ctx, stopCh, nemesisDB, keys)
-	}()
-
-	time.Sleep(5 * time.Second)
+	if nemesis != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			nemesis(ctx, stopCh, c, nemesisDB, keys)
+		}()
+	}
+	time.Sleep(jepsenWorkloadDuration)
 	close(stopCh)
 	wg.Wait()
 
@@ -253,7 +259,7 @@ func readJepsenComments(ctx context.Context, db *gosql.DB) ([]int64, error) {
 }
 
 func runJepsenCommentsSplitNemesis(
-	ctx context.Context, stopCh <-chan struct{}, db *gosql.DB, keys *jepsenKeyTracker,
+	ctx context.Context, stopCh <-chan struct{}, _ *inproc.Cluster, db *gosql.DB, keys *jepsenKeyTracker,
 ) {
 	rng := rand.New(rand.NewSource(911))
 	alreadySplit := make(map[int64]struct{})
@@ -277,6 +283,26 @@ func runJepsenCommentsSplitNemesis(
 			); err == nil {
 				alreadySplit[key] = struct{}{}
 			}
+		}
+	}
+}
+
+func runJepsenCommentsRestartNemesis(
+	ctx context.Context, stopCh <-chan struct{}, c *inproc.Cluster, _ *gosql.DB, _ *jepsenKeyTracker,
+) {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-stopCh:
+			return
+		case <-ticker.C:
+			c.StopNode(2)
+			if !waitOrStop(stopCh, 250*time.Millisecond) {
+				return
+			}
+			_ = c.RestartNodeE(2)
 		}
 	}
 }

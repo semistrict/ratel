@@ -17,6 +17,7 @@ package inproc
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"testing"
 
 	"github.com/semistrict/ratel/pkg/base"
@@ -27,6 +28,8 @@ import (
 	"github.com/semistrict/ratel/pkg/sql/contention"
 	"github.com/semistrict/ratel/pkg/testutils/testcluster"
 )
+
+var nextClusterAddrBase atomic.Uint64
 
 // Cluster is a TestCluster wrapper that uses in-memory networking
 // (via Registry) instead of real TCP. It is designed for use inside
@@ -49,6 +52,11 @@ type Cluster struct {
 func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterArgs)) *Cluster {
 	registry := NewRegistry()
 	stickyRegistry := server.NewStickyInMemEnginesRegistry()
+	clusterBase := nextClusterAddrBase.Add(100)
+	if clusterBase == 100 {
+		clusterBase = 30000
+		nextClusterAddrBase.Store(clusterBase)
+	}
 
 	clusterArgs := base.TestClusterArgs{
 		ReplicationMode:   base.ReplicationManual,
@@ -71,8 +79,8 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 	rpcListeners := make([]*Listener, nodes)
 
 	for i := 0; i < nodes; i++ {
-		rpcAddr := fmt.Sprintf("127.0.0.1:%d", 26257+i)
-		httpAddr := fmt.Sprintf("127.0.0.1:%d", 8080+i)
+		rpcAddr := fmt.Sprintf("127.0.0.1:%d", clusterBase+uint64(i))
+		httpAddr := fmt.Sprintf("127.0.0.1:%d", clusterBase+1000+uint64(i))
 		addrs[i] = rpcAddr
 
 		rpcListener := registry.Register(rpcAddr)
@@ -105,7 +113,12 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 		if storeKnobs == nil {
 			storeKnobs = &kvserver.StoreTestingKnobs{}
 		}
-		storeKnobs.(*kvserver.StoreTestingKnobs).DisableRangeLogWrite = true
+		storeTestingKnobs := storeKnobs.(*kvserver.StoreTestingKnobs)
+		storeTestingKnobs.DisableRangeLogWrite = true
+		storeTestingKnobs.DisablePeriodicGossips = true
+		storeTestingKnobs.DisableRangefeedUpdater = true
+		storeTestingKnobs.DisableStoreRebalancer = true
+		storeTestingKnobs.DisableScanner = true
 		args.Knobs.Store = storeKnobs
 
 		serverKnobs := args.Knobs.Server
@@ -118,6 +131,10 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 		tk.ShareRPCListenSQL = true
 		tk.StickyEngineRegistry = stickyRegistry
 		tk.DisableAuthSessionPurge = true
+		tk.DisableNodeStatusWrite = true
+		tk.DisableEnvironmentSample = true
+		tk.DisableReplicationReporter = true
+		tk.DisableProtectedTSProvider = true
 		tk.ContextTestingKnobs.DialerFunc = registry.DialerFuncFor(rpcAddr)
 		args.Knobs.Server = tk
 
@@ -184,7 +201,14 @@ func (c *Cluster) NodeAddr(nodeIdx int) string {
 
 // Stop stops the cluster and closes the registry.
 func (c *Cluster) Stop() {
-	c.Stopper().Stop(nil)
+	for i := range c.Conns {
+		if c.Conns[i] != nil {
+			_ = c.Conns[i].Close()
+			c.Conns[i] = nil
+		}
+	}
+	c.TestCluster.StopServers(context.Background())
+	c.Stopper().Stop(context.Background())
 	c.stickyRegistry.CloseAllStickyInMemEngines()
 	c.Registry.Close()
 }

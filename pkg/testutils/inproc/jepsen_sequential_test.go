@@ -109,33 +109,44 @@ func (t *jepsenSequentialKeyTracker) RandomExcluding(
 
 func TestSyncJepsenSequentialSplit(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		runJepsenSequentialWorkload(t)
+		runJepsenSequentialWorkload(t, runJepsenSequentialSplitNemesis)
 	})
 }
 
-func runJepsenSequentialWorkload(t *testing.T) {
+func TestSyncJepsenSequentialRestart(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runJepsenSequentialWorkload(t, runJepsenSequentialRestartNemesis)
+	})
+}
+
+func runJepsenSequentialWorkload(
+	t *testing.T,
+	nemesis func(context.Context, <-chan struct{}, *inproc.Cluster, *gosql.DB, *jepsenSequentialKeyTracker),
+) {
 	t.Helper()
 
-	c := inproc.StartCluster(t, 3)
-	defer c.Stop()
+	c := startSyncCluster(t, 3)
+	defer stopSyncCluster(c)
 
 	ctx := t.Context()
 	workerDB := c.ServerConn(0)
+	defer func() { _ = workerDB.Close() }()
 	workerDB.SetMaxOpenConns(1)
 	workerDB.SetMaxIdleConns(1)
 	configureJepsenBankSession(t, ctx, workerDB)
 
 	nemesisDB := c.ServerConn(0)
-	nemesisDB.SetMaxOpenConns(1)
-	nemesisDB.SetMaxIdleConns(1)
-	configureJepsenBankSession(t, ctx, nemesisDB)
+	if nemesisDB != workerDB {
+		defer func() { _ = nemesisDB.Close() }()
+		nemesisDB.SetMaxOpenConns(1)
+		nemesisDB.SetMaxIdleConns(1)
+		configureJepsenBankSession(t, ctx, nemesisDB)
+	}
 
 	setupJepsenSequentialTables(t, ctx, workerDB)
-
 	stopCh := make(chan struct{})
 	history := &jepsenSequentialHistory{}
 	keys := newJepsenSequentialKeyTracker()
-
 	var wg sync.WaitGroup
 	const workers = 2
 	for i := 0; i < workers; i++ {
@@ -145,16 +156,18 @@ func runJepsenSequentialWorkload(t *testing.T) {
 			runJepsenSequentialWorker(ctx, stopCh, proc, workerDB, history, keys)
 		}(i)
 	}
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		runJepsenSequentialSplitNemesis(ctx, stopCh, nemesisDB, keys)
-	}()
-
-	time.Sleep(5 * time.Second)
+	if nemesis != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			nemesis(ctx, stopCh, c, nemesisDB, keys)
+		}()
+	}
+	time.Sleep(jepsenWorkloadDuration)
 	close(stopCh)
 	wg.Wait()
+	time.Sleep(time.Second)
+	synctest.Wait()
 
 	badReads := checkJepsenSequential(history.Snapshot())
 	require.Empty(t, badReads, "bad Jepsen sequential reads: %+v", badReads)
@@ -289,6 +302,7 @@ func readJepsenSequentialValue(ctx context.Context, db *gosql.DB, value int64) (
 func runJepsenSequentialSplitNemesis(
 	ctx context.Context,
 	stopCh <-chan struct{},
+	_ *inproc.Cluster,
 	db *gosql.DB,
 	keys *jepsenSequentialKeyTracker,
 ) {
@@ -313,6 +327,30 @@ func runJepsenSequentialSplitNemesis(
 			); err == nil {
 				alreadySplit[key] = struct{}{}
 			}
+		}
+	}
+}
+
+func runJepsenSequentialRestartNemesis(
+	ctx context.Context,
+	stopCh <-chan struct{},
+	c *inproc.Cluster,
+	_ *gosql.DB,
+	_ *jepsenSequentialKeyTracker,
+) {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-stopCh:
+			return
+		case <-ticker.C:
+			c.StopNode(2)
+			if !waitOrStop(stopCh, 250*time.Millisecond) {
+				return
+			}
+			_ = c.RestartNodeE(2)
 		}
 	}
 }

@@ -17,63 +17,75 @@ package inproc
 import (
 	"context"
 	"net"
+	"sync"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestRegistryBlockLink(t *testing.T) {
-	r := NewRegistry()
-	defer r.Close()
+	synctest.Test(t, func(t *testing.T) {
+		r := NewRegistry()
+		defer r.Close()
 
-	l := r.Register("n2")
-	ctx := context.Background()
+		l := r.Register("n2")
+		ctx := context.Background()
+		var acceptWG sync.WaitGroup
 
-	acceptOne := func() <-chan net.Conn {
-		ch := make(chan net.Conn, 1)
-		go func() {
-			conn, err := l.Accept()
-			require.NoError(t, err)
-			ch <- conn
+		acceptOne := func() <-chan net.Conn {
+			ch := make(chan net.Conn, 1)
+			acceptWG.Add(1)
+			go func() {
+				defer acceptWG.Done()
+				conn, err := l.Accept()
+				require.NoError(t, err)
+				ch <- conn
+			}()
+			return ch
+		}
+		defer func() {
+			r.Close()
+			synctest.Wait()
+			acceptWG.Wait()
 		}()
-		return ch
-	}
 
-	serverACh := acceptOne()
-	aToB, err := r.DialFrom(ctx, "n0", "n2")
-	require.NoError(t, err)
-	defer aToB.Close()
-	serverA := <-serverACh
-	defer serverA.Close()
+		serverACh := acceptOne()
+		aToB, err := r.DialFrom(ctx, "n0", "n2")
+		require.NoError(t, err)
+		defer aToB.Close()
+		serverA := <-serverACh
+		defer serverA.Close()
 
-	serverCCh := acceptOne()
-	cToB, err := r.DialFrom(ctx, "n1", "n2")
-	require.NoError(t, err)
-	defer cToB.Close()
-	serverC := <-serverCCh
-	defer serverC.Close()
+		serverCCh := acceptOne()
+		cToB, err := r.DialFrom(ctx, "n1", "n2")
+		require.NoError(t, err)
+		defer cToB.Close()
+		serverC := <-serverCCh
+		defer serverC.Close()
 
-	r.BlockLink("n0", "n2")
+		r.BlockLink("n0", "n2")
 
-	_, err = r.DialFrom(ctx, "n0", "n2")
-	require.Error(t, err)
+		_, err = r.DialFrom(ctx, "n0", "n2")
+		require.Error(t, err)
 
-	serverStillOpenCh := acceptOne()
-	stillOpen, err := r.DialFrom(ctx, "n1", "n2")
-	require.NoError(t, err)
-	defer stillOpen.Close()
-	serverStillOpen := <-serverStillOpenCh
-	defer serverStillOpen.Close()
+		serverStillOpenCh := acceptOne()
+		stillOpen, err := r.DialFrom(ctx, "n1", "n2")
+		require.NoError(t, err)
+		defer stillOpen.Close()
+		serverStillOpen := <-serverStillOpenCh
+		defer serverStillOpen.Close()
 
-	_, err = aToB.Write([]byte("x"))
-	require.Error(t, err)
+		_, err = aToB.Write([]byte("x"))
+		require.Error(t, err)
 
-	r.UnblockLink("n0", "n2")
+		r.UnblockLink("n0", "n2")
 
-	serverHealedCh := acceptOne()
-	healed, err := r.DialFrom(ctx, "n0", "n2")
-	require.NoError(t, err)
-	defer healed.Close()
-	serverHealed := <-serverHealedCh
-	defer serverHealed.Close()
+		serverHealedCh := acceptOne()
+		healed, err := r.DialFrom(ctx, "n0", "n2")
+		require.NoError(t, err)
+		defer healed.Close()
+		serverHealed := <-serverHealedCh
+		defer serverHealed.Close()
+	})
 }

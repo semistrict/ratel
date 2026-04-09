@@ -121,6 +121,26 @@ type TestingKnobs struct {
 	// that run under testing/synctest.
 	DisableAuthSessionPurge bool
 
+	// DisableNodeStatusWrite skips the periodic background task that writes node
+	// status summaries into KV after the initial startup write. This is useful in
+	// fully in-process tests that run under testing/synctest.
+	DisableNodeStatusWrite bool
+
+	// DisableEnvironmentSample skips the background task that periodically samples
+	// memory/runtime environment state. This is useful in fully in-process tests
+	// that run under testing/synctest.
+	DisableEnvironmentSample bool
+
+	// DisableReplicationReporter skips the background task that periodically
+	// generates replication reports. This is useful in fully in-process tests
+	// that run under testing/synctest.
+	DisableReplicationReporter bool
+
+	// DisableProtectedTSProvider skips starting the protected timestamp provider
+	// background tasks. This is useful in fully in-process tests that run under
+	// testing/synctest.
+	DisableProtectedTSProvider bool
+
 	// BlobClientFactory supplies a BlobClientFactory for
 	// use by servers.
 	BlobClientFactory blobs.BlobClientFactory

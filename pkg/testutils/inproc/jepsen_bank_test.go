@@ -30,8 +30,9 @@ import (
 )
 
 const (
-	jepsenBankAccounts = 5
-	jepsenBankTotal    = int64(50)
+	jepsenBankAccounts     = 5
+	jepsenBankTotal        = int64(50)
+	jepsenWorkloadDuration = 5 * time.Second
 )
 
 type jepsenBankTransfer struct {
@@ -147,31 +148,38 @@ func TestSyncJepsenBankRestart(t *testing.T) {
 	})
 }
 
+func TestSyncJepsenBankPartition(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runJepsenBankWorkload(t, runJepsenBankPartitionNemesis)
+	})
+}
+
 func runJepsenBankWorkload(t *testing.T, nemesis jepsenBankNemesisFunc) {
 	t.Helper()
 
-	c := inproc.StartCluster(t, 3)
-	defer c.Stop()
+	c := startSyncCluster(t, 3)
+	defer stopSyncCluster(c)
 
 	ctx := t.Context()
 	workerDB := c.ServerConn(0)
+	defer func() { _ = workerDB.Close() }()
 	workerDB.SetMaxOpenConns(1)
 	workerDB.SetMaxIdleConns(1)
 	configureJepsenBankSession(t, ctx, workerDB)
 
 	nemesisDB := c.ServerConn(0)
-	nemesisDB.SetMaxOpenConns(1)
-	nemesisDB.SetMaxIdleConns(1)
-	configureJepsenBankSession(t, ctx, nemesisDB)
+	if nemesisDB != workerDB {
+		defer func() { _ = nemesisDB.Close() }()
+		nemesisDB.SetMaxOpenConns(1)
+		nemesisDB.SetMaxIdleConns(1)
+		configureJepsenBankSession(t, ctx, nemesisDB)
+	}
 
 	setupJepsenBankAccounts(t, ctx, workerDB)
-
 	stopCh := make(chan struct{})
-
-	var wg sync.WaitGroup
 	history := &jepsenBankHistory{}
 	keys := newJepsenKeyTracker()
-
+	var wg sync.WaitGroup
 	const workers = 2
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
@@ -180,7 +188,6 @@ func runJepsenBankWorkload(t *testing.T, nemesis jepsenBankNemesisFunc) {
 			runJepsenBankWorker(ctx, stopCh, proc, workerDB, history, keys)
 		}(i)
 	}
-
 	if nemesis != nil {
 		wg.Add(1)
 		go func() {
@@ -188,8 +195,7 @@ func runJepsenBankWorkload(t *testing.T, nemesis jepsenBankNemesisFunc) {
 			nemesis(ctx, stopCh, c, nemesisDB, history, keys)
 		}()
 	}
-
-	time.Sleep(5 * time.Second)
+	time.Sleep(jepsenWorkloadDuration)
 	close(stopCh)
 	wg.Wait()
 
@@ -374,13 +380,68 @@ func runJepsenBankRestartNemesis(
 			}
 
 			c.StopNode(2)
-			time.Sleep(250 * time.Millisecond)
+			if !waitOrStop(stopCh, 250*time.Millisecond) {
+				history.Add(op)
+				return
+			}
 			if err := c.RestartNodeE(2); err != nil {
 				op.Err = err.Error()
 			} else {
 				op.Err = "restarted:2"
 			}
 			history.Add(op)
+		}
+	}
+}
+
+func runJepsenBankPartitionNemesis(
+	ctx context.Context,
+	stopCh <-chan struct{},
+	c *inproc.Cluster,
+	_ *gosql.DB,
+	history *jepsenBankHistory,
+	_ *jepsenKeyTracker,
+) {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+	healed := true
+	heal := func() {
+		c.HealLink(2, 0)
+		c.HealLink(0, 2)
+		c.HealLink(2, 1)
+		c.HealLink(1, 2)
+		healed = true
+	}
+	defer func() {
+		if !healed {
+			heal()
+		}
+	}()
+
+	for {
+		select {
+		case <-stopCh:
+			return
+		case <-ticker.C:
+			history.Add(jepsenBankOp{
+				Proc:     -1,
+				Type:     "info",
+				Function: "partition",
+				Err:      "isolate-node-2",
+				At:       time.Now(),
+			})
+			c.PartitionLink(2, 0)
+			c.PartitionLink(0, 2)
+			c.PartitionLink(2, 1)
+			c.PartitionLink(1, 2)
+			healed = false
+			select {
+			case <-stopCh:
+				heal()
+				return
+			case <-time.After(500 * time.Millisecond):
+				heal()
+			}
 		}
 	}
 }

@@ -715,6 +715,8 @@ type NodeLivenessStartOptions struct {
 	// OnSelfLive is invoked after every successful heartbeat
 	// of the local liveness instance's heartbeat loop.
 	OnSelfLive HeartbeatCallback
+	// DisableHeartbeatLoop prevents the background heartbeat loop from starting.
+	DisableHeartbeatLoop bool
 }
 
 // Start starts a periodic heartbeat to refresh this node's last
@@ -736,6 +738,10 @@ func (nl *NodeLiveness) Start(ctx context.Context, opts NodeLivenessStartOptions
 	nl.mu.onSelfLive = opts.OnSelfLive
 	nl.mu.engines = opts.Engines
 	nl.mu.Unlock()
+
+	if opts.DisableHeartbeatLoop {
+		return
+	}
 
 	_ = nl.stopper.RunAsyncTaskEx(ctx, stop.TaskOpts{TaskName: "liveness-hb", SpanOpt: stop.SterileRootSpan}, func(context.Context) {
 		ambient := nl.ambientCtx

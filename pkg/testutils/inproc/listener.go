@@ -89,10 +89,20 @@ func (l *Listener) Close() error {
 // This is used when restarting a node in a test cluster.
 func (l *Listener) Reset() {
 	l.mu.Lock()
-	defer l.mu.Unlock()
+	pairs := l.snapshotPairsLocked()
+	select {
+	case <-l.closed:
+	default:
+		close(l.closed)
+	}
 	l.ch = make(chan net.Conn)
 	l.closed = make(chan struct{})
 	l.pairs = make(map[*connPair]struct{})
+	l.mu.Unlock()
+
+	for _, pair := range pairs {
+		pair.close()
+	}
 }
 
 // Addr returns the listener's network address.

@@ -41,6 +41,16 @@ type ScanParams struct {
 	// Only columns in this set are scanned and produced.
 	NeededCols TableColumnOrdinalSet
 
+	// ExtraNeededCols contains columns that must be fetched for scan-local
+	// execution logic but are not part of the scan's output schema.
+	ExtraNeededCols TableColumnOrdinalSet
+
+	// ArrayAnyFilter, when set, evaluates a filter of the form
+	//   <left> = ANY(array_col)
+	// while scanning. This is only used when array_col is fetched as an
+	// internal-only column.
+	ArrayAnyFilter *ArrayAnyFilter
+
 	// At most one of IndexConstraint or InvertedConstraint is non-nil, depending
 	// on the index type.
 	IndexConstraint    *constraint.Constraint
@@ -71,6 +81,20 @@ type ScanParams struct {
 	// to work correctly, the execution engine must create a local DistSQL plan
 	// for the main query (subqueries and postqueries need not be local).
 	LocalityOptimized bool
+}
+
+// ArrayAnyFilter describes a scan-local filter of the form
+//   <left> = ANY(array_col)
+// where Left does not depend on scanned row values.
+type ArrayAnyFilter struct {
+	ArrayCol TableColumnOrdinal
+	Left     tree.TypedExpr
+}
+
+// ArrayAnyScanFilterCapable is an optional interface implemented by factories
+// that can execute filter-only `= ANY(array_col)` predicates inside scan nodes.
+type ArrayAnyScanFilterCapable interface {
+	SupportsArrayAnyScanFilter() bool
 }
 
 // OutputOrdering indicates the required output ordering on a Node that is being

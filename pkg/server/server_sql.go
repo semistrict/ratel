@@ -721,7 +721,9 @@ func newSQLServer(ctx context.Context, cfg sqlServerArgs) (*SQLServer, error) {
 		cfg.sqlStatusServer.TxnIDResolution,
 		&contentionMetrics,
 	)
-	contentionRegistry.Start(ctx, cfg.stopper)
+	if contention.TxnIDResolutionInterval.Get(&cfg.Settings.SV) != 0 {
+		contentionRegistry.Start(ctx, cfg.stopper)
+	}
 
 	udfRegistry := udfruntime.NewRegistry()
 	cfg.stopper.AddCloser(stop.CloserFn(func() {

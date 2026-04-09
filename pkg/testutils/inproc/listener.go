@@ -32,6 +32,15 @@ type Listener struct {
 	mu     sync.Mutex
 	ch     chan net.Conn
 	closed chan struct{}
+	pairs  map[*connPair]struct{}
+}
+
+type connPair struct {
+	listener *Listener
+	source   string
+	server   net.Conn
+	client   net.Conn
+	once     sync.Once
 }
 
 // NewListener creates a new in-memory listener with the given address string.
@@ -40,6 +49,7 @@ func NewListener(addr string) *Listener {
 		addr:   memAddr(addr),
 		ch:     make(chan net.Conn),
 		closed: make(chan struct{}),
+		pairs:  make(map[*connPair]struct{}),
 	}
 }
 
@@ -61,12 +71,16 @@ func (l *Listener) Accept() (net.Conn, error) {
 // Close closes the listener. It can be re-opened via Reset().
 func (l *Listener) Close() error {
 	l.mu.Lock()
-	defer l.mu.Unlock()
+	pairs := l.snapshotPairsLocked()
 	select {
 	case <-l.closed:
 		// Already closed.
 	default:
 		close(l.closed)
+	}
+	l.mu.Unlock()
+	for _, pair := range pairs {
+		pair.close()
 	}
 	return nil
 }
@@ -75,9 +89,20 @@ func (l *Listener) Close() error {
 // This is used when restarting a node in a test cluster.
 func (l *Listener) Reset() {
 	l.mu.Lock()
-	defer l.mu.Unlock()
+	pairs := l.snapshotPairsLocked()
+	select {
+	case <-l.closed:
+	default:
+		close(l.closed)
+	}
 	l.ch = make(chan net.Conn)
 	l.closed = make(chan struct{})
+	l.pairs = make(map[*connPair]struct{})
+	l.mu.Unlock()
+
+	for _, pair := range pairs {
+		pair.close()
+	}
 }
 
 // Addr returns the listener's network address.
@@ -89,24 +114,97 @@ func (l *Listener) Addr() net.Addr {
 // side is delivered via Accept(). Returns an error if the listener is
 // closed or the context is canceled.
 func (l *Listener) Dial(ctx context.Context) (net.Conn, error) {
+	return l.DialWithSource(ctx, "")
+}
+
+// DialWithSource is like Dial but records the logical source address so the
+// registry can later cut only specific directed links.
+func (l *Listener) DialWithSource(ctx context.Context, source string) (net.Conn, error) {
 	l.mu.Lock()
 	ch := l.ch
 	closed := l.closed
 	l.mu.Unlock()
 
 	server, client := net.Pipe()
+	pair := &connPair{listener: l, source: source, server: server, client: client}
+	wrappedServer := &trackedConn{Conn: server, pair: pair}
+	wrappedClient := &trackedConn{Conn: client, pair: pair}
+
+	l.mu.Lock()
 	select {
-	case ch <- server:
-		return client, nil
 	case <-closed:
-		server.Close()
-		client.Close()
+		l.mu.Unlock()
+		pair.close()
+		return nil, net.ErrClosed
+	default:
+		l.pairs[pair] = struct{}{}
+	}
+	l.mu.Unlock()
+
+	select {
+	case ch <- wrappedServer:
+		return wrappedClient, nil
+	case <-closed:
+		pair.close()
 		return nil, net.ErrClosed
 	case <-ctx.Done():
-		server.Close()
-		client.Close()
+		pair.close()
 		return nil, ctx.Err()
 	}
+}
+
+func (l *Listener) CloseActiveConns() {
+	l.mu.Lock()
+	pairs := l.snapshotPairsLocked()
+	l.mu.Unlock()
+
+	for _, pair := range pairs {
+		pair.close()
+	}
+}
+
+func (l *Listener) CloseActiveConnsFrom(source string) {
+	l.mu.Lock()
+	pairs := l.snapshotPairsLocked()
+	l.mu.Unlock()
+
+	for _, pair := range pairs {
+		if pair.source == source {
+			pair.close()
+		}
+	}
+}
+
+func (l *Listener) snapshotPairsLocked() []*connPair {
+	pairs := make([]*connPair, 0, len(l.pairs))
+	for pair := range l.pairs {
+		pairs = append(pairs, pair)
+	}
+	return pairs
+}
+
+func (l *Listener) removePair(pair *connPair) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	delete(l.pairs, pair)
+}
+
+func (p *connPair) close() {
+	p.once.Do(func() {
+		_ = p.server.Close()
+		_ = p.client.Close()
+		p.listener.removePair(p)
+	})
+}
+
+type trackedConn struct {
+	net.Conn
+	pair *connPair
+}
+
+func (c *trackedConn) Close() error {
+	c.pair.close()
+	return nil
 }
 
 // memAddr implements net.Addr for in-memory addresses.

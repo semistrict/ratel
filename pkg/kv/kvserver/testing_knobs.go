@@ -100,6 +100,10 @@ type StoreTestingKnobs struct {
 	// in order for unit tests to modify the request, error returned to the client
 	// or data.
 	TestingRangefeedFilter kvserverbase.ReplicaRangefeedFilter
+	// DisableRangefeedUpdater skips the background task that periodically
+	// refreshes closed timestamps for replicas with active rangefeeds. This is
+	// useful in fully in-process tests that run under testing/synctest.
+	DisableRangefeedUpdater bool
 
 	// MaxOffset, if set, overrides the server clock's MaxOffset at server
 	// creation time.
@@ -142,6 +146,10 @@ type StoreTestingKnobs struct {
 	// DisableReplicaRebalancing disables rebalancing of replicas but otherwise
 	// leaves the replicate queue operational.
 	DisableReplicaRebalancing bool
+	// DisableStoreRebalancer disables the background store-level load
+	// rebalancer loop. This is useful in fully in-process tests that run under
+	// testing/synctest.
+	DisableStoreRebalancer bool
 	// DisableLoadBasedSplitting turns off LBS so no splits happen because of load.
 	DisableLoadBasedSplitting bool
 	// DisableSplitQueue disables the split queue.
@@ -369,6 +377,10 @@ type StoreTestingKnobs struct {
 	// gossiped store capacity values which need be exceeded before the store will
 	// gossip immediately without waiting for the periodic gossip interval.
 	GossipWhenCapacityDeltaExceedsFraction float64
+	// DisablePeriodicGossips skips the background tasks that periodically gossip
+	// the first range descriptor, system config, and node liveness. This is
+	// useful in fully in-process tests that run under testing/synctest.
+	DisablePeriodicGossips bool
 	// TimeSeriesDataStore is an interface used by the store's time series
 	// maintenance queue to dispatch individual maintenance tasks.
 	TimeSeriesDataStore TimeSeriesDataStore
@@ -415,6 +427,10 @@ type NodeLivenessTestingKnobs struct {
 	// RenewalDuration specifies how long before the expiration a record is
 	// heartbeated. If LivenessDuration is set, this should probably be set too.
 	RenewalDuration time.Duration
+	// DisableHeartbeatLoop prevents the background liveness heartbeat loop from
+	// starting. This is useful in fully in-process tests that run under
+	// testing/synctest.
+	DisableHeartbeatLoop bool
 	// StorePoolNodeLivenessFn is the function used by the StorePool to determine
 	// whether a node is live or not.
 	StorePoolNodeLivenessFn NodeLivenessFunc

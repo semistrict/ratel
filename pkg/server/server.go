@@ -850,9 +850,12 @@ func NewServer(cfg Config, stopper *stop.Stopper) (*Server, error) {
 		kvMemoryMonitor:        kvMemoryMonitor,
 	}
 
-	// Begin an async task to periodically purge old sessions in the system.web_sessions table.
-	if err = startPurgeOldSessions(ctx, sAuth); err != nil {
-		return nil, err
+	serverKnobs, _ := cfg.TestingKnobs.Server.(*TestingKnobs)
+	if serverKnobs == nil || !serverKnobs.DisableAuthSessionPurge {
+		// Begin an async task to periodically purge old sessions in the system.web_sessions table.
+		if err = startPurgeOldSessions(ctx, sAuth); err != nil {
+			return nil, err
+		}
 	}
 
 	return lateBoundServer, err
@@ -1371,7 +1374,13 @@ func (s *Server) PreStart(ctx context.Context) error {
 	if err := s.startPersistingHLCUpperBound(ctx, hlcUpperBoundExists); err != nil {
 		return err
 	}
-	s.replicationReporter.Start(ctx, s.stopper)
+	disableReplicationReporter := false
+	if knobs := s.cfg.TestingKnobs.Server; knobs != nil {
+		disableReplicationReporter = knobs.(*TestingKnobs).DisableReplicationReporter
+	}
+	if !disableReplicationReporter {
+		s.replicationReporter.Start(ctx, s.stopper)
+	}
 
 	// We can now add the node registry.
 	s.recorder.AddNode(
@@ -1384,15 +1393,21 @@ func (s *Server) PreStart(ctx context.Context) error {
 	)
 
 	// Begin recording runtime statistics.
-	if err := startSampleEnvironment(s.AnnotateCtx(ctx),
-		s.ClusterSettings(),
-		s.stopper,
-		s.cfg.GoroutineDumpDirName,
-		s.cfg.HeapProfileDirName,
-		s.runtime,
-		s.status.sessionRegistry,
-	); err != nil {
-		return err
+	disableEnvironmentSample := false
+	if knobs := s.cfg.TestingKnobs.Server; knobs != nil {
+		disableEnvironmentSample = knobs.(*TestingKnobs).DisableEnvironmentSample
+	}
+	if !disableEnvironmentSample {
+		if err := startSampleEnvironment(s.AnnotateCtx(ctx),
+			s.ClusterSettings(),
+			s.stopper,
+			s.cfg.GoroutineDumpDirName,
+			s.cfg.HeapProfileDirName,
+			s.runtime,
+			s.status.sessionRegistry,
+		); err != nil {
+			return err
+		}
 	}
 
 	var graphiteOnce sync.Once
@@ -1410,8 +1425,14 @@ func (s *Server) PreStart(ctx context.Context) error {
 	// traffic may access it).
 	//
 	// See https://github.com/semistrict/ratel/issues/73897.
-	if err := s.protectedtsProvider.Start(ctx, s.stopper); err != nil {
-		return err
+	disableProtectedTSProvider := false
+	if knobs := s.cfg.TestingKnobs.Server; knobs != nil {
+		disableProtectedTSProvider = knobs.(*TestingKnobs).DisableProtectedTSProvider
+	}
+	if !disableProtectedTSProvider {
+		if err := s.protectedtsProvider.Start(ctx, s.stopper); err != nil {
+			return err
+		}
 	}
 
 	// After setting modeOperational, we can block until all stores are fully
@@ -1456,6 +1477,10 @@ func (s *Server) PreStart(ctx context.Context) error {
 	// Begin the node liveness heartbeat. Add a callback which records the local
 	// store "last up" timestamp for every store whenever the liveness record is
 	// updated.
+	disableNodeLivenessHeartbeatLoop := false
+	if knobs := s.cfg.TestingKnobs.NodeLiveness; knobs != nil {
+		disableNodeLivenessHeartbeatLoop = knobs.(kvserver.NodeLivenessTestingKnobs).DisableHeartbeatLoop
+	}
 	s.nodeLiveness.Start(ctx, liveness.NodeLivenessStartOptions{
 		Engines: s.engines,
 		OnSelfLive: func(ctx context.Context) {
@@ -1466,10 +1491,15 @@ func (s *Server) PreStart(ctx context.Context) error {
 				log.Ops.Warningf(ctx, "writing last up timestamp: %v", err)
 			}
 		},
+		DisableHeartbeatLoop: disableNodeLivenessHeartbeatLoop,
 	})
 
 	// Begin recording status summaries.
-	if err := s.node.startWriteNodeStatus(base.DefaultMetricsSampleInterval); err != nil {
+	disableNodeStatusWrite := false
+	if knobs := s.cfg.TestingKnobs.Server; knobs != nil {
+		disableNodeStatusWrite = knobs.(*TestingKnobs).DisableNodeStatusWrite
+	}
+	if err := s.node.startWriteNodeStatus(base.DefaultMetricsSampleInterval, !disableNodeStatusWrite); err != nil {
 		return err
 	}
 

@@ -16,6 +16,7 @@ package inproc_test
 
 import (
 	"context"
+	gosql "database/sql"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -46,8 +47,8 @@ func TestInprocSmoke(t *testing.T) {
 // TestSyncInprocSmoke is TestInprocSmoke inside a synctest bubble.
 func TestSyncInprocSmoke(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		c := inproc.StartCluster(t, 3)
-		defer c.Stop()
+		c := startSyncCluster(t, 3)
+		defer stopSyncCluster(c)
 
 		db := c.Server(0).DB()
 
@@ -64,8 +65,8 @@ func TestSyncInprocSmoke(t *testing.T) {
 // a synctest bubble with in-memory networking and storage.
 func TestSyncTestSmoke(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		c := inproc.StartCluster(t, 3)
-		defer c.Stop()
+		c := startSyncCluster(t, 3)
+		defer stopSyncCluster(c)
 
 		db := c.Server(0).DB()
 
@@ -83,8 +84,8 @@ func TestSyncTestSmoke(t *testing.T) {
 // node, verify it recovers.
 func TestSyncRestart(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		c := inproc.StartCluster(t, 3)
-		defer c.Stop()
+		c := startSyncCluster(t, 3)
+		defer stopSyncCluster(c)
 
 		ctx := t.Context()
 		db := c.Server(0).DB()
@@ -116,8 +117,8 @@ func TestSyncRestart(t *testing.T) {
 // nodes, then heal the partition.
 func TestSyncNetworkPartition(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		c := inproc.StartCluster(t, 3)
-		defer c.Stop()
+		c := startSyncCluster(t, 3)
+		defer stopSyncCluster(c)
 
 		ctx := t.Context()
 		db := c.Server(0).DB()
@@ -139,12 +140,54 @@ func TestSyncNetworkPartition(t *testing.T) {
 	})
 }
 
+// TestSyncNetworkPartitionClosesExistingConnections verifies that partitioning
+// a node tears down already-established SQL connections to that node, instead
+// of only blocking future dials.
+func TestSyncNetworkPartitionClosesExistingConnections(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		c := startSyncCluster(t, 3)
+		defer stopSyncCluster(c)
+
+		ctx := t.Context()
+		db := c.ServerConn(2)
+		defer db.Close()
+		db.SetMaxOpenConns(1)
+		db.SetMaxIdleConns(1)
+
+		conn, err := db.Conn(ctx)
+		require.NoError(t, err)
+		defer conn.Close()
+
+		var before int
+		require.NoError(t, conn.QueryRowContext(ctx, `SELECT 1`).Scan(&before))
+		require.Equal(t, 1, before)
+
+		c.PartitionNode(2)
+
+		var during int
+		err = conn.QueryRowContext(ctx, `SELECT 1`).Scan(&during)
+		require.Error(t, err)
+		require.NotErrorIs(t, err, gosql.ErrNoRows)
+
+		c.HealPartition(2)
+
+		fresh := c.ServerConn(2)
+		defer fresh.Close()
+		fresh.SetMaxOpenConns(1)
+		fresh.SetMaxIdleConns(1)
+
+		var after int
+		require.NoError(t, fresh.QueryRowContext(ctx, `SELECT 1`).Scan(&after))
+		require.Equal(t, 1, after)
+	})
+}
+
 // TestSyncFakeTime verifies that synctest's fake clock controls
 // CockroachDB's HLC.
 func TestSyncFakeTime(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		c := inproc.StartCluster(t, 1)
-		defer c.Stop()
+		c := startSyncCluster(t, 1)
+		defer stopSyncCluster(c)
 
 		clock := c.Server(0).Clock()
 
@@ -161,14 +204,48 @@ func TestSyncFakeTime(t *testing.T) {
 	})
 }
 
+// TestSyncRestartThenFreshBubble verifies that a cluster which performs a node
+// restart shuts down cleanly enough that a subsequent synctest bubble can
+// start a fresh cluster and advance fake time without tripping cross-bubble
+// channel leaks.
+func TestSyncRestartThenFreshBubble(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		c := startSyncCluster(t, 3)
+		defer stopSyncCluster(c)
+
+		ctx := t.Context()
+		db := c.Server(0).DB()
+
+		require.NoError(t, db.Put(ctx, roachpb.Key("before-stop"), []byte("v1")))
+		c.StopNode(2)
+		require.NoError(t, db.Put(ctx, roachpb.Key("during-stop"), []byte("v2")))
+		c.RestartNode(t, 2)
+
+		val, err := db.Get(ctx, roachpb.Key("during-stop"))
+		require.NoError(t, err)
+		require.Equal(t, []byte("v2"), val.ValueBytes())
+	})
+
+	synctest.Test(t, func(t *testing.T) {
+		c := startSyncCluster(t, 1)
+		defer stopSyncCluster(c)
+
+		clock := c.Server(0).Clock()
+		ts1 := clock.Now()
+		time.Sleep(time.Hour)
+		ts2 := clock.Now()
+		require.GreaterOrEqual(t, ts2.GoTime().Sub(ts1.GoTime()), time.Hour)
+	})
+}
+
 // TestSyncClockJump reimplements the "clock-jump" roachtest: verify
 // that the HLC tracks time advancement correctly under synctest's
 // full control over time progression.
 func TestSyncClockJump(t *testing.T) {
 	skip.UnderRace(t, "synctest+race hangs or crashes in this clock-jump case; non-race still checks intended behavior")
 	synctest.Test(t, func(t *testing.T) {
-		c := inproc.StartCluster(t, 1)
-		defer c.Stop()
+		c := startSyncCluster(t, 1)
+		defer stopSyncCluster(c)
 
 		ctx := t.Context()
 		db := c.Server(0).DB()

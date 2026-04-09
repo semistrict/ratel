@@ -656,10 +656,6 @@ func (p *Provider) FindActiveAccount() (string, error) {
 		return "", fmt.Errorf("no active accounts found, please configure gcloud")
 	}
 
-	if !strings.HasSuffix(accounts[0].Account, config.EmailDomain) {
-		return "", fmt.Errorf("active account %q does not belong to domain %s",
-			accounts[0].Account, config.EmailDomain)
-	}
 	_ = accounts[0].Status // silence unused warning
 
 	username := strings.Split(accounts[0].Account, "@")[0]

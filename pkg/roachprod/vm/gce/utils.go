@@ -290,14 +290,21 @@ func SyncDNS(l *logger.Logger, vms vm.List) error {
 	return errors.Wrapf(err, "Command: %s\nOutput: %s\nZone file contents:\n%s", cmd, output, zoneBuilder.String())
 }
 
-// GetUserAuthorizedKeys retrieves reads a list of user public keys from the
-// gcloud cockroach-ephemeral project and returns them formatted for use in
-// an authorized_keys file.
+// GetUserAuthorizedKeys retrieves a list of user public keys from the current
+// gcloud project metadata and returns them formatted for use in an
+// authorized_keys file. It falls back to the historical cockroach-ephemeral
+// project if no current project is configured.
 func GetUserAuthorizedKeys() (authorizedKeys []byte, err error) {
 	var outBuf bytes.Buffer
+	project := "cockroach-ephemeral"
+	if currentProject, projectErr := exec.Command("gcloud", "config", "get-value", "project").Output(); projectErr == nil {
+		if p := strings.TrimSpace(string(currentProject)); p != "" && p != "(unset)" {
+			project = p
+		}
+	}
 	// The below command will return a stream of user:pubkey as text.
 	cmd := exec.Command("gcloud", "compute", "project-info", "describe",
-		"--project=cockroach-ephemeral",
+		"--project="+project,
 		"--format=value(commonInstanceMetadata.ssh-keys)")
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = &outBuf

@@ -167,6 +167,13 @@ func (tc *TestCluster) stopServers(ctx context.Context) {
 	runtime.GC()
 }
 
+// StopServers stops the stoppers for each individual server in the cluster.
+// This uses the same parallel quiesce path as internal testcluster shutdown so
+// callers that wrap TestCluster can shut down restarted servers cleanly.
+func (tc *TestCluster) StopServers(ctx context.Context) {
+	tc.stopServers(ctx)
+}
+
 // StopServer stops an individual server in the cluster.
 func (tc *TestCluster) StopServer(idx int) {
 	tc.mu.Lock()
@@ -176,6 +183,10 @@ func (tc *TestCluster) StopServer(idx int) {
 }
 
 func (tc *TestCluster) stopServerLocked(idx int) {
+	if tc.Conns[idx] != nil {
+		_ = tc.Conns[idx].Close()
+		tc.Conns[idx] = nil
+	}
 	if tc.mu.serverStoppers[idx] != nil {
 		tc.mu.serverStoppers[idx].Stop(context.TODO())
 		tc.mu.serverStoppers[idx] = nil

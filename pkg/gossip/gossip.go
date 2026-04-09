@@ -1293,8 +1293,10 @@ func (g *Gossip) Start(advertAddr net.Addr, addresses []util.UnresolvedAddr) {
 	g.started = true
 	g.setAddresses(addresses)
 	g.server.start(advertAddr) // serve gossip protocol
-	g.bootstrap()              // bootstrap gossip client
-	g.manage()                 // manage gossip clients
+	if len(addresses) > 0 {
+		g.bootstrap() // bootstrap gossip client
+		g.manage()    // manage gossip clients
+	}
 }
 
 // hasIncomingLocked returns whether the server has an incoming gossip

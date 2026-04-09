@@ -140,6 +140,9 @@ func TestClusterMachineType(t *testing.T) {
 		{"c5d.9xlarge", 36},
 		{"c5d.18xlarge", 72},
 		// GCE machine types
+		{"e2-standard-4", 4},
+		{"e2-highcpu-8", 8},
+		{"e2-highmem-16", 16},
 		{"n1-standard-1", 1},
 		{"n1-standard-2", 2},
 		{"n1-standard-4", 4},

@@ -15,15 +15,21 @@
 package inproc
 
 import (
+	"context"
 	"fmt"
+	"sync/atomic"
 	"testing"
 
 	"github.com/semistrict/ratel/pkg/base"
 	"github.com/semistrict/ratel/pkg/kv/kvserver"
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/server"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/sql/contention"
 	"github.com/semistrict/ratel/pkg/testutils/testcluster"
 )
+
+var nextClusterAddrBase atomic.Uint64
 
 // Cluster is a TestCluster wrapper that uses in-memory networking
 // (via Registry) instead of real TCP. It is designed for use inside
@@ -46,6 +52,11 @@ type Cluster struct {
 func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterArgs)) *Cluster {
 	registry := NewRegistry()
 	stickyRegistry := server.NewStickyInMemEnginesRegistry()
+	clusterBase := nextClusterAddrBase.Add(100)
+	if clusterBase == 100 {
+		clusterBase = 30000
+		nextClusterAddrBase.Store(clusterBase)
+	}
 
 	clusterArgs := base.TestClusterArgs{
 		ReplicationMode:   base.ReplicationManual,
@@ -57,12 +68,19 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 		fn(&clusterArgs)
 	}
 
+	if clusterArgs.ServerArgs.Settings == nil {
+		clusterArgs.ServerArgs.Settings = cluster.MakeTestingClusterSettings()
+	}
+	contention.TxnIDResolutionInterval.Override(
+		context.Background(), &clusterArgs.ServerArgs.Settings.SV, 0,
+	)
+
 	addrs := make([]string, nodes)
 	rpcListeners := make([]*Listener, nodes)
 
 	for i := 0; i < nodes; i++ {
-		rpcAddr := fmt.Sprintf("127.0.0.1:%d", 26257+i)
-		httpAddr := fmt.Sprintf("127.0.0.1:%d", 8080+i)
+		rpcAddr := fmt.Sprintf("127.0.0.1:%d", clusterBase+uint64(i))
+		httpAddr := fmt.Sprintf("127.0.0.1:%d", clusterBase+1000+uint64(i))
 		addrs[i] = rpcAddr
 
 		rpcListener := registry.Register(rpcAddr)
@@ -95,7 +113,12 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 		if storeKnobs == nil {
 			storeKnobs = &kvserver.StoreTestingKnobs{}
 		}
-		storeKnobs.(*kvserver.StoreTestingKnobs).DisableRangeLogWrite = true
+		storeTestingKnobs := storeKnobs.(*kvserver.StoreTestingKnobs)
+		storeTestingKnobs.DisableRangeLogWrite = true
+		storeTestingKnobs.DisablePeriodicGossips = true
+		storeTestingKnobs.DisableRangefeedUpdater = true
+		storeTestingKnobs.DisableStoreRebalancer = true
+		storeTestingKnobs.DisableScanner = true
 		args.Knobs.Store = storeKnobs
 
 		serverKnobs := args.Knobs.Server
@@ -107,7 +130,12 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 		tk.HTTPListener = httpListener
 		tk.ShareRPCListenSQL = true
 		tk.StickyEngineRegistry = stickyRegistry
-		tk.ContextTestingKnobs.DialerFunc = registry.DialerFunc()
+		tk.DisableAuthSessionPurge = true
+		tk.DisableNodeStatusWrite = true
+		tk.DisableEnvironmentSample = true
+		tk.DisableReplicationReporter = true
+		tk.DisableProtectedTSProvider = true
+		tk.ContextTestingKnobs.DialerFunc = registry.DialerFuncFor(rpcAddr)
 		args.Knobs.Server = tk
 
 		clusterArgs.ServerArgsPerNode[i] = args
@@ -131,12 +159,18 @@ func (c *Cluster) StopNode(nodeIdx int) {
 // RestartNode restarts a previously stopped node, re-opening its
 // in-memory listeners.
 func (c *Cluster) RestartNode(t testing.TB, nodeIdx int) {
+	if err := c.RestartNodeE(nodeIdx); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// RestartNodeE restarts a previously stopped node, re-opening its
+// in-memory listeners.
+func (c *Cluster) RestartNodeE(nodeIdx int) error {
 	// Re-open the in-memory RPC listener so the restarted node can
 	// accept connections on the same address.
 	c.rpcListeners[nodeIdx].Reset()
-	if err := c.RestartServer(nodeIdx); err != nil {
-		t.Fatal(err)
-	}
+	return c.RestartServer(nodeIdx)
 }
 
 // PartitionNode blocks all new inbound connections to the given node.
@@ -149,6 +183,17 @@ func (c *Cluster) HealPartition(nodeIdx int) {
 	c.Registry.Unblock(c.addrs[nodeIdx])
 }
 
+// PartitionLink blocks traffic from srcNodeIdx to dstNodeIdx and tears down
+// any existing connections on that directed link.
+func (c *Cluster) PartitionLink(srcNodeIdx, dstNodeIdx int) {
+	c.Registry.BlockLink(c.addrs[srcNodeIdx], c.addrs[dstNodeIdx])
+}
+
+// HealLink restores a previously blocked directed link.
+func (c *Cluster) HealLink(srcNodeIdx, dstNodeIdx int) {
+	c.Registry.UnblockLink(c.addrs[srcNodeIdx], c.addrs[dstNodeIdx])
+}
+
 // NodeAddr returns the in-memory address for the given node index.
 func (c *Cluster) NodeAddr(nodeIdx int) string {
 	return c.addrs[nodeIdx]
@@ -156,7 +201,14 @@ func (c *Cluster) NodeAddr(nodeIdx int) string {
 
 // Stop stops the cluster and closes the registry.
 func (c *Cluster) Stop() {
-	c.Stopper().Stop(nil)
+	for i := range c.Conns {
+		if c.Conns[i] != nil {
+			_ = c.Conns[i].Close()
+			c.Conns[i] = nil
+		}
+	}
+	c.TestCluster.StopServers(context.Background())
+	c.Stopper().Stop(context.Background())
 	c.stickyRegistry.CloseAllStickyInMemEngines()
 	c.Registry.Close()
 }

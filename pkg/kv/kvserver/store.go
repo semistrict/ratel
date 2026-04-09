@@ -2040,7 +2040,7 @@ func (s *Store) Start(ctx context.Context, stopper *stop.Stopper) error {
 	// Connect rangefeeds to closed timestamp updates.
 	s.startRangefeedUpdater(ctx)
 
-	if s.replicateQueue != nil {
+	if s.replicateQueue != nil && !s.cfg.TestingKnobs.DisableStoreRebalancer {
 		s.storeRebalancer = NewStoreRebalancer(
 			s.cfg.AmbientCtx, s.cfg.Settings, s.replicateQueue, s.replRankings)
 		s.storeRebalancer.Start(ctx, s.stopper)
@@ -2119,9 +2119,73 @@ func (s *Store) startGossip() {
 	cannotGossipEvery := log.Every(time.Minute)
 	cannotGossipEvery.ShouldLog() // only log next time after waiting out the delay
 
+	runGossipFn := func(ctx context.Context, gossipFn struct {
+		key         roachpb.Key
+		fn          func(context.Context, *Replica) error
+		description redact.SafeString
+		interval    time.Duration
+	}) {
+		retryOptions := base.DefaultRetryOptions()
+		retryOptions.Closer = s.stopper.ShouldQuiesce()
+		for r := retry.Start(retryOptions); r.Next(); {
+			if repl := s.LookupReplica(roachpb.RKey(gossipFn.key)); repl != nil {
+				annotatedCtx := repl.AnnotateCtx(ctx)
+				if err := gossipFn.fn(annotatedCtx, repl); err != nil {
+					if cannotGossipEvery.ShouldLog() {
+						log.Infof(annotatedCtx, "could not gossip %s: %v", gossipFn.description, err)
+					}
+					if !errors.Is(err, errPeriodicGossipsDisabled) {
+						continue
+					}
+				}
+			}
+			break
+		}
+	}
+
+	runGossipFnOnce := func(ctx context.Context, gossipFn struct {
+		key         roachpb.Key
+		fn          func(context.Context, *Replica) error
+		description redact.SafeString
+		interval    time.Duration
+	}) {
+		if repl := s.LookupReplica(roachpb.RKey(gossipFn.key)); repl != nil {
+			annotatedCtx := repl.AnnotateCtx(ctx)
+			if gossipFn.key.Equal(roachpb.KeyMin) {
+				if repl.IsFirstRange() {
+					if err := repl.store.Gossip().AddClusterID(repl.store.ClusterID()); err != nil {
+						log.Errorf(annotatedCtx, "failed to gossip cluster ID: %+v", err)
+					}
+					repl.gossipFirstRange(annotatedCtx)
+				}
+				return
+			}
+			if err := gossipFn.fn(annotatedCtx, repl); err != nil && cannotGossipEvery.ShouldLog() {
+				log.Infof(annotatedCtx, "could not gossip %s: %v", gossipFn.description, err)
+			}
+		}
+	}
+
 	// Periodic updates run in a goroutine and signal a WaitGroup upon completion
 	// of their first iteration.
 	s.initComplete.Add(len(gossipFns))
+	if s.TestingKnobs().DisablePeriodicGossips {
+		for _, gossipFn := range gossipFns {
+			if !gossipFn.key.Equal(roachpb.KeyMin) {
+				s.initComplete.Done()
+				continue
+			}
+			gossipFn := gossipFn
+			bgCtx := s.AnnotateCtx(context.Background())
+			if err := s.stopper.RunAsyncTask(bgCtx, "store-gossip-once", func(ctx context.Context) {
+				runGossipFnOnce(ctx, gossipFn)
+				s.initComplete.Done()
+			}); err != nil {
+				s.initComplete.Done()
+			}
+		}
+		return
+	}
 	for _, gossipFn := range gossipFns {
 		gossipFn := gossipFn // per-iteration copy
 		bgCtx := s.AnnotateCtx(context.Background())
@@ -2129,26 +2193,7 @@ func (s *Store) startGossip() {
 			ticker := time.NewTicker(gossipFn.interval)
 			defer ticker.Stop()
 			for first := true; ; {
-				// Retry in a backoff loop until gossipFn succeeds. The gossipFn might
-				// temporarily fail (e.g. because node liveness hasn't initialized yet
-				// making it impossible to get an epoch-based range lease), in which
-				// case we want to retry quickly.
-				retryOptions := base.DefaultRetryOptions()
-				retryOptions.Closer = s.stopper.ShouldQuiesce()
-				for r := retry.Start(retryOptions); r.Next(); {
-					if repl := s.LookupReplica(roachpb.RKey(gossipFn.key)); repl != nil {
-						annotatedCtx := repl.AnnotateCtx(ctx)
-						if err := gossipFn.fn(annotatedCtx, repl); err != nil {
-							if cannotGossipEvery.ShouldLog() {
-								log.Infof(annotatedCtx, "could not gossip %s: %v", gossipFn.description, err)
-							}
-							if !errors.Is(err, errPeriodicGossipsDisabled) {
-								continue
-							}
-						}
-					}
-					break
-				}
+				runGossipFn(ctx, gossipFn)
 				if first {
 					first = false
 					s.initComplete.Done()
@@ -2271,6 +2316,9 @@ func (s *Store) startLeaseRenewer(ctx context.Context) {
 // startRangefeedUpdater periodically informs all the replicas with rangefeeds
 // about closed timestamp updates.
 func (s *Store) startRangefeedUpdater(ctx context.Context) {
+	if s.TestingKnobs().DisableRangefeedUpdater {
+		return
+	}
 	_ /* err */ = s.stopper.RunAsyncTaskEx(ctx,
 		stop.TaskOpts{
 			TaskName: "closedts-rangefeed-updater",

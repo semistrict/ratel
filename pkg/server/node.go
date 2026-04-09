@@ -835,7 +835,7 @@ func (n *Node) startGraphiteStatsExporter(st *cluster.Settings) {
 
 // startWriteNodeStatus begins periodically persisting status summaries for the
 // node and its stores.
-func (n *Node) startWriteNodeStatus(frequency time.Duration) error {
+func (n *Node) startWriteNodeStatus(frequency time.Duration, writePeriodically bool) error {
 	ctx := logtags.AddTag(n.AnnotateCtx(context.Background()), "summaries", nil)
 	// Immediately record summaries once on server startup. The update loop below
 	// will only update the key if it exists, to avoid race conditions during
@@ -846,6 +846,9 @@ func (n *Node) startWriteNodeStatus(frequency time.Duration) error {
 			return n.writeNodeStatus(ctx, 0 /* alertTTL */, false /* mustExist */)
 		}); err != nil {
 		return errors.Wrap(err, "error recording initial status summaries")
+	}
+	if !writePeriodically {
+		return nil
 	}
 	return n.stopper.RunAsyncTask(ctx, "write-node-status", func(ctx context.Context) {
 		// Write a status summary immediately; this helps the UI remain

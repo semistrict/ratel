@@ -14,7 +14,7 @@
 
 package server
 
-import "github.com/cockroachdb/cockroach/pkg/settings"
+import "github.com/semistrict/ratel/pkg/settings"
 
 // SQLStatsResponseMax controls the maximum number of statements and transactions returned by the
 // CombinedStatements endpoint.

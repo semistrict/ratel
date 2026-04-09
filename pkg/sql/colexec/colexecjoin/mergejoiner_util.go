@@ -14,7 +14,7 @@
 
 package colexecjoin
 
-import "github.com/cockroachdb/cockroach/pkg/util"
+import "github.com/semistrict/ratel/pkg/util"
 
 // circularGroupsBuffer is a struct designed to store the groups' slices for a
 // given column. It starts out small and will grow dynamically if necessary

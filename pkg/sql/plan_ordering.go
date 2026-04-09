@@ -14,7 +14,7 @@
 
 package sql
 
-import "github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo"
+import "github.com/semistrict/ratel/pkg/sql/catalog/colinfo"
 
 // ReqOrdering is the ordering that must be preserved by an operator when it is
 // distributed. It is used to configure DistSQL with the orderings it needs to

@@ -18,9 +18,9 @@ import (
 	"encoding/hex"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/encoding"
-	"github.com/cockroachdb/cockroach/pkg/util/json"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/encoding"
+	"github.com/semistrict/ratel/pkg/util/json"
 )
 
 // ExplainTreePlanNodeToJSON builds a formatted JSON object from the explain tree nodes.

@@ -72,7 +72,7 @@ message ComputeChecksum {
   bytes checksum_id = 1 [
     (gogoproto.nullable) = false,
     (gogoproto.customname) = "ChecksumID",
-    (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.UUID"
+    (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/uuid.UUID"
   ];
 
   // The version used to pick the checksum method. Only when the version matches
@@ -107,8 +107,8 @@ message Compaction {
 message SuggestedCompaction {
   option (gogoproto.equal) = true;
 
-  bytes start_key = 1 [(gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.Key"];
-  bytes end_key = 2 [(gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.Key"];
+  bytes start_key = 1 [(gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.Key"];
+  bytes end_key = 2 [(gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.Key"];
 
   Compaction compaction = 3 [(gogoproto.nullable) = false, (gogoproto.embed) = true];
 }
@@ -206,7 +206,7 @@ message ReplicatedEvalResult {
   // This is the proposal timestamp for the active lease while evaluating a lease request.
   // It will be used to make sure we know if a lease was extended after we sent out the request
   // but before we tried to apply it.
-  util.hlc.Timestamp prev_lease_proposal = 20 [(gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/util/hlc.ClockTimestamp"];
+  util.hlc.Timestamp prev_lease_proposal = 20 [(gogoproto.casttype) = "github.com/semistrict/ratel/pkg/util/hlc.ClockTimestamp"];
 
   // PriorReadSummary is a summary of the reads that have been served on the
   // range prior to this proposal, which must be a lease change (request or
@@ -274,7 +274,7 @@ message RaftCommand {
   // - the command applies on replica 1
   // - replica 2 serves anomalous reads which don't see the write
   // - the command applies on replica 2
-  int64 proposer_lease_sequence = 6 [(gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.LeaseSequence"];
+  int64 proposer_lease_sequence = 6 [(gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.LeaseSequence"];
 
   // deprecated_proposer_lease served the same purpose as proposer_lease_seq.
   // As of VersionLeaseSequence, it is no longer in use.

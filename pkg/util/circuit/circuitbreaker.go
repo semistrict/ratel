@@ -18,10 +18,10 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
 	"github.com/cockroachdb/redact/interfaces"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 )
 
 // Breaker is a circuit breaker. Before initiating an operation protected by the

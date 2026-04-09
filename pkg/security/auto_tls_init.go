@@ -25,9 +25,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 )
 
 // TODO(aaron-crl): This shared a name and purpose with the value in

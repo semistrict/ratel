@@ -21,8 +21,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/acceptance/cluster"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/acceptance/cluster"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 func TestDebugRemote(t *testing.T) {

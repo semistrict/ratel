@@ -19,19 +19,19 @@ import (
 	"reflect"
 	"runtime/pprof"
 
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/batcheval"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/concurrency"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/concurrency/poison"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverpb"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/spanset"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/txnwait"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/settings"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/util/circuit"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/tracing"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/batcheval"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/concurrency"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/concurrency/poison"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverpb"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/spanset"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/txnwait"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/settings"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/util/circuit"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/tracing"
 )
 
 var optimisticEvalLimitedScans = settings.RegisterBoolSetting(
@@ -240,7 +240,7 @@ func (r *Replica) maybeCommitWaitBeforeCommitTrigger(
 	// immediately after they are resolved, but only become visible sometime
 	// during the writer's commit-wait sleep. This property is central to the
 	// correctness of non-blocking transactions. See:
-	//   https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20200811_non_blocking_txns.md
+	//   https://github.com/semistrict/ratel/blob/master/docs/RFCS/20200811_non_blocking_txns.md
 	//
 	// However, if a transaction has a commit trigger, the side-effects of the
 	// trigger will go into effect immediately after the EndTxn's Raft command is

@@ -2,8 +2,8 @@
 - Status: in-progress
 - Start Date: 2020-04-01
 - Authors: danhhz otan rytaft sumeerbhola
-- RFC PR: [#47762](https://github.com/cockroachdb/cockroach/pull/47762)
-- Cockroach Issue: [#19313](https://github.com/cockroachdb/cockroach/issues/19313)
+- RFC PR: [#47762](https://github.com/semistrict/ratel/pull/47762)
+- Cockroach Issue: [#19313](https://github.com/semistrict/ratel/issues/19313)
 
 Table of contents:
 

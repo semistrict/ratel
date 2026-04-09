@@ -17,8 +17,8 @@ package validate
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/clusterversion"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
+	"github.com/semistrict/ratel/pkg/clusterversion"
+	"github.com/semistrict/ratel/pkg/sql/catalog"
 )
 
 const InvalidSchemaChangerStatePrefix = invalidSchemaChangerStatePrefix + ":"

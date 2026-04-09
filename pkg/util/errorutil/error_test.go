@@ -35,7 +35,7 @@ func TestUnexpectedWithIssueErrorf(t *testing.T) {
 
 	safeMsg := fmt.Sprintf("%+v", err)
 	reqHint := "We've been trying to track this particular issue down. Please report your " +
-		"reproduction at https://github.com/cockroachdb/cockroach/issues/1234 unless " +
+		"reproduction at https://github.com/semistrict/ratel/issues/1234 unless " +
 		"that issue seems to have been resolved (in which case you might want to " +
 		"update crdb to a newer version)."
 	if !strings.Contains(safeMsg, reqHint) {

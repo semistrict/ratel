@@ -17,7 +17,7 @@ package pgerror
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
 )
 
 func NewWithDepthf(depth int, code pgcode.Code, format string, args ...interface{}) error {

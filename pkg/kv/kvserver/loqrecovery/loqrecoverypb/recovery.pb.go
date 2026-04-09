@@ -5,10 +5,10 @@ package loqrecoverypb
 
 import (
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	github_com_cockroachdb_cockroach_pkg_roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	roachpb "github.com/semistrict/ratel/pkg/roachpb"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -100,8 +100,8 @@ var xxx_messageInfo_DescriptorChangeInfo proto.InternalMessageInfo
 // survivor replica in when not replicas are available.
 // Information includes range descriptor as well as parts of raft state.
 type ReplicaInfo struct {
-	NodeID                   github_com_cockroachdb_cockroach_pkg_roachpb.NodeID  `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
-	StoreID                  github_com_cockroachdb_cockroach_pkg_roachpb.StoreID `protobuf:"varint,2,opt,name=store_id,json=storeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.StoreID" json:"store_id,omitempty"`
+	NodeID                   github_com_cockroachdb_cockroach_pkg_roachpb.NodeID  `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	StoreID                  github_com_cockroachdb_cockroach_pkg_roachpb.StoreID `protobuf:"varint,2,opt,name=store_id,json=storeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.StoreID" json:"store_id,omitempty"`
 	Desc                     roachpb.RangeDescriptor                              `protobuf:"bytes,3,opt,name=desc,proto3" json:"desc"`
 	RaftAppliedIndex         uint64                                               `protobuf:"varint,4,opt,name=raft_applied_index,json=raftAppliedIndex,proto3" json:"raft_applied_index,omitempty"`
 	RaftCommittedIndex       uint64                                               `protobuf:"varint,5,opt,name=raft_committed_index,json=raftCommittedIndex,proto3" json:"raft_committed_index,omitempty"`
@@ -175,11 +175,11 @@ var xxx_messageInfo_NodeReplicaInfo proto.InternalMessageInfo
 // to make it a designated survivor so that replica could act as a source of truth when
 // doing loss of quorum recovery.
 type ReplicaUpdate struct {
-	RangeID       github_com_cockroachdb_cockroach_pkg_roachpb.RangeID   `protobuf:"varint,1,opt,name=range_id,json=rangeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RangeID" json:"range_id,omitempty" yaml:"RangeID"`
+	RangeID       github_com_cockroachdb_cockroach_pkg_roachpb.RangeID   `protobuf:"varint,1,opt,name=range_id,json=rangeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RangeID" json:"range_id,omitempty" yaml:"RangeID"`
 	StartKey      RecoveryKey                                            `protobuf:"bytes,2,opt,name=start_key,json=startKey,proto3,casttype=RecoveryKey" json:"start_key,omitempty" yaml:"StartKey"`
-	OldReplicaID  github_com_cockroachdb_cockroach_pkg_roachpb.ReplicaID `protobuf:"varint,3,opt,name=old_replica_id,json=oldReplicaId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.ReplicaID" json:"old_replica_id,omitempty" yaml:"OldReplicaID"`
+	OldReplicaID  github_com_cockroachdb_cockroach_pkg_roachpb.ReplicaID `protobuf:"varint,3,opt,name=old_replica_id,json=oldReplicaId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.ReplicaID" json:"old_replica_id,omitempty" yaml:"OldReplicaID"`
 	NewReplica    roachpb.ReplicaDescriptor                              `protobuf:"bytes,4,opt,name=new_replica,json=newReplica,proto3" json:"new_replica" yaml:"NewReplica"`
-	NextReplicaID github_com_cockroachdb_cockroach_pkg_roachpb.ReplicaID `protobuf:"varint,5,opt,name=next_replica_id,json=nextReplicaId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.ReplicaID" json:"next_replica_id,omitempty" yaml:"NextReplicaID"`
+	NextReplicaID github_com_cockroachdb_cockroach_pkg_roachpb.ReplicaID `protobuf:"varint,5,opt,name=next_replica_id,json=nextReplicaId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.ReplicaID" json:"next_replica_id,omitempty" yaml:"NextReplicaID"`
 }
 
 func (m *ReplicaUpdate) Reset()      { *m = ReplicaUpdate{} }
@@ -257,10 +257,10 @@ type ReplicaRecoveryRecord struct {
 	// produce different timestamps even if updates originated from the same recovery plan.
 	// Expressed as nanoseconds since the Unix epoch.
 	Timestamp       int64                                                  `protobuf:"varint,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	RangeID         github_com_cockroachdb_cockroach_pkg_roachpb.RangeID   `protobuf:"varint,2,opt,name=range_id,json=rangeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RangeID" json:"range_id,omitempty" yaml:"RangeID"`
+	RangeID         github_com_cockroachdb_cockroach_pkg_roachpb.RangeID   `protobuf:"varint,2,opt,name=range_id,json=rangeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RangeID" json:"range_id,omitempty" yaml:"RangeID"`
 	StartKey        RecoveryKey                                            `protobuf:"bytes,3,opt,name=start_key,json=startKey,proto3,casttype=RecoveryKey" json:"start_key,omitempty" yaml:"StartKey"`
 	EndKey          RecoveryKey                                            `protobuf:"bytes,4,opt,name=end_key,json=endKey,proto3,casttype=RecoveryKey" json:"end_key,omitempty" yaml:"StartKey"`
-	OldReplicaID    github_com_cockroachdb_cockroach_pkg_roachpb.ReplicaID `protobuf:"varint,5,opt,name=old_replica_id,json=oldReplicaId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.ReplicaID" json:"old_replica_id,omitempty" yaml:"OldReplicaID"`
+	OldReplicaID    github_com_cockroachdb_cockroach_pkg_roachpb.ReplicaID `protobuf:"varint,5,opt,name=old_replica_id,json=oldReplicaId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.ReplicaID" json:"old_replica_id,omitempty" yaml:"OldReplicaID"`
 	NewReplica      roachpb.ReplicaDescriptor                              `protobuf:"bytes,6,opt,name=new_replica,json=newReplica,proto3" json:"new_replica" yaml:"NewReplica"`
 	RangeDescriptor roachpb.RangeDescriptor                                `protobuf:"bytes,7,opt,name=range_descriptor,json=rangeDescriptor,proto3" json:"range_descriptor" yaml:"RangeDescriptor"`
 }

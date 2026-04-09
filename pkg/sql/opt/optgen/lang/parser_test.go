@@ -20,8 +20,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils"
 	"github.com/cockroachdb/datadriven"
+	"github.com/semistrict/ratel/pkg/testutils"
 )
 
 func TestParser(t *testing.T) {

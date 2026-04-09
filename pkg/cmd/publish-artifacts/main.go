@@ -22,8 +22,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/cockroachdb/cockroach/pkg/release"
 	"github.com/kr/pretty"
+	"github.com/semistrict/ratel/pkg/release"
 )
 
 const (

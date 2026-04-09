@@ -9,13 +9,13 @@ package execinfrapb
 
 import (
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_jobs_jobspb "github.com/cockroachdb/cockroach/pkg/jobs/jobspb"
-	jobspb "github.com/cockroachdb/cockroach/pkg/jobs/jobspb"
-	roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	github_com_cockroachdb_cockroach_pkg_security "github.com/cockroachdb/cockroach/pkg/security"
-	hlc "github.com/cockroachdb/cockroach/pkg/util/hlc"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	github_com_cockroachdb_cockroach_pkg_jobs_jobspb "github.com/semistrict/ratel/pkg/jobs/jobspb"
+	jobspb "github.com/semistrict/ratel/pkg/jobs/jobspb"
+	roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	github_com_cockroachdb_cockroach_pkg_security "github.com/semistrict/ratel/pkg/security"
+	hlc "github.com/semistrict/ratel/pkg/util/hlc"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -42,9 +42,9 @@ type ChangeAggregatorSpec struct {
 	Feed jobspb.ChangefeedDetails `protobuf:"bytes,2,opt,name=feed" json:"feed"`
 	// User who initiated the changefeed. This is used to check access privileges
 	// when using FileTable ExternalStorage.
-	UserProto github_com_cockroachdb_cockroach_pkg_security.SQLUsernameProto `protobuf:"bytes,3,opt,name=user_proto,json=userProto,casttype=github.com/cockroachdb/cockroach/pkg/security.SQLUsernameProto" json:"user_proto"`
+	UserProto github_com_cockroachdb_cockroach_pkg_security.SQLUsernameProto `protobuf:"bytes,3,opt,name=user_proto,json=userProto,casttype=github.com/semistrict/ratel/pkg/security.SQLUsernameProto" json:"user_proto"`
 	// JobID is the id of this changefeed in the system jobs.
-	JobID github_com_cockroachdb_cockroach_pkg_jobs_jobspb.JobID `protobuf:"varint,4,opt,name=job_id,json=jobId,casttype=github.com/cockroachdb/cockroach/pkg/jobs/jobspb.JobID" json:"job_id"`
+	JobID github_com_cockroachdb_cockroach_pkg_jobs_jobspb.JobID `protobuf:"varint,4,opt,name=job_id,json=jobId,casttype=github.com/semistrict/ratel/pkg/jobs/jobspb.JobID" json:"job_id"`
 }
 
 func (m *ChangeAggregatorSpec) Reset()         { *m = ChangeAggregatorSpec{} }
@@ -157,10 +157,10 @@ type ChangeFrontierSpec struct {
 	// Feed is the specification for this changefeed.
 	Feed jobspb.ChangefeedDetails `protobuf:"bytes,2,opt,name=feed" json:"feed"`
 	// JobID is the id of this changefeed in the system jobs.
-	JobID github_com_cockroachdb_cockroach_pkg_jobs_jobspb.JobID `protobuf:"varint,3,opt,name=job_id,json=jobId,casttype=github.com/cockroachdb/cockroach/pkg/jobs/jobspb.JobID" json:"job_id"`
+	JobID github_com_cockroachdb_cockroach_pkg_jobs_jobspb.JobID `protobuf:"varint,3,opt,name=job_id,json=jobId,casttype=github.com/semistrict/ratel/pkg/jobs/jobspb.JobID" json:"job_id"`
 	// User who initiated the changefeed. This is used to check access privileges
 	// when using FileTable ExternalStorage.
-	UserProto github_com_cockroachdb_cockroach_pkg_security.SQLUsernameProto `protobuf:"bytes,4,opt,name=user_proto,json=userProto,casttype=github.com/cockroachdb/cockroach/pkg/security.SQLUsernameProto" json:"user_proto"`
+	UserProto github_com_cockroachdb_cockroach_pkg_security.SQLUsernameProto `protobuf:"bytes,4,opt,name=user_proto,json=userProto,casttype=github.com/semistrict/ratel/pkg/security.SQLUsernameProto" json:"user_proto"`
 }
 
 func (m *ChangeFrontierSpec) Reset()         { *m = ChangeFrontierSpec{} }

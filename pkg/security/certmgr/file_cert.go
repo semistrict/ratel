@@ -19,8 +19,8 @@ import (
 	"crypto/tls"
 	"io/ioutil"
 
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 )
 
 // Ensure that FileCert implements Cert.

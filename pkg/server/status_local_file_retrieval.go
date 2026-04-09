@@ -24,9 +24,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/server/debug"
-	"github.com/cockroachdb/cockroach/pkg/server/serverpb"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/server/debug"
+	"github.com/semistrict/ratel/pkg/server/serverpb"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

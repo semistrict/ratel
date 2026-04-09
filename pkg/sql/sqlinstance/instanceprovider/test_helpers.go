@@ -17,10 +17,10 @@ package instanceprovider
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlinstance"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlinstance/instancestorage"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlliveness"
-	"github.com/cockroachdb/cockroach/pkg/util/stop"
+	"github.com/semistrict/ratel/pkg/sql/sqlinstance"
+	"github.com/semistrict/ratel/pkg/sql/sqlinstance/instancestorage"
+	"github.com/semistrict/ratel/pkg/sql/sqlliveness"
+	"github.com/semistrict/ratel/pkg/util/stop"
 )
 
 // TestInstanceProvider exposes ShutdownSQLInstanceForTest

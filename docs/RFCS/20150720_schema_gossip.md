@@ -1,7 +1,7 @@
 - Feature Name: schema_gossip
 - Status: completed
 - Start Date: 2015-07-20
-- RFC PR: [#1743](https://github.com/cockroachdb/cockroach/pull/1743)
+- RFC PR: [#1743](https://github.com/semistrict/ratel/pull/1743)
 - Cockroach Issue:
 
 # Summary

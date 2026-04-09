@@ -17,8 +17,8 @@ package democluster
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/clicfg"
-	"github.com/cockroachdb/cockroach/pkg/workload"
+	"github.com/semistrict/ratel/pkg/cli/clicfg"
+	"github.com/semistrict/ratel/pkg/workload"
 )
 
 // Context represents the input configuration and current state

@@ -38,21 +38,21 @@ import (
 	"time"
 
 	"github.com/armon/circbuf"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/cluster"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/option"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/spec"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/test"
-	"github.com/cockroachdb/cockroach/pkg/roachprod"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/install"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/logger"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/vm"
-	"github.com/cockroachdb/cockroach/pkg/util/contextutil"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/quotapool"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
 	"github.com/cockroachdb/errors"
 	_ "github.com/lib/pq"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/cluster"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/option"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/spec"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/test"
+	"github.com/semistrict/ratel/pkg/roachprod"
+	"github.com/semistrict/ratel/pkg/roachprod/install"
+	"github.com/semistrict/ratel/pkg/roachprod/logger"
+	"github.com/semistrict/ratel/pkg/roachprod/vm"
+	"github.com/semistrict/ratel/pkg/util/contextutil"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/quotapool"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 	"github.com/spf13/pflag"
 )
 
@@ -170,10 +170,10 @@ func findBinaryOrLibrary(binOrLib string, name string) (string, error) {
 			suffix = ".docker_amd64"
 		}
 		dirs := []string{
-			filepath.Join(gopath, "/src/github.com/cockroachdb/cockroach/"),
-			filepath.Join(gopath, "/src/github.com/cockroachdb/cockroach", binOrLib+suffix),
+			filepath.Join(gopath, "/src/github.com/semistrict/ratel/"),
+			filepath.Join(gopath, "/src/github.com/semistrict/ratel", binOrLib+suffix),
 			filepath.Join(os.ExpandEnv("$PWD"), binOrLib+suffix),
-			filepath.Join(gopath, "/src/github.com/cockroachdb/cockroach", binOrLib),
+			filepath.Join(gopath, "/src/github.com/semistrict/ratel", binOrLib),
 		}
 		for _, dir := range dirs {
 			path = filepath.Join(dir, name)
@@ -854,7 +854,7 @@ func (f *clusterFactory) newCluster(
 			// NB: this intentionally avoids re-using the name across iterations in
 			// the loop. See:
 			//
-			// https://github.com/cockroachdb/cockroach/issues/67906#issuecomment-887477675
+			// https://github.com/semistrict/ratel/issues/67906#issuecomment-887477675
 			name:       f.genName(cfg),
 			spec:       cfg.spec,
 			expiration: cfg.spec.Expiration(),
@@ -1290,7 +1290,7 @@ func (c *clusterImpl) CheckReplicaDivergenceOnDB(
 ) error {
 	// NB: we set a statement_timeout since context cancellation won't work here,
 	// see:
-	// https://github.com/cockroachdb/cockroach/pull/34520
+	// https://github.com/semistrict/ratel/pull/34520
 	//
 	// We've seen the consistency checks hang indefinitely in some cases.
 	rows, err := db.QueryContext(ctx, `

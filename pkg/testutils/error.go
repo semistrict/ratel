@@ -17,8 +17,8 @@ package testutils
 import (
 	"regexp"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
 )
 
 // IsError returns true if the error string matches the supplied regex.

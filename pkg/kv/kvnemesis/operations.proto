@@ -91,7 +91,7 @@ message ChangeReplicasOperation {
 
 message TransferLeaseOperation {
   bytes key = 1;
-  int32 target = 2 [(gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.StoreID"];
+  int32 target = 2 [(gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.StoreID"];
   Result result = 3 [(gogoproto.nullable) = false];
 }
 

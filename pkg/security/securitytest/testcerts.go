@@ -18,7 +18,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cockroachdb/cockroach/pkg/security"
+	"github.com/semistrict/ratel/pkg/security"
 )
 
 // CreateTestCerts populates the test certificates in the given directory.

@@ -57,7 +57,7 @@ message ComponentID {
   optional int32 sql_instance_id = 4 [
     (gogoproto.nullable) = false,
     (gogoproto.customname) = "SQLInstanceID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/base.SQLInstanceID"];
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/base.SQLInstanceID"];
 }
 
 // ComponentStats contains statistics for an execution component. A component is

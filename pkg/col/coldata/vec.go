@@ -17,8 +17,8 @@ package coldata
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/col/typeconv"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/col/typeconv"
+	"github.com/semistrict/ratel/pkg/sql/types"
 )
 
 // Column is an interface that represents a raw array of a Go native type.

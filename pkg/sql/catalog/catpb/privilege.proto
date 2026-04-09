@@ -22,7 +22,7 @@ import "gogoproto/gogo.proto";
 message UserPrivileges {
   option (gogoproto.equal) = true;
   optional string user_proto = 1 [(gogoproto.nullable) = false,
-                                  (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/security.SQLUsernameProto"];
+                                  (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/security.SQLUsernameProto"];
   // privileges is a bitfield of 1<<Privilege values.
   optional uint32 privileges = 2 [(gogoproto.nullable) = false];
   optional uint32 with_grant_option = 3 [(gogoproto.nullable) = false];
@@ -34,7 +34,7 @@ message PrivilegeDescriptor {
   option (gogoproto.equal) = true;
   repeated UserPrivileges users = 1 [(gogoproto.nullable) = false];
   optional string owner_proto = 2 [(gogoproto.nullable) = false,
-                                   (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/security.SQLUsernameProto"];
+                                   (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/security.SQLUsernameProto"];
   optional uint32 version = 3 [(gogoproto.nullable) = false,
                               (gogoproto.casttype) = "PrivilegeDescVersion"];
 }
@@ -57,7 +57,7 @@ message DefaultPrivilegesForRole {
   // explicit role.
   message ExplicitRole {
     option (gogoproto.equal) = true;
-    optional string user_proto = 1 [(gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/security.SQLUsernameProto", (gogoproto.nullable) = false];
+    optional string user_proto = 1 [(gogoproto.casttype) = "github.com/semistrict/ratel/pkg/security.SQLUsernameProto", (gogoproto.nullable) = false];
     // These are special cases in Postgres. Public has USAGE on types and
     // the creator role has ALL privileges by default.
     // Under the default cases where all these bools are true, the role can be
@@ -85,7 +85,7 @@ message DefaultPrivilegesForRole {
     ForAllRolesPseudoRole for_all_roles = 13;
   }
   map<uint32, PrivilegeDescriptor> default_privileges_per_object = 14 [(gogoproto.nullable) = false,
-    (gogoproto.castkey) = "github.com/cockroachdb/cockroach/pkg/sql/sem/tree.AlterDefaultPrivilegesTargetObject"];
+    (gogoproto.castkey) = "github.com/semistrict/ratel/pkg/sql/sem/tree.AlterDefaultPrivilegesTargetObject"];
 }
 
 // DefaultPrivilegeDescriptor describes the set of default privileges for a

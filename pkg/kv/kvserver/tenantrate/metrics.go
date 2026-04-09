@@ -15,10 +15,10 @@
 package tenantrate
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/multitenant"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
-	"github.com/cockroachdb/cockroach/pkg/util/metric/aggmetric"
+	"github.com/semistrict/ratel/pkg/multitenant"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/metric"
+	"github.com/semistrict/ratel/pkg/util/metric/aggmetric"
 )
 
 // Metrics is a metric.Struct for the LimiterFactory.

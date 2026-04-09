@@ -2,8 +2,8 @@
 - Status: completed
 - Start Date: 2017-10-11
 - Authors: Joey Pereira
-- RFC PR: [#19327](https://github.com/cockroachdb/cockroach/pull/19327)
-- Cockroach Issue: [#10425](https://github.com/cockroachdb/cockroach/issues/10425) (Consistency checking), [#19221](https://github.com/cockroachdb/cockroach/issues/19221) (Using distSQL to do index checks)
+- RFC PR: [#19327](https://github.com/semistrict/ratel/pull/19327)
+- Cockroach Issue: [#10425](https://github.com/semistrict/ratel/issues/10425) (Consistency checking), [#19221](https://github.com/semistrict/ratel/issues/19221) (Using distSQL to do index checks)
 
 # Summary
 
@@ -31,9 +31,9 @@ such as [#18533].
 The methods for collecting index data introduced in this RFC are similar
 to that which is needed to create an alternative backfilling mechanism.
 
-[#18533]: https://github.com/cockroachdb/cockroach/issues/18533
-[SCRUB command RFC]: https://github.com/cockroachdb/cockroach/issues/18675
-[online schema change RFC]: https://github.com/cockroachdb/cockroach/blob/94b3f764ead019c529f14c7aab64724991f3ac67/docs/RFCS/20151014_online_schema_change.md
+[#18533]: https://github.com/semistrict/ratel/issues/18533
+[SCRUB command RFC]: https://github.com/semistrict/ratel/issues/18675
+[online schema change RFC]: https://github.com/semistrict/ratel/blob/94b3f764ead019c529f14c7aab64724991f3ac67/docs/RFCS/20151014_online_schema_change.md
 
 
 # Guide-level explanation
@@ -287,7 +287,7 @@ construct the distSQL physical plan. This will also take some extra code
 to wrap the call from TableReader to RowFetcher where it will transform
 any caught errors.
 
-[SCRUB interface RFC]: https://github.com/cockroachdb/cockroach/pull/18675
+[SCRUB interface RFC]: https://github.com/semistrict/ratel/pull/18675
 
 ## 3. Generating and executing the logical plan in the distSQL execution engine
 

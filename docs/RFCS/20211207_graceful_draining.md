@@ -2,8 +2,8 @@
 - Status: Draft
 - Start Date: 2021-11-01
 - Authors: Jane Xing
-- RFC PR: https://github.com/cockroachdb/cockroach/pull/72991
-- Cockroach Issue: [66319](https://github.com/cockroachdb/cockroach/issues/66319)
+- RFC PR: https://github.com/semistrict/ratel/pull/72991
+- Cockroach Issue: [66319](https://github.com/semistrict/ratel/issues/66319)
 
 # Summary
 This RFC proposes to optimize the draining process to be more legible for
@@ -429,7 +429,7 @@ See “questions not fully answered” in the Technical Design section.
 [HirakiCP]: https://github.com/brettwooldridge/HikariCP
 [demo code]: https://github.com/janeCockroachDB/hikari_demo
 [demo recording current draining]: https://www.dropbox.com/s/6333e4x6yzwswfu/CurrentDraining.mp4?dl=0
-[draft pr]: https://github.com/cockroachdb/cockroach/pull/72991
+[draft pr]: https://github.com/semistrict/ratel/pull/72991
 [current draining pic]: images/graceful_draining_current_draining_process.png?raw=true "Current Draining Process"
 [summary pic]: images/graceful_draining_summary_drain_query_wait.png?raw=true "Summary of features for drain_wait and query_wait"
 [proposed draining pic]: images/graceful_draining_connection_wait.png?raw=true "Proposed draining process"
@@ -437,8 +437,8 @@ See “questions not fully answered” in the Technical Design section.
 [HAProxy health check]: https://www.haproxy.com/documentation/hapee/latest/load-balancing/health-checking/active-health-checks/
 [k8s health check]: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 [survey link]: https://docs.google.com/forms/d/1_BWgza8n5iYBwVR7WSrKT4jL8RClE-PMoOmzlUWvnl8/edit?usp=sharing
-[Issue 74412]: https://github.com/cockroachdb/cockroach/issues/74412
-[Issue 73274]: https://github.com/cockroachdb/cockroach/issues/73274
+[Issue 74412]: https://github.com/semistrict/ratel/issues/74412
+[Issue 73274]: https://github.com/semistrict/ratel/issues/73274
 [Cluster Setting Page]: https://www.cockroachlabs.com/docs/v21.2/cluster-settings.html
 [improvement recording]: https://www.dropbox.com/s/j8o81htifdi0nfw/ImprovedDrainingWMp3.mp4?dl=0
-[Lease Transfer Issue]: https://github.com/cockroachdb/cockroach/issues/75520
+[Lease Transfer Issue]: https://github.com/semistrict/ratel/issues/75520

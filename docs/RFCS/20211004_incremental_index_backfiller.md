@@ -3,7 +3,7 @@
 - Start Date: 2021-10-04
 - Authors: David Taylor, Rui Hu
 - RFC PR: 71090
-- Cockroach Issue: https://github.com/cockroachdb/cockroach/issues/70426
+- Cockroach Issue: https://github.com/semistrict/ratel/issues/70426
 
 # Summary
 
@@ -55,7 +55,7 @@ As a special case, an empty byte string KV value, which is extreme common in Coc
 ## Mixed Version State
 The index backfill process outlined in this document cannot be used until all nodes have been upgraded to a version that supports the new delete encoding and the new “backfilling” index state. 
 
-In addition, since the existing index backfilling process relies on a non-MVCC compatible implementation of AddSSTable, the new [MVCC compatible implementation of AddSSTable](https://github.com/cockroachdb/cockroach/issues/70422) cannot be used until all nodes in the cluster have been upgraded to a version with the new index creation process. 
+In addition, since the existing index backfilling process relies on a non-MVCC compatible implementation of AddSSTable, the new [MVCC compatible implementation of AddSSTable](https://github.com/semistrict/ratel/issues/70422) cannot be used until all nodes in the cluster have been upgraded to a version with the new index creation process. 
 
 # Alternatives Considered
 ## Incremental Scans and Protected Timestamps

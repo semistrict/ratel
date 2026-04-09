@@ -2,8 +2,8 @@
 - Status: completed
 - Start Date: 2017-05-04
 - Authors: Bilal Akhtar
-- RFC PR: https://github.com/cockroachdb/cockroach/pull/15761
-- Cockroach Issue: [#7003](https://github.com/cockroachdb/cockroach/issues/7003)
+- RFC PR: https://github.com/semistrict/ratel/pull/15761
+- Cockroach Issue: [#7003](https://github.com/semistrict/ratel/issues/7003)
 
 # Summary
 
@@ -43,7 +43,7 @@ a non-SQL interface to monitor queries and sessions would be an asset.
 # Detailed design
 
 The inspiration behind some of the design comes from
-[this PR from Raphael](https://github.com/cockroachdb/cockroach/pull/10317) which implemented
+[this PR from Raphael](https://github.com/semistrict/ratel/pull/10317) which implemented
 node-local session registries exposed via a virtual table.
 
 ## Thread-safe session struct

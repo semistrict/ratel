@@ -14,7 +14,7 @@
 
 package descmarshaltest
 
-import "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
+import "github.com/semistrict/ratel/pkg/sql/catalog/descpb"
 
 func F() {
 	var d descpb.Descriptor

@@ -28,10 +28,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/server/serverpb"
 	"github.com/cockroachdb/errors"
 	"github.com/google/pprof/driver"
 	"github.com/google/pprof/profile"
+	"github.com/semistrict/ratel/pkg/server/serverpb"
 	"github.com/spf13/pflag"
 )
 

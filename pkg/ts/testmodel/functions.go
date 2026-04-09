@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/cockroachdb/cockroach/pkg/ts/tspb"
+	"github.com/semistrict/ratel/pkg/ts/tspb"
 )
 
 type aggFunc func(DataSeries) float64

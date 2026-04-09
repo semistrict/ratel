@@ -10,18 +10,18 @@ package execinfrapb
 import (
 	encoding_binary "encoding/binary"
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_jobs_jobspb "github.com/cockroachdb/cockroach/pkg/jobs/jobspb"
-	jobspb "github.com/cockroachdb/cockroach/pkg/jobs/jobspb"
-	roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	github_com_cockroachdb_cockroach_pkg_security "github.com/cockroachdb/cockroach/pkg/security"
-	_ "github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb"
-	github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb "github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb"
-	descpb "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	hlc "github.com/cockroachdb/cockroach/pkg/util/hlc"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
+	github_com_cockroachdb_cockroach_pkg_jobs_jobspb "github.com/semistrict/ratel/pkg/jobs/jobspb"
+	jobspb "github.com/semistrict/ratel/pkg/jobs/jobspb"
+	roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	github_com_cockroachdb_cockroach_pkg_security "github.com/semistrict/ratel/pkg/security"
+	_ "github.com/semistrict/ratel/pkg/sql/catalog/catpb"
+	github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb "github.com/semistrict/ratel/pkg/sql/catalog/catpb"
+	descpb "github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb "github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	hlc "github.com/semistrict/ratel/pkg/util/hlc"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -115,7 +115,7 @@ type BackfillerSpec struct {
 	// IndexesToBackfill is the set of indexes to backfill. This is populated only
 	// starting in 21.1, prior to that the implied index set are those containing
 	// the mutation ID of the first mutation on the table descriptor.
-	IndexesToBackfill []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.IndexID `protobuf:"varint,8,rep,name=indexes_to_backfill,json=indexesToBackfill,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.IndexID" json:"indexes_to_backfill,omitempty"`
+	IndexesToBackfill []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.IndexID `protobuf:"varint,8,rep,name=indexes_to_backfill,json=indexesToBackfill,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.IndexID" json:"indexes_to_backfill,omitempty"`
 	InitialSplits     int32                                                             `protobuf:"varint,11,opt,name=initial_splits,json=initialSplits" json:"initial_splits"`
 	// WriteAtBatchTimestamp will write the SST MVCC timestamps at the batch
 	// timestamp, even if the request gets pushed server-side. This ensures the
@@ -159,7 +159,7 @@ var xxx_messageInfo_BackfillerSpec proto.InternalMessageInfo
 // JobProgress identifies the job to report progress on. This reporting
 // happens outside this package.
 type JobProgress struct {
-	JobID github_com_cockroachdb_cockroach_pkg_jobs_jobspb.JobID `protobuf:"varint,1,opt,name=job_id,json=jobId,casttype=github.com/cockroachdb/cockroach/pkg/jobs/jobspb.JobID" json:"job_id"`
+	JobID github_com_cockroachdb_cockroach_pkg_jobs_jobspb.JobID `protobuf:"varint,1,opt,name=job_id,json=jobId,casttype=github.com/semistrict/ratel/pkg/jobs/jobspb.JobID" json:"job_id"`
 	// contribution is the percent of work of the total this processor will
 	// process.
 	Contribution float32 `protobuf:"fixed32,2,opt,name=contribution" json:"contribution"`
@@ -228,11 +228,11 @@ type ReadImportDataSpec struct {
 	ReaderParallelism int32 `protobuf:"varint,13,opt,name=readerParallelism" json:"readerParallelism"`
 	// User who initiated the import. This is used to check access privileges
 	// when using FileTable ExternalStorage.
-	UserProto github_com_cockroachdb_cockroach_pkg_security.SQLUsernameProto `protobuf:"bytes,15,opt,name=user_proto,json=userProto,casttype=github.com/cockroachdb/cockroach/pkg/security.SQLUsernameProto" json:"user_proto"`
+	UserProto github_com_cockroachdb_cockroach_pkg_security.SQLUsernameProto `protobuf:"bytes,15,opt,name=user_proto,json=userProto,casttype=github.com/semistrict/ratel/pkg/security.SQLUsernameProto" json:"user_proto"`
 	Types     []*descpb.TypeDescriptor                                       `protobuf:"bytes,16,rep,name=types" json:"types,omitempty"`
 	// If the database being imported into is a multi-region database, then this
 	// field stores the databases' primary region.
-	DatabasePrimaryRegion github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.RegionName `protobuf:"bytes,17,opt,name=database_primary_region,json=databasePrimaryRegion,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb.RegionName" json:"database_primary_region"`
+	DatabasePrimaryRegion github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.RegionName `protobuf:"bytes,17,opt,name=database_primary_region,json=databasePrimaryRegion,casttype=github.com/semistrict/ratel/pkg/sql/catalog/catpb.RegionName" json:"database_primary_region"`
 	InitialSplits         int32                                                             `protobuf:"varint,18,opt,name=initial_splits,json=initialSplits" json:"initial_splits"`
 }
 
@@ -414,7 +414,7 @@ type BackupDataSpec struct {
 	PKIDs map[uint64]bool `protobuf:"bytes,9,rep,name=pk_ids,json=pkIds" json:"pk_ids,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
 	// User who initiated the backup. This is used to check access privileges
 	// when using FileTable ExternalStorage.
-	UserProto github_com_cockroachdb_cockroach_pkg_security.SQLUsernameProto `protobuf:"bytes,10,opt,name=user_proto,json=userProto,casttype=github.com/cockroachdb/cockroach/pkg/security.SQLUsernameProto" json:"user_proto"`
+	UserProto github_com_cockroachdb_cockroach_pkg_security.SQLUsernameProto `protobuf:"bytes,10,opt,name=user_proto,json=userProto,casttype=github.com/semistrict/ratel/pkg/security.SQLUsernameProto" json:"user_proto"`
 }
 
 func (m *BackupDataSpec) Reset()         { *m = BackupDataSpec{} }
@@ -717,7 +717,7 @@ type ExportSpec struct {
 	ChunkSize int64 `protobuf:"varint,5,opt,name=chunk_size,json=chunkSize" json:"chunk_size"`
 	// User who initiated the export. This is used to check access privileges
 	// when using FileTable ExternalStorage.
-	UserProto github_com_cockroachdb_cockroach_pkg_security.SQLUsernameProto `protobuf:"bytes,6,opt,name=user_proto,json=userProto,casttype=github.com/cockroachdb/cockroach/pkg/security.SQLUsernameProto" json:"user_proto"`
+	UserProto github_com_cockroachdb_cockroach_pkg_security.SQLUsernameProto `protobuf:"bytes,6,opt,name=user_proto,json=userProto,casttype=github.com/semistrict/ratel/pkg/security.SQLUsernameProto" json:"user_proto"`
 	// col_names specifies the logical column names for the exported parquet file.
 	ColNames []string `protobuf:"bytes,7,rep,name=col_names,json=colNames" json:"col_names,omitempty"`
 }
@@ -788,8 +788,8 @@ var xxx_messageInfo_BulkRowWriterSpec proto.InternalMessageInfo
 
 type IndexBackfillMergerSpec struct {
 	Table            descpb.TableDescriptor                                            `protobuf:"bytes,1,opt,name=table" json:"table"`
-	TemporaryIndexes []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.IndexID `protobuf:"varint,2,rep,name=temporary_indexes,json=temporaryIndexes,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.IndexID" json:"temporary_indexes,omitempty"`
-	AddedIndexes     []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.IndexID `protobuf:"varint,3,rep,name=added_indexes,json=addedIndexes,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.IndexID" json:"added_indexes,omitempty"`
+	TemporaryIndexes []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.IndexID `protobuf:"varint,2,rep,name=temporary_indexes,json=temporaryIndexes,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.IndexID" json:"temporary_indexes,omitempty"`
+	AddedIndexes     []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.IndexID `protobuf:"varint,3,rep,name=added_indexes,json=addedIndexes,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.IndexID" json:"added_indexes,omitempty"`
 	Spans            []roachpb.Span                                                    `protobuf:"bytes,4,rep,name=spans" json:"spans"`
 	SpanIdx          []int32                                                           `protobuf:"varint,5,rep,name=span_idx,json=spanIdx" json:"span_idx,omitempty"`
 	MergeTimestamp   hlc.Timestamp                                                     `protobuf:"bytes,8,opt,name=mergeTimestamp" json:"mergeTimestamp"`

@@ -20,8 +20,8 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/bench"
-	"github.com/cockroachdb/cockroach/pkg/testutils/sqlutils"
+	"github.com/semistrict/ratel/pkg/bench"
+	"github.com/semistrict/ratel/pkg/testutils/sqlutils"
 )
 
 // maxTransfer is the maximum amount to transfer in one transaction.

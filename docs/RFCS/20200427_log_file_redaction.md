@@ -2,8 +2,8 @@
 - Status: completed
 - Start Date: 2020-04-28
 - Authors: knz
-- RFC PR: [#48076](https://github.com/cockroachdb/cockroach/pull/48076)
-- Cockroach Issue: [#46031](https://github.com/cockroachdb/cockroach/issues/46031)
+- RFC PR: [#48076](https://github.com/semistrict/ratel/pull/48076)
+- Cockroach Issue: [#46031](https://github.com/semistrict/ratel/issues/46031)
 
 # Summary
 
@@ -283,7 +283,7 @@ Table of contents:
 ## Detailed design
 
 The proposed approach is prototyped in this PR:
-https://github.com/cockroachdb/cockroach/pull/48051
+https://github.com/semistrict/ratel/pull/48051
 
 It works as follows:
 
@@ -499,7 +499,7 @@ in `docs/generated/redact_safe.md`.
 The feature will be introduced in the following order:
 
 1. the initial implementation (e.g. that of [this
-   pr](https://github.com/cockroachdb/cockroach/pull/48051)) will add
+   pr](https://github.com/semistrict/ratel/pull/48051)) will add
    the infrastructure for log redaction, but keep the feature disabled
    by default: `--redactable-logs=false` server-side, and
    `--redact-logs=false` for `cockroach debug zip` and `cockroach

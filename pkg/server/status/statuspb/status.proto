@@ -70,7 +70,7 @@ message NodeStatus {
   //       cluster version is >= VersionRPCNetworkStats.
   map<int32, int64> latencies = 9 [
     (gogoproto.nullable) = false,
-    (gogoproto.castkey) = "github.com/cockroachdb/cockroach/pkg/roachpb.NodeID"
+    (gogoproto.castkey) = "github.com/semistrict/ratel/pkg/roachpb.NodeID"
   ];
 
   message NetworkActivity {
@@ -82,7 +82,7 @@ message NodeStatus {
   // to other nodes.
   map<int32, NetworkActivity> activity = 10 [
     (gogoproto.nullable) = false,
-    (gogoproto.castkey) = "github.com/cockroachdb/cockroach/pkg/roachpb.NodeID"
+    (gogoproto.castkey) = "github.com/semistrict/ratel/pkg/roachpb.NodeID"
   ];
 
   // total_system_memory is the total RAM available to the system
@@ -107,7 +107,7 @@ message HealthAlert {
     // NB: trying to make this nullable does not work with the custom type. You need a
     // pointer type as the custom type, but that breaks protoc-gen-gogoroach.
     (gogoproto.nullable) = false,
-    (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/roachpb.StoreID",
+    (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/roachpb.StoreID",
     (gogoproto.customname) = "StoreID"
   ];
   enum Category {

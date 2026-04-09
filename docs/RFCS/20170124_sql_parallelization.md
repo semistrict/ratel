@@ -2,11 +2,11 @@
 - Status: completed
 - Start Date: 2017-01-18
 - Authors: Nathan VanBenschoten
-- RFC PR: [#13160](https://github.com/cockroachdb/cockroach/issues/13160)
-- Cockroach Issue: [#10057](https://github.com/cockroachdb/cockroach/issues/10057),
-                   [#2210](https://github.com/cockroachdb/cockroach/issues/2210),
-                   [#4403](https://github.com/cockroachdb/cockroach/issues/4403),
-                   [#5259](https://github.com/cockroachdb/cockroach/issues/5259)
+- RFC PR: [#13160](https://github.com/semistrict/ratel/issues/13160)
+- Cockroach Issue: [#10057](https://github.com/semistrict/ratel/issues/10057),
+                   [#2210](https://github.com/semistrict/ratel/issues/2210),
+                   [#4403](https://github.com/semistrict/ratel/issues/4403),
+                   [#5259](https://github.com/semistrict/ratel/issues/5259)
 
 # Summary
 
@@ -652,7 +652,7 @@ special handling for parallel statement execution.
 ### Parallel Foreign Key Validation
 
 There is a
-[TODO](https://github.com/cockroachdb/cockroach/blob/b3e11b238327c2625c519503691361850c2bb261/pkg/sql/fk.go#L294)
+[TODO](https://github.com/semistrict/ratel/blob/b3e11b238327c2625c519503691361850c2bb261/pkg/sql/fk.go#L294)
 in foreign key validation code to batch the checks for multiple rows. While not
 directly related to this RFC, infrastructure developed here could be directly
 applicable to solving that issue.

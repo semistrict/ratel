@@ -2,8 +2,8 @@
 - Status: accepted
 - Start Date: 2021-06-17
 - Authors: Andrei Matei
-- RFC PR: [#67040](https://github.com/cockroachdb/cockroach/pull/67040)
-- Cockroach Issue: [#54680](https://github.com/cockroachdb/cockroach/pull/54680)
+- RFC PR: [#67040](https://github.com/semistrict/ratel/pull/67040)
+- Cockroach Issue: [#54680](https://github.com/semistrict/ratel/pull/54680)
 
 # Summary
 
@@ -39,7 +39,7 @@ with an input (a `RowSource` for, say, its left side) and a target table or
 index on which to perform lookups for keys coming from the input-side. The
 joiner works by repeatedly consuming/accumulating rows from the input according
 to a [memory
-budget](https://github.com/cockroachdb/cockroach/blob/bc95d8f5e79576e38208b89af65a2050ab52b982/pkg/sql/rowexec/joinreader.go#L357)
+budget](https://github.com/semistrict/ratel/blob/bc95d8f5e79576e38208b89af65a2050ab52b982/pkg/sql/rowexec/joinreader.go#L357)
 between 10KB and 4MB depending on the type of join; let's call these accumulated
 rows an *input chunk*. To join this input chunk, the joiner (through the
 `row.Fetcher` stack) builds one big `BatchRequest` with all the lookups and
@@ -67,7 +67,7 @@ memory limits are used, the inter-range parallelism is lost because of current
 implementation limits. The joiner sometimes chooses limits, sometimes chooses
 parallelism: if each lookup is guaranteed to return at most one row, then it
 chooses parallelism. Otherwise, it chooses memory limits
-([code](https://github.com/cockroachdb/cockroach/blob/bc95d8f5e79576e38208b89af65a2050ab52b982/pkg/sql/rowexec/joinreader.go#L225-L228)).
+([code](https://github.com/semistrict/ratel/blob/bc95d8f5e79576e38208b89af65a2050ab52b982/pkg/sql/rowexec/joinreader.go#L225-L228)).
 As a consequence, we've been known to OOM whenever the non-limited `BatchResponse`
 proves to be too big to hold in memory at once. Or, more commonly, when
 sufficiently many large-ish queries run concurrently - for example, with 1k
@@ -75,12 +75,12 @@ concurrent queries, each reading 10k rows at a time, and each row taking 1KB,
 that's a 10GB memory footprint that these rows can take at any point in time.
 We've also been known to execute the memory-limited lookups too slowly (e.g. [in
 our TPC-E
-implementation](https://github.com/cockroachdb/cockroach/issues/54680#issuecomment-858776769)). 
+implementation](https://github.com/semistrict/ratel/issues/54680#issuecomment-858776769)). 
 
 In the case when the `joinReader` chooses limits over parallelism, the limits are [10k
-keys](https://github.com/cockroachdb/cockroach/blob/d6d394bf5c4974d79e21efe8c03f65ebf0bc10fa/pkg/sql/row/kv_batch_fetcher.go#L51)
+keys](https://github.com/semistrict/ratel/blob/d6d394bf5c4974d79e21efe8c03f65ebf0bc10fa/pkg/sql/row/kv_batch_fetcher.go#L51)
 as well as a
-[10MB](https://github.com/cockroachdb/cockroach/blob/d6d394bf5c4974d79e21efe8c03f65ebf0bc10fa/pkg/sql/row/kv_batch_fetcher.go#L327)
+[10MB](https://github.com/semistrict/ratel/blob/d6d394bf5c4974d79e21efe8c03f65ebf0bc10fa/pkg/sql/row/kv_batch_fetcher.go#L327)
 size limit per lookup batch. And, of course, there's always some indirect limit
 coming from the fact that the keys included in a lookup batch are coming from an
 input chunk that was size-limited as described above.
@@ -149,7 +149,7 @@ gateway. This `TableReader` has a similar choice to make to the `joinReader` -
 parallelize the lookups or not (or, rather, the optimizer makes that choice for
 the `TableReader`). Currently, we choose parallelism if the `TableReader` is
 known to not return more than [10,000
-rows](https://github.com/cockroachdb/cockroach/blob/49a5d88f4810b89ce564c29c13137f0bf89fd4c7/pkg/sql/opt/exec/execbuilder/builder.go#L29).
+rows](https://github.com/semistrict/ratel/blob/49a5d88f4810b89ce564c29c13137f0bf89fd4c7/pkg/sql/opt/exec/execbuilder/builder.go#L29).
 Ideally, it would always try to get parallelism, subject to memory limits. By
 the way, currently, even when the `TableReader` wants parallelism, it never
 actually gets it within a range.
@@ -184,7 +184,7 @@ missing all-together, or if some are partial, and if the client wants the rest
 of the results, it needs to send another `BatchRequest`. An important fact is
 that the protocol is request/response; there's no streaming of responses from
 the "server" to the "client". A streaming KV RPC has been [long
-desired](https://github.com/cockroachdb/cockroach/issues/8360) for a) being able
+desired](https://github.com/semistrict/ratel/issues/8360) for a) being able
 to return an evaluation result and a separate replication result for the same
 write request and b) for streaming the results of large `Scans` in order to save
 on memory buffering. A streaming RPC is orthogonal to this RFC.
@@ -950,12 +950,12 @@ reading rate.
 
 The `Streamer` will use `LeafTxns` in order to support sending concurrent read
 requests. `LeafTxns`
-[disable](https://github.com/cockroachdb/cockroach/blob/cfb4b95d94e717e985423d5313c58187fbde5da4/pkg/kv/kvclient/kvcoord/txn_coord_sender.go#L302)
+[disable](https://github.com/semistrict/ratel/blob/cfb4b95d94e717e985423d5313c58187fbde5da4/pkg/kv/kvclient/kvcoord/txn_coord_sender.go#L302)
 the automatic refreshing of read spans and the `BatchRequest`-level retries done
 on retriable errors because, usually, `LeafTxns` don't have a complete view of
 the read spans and also because refreshing cannot be performed during concurrent
 requests. This is generally a problem for DistSQL
-([#24798](https://github.com/cockroachdb/cockroach/issues/24798)).
+([#24798](https://github.com/semistrict/ratel/issues/24798)).
 
 Since both in the general DistSQL case and in the `Streamer` case we're dealing
 only with reads, the only possible retriable error is
@@ -1182,11 +1182,11 @@ again with better results.
 3. What's there to be done for cases where we have a hard or a soft limit on the
 total number of rows to be returned by the `Streamer`. Can the `Streamer` set
 some `MaxSpanRequestKeys` on the requests? This is tracked in
-[#67885](https://github.com/cockroachdb/cockroach/issues/67885).
+[#67885](https://github.com/semistrict/ratel/issues/67885).
 
 # Alternatives considered
 
-When [#54680](https://github.com/cockroachdb/cockroach/pull/54680) was filed, it
+When [#54680](https://github.com/semistrict/ratel/pull/54680) was filed, it
 seemed to be implied for a while that whatever we'll do, we'll do it at the
 `DistSender` level. Doing something at that level seems attractive because, in
 principle, it'd benefit all the `BatchRequest` users. But when you dig into the

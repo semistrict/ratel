@@ -2,8 +2,8 @@
 - Status: draft
 - Start Date: 2019-11-13
 - Authors: Alfonso Subiotto Marqués and Yahor Yuzefovich
-- RFC PR: [#42546](https://github.com/cockroachdb/cockroach/pull/42546)
-- Cockroach Issue: [#37303](https://github.com/cockroachdb/cockroach/issues/37303)
+- RFC PR: [#42546](https://github.com/semistrict/ratel/pull/42546)
+- Cockroach Issue: [#37303](https://github.com/semistrict/ratel/issues/37303)
 
 # Summary
 
@@ -18,7 +18,7 @@ performance gains for analytical queries that use these buffering operators.
 
 Note that CockroachDB already supports external
 storage in its row-oriented execution engine (covered
-[here](https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20170522_external_storage.md)),
+[here](https://github.com/semistrict/ratel/blob/master/docs/RFCS/20170522_external_storage.md)),
 this RFC covers external storage for the vectorized execution engine.
 
 # Motivation
@@ -56,7 +56,7 @@ algorithm](https://en.wikipedia.org/wiki/External_sorting#External_merge_sort)
 algorithm](https://en.wikipedia.org/wiki/Hash_join#Grace_hash_join)
 
 Similarly to the row execution engine [RFC on external
-storage](https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20170522_external_storage.md#detailed-requirements),
+storage](https://github.com/semistrict/ratel/blob/master/docs/RFCS/20170522_external_storage.md#detailed-requirements),
 the algorithms to implement are limited to an external sort and external hash join.
 However, this
 proposal differs from the original external storage RFC in that instead of using a
@@ -85,7 +85,7 @@ proposed in this RFC is purely focused on existing feature improvement.
 
 Given that external merge sorts and GRACE hash joins are well
 established algorithms (external sorts more so, refer to [this
-issue](https://github.com/cockroachdb/cockroach/issues/24582) for
+issue](https://github.com/semistrict/ratel/issues/24582) for
 an explanation of a GRACE hash join), this RFC will focus on the
 backend infrastructure that will allow these algorithms to spill
 to disk by focusing on describing the design of a single queue.
@@ -151,7 +151,7 @@ file with an accompanying file footer. The start offset of these written bytes
 as well as the number of bytes written will be stored for when the batches
 should be dequeued. A current limitation is that bytes cannot be deserialized
 at a finer granularity than they are written at, although we are planning
-on fixing this (https://github.com/cockroachdb/cockroach/issues/42045).
+on fixing this (https://github.com/semistrict/ratel/issues/42045).
 Snappy compression is used to minimize file size.
 
 The aforementioned abstraction of partitions as distinct queues can be trivially
@@ -186,7 +186,7 @@ independently benchmarked to find the optimal maximum file size in the
 case of flat files, and value size in the case of pebble, while keeping
 the write buffer size constant at 0. The options used for Pebble are
 the same ones the Pebble temporary storage instance uses (see
-https://github.com/cockroachdb/cockroach/blob/09b391536f72349c3951ce6b75c5231b58933b07/pkg/storage/engine/temp_engine.go#L117).
+https://github.com/semistrict/ratel/blob/09b391536f72349c3951ce6b75c5231b58933b07/pkg/storage/engine/temp_engine.go#L117).
 
 ![Find](images/vectorized_external_storage1.png?raw=true "Find")
 

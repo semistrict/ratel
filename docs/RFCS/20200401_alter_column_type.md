@@ -2,8 +2,8 @@
 or expression)
 - Status: WIP
 - Authors: Richard Cai
-- Cockroach Issues: [#9851](https://github.com/cockroachdb/cockroach/issues/9851)
-- Note that there is an [RFC](https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20180411_alter_column_type.md) talking about ALTER TABLE ... ALTER COLUMN SET DATA TYPE more generally
+- Cockroach Issues: [#9851](https://github.com/semistrict/ratel/issues/9851)
+- Note that there is an [RFC](https://github.com/semistrict/ratel/blob/master/docs/RFCS/20180411_alter_column_type.md) talking about ALTER TABLE ... ALTER COLUMN SET DATA TYPE more generally
 
 # Table of Contents
 - [Summary](#summary)
@@ -120,7 +120,7 @@ This is similar to any other case of a schema change running into a runtime erro
 - **This method is contingent on changing the index backfiller to support 
 column mutations which is currently blocked due an issue with supporting 
 interleaved tables**
-    - Read more in the [GitHub Issue](https://github.com/cockroachdb/cockroach/issues/47989)
+    - Read more in the [GitHub Issue](https://github.com/semistrict/ratel/issues/47989)
 - The index backfill method is logically the same as the column backfill
 method in how the column is added.
 - The only difference is that, we would always recreate a new primary key
@@ -155,7 +155,7 @@ are supported index backfiller.
 
 # Problems
 ## Out of order ColumnIDs/OrdinalPositions/attnum
-Fixed in [#46992](https://github.com/cockroachdb/cockroach/pull/46992)
+Fixed in [#46992](https://github.com/semistrict/ratel/pull/46992)
 
 Due to ColumnIDs being a part of the value encoding for columns, 
 we cannot swap the ColumnIDs of the columns. 
@@ -251,7 +251,7 @@ writes to the column.
 # Other considerations
 Have to update back references for foreign keys and interleaved tables if an 
 index is changed.
-How we deal with this likely depends on [#47989](https://github.com/cockroachdb/cockroach/issues/47989).
+How we deal with this likely depends on [#47989](https://github.com/semistrict/ratel/issues/47989).
 
 # Alternatives
 One alternative is to create a whole new table, 

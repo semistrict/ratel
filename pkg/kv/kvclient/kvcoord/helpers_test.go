@@ -17,7 +17,7 @@ package kvcoord
 import (
 	"sort"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // asSortedSlice returns the set data in sorted order.

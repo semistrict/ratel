@@ -17,9 +17,9 @@ package norm_test
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
+	"github.com/semistrict/ratel/pkg/sql/opt"
 )
 
 // TestAllAggsIgnoreNullsOrNullOnEmpty verifies the assumption made in

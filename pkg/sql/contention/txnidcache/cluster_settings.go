@@ -14,7 +14,7 @@
 
 package txnidcache
 
-import "github.com/cockroachdb/cockroach/pkg/settings"
+import "github.com/semistrict/ratel/pkg/settings"
 
 // MaxSize limits the maximum byte size can be used by the TxnIDCache.
 var MaxSize = settings.RegisterByteSizeSetting(

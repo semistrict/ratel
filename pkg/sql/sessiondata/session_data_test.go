@@ -17,7 +17,7 @@ package sessiondata
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/sessiondatapb"
+	"github.com/semistrict/ratel/pkg/sql/sessiondatapb"
 	"github.com/stretchr/testify/require"
 )
 

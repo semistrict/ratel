@@ -17,7 +17,7 @@ package docs
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/build"
+	"github.com/semistrict/ratel/pkg/build"
 )
 
 // URLBase is the root URL for the version of the docs associated with this

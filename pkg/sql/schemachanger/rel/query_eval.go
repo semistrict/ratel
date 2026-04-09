@@ -17,8 +17,8 @@ package rel
 import (
 	"reflect"
 
-	"github.com/cockroachdb/cockroach/pkg/util"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util"
 )
 
 // evalContext implements Result and accumulates the state during the

@@ -27,7 +27,7 @@ import (
 	"strings"
 
 	"github.com/alessio/shellescape"
-	bazelutil "github.com/cockroachdb/cockroach/pkg/build/util"
+	bazelutil "github.com/semistrict/ratel/pkg/build/util"
 	"github.com/spf13/cobra"
 )
 
@@ -127,7 +127,7 @@ func (d *dev) build(cmd *cobra.Command, commandLine []string) error {
 
 	if cross == "" {
 		// run "yarn --check-files" before any bazel target that includes UI to ensure that node_modules dir is consistent
-		// see related issue: https://github.com/cockroachdb/cockroach/issues/70867
+		// see related issue: https://github.com/semistrict/ratel/issues/70867
 		for _, arg := range args {
 			if arg == "--config=with_ui" {
 				logCommand("bazel", "run", "@nodejs//:yarn", "--", "--check-files", "--cwd", "pkg/ui", "--offline")

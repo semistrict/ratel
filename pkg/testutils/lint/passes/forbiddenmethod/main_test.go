@@ -14,7 +14,7 @@
 
 package forbiddenmethod_test
 
-import "github.com/cockroachdb/cockroach/pkg/build/bazel"
+import "github.com/semistrict/ratel/pkg/build/bazel"
 
 func init() {
 	if bazel.BuiltWithBazel() {

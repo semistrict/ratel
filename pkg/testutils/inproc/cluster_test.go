@@ -20,8 +20,8 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/testutils/inproc"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/testutils/inproc"
 	"github.com/stretchr/testify/require"
 )
 

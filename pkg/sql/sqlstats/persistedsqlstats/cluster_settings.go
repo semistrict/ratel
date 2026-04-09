@@ -17,9 +17,9 @@ package persistedsqlstats
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/settings"
 	"github.com/cockroachdb/errors"
 	"github.com/robfig/cron/v3"
+	"github.com/semistrict/ratel/pkg/settings"
 )
 
 // SQLStatsFlushInterval is the cluster setting that controls how often the SQL

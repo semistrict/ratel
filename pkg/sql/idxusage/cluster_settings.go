@@ -14,7 +14,7 @@
 
 package idxusage
 
-import "github.com/cockroachdb/cockroach/pkg/settings"
+import "github.com/semistrict/ratel/pkg/settings"
 
 // Enable determines whether to collect per-index usage statistics.
 var Enable = settings.RegisterBoolSetting(

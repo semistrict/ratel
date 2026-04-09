@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Oxide's long-term maintenance fork of CockroachDB 22.1, licensed under Apache 2.0. Used for control plane data storage on the Oxide Cloud Computer (illumos/Helios). Builds target illumos, Linux, and macOS. Enterprise (CCL) features have been removed. The Bazel build system has been removed; only GNU Make is used.
 
-Module path: `github.com/cockroachdb/cockroach`
+Module path: `github.com/semistrict/ratel`
 
 Main branch for PRs: `release-22.1-oxide`
 

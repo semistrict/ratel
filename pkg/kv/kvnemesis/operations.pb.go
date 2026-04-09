@@ -5,12 +5,12 @@ package kvnemesis
 
 import (
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	hlc "github.com/cockroachdb/cockroach/pkg/util/hlc"
 	errorspb "github.com/cockroachdb/errors/errorspb"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	github_com_cockroachdb_cockroach_pkg_roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	hlc "github.com/semistrict/ratel/pkg/util/hlc"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -464,7 +464,7 @@ var xxx_messageInfo_ChangeReplicasOperation proto.InternalMessageInfo
 
 type TransferLeaseOperation struct {
 	Key    []byte                                               `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Target github_com_cockroachdb_cockroach_pkg_roachpb.StoreID `protobuf:"varint,2,opt,name=target,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.StoreID" json:"target,omitempty"`
+	Target github_com_cockroachdb_cockroach_pkg_roachpb.StoreID `protobuf:"varint,2,opt,name=target,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.StoreID" json:"target,omitempty"`
 	Result Result                                               `protobuf:"bytes,3,opt,name=result,proto3" json:"result"`
 }
 

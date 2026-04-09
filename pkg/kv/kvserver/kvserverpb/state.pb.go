@@ -5,12 +5,12 @@ package kvserverpb
 
 import (
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_kv_kvserver_closedts_ctpb "github.com/cockroachdb/cockroach/pkg/kv/kvserver/closedts/ctpb"
-	roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	enginepb "github.com/cockroachdb/cockroach/pkg/storage/enginepb"
-	hlc "github.com/cockroachdb/cockroach/pkg/util/hlc"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	github_com_cockroachdb_cockroach_pkg_kv_kvserver_closedts_ctpb "github.com/semistrict/ratel/pkg/kv/kvserver/closedts/ctpb"
+	roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	enginepb "github.com/semistrict/ratel/pkg/storage/enginepb"
+	hlc "github.com/semistrict/ratel/pkg/util/hlc"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -247,9 +247,9 @@ var xxx_messageInfo_RangeInfo proto.InternalMessageInfo
 // taken from the side-transport's Receiver "centralized" state.
 type RangeSideTransportInfo struct {
 	ReplicaClosed hlc.Timestamp                                                      `protobuf:"bytes,1,opt,name=replica_closed,json=replicaClosed,proto3" json:"replica_closed"`
-	ReplicaLAI    github_com_cockroachdb_cockroach_pkg_kv_kvserver_closedts_ctpb.LAI `protobuf:"varint,2,opt,name=replica_lai,json=replicaLai,proto3,casttype=github.com/cockroachdb/cockroach/pkg/kv/kvserver/closedts/ctpb.LAI" json:"replica_lai,omitempty"`
+	ReplicaLAI    github_com_cockroachdb_cockroach_pkg_kv_kvserver_closedts_ctpb.LAI `protobuf:"varint,2,opt,name=replica_lai,json=replicaLai,proto3,casttype=github.com/semistrict/ratel/pkg/kv/kvserver/closedts/ctpb.LAI" json:"replica_lai,omitempty"`
 	CentralClosed hlc.Timestamp                                                      `protobuf:"bytes,3,opt,name=central_closed,json=centralClosed,proto3" json:"central_closed"`
-	CentralLAI    github_com_cockroachdb_cockroach_pkg_kv_kvserver_closedts_ctpb.LAI `protobuf:"varint,4,opt,name=central_lai,json=centralLai,proto3,casttype=github.com/cockroachdb/cockroach/pkg/kv/kvserver/closedts/ctpb.LAI" json:"central_lai,omitempty"`
+	CentralLAI    github_com_cockroachdb_cockroach_pkg_kv_kvserver_closedts_ctpb.LAI `protobuf:"varint,4,opt,name=central_lai,json=centralLai,proto3,casttype=github.com/semistrict/ratel/pkg/kv/kvserver/closedts/ctpb.LAI" json:"central_lai,omitempty"`
 }
 
 func (m *RangeSideTransportInfo) Reset()         { *m = RangeSideTransportInfo{} }

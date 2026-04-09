@@ -14,7 +14,7 @@
 
 package generic
 
-import "github.com/cockroachdb/cockroach/pkg/roachpb"
+import "github.com/semistrict/ratel/pkg/roachpb"
 
 //go:generate ./gen.sh *example generic
 

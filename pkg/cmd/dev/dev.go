@@ -19,8 +19,8 @@ import (
 	"log"
 	stdos "os"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/dev/io/exec"
-	"github.com/cockroachdb/cockroach/pkg/cmd/dev/io/os"
+	"github.com/semistrict/ratel/pkg/cmd/dev/io/exec"
+	"github.com/semistrict/ratel/pkg/cmd/dev/io/os"
 	"github.com/spf13/cobra"
 )
 

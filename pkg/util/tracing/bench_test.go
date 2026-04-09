@@ -19,9 +19,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
 	"github.com/cockroachdb/logtags"
 	"github.com/gogo/protobuf/types"
+	"github.com/semistrict/ratel/pkg/testutils/skip"
 )
 
 // BenchmarkTracer_StartSpanCtx primarily helps keep

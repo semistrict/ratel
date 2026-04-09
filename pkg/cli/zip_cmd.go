@@ -15,7 +15,7 @@
 package cli
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/cli/clierrorplus"
+	"github.com/semistrict/ratel/pkg/cli/clierrorplus"
 	"github.com/spf13/cobra"
 )
 

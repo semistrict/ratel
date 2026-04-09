@@ -84,8 +84,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/dustin/go-humanize"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 func init() {

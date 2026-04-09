@@ -14,7 +14,7 @@
 
 package log
 
-import "github.com/cockroachdb/cockroach/pkg/util/syncutil"
+import "github.com/semistrict/ratel/pkg/util/syncutil"
 
 type loggerRegistry struct {
 	mu struct {

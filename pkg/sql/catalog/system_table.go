@@ -17,7 +17,7 @@ package catalog
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
 )
 
 // SystemTableIDResolver is a convenience interface used to resolve the table ID

@@ -2,7 +2,7 @@
 - Status: draft
 - Start Date: 2021-04-23
 - Authors: Andrii Vorobiov
-- RFC PR: [#65924](https://github.com/cockroachdb/cockroach/pull/65924)
+- RFC PR: [#65924](https://github.com/semistrict/ratel/pull/65924)
 - Cockroach Issue:
 
 # Summary
@@ -25,10 +25,10 @@ package instead of the entire project, which in turn reduces the build time and 
 unchanged parts of code.
 
 Github `Bazel` project already includes following tasks related to migration to Bazel for Db Console   
-- [build: Bazelize UI](https://github.com/cockroachdb/cockroach/issues/56068)
-- [build: Get built UI to bindata (bazel)](https://github.com/cockroachdb/cockroach/issues/56069)
-- [build,bazel: Implement JS protobuf support for Bazel](https://github.com/cockroachdb/cockroach/issues/59329)
-- [build: Get bazel building both ccl and oss builds](https://github.com/cockroachdb/cockroach/issues/56071)
+- [build: Bazelize UI](https://github.com/semistrict/ratel/issues/56068)
+- [build: Get built UI to bindata (bazel)](https://github.com/semistrict/ratel/issues/56069)
+- [build,bazel: Implement JS protobuf support for Bazel](https://github.com/semistrict/ratel/issues/59329)
+- [build: Get bazel building both ccl and oss builds](https://github.com/semistrict/ratel/issues/56071)
 
 # Technical design
 
@@ -49,7 +49,7 @@ where:
 ![Bazel rules dependencies](images/db-console-bazel-build-dependency-graph.svg)
 
 Bazel build pipeline for UI can be broken down in following steps:
-- Build protobuf js client code [db-console: bazel build for protobufjs clients #64065](https://github.com/cockroachdb/cockroach/pull/64065)
+- Build protobuf js client code [db-console: bazel build for protobufjs clients #64065](https://github.com/semistrict/ratel/pull/64065)
 - `cluster-ui` standalone build (react + webpack project) 
 - `db-console` standalone build (react + webpack project)
 - embed JS assets into go libraries (`pkg/ui/distoss/distoss.go` and `pkg/ui/distccl/distccl.go`)

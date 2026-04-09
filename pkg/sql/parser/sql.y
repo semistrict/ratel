@@ -18,7 +18,7 @@
 
 // Going to add a new statement?
 // Consider taking a look at our codelab guide to learn what is needed to add a statement.
-// https://github.com/cockroachdb/cockroach/blob/master/docs/codelabs/01-sql-statement.md
+// https://github.com/semistrict/ratel/blob/master/docs/codelabs/01-sql-statement.md
 
 %{
 package parser
@@ -29,20 +29,20 @@ import (
 
     "go/constant"
 
-    "github.com/cockroachdb/cockroach/pkg/geo/geopb"
-    "github.com/cockroachdb/cockroach/pkg/roachpb"
-    "github.com/cockroachdb/cockroach/pkg/security"
-    "github.com/cockroachdb/cockroach/pkg/sql/lexbase"
-    "github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
-    "github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
-    "github.com/cockroachdb/cockroach/pkg/sql/privilege"
-    "github.com/cockroachdb/cockroach/pkg/sql/roleoption"
-    "github.com/cockroachdb/cockroach/pkg/sql/scanner"
-    "github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-    "github.com/cockroachdb/cockroach/pkg/sql/sem/tree/treebin"
-    "github.com/cockroachdb/cockroach/pkg/sql/sem/tree/treecmp"
-    "github.com/cockroachdb/cockroach/pkg/sql/sem/tree/treewindow"
-    "github.com/cockroachdb/cockroach/pkg/sql/types"
+    "github.com/semistrict/ratel/pkg/geo/geopb"
+    "github.com/semistrict/ratel/pkg/roachpb"
+    "github.com/semistrict/ratel/pkg/security"
+    "github.com/semistrict/ratel/pkg/sql/lexbase"
+    "github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
+    "github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
+    "github.com/semistrict/ratel/pkg/sql/privilege"
+    "github.com/semistrict/ratel/pkg/sql/roleoption"
+    "github.com/semistrict/ratel/pkg/sql/scanner"
+    "github.com/semistrict/ratel/pkg/sql/sem/tree"
+    "github.com/semistrict/ratel/pkg/sql/sem/tree/treebin"
+    "github.com/semistrict/ratel/pkg/sql/sem/tree/treecmp"
+    "github.com/semistrict/ratel/pkg/sql/sem/tree/treewindow"
+    "github.com/semistrict/ratel/pkg/sql/types"
     "github.com/cockroachdb/errors"
     "github.com/lib/pq/oid"
 )
@@ -6217,7 +6217,7 @@ opt_cluster:
   { $$.val = false }
 
 // SHOW QUERIES is now an alias for SHOW STATEMENTS
-// https://github.com/cockroachdb/cockroach/issues/56240
+// https://github.com/semistrict/ratel/issues/56240
 statements_or_queries:
   STATEMENTS
 | QUERIES

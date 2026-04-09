@@ -472,9 +472,9 @@ column for the table.
 ## Open Questions
 N/A
 
-[#20239]: https://github.com/cockroachdb/cockroach/issues/20239
-[#75189]: https://github.com/cockroachdb/cockroach/pull/75189
-[#28296]: https://github.com/cockroachdb/cockroach/issues/28296
+[#20239]: https://github.com/semistrict/ratel/issues/20239
+[#75189]: https://github.com/semistrict/ratel/pull/75189
+[#28296]: https://github.com/semistrict/ratel/issues/28296
 [cockroach TTL advice]: https://www.cockroachlabs.com/docs/stable/bulk-delete-data.html
-[admission control]: https://github.com/cockroachdb/cockroach/blob/master/docs/tech-notes/admission_control.md
+[admission control]: https://github.com/semistrict/ratel/blob/master/docs/tech-notes/admission_control.md
 [comparison doc]: https://docs.google.com/document/d/1HkFg3S-k3s2PahPRQhTgUkCR4WIAtjkSNVylarMC-gY/edit#heading=h.o6cn5faoiokv

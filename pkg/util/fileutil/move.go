@@ -17,8 +17,8 @@ package fileutil
 import (
 	"os"
 
-	"github.com/cockroachdb/cockroach/pkg/util/sysutil"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util/sysutil"
 )
 
 // Move moves a file from a directory to another, while handling

@@ -200,6 +200,6 @@ releases with the desired format and it could be kept consistent with the other 
 This is just speculative. Whether a better zones table is warranted is something I wanted
 to bring up, any design or suggestions on the design of which, should be in a separate RFC.
 
-[#30426]: https://github.com/cockroachdb/cockroach/pull/30426
-[#28901]: https://github.com/cockroachdb/cockroach/issues/28901
-[caching]: https://github.com/cockroachdb/cockroach/pull/30143
+[#30426]: https://github.com/semistrict/ratel/pull/30426
+[#28901]: https://github.com/semistrict/ratel/issues/28901
+[caching]: https://github.com/semistrict/ratel/pull/30143

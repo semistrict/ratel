@@ -19,9 +19,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/ctxgroup"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	"github.com/semistrict/ratel/pkg/util/ctxgroup"
 	"github.com/stretchr/testify/require"
 )
 

@@ -19,7 +19,7 @@ import (
 	"net/http/pprof"
 	"strconv"
 
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
 )
 
 // CPUProfileOptions contains options for generating a CPU profile.

@@ -29,17 +29,17 @@ if [ "$(git rev-parse --abbrev-ref HEAD)" != "$BRANCH" ]; then
   exit 1
 fi
 
-COCKROACH_DIR="$(go env GOPATH)/src/github.com/cockroachdb/cockroach"
+COCKROACH_DIR="$(go env GOPATH)/src/github.com/semistrict/ratel"
 PEBBLE_DIR="$(go env GOPATH)/src/github.com/cockroachdb/pebble"
 VENDORED_DIR="$COCKROACH_DIR/vendor"
 
 # Make sure that the cockroachdb remotes match what we expect. The
-# `upstream` remote must point to github.com/cockroachdb/cockroach.
+# `upstream` remote must point to github.com/semistrict/ratel.
 pushd "$COCKROACH_DIR"
 git submodule update --init --recursive
 popd
 
-COCKROACH_UPSTREAM_URL="https://github.com/cockroachdb/cockroach.git"
+COCKROACH_UPSTREAM_URL="https://github.com/semistrict/ratel.git"
 PEBBLE_UPSTREAM_URL="https://github.com/cockroachdb/pebble.git"
 VENDORED_UPSTREAM_URL="git@github.com:cockroachdb/vendored.git"
 

@@ -1,4 +1,4 @@
-# This test reproduces https://github.com/cockroachdb/cockroach/issues/23979
+# This test reproduces https://github.com/semistrict/ratel/issues/23979
 
 # Schema changes that experienced retriable errors in RELEASE
 # SAVEPOINT would previously deadlock.

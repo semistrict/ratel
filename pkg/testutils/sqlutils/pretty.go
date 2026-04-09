@@ -17,8 +17,8 @@ package sqlutils
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/parser"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/parser"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 )
 
 // VerifyStatementPrettyRoundtrip verifies that the SQL statements in s

@@ -2,7 +2,7 @@
 - Status: in-progress
 - Start Date: 2017-06-02
 - Authors: Radu Berinde
-- RFC PR: [#16287](https://github.com/cockroachdb/cockroach/pull/16287)
+- RFC PR: [#16287](https://github.com/semistrict/ratel/pull/16287)
 - Cockroach Issue: (one or more # from the issue tracker)
 
 # Summary

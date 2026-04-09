@@ -18,10 +18,10 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/cockroachdb/cockroach/pkg/geo/geopb"
-	"github.com/cockroachdb/cockroach/pkg/geo/geoprojbase"
 	"github.com/golang/geo/s1"
 	"github.com/golang/geo/s2"
+	"github.com/semistrict/ratel/pkg/geo/geopb"
+	"github.com/semistrict/ratel/pkg/geo/geoprojbase"
 )
 
 // BestGeomProjection translates roughly to the ST_BestSRID function in PostGIS.

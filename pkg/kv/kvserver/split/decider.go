@@ -19,9 +19,9 @@ package split
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 )
 
 const minSplitSuggestionInterval = time.Minute
@@ -195,7 +195,7 @@ func (d *Decider) MaybeSplitKey(now time.Time) roachpb.Key {
 		// We've found a key to split at. This key might be in the middle of a
 		// SQL row. If we fail to rectify that, we'll cause SQL crashes:
 		//
-		// https://github.com/cockroachdb/cockroach/pull/42056
+		// https://github.com/semistrict/ratel/pull/42056
 		//
 		// While the behavior at the SQL level is arguably bad and should be
 		// fixed, splitting between column families is also never a good idea

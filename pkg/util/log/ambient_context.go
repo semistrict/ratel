@@ -17,8 +17,8 @@ package log
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/util/tracing"
 	"github.com/cockroachdb/logtags"
+	"github.com/semistrict/ratel/pkg/util/tracing"
 	"golang.org/x/net/trace"
 )
 

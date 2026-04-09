@@ -17,8 +17,8 @@ package constraint
 import (
 	"bytes"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 )
 
 // SpanBoundary specifies whether a span endpoint is inclusive or exclusive of

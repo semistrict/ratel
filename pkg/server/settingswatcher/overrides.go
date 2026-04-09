@@ -14,7 +14,7 @@
 
 package settingswatcher
 
-import "github.com/cockroachdb/cockroach/pkg/settings"
+import "github.com/semistrict/ratel/pkg/settings"
 
 // OverridesMonitor is an interface through which the settings watcher can
 // receive setting overrides. Used for non-system tenants.

@@ -17,15 +17,15 @@ package types
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils/buildutil"
+	"github.com/semistrict/ratel/pkg/testutils/buildutil"
 )
 
 func TestNoLinkForbidden(t *testing.T) {
 	buildutil.VerifyNoImports(t,
-		"github.com/cockroachdb/cockroach/pkg/sql/types", true,
+		"github.com/semistrict/ratel/pkg/sql/types", true,
 		[]string{
-			"github.com/cockroachdb/cockroach/pkg/clusterversion",
-			"github.com/cockroachdb/cockroach/pkg/roachpb",
+			"github.com/semistrict/ratel/pkg/clusterversion",
+			"github.com/semistrict/ratel/pkg/roachpb",
 		}, nil,
 	)
 }

@@ -17,7 +17,7 @@ package mutations
 import (
 	"sync/atomic"
 
-	"github.com/cockroachdb/cockroach/pkg/util"
+	"github.com/semistrict/ratel/pkg/util"
 )
 
 const productionMaxBatchSize = 10000

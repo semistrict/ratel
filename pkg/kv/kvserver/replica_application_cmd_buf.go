@@ -17,7 +17,7 @@ package kvserver
 import (
 	"sync"
 
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/apply"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/apply"
 )
 
 // replica_application_*.go files provide concrete implementations of

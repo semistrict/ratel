@@ -40,8 +40,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/generate-metadata-tables/rdbms"
-	"github.com/cockroachdb/cockroach/pkg/sql"
+	"github.com/semistrict/ratel/pkg/cmd/generate-metadata-tables/rdbms"
+	"github.com/semistrict/ratel/pkg/sql"
 )
 
 var testdataDir = filepath.Join("pkg", "sql", "testdata")

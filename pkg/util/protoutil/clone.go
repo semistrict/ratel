@@ -17,9 +17,9 @@ package protoutil
 import (
 	"reflect"
 
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
 	"github.com/cockroachdb/errors"
 	"github.com/gogo/protobuf/proto"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 )
 
 var verbotenKinds = [...]reflect.Kind{

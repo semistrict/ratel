@@ -5,14 +5,14 @@ package sessiondatapb
 
 import (
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_security "github.com/cockroachdb/cockroach/pkg/security"
-	lex "github.com/cockroachdb/cockroach/pkg/sql/lex"
-	duration "github.com/cockroachdb/cockroach/pkg/util/duration"
-	pgdate "github.com/cockroachdb/cockroach/pkg/util/timeutil/pgdate"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	_ "github.com/gogo/protobuf/types"
 	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
+	github_com_cockroachdb_cockroach_pkg_security "github.com/semistrict/ratel/pkg/security"
+	lex "github.com/semistrict/ratel/pkg/sql/lex"
+	duration "github.com/semistrict/ratel/pkg/util/duration"
+	pgdate "github.com/semistrict/ratel/pkg/util/timeutil/pgdate"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -79,7 +79,7 @@ type SessionData struct {
 	// session. This can be used for logging and per-application statistics.
 	ApplicationName string `protobuf:"bytes,2,opt,name=application_name,json=applicationName,proto3" json:"application_name,omitempty"`
 	// User is the name of the user logged into the session.
-	UserProto github_com_cockroachdb_cockroach_pkg_security.SQLUsernameProto `protobuf:"bytes,3,opt,name=user_proto,json=userProto,proto3,casttype=github.com/cockroachdb/cockroach/pkg/security.SQLUsernameProto" json:"user_proto,omitempty"`
+	UserProto github_com_cockroachdb_cockroach_pkg_security.SQLUsernameProto `protobuf:"bytes,3,opt,name=user_proto,json=userProto,proto3,casttype=github.com/semistrict/ratel/pkg/security.SQLUsernameProto" json:"user_proto,omitempty"`
 	// DataConversion gives access to the data conversion configuration.
 	DataConversionConfig DataConversionConfig `protobuf:"bytes,4,opt,name=data_conversion_config,json=dataConversionConfig,proto3" json:"data_conversion_config"`
 	// VectorizeMode indicates which kinds of queries to use vectorized execution
@@ -100,7 +100,7 @@ type SessionData struct {
 	// Note that the current serialization of the time.Location objects as
 	// strings has many drawbacks which could lead to unstable computation on the
 	// remote nodes. See #36864 and
-	// https://github.com/cockroachdb/cockroach/pull/55377#issuecomment-707794695
+	// https://github.com/semistrict/ratel/pull/55377#issuecomment-707794695
 	// for more details.
 	Location string `protobuf:"bytes,8,opt,name=location,proto3" json:"location,omitempty"`
 	// SearchPath is a list of namespaces to search builtins in. Used to

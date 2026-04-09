@@ -20,10 +20,10 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
 	"github.com/cockroachdb/errors"
 	"github.com/gogo/protobuf/proto"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
 )
 
 const panicLineSubstring = "runtime/panic.go"
@@ -104,12 +104,12 @@ func CatchVectorizedRuntimeError(operation func()) (retErr error) {
 // Multiple actual packages can have the same prefix as a single constant string
 // defined below, but all of such packages are allowed to be caught from.
 const (
-	colPackagesPrefix      = "github.com/cockroachdb/cockroach/pkg/col"
-	encodingPackagePrefix  = "github.com/cockroachdb/cockroach/pkg/util/encoding"
-	execinfraPackagePrefix = "github.com/cockroachdb/cockroach/pkg/sql/execinfra"
-	sqlColPackagesPrefix   = "github.com/cockroachdb/cockroach/pkg/sql/col"
-	sqlRowPackagesPrefix   = "github.com/cockroachdb/cockroach/pkg/sql/row"
-	sqlSemPackagesPrefix   = "github.com/cockroachdb/cockroach/pkg/sql/sem"
+	colPackagesPrefix      = "github.com/semistrict/ratel/pkg/col"
+	encodingPackagePrefix  = "github.com/semistrict/ratel/pkg/util/encoding"
+	execinfraPackagePrefix = "github.com/semistrict/ratel/pkg/sql/execinfra"
+	sqlColPackagesPrefix   = "github.com/semistrict/ratel/pkg/sql/col"
+	sqlRowPackagesPrefix   = "github.com/semistrict/ratel/pkg/sql/row"
+	sqlSemPackagesPrefix   = "github.com/semistrict/ratel/pkg/sql/sem"
 )
 
 // shouldCatchPanic checks whether the panic that was emitted from
@@ -122,13 +122,13 @@ const (
 //
 // panicEmittedFrom must be trimmed to not have any white spaces in the prefix.
 func shouldCatchPanic(panicEmittedFrom string) bool {
-	const panicFromTheCatcherItselfPrefix = "github.com/cockroachdb/cockroach/pkg/sql/colexecerror.CatchVectorizedRuntimeError"
+	const panicFromTheCatcherItselfPrefix = "github.com/semistrict/ratel/pkg/sql/colexecerror.CatchVectorizedRuntimeError"
 	if strings.HasPrefix(panicEmittedFrom, panicFromTheCatcherItselfPrefix) {
 		// This panic came from the catcher itself, so we will propagate it
 		// unchanged by the higher-level catchers.
 		return false
 	}
-	const nonCatchablePanicPrefix = "github.com/cockroachdb/cockroach/pkg/sql/colexecerror.NonCatchablePanic"
+	const nonCatchablePanicPrefix = "github.com/semistrict/ratel/pkg/sql/colexecerror.NonCatchablePanic"
 	if strings.HasPrefix(panicEmittedFrom, nonCatchablePanicPrefix) {
 		// This panic came from NonCatchablePanic() method and should not be
 		// caught.

@@ -3,7 +3,7 @@
 - Start Date: 2021-11-3
 - Authors: Jack Wu
 - RFC PR: (PR # after acceptance of initial draft)
-- Cockroach Issue: [67410](https://github.com/cockroachdb/cockroach/issues/67410)
+- Cockroach Issue: [67410](https://github.com/semistrict/ratel/issues/67410)
 
 # Summary
 
@@ -131,7 +131,7 @@ The one special case here is that a user can hold ALL privileges but only certai
 The addition of grant options can simplify the implementation of these functions as well. The code currently gets around this by "representing a single priv with a fake "grant option",
 which is later computed as a conjunction between that priv's kind and the GRANT privilege, while also computing a disjunction across all comma-separated privilege strings."
 
-With this current change, this logic can be simplified to simply tap into the grant option information that is now available. See [this](https://github.com/cockroachdb/cockroach/blob/bea70261e51bf25b09098ad4856a8ff4b1b1c176/pkg/sql/sem/builtins/pg_builtins.go#L488) for more information
+With this current change, this logic can be simplified to simply tap into the grant option information that is now available. See [this](https://github.com/semistrict/ratel/blob/bea70261e51bf25b09098ad4856a8ff4b1b1c176/pkg/sql/sem/builtins/pg_builtins.go#L488) for more information
 
 
 ### Mixed Version Deployments

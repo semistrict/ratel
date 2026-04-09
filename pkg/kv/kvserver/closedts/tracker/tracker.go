@@ -17,7 +17,7 @@ package tracker
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/hlc"
 )
 
 // Tracker tracks the lower bound of a set of timestamps (called the tracked

@@ -18,15 +18,15 @@ import (
 	"context"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/kv"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/util/errorutil/unimplemented"
-	"github.com/cockroachdb/cockroach/pkg/util/fsm"
+	"github.com/semistrict/ratel/pkg/kv"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/sql/catalog/colinfo"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/util/errorutil/unimplemented"
+	"github.com/semistrict/ratel/pkg/util/fsm"
 )
 
 // commitOnReleaseSavepointName is the name of the savepoint with special
@@ -84,7 +84,7 @@ func (ex *connExecutor) execSavepointInOpenState(
 			// transaction has started running. It is desirable to allow metadata
 			// queries against vtables to proceed before starting a SAVEPOINT for better
 			// ORM compatibility.
-			// See also https://github.com/cockroachdb/cockroach/issues/15012.
+			// See also https://github.com/semistrict/ratel/issues/15012.
 			if ex.state.mu.txn.Active() {
 				return pgerror.Newf(pgcode.Syntax,
 					"SAVEPOINT \"%s\" needs to be the first statement in a transaction",
@@ -249,7 +249,7 @@ func (ex *connExecutor) checkRollbackValidity(
 		// Because we use the same priority (MaxUserPriority) for SET
 		// TRANSACTION PRIORITY HIGH and lease acquisitions, we'd get a
 		// deadlock if we let DDL proceed at high priority.
-		// See https://github.com/cockroachdb/cockroach/issues/46414
+		// See https://github.com/semistrict/ratel/issues/46414
 		// for details.
 		//
 		// Note: this check must remain even when regular savepoints are

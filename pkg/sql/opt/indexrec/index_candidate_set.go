@@ -15,12 +15,12 @@
 package indexrec
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/cat"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/memo"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/util"
+	"github.com/semistrict/ratel/pkg/sql/catalog/colinfo"
+	"github.com/semistrict/ratel/pkg/sql/opt"
+	"github.com/semistrict/ratel/pkg/sql/opt/cat"
+	"github.com/semistrict/ratel/pkg/sql/opt/memo"
+	"github.com/semistrict/ratel/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/util"
 )
 
 // FindIndexCandidateSet returns a map storing potential indexes for each table
@@ -55,7 +55,7 @@ import (
 // but do not fall into one of these categories. In order to account for this,
 // *memo.VariableExpr would be the final case in the switch statement, hit only
 // if no other expressions have been matched. See the papers referenced in this
-// RFC for inspiration: https://github.com/cockroachdb/cockroach/pull/71784. We
+// RFC for inspiration: https://github.com/semistrict/ratel/pull/71784. We
 // may also consider matching more types of SQL expressions, including LIKE
 // expressions.
 func FindIndexCandidateSet(rootExpr opt.Expr, md *opt.Metadata) map[cat.Table][][]cat.IndexColumn {

@@ -20,8 +20,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/util/version"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util/version"
 )
 
 // You can update the values in predecessor_version.json to point at newer patch releases.

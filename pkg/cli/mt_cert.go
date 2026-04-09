@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/clierrorplus"
-	"github.com/cockroachdb/cockroach/pkg/security"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/cli/clierrorplus"
+	"github.com/semistrict/ratel/pkg/security"
 	"github.com/spf13/cobra"
 )
 
@@ -78,7 +78,7 @@ If no server addresses are passed, then a default list containing 127.0.0.1, ::1
 			} else {
 				// Default list.
 				// We need this default because of this CI problem:
-				// https://github.com/cockroachdb/cockroach/issues/71387
+				// https://github.com/semistrict/ratel/issues/71387
 				//
 				// If/when this issue is fixed, the command can be updated to
 				// not provide a default any more (which would be less error

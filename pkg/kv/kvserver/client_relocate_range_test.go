@@ -21,21 +21,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/gossip"
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/kv"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverbase"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/server"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
-	"github.com/cockroachdb/cockroach/pkg/testutils/testcluster"
-	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/gossip"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/kv"
+	"github.com/semistrict/ratel/pkg/kv/kvserver"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverbase"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/server"
+	"github.com/semistrict/ratel/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/testutils/testcluster"
+	"github.com/semistrict/ratel/pkg/util"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -451,7 +451,7 @@ func TestAdminRelocateRangeRandom(t *testing.T) {
 	}
 }
 
-// Regression test for https://github.com/cockroachdb/cockroach/issues/64325
+// Regression test for https://github.com/semistrict/ratel/issues/64325
 // which makes sure an in-flight read operation during replica removal won't
 // return empty results.
 func TestReplicaRemovalDuringGet(t *testing.T) {
@@ -477,7 +477,7 @@ func TestReplicaRemovalDuringGet(t *testing.T) {
 	require.Equal(t, []byte("foo"), val)
 }
 
-// Regression test for https://github.com/cockroachdb/cockroach/issues/46329
+// Regression test for https://github.com/semistrict/ratel/issues/46329
 // which makes sure an in-flight conditional put operation during replica
 // removal won't spuriously error due to an unexpectedly missing value.
 func TestReplicaRemovalDuringCPut(t *testing.T) {

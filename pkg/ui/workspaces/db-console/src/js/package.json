@@ -4,7 +4,7 @@
   "description": "Javascript client for use by CockroachDB UI",
   "main": "./protos.js",
   "types": "./protos.d.ts",
-  "license": "SEE LICENSE IN github.com/cockroachdb/cockroach/LICENSE",
+  "license": "SEE LICENSE IN github.com/semistrict/ratel/LICENSE",
   "files": [
     "protos.d.ts",
     "protos.js"

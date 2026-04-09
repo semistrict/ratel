@@ -18,18 +18,18 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/cluster"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/option"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/registry"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/spec"
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/test"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/install"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/cluster"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/option"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/registry"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/spec"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/test"
+	"github.com/semistrict/ratel/pkg/roachprod/install"
 )
 
 func registerLedger(r registry.Registry) {
 	const nodes = 6
 	// NB: us-central1-a has been causing issues, see:
-	// https://github.com/cockroachdb/cockroach/issues/66184
+	// https://github.com/semistrict/ratel/issues/66184
 	const azs = "us-central1-f,us-central1-b,us-central1-c"
 	r.Add(registry.TestSpec{
 		Name:    fmt.Sprintf("ledger/nodes=%d/multi-az", nodes),

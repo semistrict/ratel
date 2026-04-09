@@ -2,8 +2,8 @@
 - Status: postponed
 - Start Date: 2017-10-17
 - Authors: Rebecca Taft
-- RFC PR: [#19577](https://github.com/cockroachdb/cockroach/pull/19577)
-- Cockroach Issue: [#6583](https://github.com/cockroachdb/cockroach/issues/6583)
+- RFC PR: [#19577](https://github.com/semistrict/ratel/pull/19577)
+- Cockroach Issue: [#6583](https://github.com/semistrict/ratel/issues/6583)
 
 # Summary
 
@@ -27,7 +27,7 @@ include an `updateNode`.
 
 # Motivation
 
-As described in [Issue #6583](https://github.com/cockroachdb/cockroach/issues/6583),
+As described in [Issue #6583](https://github.com/semistrict/ratel/issues/6583),
 `SELECT ... FOR UPDATE` is not standard SQL, but many databases now support it, including
 Postgres. Thus the primary motivation for this feature is compatibility with existing code. 
 Several third party products such as the [Quartz Scheduler](http://www.quartz-scheduler.org),
@@ -219,7 +219,7 @@ these at some point.
 
 At the moment `FOR UPDATE` is disabled for use in views (there will not be an error, but it will
 be ignored). This is similar to the way `ORDER BY` and `LIMIT` are handled in views. See comment from @a-robinson in
-[data_source.go:getViewPlan()](https://github.com/cockroachdb/cockroach/blob/5a6b4312a972b74b0af5de53dfdfb204dc0fd6d7/pkg/sql/data_source.go#L680).
+[data_source.go:getViewPlan()](https://github.com/semistrict/ratel/blob/5a6b4312a972b74b0af5de53dfdfb204dc0fd6d7/pkg/sql/data_source.go#L680).
 As described in the comment, the outer `Select` AST node is currently being stripped out of the view plan.
 If `ORDER BY` and `LIMIT` are enabled later by including the entire `Select`, `FOR UPDATE` would come for free.
 Postgres supports all of these options in views, since it supports any `SELECT` query, and re-runs
@@ -334,7 +334,7 @@ it would require updates to the KV API to include new messages (e.g., ScanForUpd
 These new messages would require updates to the KV and storage layers to mimic processing of Scan and ReverseScan
 and set dummy write intents on every row touched.
 
-As described in [issue #6583](https://github.com/cockroachdb/cockroach/issues/6583), 
+As described in [issue #6583](https://github.com/semistrict/ratel/issues/6583), 
 > Implementing this would touch a lot of different parts of the code. No part is individually too
 tricky, but there are a lot of them (`git grep -i reversescan` will give you an idea of the scope).
 The bulk of the changes would consist of implementing new ScanForUpdate and ReverseScanForUpdate
@@ -374,13 +374,13 @@ lock up to 10 rows even though only 5 rows are returned.
 
 One alternative to row-level intents is to set an intent on an entire Range if the `SELECT` statement
 would return the majority of rows in the range. This is similar to the approach
-suggested by the [Revert Command RFC](https://github.com/cockroachdb/cockroach/pull/16294).
+suggested by the [Revert Command RFC](https://github.com/semistrict/ratel/pull/16294).
 
 The advantage of setting intents on entire ranges is that it would significantly improve the performance
 for large scans compared to setting intents on individual rows. The downside is that
 this feature is not yet implemented, so it would be significantly more effort than using 
 simple row-level intents. (It was actually deemed to be too complex and all-interfering in the
-[Revert Command RFC](https://github.com/cockroachdb/cockroach/pull/16294), which is why that
+[Revert Command RFC](https://github.com/semistrict/ratel/pull/16294), which is why that
 RFC is now closed.) It's also not clear that customers would use `FOR UPDATE` with 
 large ranges, so this may be an unneeded performance optimization. Furthermore, 
 setting an intent on the entire range based on the predicate could result in "locking" rows that should
@@ -392,7 +392,7 @@ though.
 
 One advantage of implementing range-level intents is that we could reuse this feature
 for other applications such as point-in-time recovery. The details of the proposed implementation
-as well as other possible applications are described in the [Revert Command RFC](https://github.com/cockroachdb/cockroach/pull/16294).
+as well as other possible applications are described in the [Revert Command RFC](https://github.com/semistrict/ratel/pull/16294).
 However, in the interest of getting something working sooner rather than later,
 I believe row-level intents make more sense at this time.
 

@@ -18,9 +18,9 @@ import (
 	"math"
 	"sync/atomic"
 
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
 	"github.com/gogo/protobuf/proto"
 	io_prometheus_client "github.com/prometheus/client_model/go"
+	"github.com/semistrict/ratel/pkg/util/metric"
 )
 
 // AggGauge maintains a value as the sum of its children. The gauge will report

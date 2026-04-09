@@ -21,8 +21,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 )
 
 // SpansSnapshot represents a snapshot of all the open spans at a certain point

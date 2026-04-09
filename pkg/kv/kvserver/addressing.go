@@ -17,10 +17,10 @@ package kvserver
 import (
 	"bytes"
 
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/kv"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/kv"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 type metaAction func(*kv.Batch, roachpb.Key, *roachpb.RangeDescriptor)

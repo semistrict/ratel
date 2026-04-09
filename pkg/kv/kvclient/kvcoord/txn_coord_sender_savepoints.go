@@ -17,12 +17,12 @@ package kvcoord
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/kv"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/storage/enginepb"
-	"github.com/cockroachdb/cockroach/pkg/util/errorutil/unimplemented"
-	"github.com/cockroachdb/cockroach/pkg/util/uuid"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/kv"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/storage/enginepb"
+	"github.com/semistrict/ratel/pkg/util/errorutil/unimplemented"
+	"github.com/semistrict/ratel/pkg/util/uuid"
 )
 
 // savepoint captures the state in the TxnCoordSender necessary to restore that
@@ -116,7 +116,7 @@ func (tc *TxnCoordSender) RollbackToSavepoint(ctx context.Context, s kv.Savepoin
 	// at a timestamp higher than the coordinator's WriteTimestamp. Doing so runs
 	// the risk that we'll commit at the lower timestamp, at which point the
 	// respective intent will be discarded. See
-	// https://github.com/cockroachdb/cockroach/issues/47587.
+	// https://github.com/semistrict/ratel/issues/47587.
 	//
 	// TODO(andrei): White-list more errors.
 	if tc.mu.txnState == txnError {

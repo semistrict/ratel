@@ -17,8 +17,8 @@ package rules
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils"
 	"github.com/cockroachdb/datadriven"
+	"github.com/semistrict/ratel/pkg/testutils"
 	"gopkg.in/yaml.v3"
 )
 

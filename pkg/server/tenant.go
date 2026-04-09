@@ -19,50 +19,50 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/gossip"
-	"github.com/cockroachdb/cockroach/pkg/jobs"
-	"github.com/cockroachdb/cockroach/pkg/jobs/jobsprotectedts"
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/kv"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvclient/kvcoord"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvclient/kvtenant"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvclient/rangefeed"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverbase"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/protectedts"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/protectedts/ptprovider"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/protectedts/ptreconcile"
-	"github.com/cockroachdb/cockroach/pkg/multitenant"
-	"github.com/cockroachdb/cockroach/pkg/multitenant/tenantcostmodel"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/rpc"
-	"github.com/cockroachdb/cockroach/pkg/rpc/nodedialer"
-	"github.com/cockroachdb/cockroach/pkg/server/debug"
-	"github.com/cockroachdb/cockroach/pkg/server/serverpb"
-	"github.com/cockroachdb/cockroach/pkg/server/status"
-	"github.com/cockroachdb/cockroach/pkg/server/systemconfigwatcher"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/sql"
-	"github.com/cockroachdb/cockroach/pkg/sql/flowinfra"
-	"github.com/cockroachdb/cockroach/pkg/sql/optionalnodeliveness"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlinstance"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlliveness"
-	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
-	"github.com/cockroachdb/cockroach/pkg/util/netutil"
-	"github.com/cockroachdb/cockroach/pkg/util/stop"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/gossip"
+	"github.com/semistrict/ratel/pkg/jobs"
+	"github.com/semistrict/ratel/pkg/jobs/jobsprotectedts"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/kv"
+	"github.com/semistrict/ratel/pkg/kv/kvclient/kvcoord"
+	"github.com/semistrict/ratel/pkg/kv/kvclient/kvtenant"
+	"github.com/semistrict/ratel/pkg/kv/kvclient/rangefeed"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverbase"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/protectedts"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/protectedts/ptprovider"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/protectedts/ptreconcile"
+	"github.com/semistrict/ratel/pkg/multitenant"
+	"github.com/semistrict/ratel/pkg/multitenant/tenantcostmodel"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/rpc"
+	"github.com/semistrict/ratel/pkg/rpc/nodedialer"
+	"github.com/semistrict/ratel/pkg/server/debug"
+	"github.com/semistrict/ratel/pkg/server/serverpb"
+	"github.com/semistrict/ratel/pkg/server/status"
+	"github.com/semistrict/ratel/pkg/server/systemconfigwatcher"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/sql"
+	"github.com/semistrict/ratel/pkg/sql/flowinfra"
+	"github.com/semistrict/ratel/pkg/sql/optionalnodeliveness"
+	"github.com/semistrict/ratel/pkg/sql/sqlinstance"
+	"github.com/semistrict/ratel/pkg/sql/sqlliveness"
+	"github.com/semistrict/ratel/pkg/util"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/metric"
+	"github.com/semistrict/ratel/pkg/util/netutil"
+	"github.com/semistrict/ratel/pkg/util/stop"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 )
 
 // StartTenant starts a stand-alone SQL server against a KV backend.
 func StartTenant(
 	ctx context.Context,
 	stopper *stop.Stopper,
-	kvClusterName string, // NB: gone after https://github.com/cockroachdb/cockroach/issues/42519
+	kvClusterName string, // NB: gone after https://github.com/semistrict/ratel/issues/42519
 	baseCfg BaseConfig,
 	sqlCfg SQLConfig,
 ) (*SQLServerWrapper, error) {
@@ -114,7 +114,7 @@ func (s *SQLServerWrapper) Drain(
 func startTenantInternal(
 	ctx context.Context,
 	stopper *stop.Stopper,
-	kvClusterName string, // NB: gone after https://github.com/cockroachdb/cockroach/issues/42519
+	kvClusterName string, // NB: gone after https://github.com/semistrict/ratel/issues/42519
 	baseCfg BaseConfig,
 	sqlCfg SQLConfig,
 ) (
@@ -382,7 +382,7 @@ func makeTenantSQLServerArgs(
 	// and this tenant work.
 	//
 	// TODO(tbg): address this when we introduce the real tenant RPCs in:
-	// https://github.com/cockroachdb/cockroach/issues/47898
+	// https://github.com/semistrict/ratel/issues/47898
 	baseCfg.ClusterName = kvClusterName
 
 	clock := hlc.NewClock(hlc.UnixNano, time.Duration(baseCfg.MaxOffset))

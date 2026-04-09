@@ -15,8 +15,8 @@
 package memo
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/util/buildutil"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util/buildutil"
 )
 
 // FiltersExprMutateChecker is used to check if a FiltersExpr has been

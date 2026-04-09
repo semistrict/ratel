@@ -17,20 +17,20 @@ package main
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils/buildutil"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/testutils/buildutil"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 )
 
 func TestNoLinkForbidden(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	// Verify that the cockroach floss binary doesn't depend on certain packages.
 	buildutil.VerifyNoImports(t,
-		"github.com/cockroachdb/cockroach/pkg/cmd/cockroach-oss",
+		"github.com/semistrict/ratel/pkg/cmd/cockroach-oss",
 		true,
 		nil,
 		[]string{
-			"github.com/cockroachdb/cockroach/pkg/ccl",
-			"github.com/cockroachdb/cockroach/pkg/ui/distccl",
+			"github.com/semistrict/ratel/pkg/ccl",
+			"github.com/semistrict/ratel/pkg/ui/distccl",
 		},
 	)
 }

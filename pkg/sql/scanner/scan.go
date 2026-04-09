@@ -23,7 +23,7 @@ import (
 	"unicode/utf8"
 	"unsafe"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/lexbase"
+	"github.com/semistrict/ratel/pkg/sql/lexbase"
 )
 
 const eof = -1

@@ -15,8 +15,8 @@
 package nstree
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
 	"github.com/google/btree"
+	"github.com/semistrict/ratel/pkg/sql/catalog"
 )
 
 // Set is a set of namespace keys. Safe for use without initialization.

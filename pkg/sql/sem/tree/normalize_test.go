@@ -18,13 +18,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/sql/parser"
-	_ "github.com/cockroachdb/cockroach/pkg/sql/sem/builtins"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/sql/parser"
+	_ "github.com/semistrict/ratel/pkg/sql/sem/builtins"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 func TestContainsVars(t *testing.T) {
@@ -77,7 +77,7 @@ func TestNormalizeExpr(t *testing.T) {
 		// These expression previously always mapped INT2/INT4 to INT8, but after
 		// unifying the type system, they now produce better results. Leaving the
 		// tests here to make sure they don't regress. See
-		// https://github.com/cockroachdb/cockroach/issues/32639
+		// https://github.com/semistrict/ratel/issues/32639
 		{`CAST(NULL AS INT2)`, `CAST(NULL AS INT2)`},
 		{`CAST(NULL AS INT4)`, `CAST(NULL AS INT4)`},
 		{`CAST(NULL AS INT8)`, `CAST(NULL AS INT8)`},

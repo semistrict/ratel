@@ -17,8 +17,8 @@ package kvserver
 import (
 	"unsafe"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 )
 
 type rangeIDReplicaMap syncutil.IntMap

@@ -21,8 +21,8 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/cockroachdb/cockroach/pkg/bench"
 	_ "github.com/lib/pq"
+	"github.com/semistrict/ratel/pkg/bench"
 )
 
 var usage = func() {

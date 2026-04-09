@@ -801,7 +801,7 @@ vectorized: true
 
 ###########################################################
 #  LOOKUP JOINS ON IMPLICIT INDEX KEY COLUMNS             #
-#  https://github.com/cockroachdb/cockroach/issues/31777  #
+#  https://github.com/semistrict/ratel/issues/31777  #
 ###########################################################
 statement ok
 CREATE TABLE t (a INT, b INT, c INT, d INT, e INT)
@@ -1876,7 +1876,7 @@ vectorized: true
 
 ###########################################################
 #  LOOKUP JOINS WITH LOOKUP EXPRESSIONS                   #
-#  https://github.com/cockroachdb/cockroach/issues/59615  #
+#  https://github.com/semistrict/ratel/issues/59615  #
 ###########################################################
 
 # Regression test for #59615. Ensure that invalid lookup joins are not created

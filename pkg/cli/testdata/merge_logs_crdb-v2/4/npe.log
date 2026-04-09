@@ -10,17 +10,17 @@ I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !	pa
 I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  ![signal SIGSEGV: segmentation violation code=0x1 addr=0x10 pc=0x20efbad]
 I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !
 I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !goroutine 76680 [running]:
-I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !github.com/cockroachdb/cockroach/pkg/util/stop.(*Stopper).Recover(0xc000c467e0, 0x379a020, 0xc0029cb650)
-I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !	/go/src/github.com/cockroachdb/cockroach/pkg/util/stop/stopper.go:185 +0x11f
+I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !github.com/semistrict/ratel/pkg/util/stop.(*Stopper).Recover(0xc000c467e0, 0x379a020, 0xc0029cb650)
+I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !	/go/src/github.com/semistrict/ratel/pkg/util/stop/stopper.go:185 +0x11f
 I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !panic(0x2ccb620, 0x527ac20)
 I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !	/usr/local/go/src/runtime/panic.go:513 +0x1b9
-I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !github.com/cockroachdb/cockroach/pkg/storage.(*replicaItem).setProcessing(...)
-I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !	/go/src/github.com/cockroachdb/cockroach/pkg/storage/queue.go:80
-I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !github.com/cockroachdb/cockroach/pkg/storage.(*baseQueue).addToPurgatoryLocked.func2.1(0xc000473340, 0x379a020, 0xc0029cb650, 0xc000c467e0)
-I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !	/go/src/github.com/cockroachdb/cockroach/pkg/storage/queue.go:928 +0x1dd
-I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !github.com/cockroachdb/cockroach/pkg/storage.(*baseQueue).addToPurgatoryLocked.func2(0x379a020, 0xc0029cb650)
-I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !	/go/src/github.com/cockroachdb/cockroach/pkg/storage/queue.go:949 +0x462
-I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !github.com/cockroachdb/cockroach/pkg/util/stop.(*Stopper).RunWorker.func1(0xc001480a10, 0xc000c467e0, 0xc0002f37c0)
-I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !	/go/src/github.com/cockroachdb/cockroach/pkg/util/stop/stopper.go:200 +0xe1
-I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !created by github.com/cockroachdb/cockroach/pkg/util/stop.(*Stopper).RunWorker
-I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !	/go/src/github.com/cockroachdb/cockroach/pkg/util/stop/stopper.go:193 +0xa8
+I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !github.com/semistrict/ratel/pkg/storage.(*replicaItem).setProcessing(...)
+I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !	/go/src/github.com/semistrict/ratel/pkg/storage/queue.go:80
+I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !github.com/semistrict/ratel/pkg/storage.(*baseQueue).addToPurgatoryLocked.func2.1(0xc000473340, 0x379a020, 0xc0029cb650, 0xc000c467e0)
+I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !	/go/src/github.com/semistrict/ratel/pkg/storage/queue.go:928 +0x1dd
+I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !github.com/semistrict/ratel/pkg/storage.(*baseQueue).addToPurgatoryLocked.func2(0x379a020, 0xc0029cb650)
+I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !	/go/src/github.com/semistrict/ratel/pkg/storage/queue.go:949 +0x462
+I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !github.com/semistrict/ratel/pkg/util/stop.(*Stopper).RunWorker.func1(0xc001480a10, 0xc000c467e0, 0xc0002f37c0)
+I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !	/go/src/github.com/semistrict/ratel/pkg/util/stop/stopper.go:200 +0xe1
+I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !created by github.com/semistrict/ratel/pkg/util/stop.(*Stopper).RunWorker
+I190412 10:06:01.029478 183717 ccl/partitionccl/partition_test.go:204  [-]  !	/go/src/github.com/semistrict/ratel/pkg/util/stop/stopper.go:193 +0xa8

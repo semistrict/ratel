@@ -824,7 +824,7 @@ decomputed_column  CREATE TABLE public.decomputed_column (
                      CONSTRAINT decomputed_column_pkey PRIMARY KEY (a ASC)
                    )
 
-# Test for https://github.com/cockroachdb/cockroach/issues/26483
+# Test for https://github.com/semistrict/ratel/issues/26483
 # We try to create a unique column on an un-indexable type.
 statement ok
 CREATE TABLE b26483()

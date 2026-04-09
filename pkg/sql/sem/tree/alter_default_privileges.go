@@ -15,8 +15,8 @@
 package tree
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/privilege"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/sql/privilege"
 )
 
 // AlterDefaultPrivileges represents an ALTER DEFAULT PRIVILEGES statement.

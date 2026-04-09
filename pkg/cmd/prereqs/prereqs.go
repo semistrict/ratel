@@ -148,7 +148,7 @@ func collectFiles(path string, includeTest bool, options testOptions) ([]string,
 
 func isStdlibPackage(path string) bool {
 	// Standard library packages never contain a dot; second- and third-party
-	// packages nearly always do. Consider "github.com/cockroachdb/cockroach",
+	// packages nearly always do. Consider "github.com/semistrict/ratel",
 	// where the domain provides the dot, or "./pkg/sql", where the relative
 	// import provides the dot.
 	//

@@ -20,8 +20,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 	"golang.org/x/sync/errgroup"
 )
 

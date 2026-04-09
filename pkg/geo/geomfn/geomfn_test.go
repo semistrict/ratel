@@ -18,8 +18,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/geo"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/geo"
 	"github.com/stretchr/testify/require"
 	"github.com/twpayne/go-geom"
 )

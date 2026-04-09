@@ -2,8 +2,8 @@
 - Status: accepted
 - Start Date: 2020-06-24
 - Authors: knz, ben
-- RFC PR: [#50602](https://github.com/cockroachdb/cockroach/pull/50602)
-- Cockroach Issue: [#29641](https://github.com/cockroachdb/cockroach/issues/29641)
+- RFC PR: [#50602](https://github.com/semistrict/ratel/pull/50602)
+- Cockroach Issue: [#29641](https://github.com/semistrict/ratel/issues/29641)
 
 # Summary
 
@@ -38,14 +38,14 @@ The technical proposal has multiple components:
   cached OCSP responses upon HTTP GET requests.
 
   (In a later phase, also available via SQL built-in function, pending
-  [#51454](https://github.com/cockroachdb/cockroach/issues/51454) or
+  [#51454](https://github.com/semistrict/ratel/issues/51454) or
   similar work.)
 
 - the same API endpoint also supports HTTP POST request to manually
   force a refresh.
 
 **Note: as of August 2020, [PR
-#53218](https://github.com/cockroachdb/cockroach/pull/53218)
+#53218](https://github.com/semistrict/ratel/pull/53218)
 implements a MVP of the checking logic. However it does not implement
 caching as described in this RFC. The caching remains to be done.**
 
@@ -180,7 +180,7 @@ cluster-side refresh of the cache.  See below for details.
 
 The name of the built-in remains to be
 refined later, pending further investigation of
-[#51454](https://github.com/cockroachdb/cockroach/issues/51454).
+[#51454](https://github.com/semistrict/ratel/issues/51454).
 
 ## Cluster-wide trigger for cache refreshes
 

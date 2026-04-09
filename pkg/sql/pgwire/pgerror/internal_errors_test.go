@@ -20,9 +20,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
 	"github.com/cockroachdb/errors"
 	"github.com/kr/pretty"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
 )
 
 // f formats an error.

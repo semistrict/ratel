@@ -5,10 +5,10 @@ package poison
 
 import (
 	fmt "fmt"
-	roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	hlc "github.com/cockroachdb/cockroach/pkg/util/hlc"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	hlc "github.com/semistrict/ratel/pkg/util/hlc"
 	io "io"
 	math "math"
 	math_bits "math/bits"

@@ -18,9 +18,9 @@ import (
 	"context"
 	"io"
 
-	"github.com/cockroachdb/cockroach/pkg/cloud"
-	"github.com/cockroachdb/cockroach/pkg/settings"
-	"github.com/cockroachdb/cockroach/pkg/util/ioctx"
+	"github.com/semistrict/ratel/pkg/cloud"
+	"github.com/semistrict/ratel/pkg/settings"
+	"github.com/semistrict/ratel/pkg/util/ioctx"
 )
 
 // DefaultBytesAllowedBeforeAccounting are how many bytes we will read/written

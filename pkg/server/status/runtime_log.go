@@ -19,10 +19,10 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/log/eventpb"
 	"github.com/cockroachdb/redact"
 	humanize "github.com/dustin/go-humanize"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/log/eventpb"
 )
 
 // statsTemplate formats an event of type eventpb.RuntimeStats into a

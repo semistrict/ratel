@@ -1086,7 +1086,7 @@ sort
 # NOTE: In Postgres this example successfully returns a result. Our tuple typing
 # and casting logic doesn't match Postgres's semantics exactly, so we return a
 # user error. See
-# https://github.com/cockroachdb/cockroach/issues/70831#issuecomment-929547297.
+# https://github.com/semistrict/ratel/issues/70831#issuecomment-929547297.
 build
 SELECT * FROM (VALUES (ARRAY[(true, NULL)])) AS v1
 EXCEPT ALL

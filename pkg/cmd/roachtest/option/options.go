@@ -15,8 +15,8 @@
 package option
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/roachprod"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/install"
+	"github.com/semistrict/ratel/pkg/roachprod"
+	"github.com/semistrict/ratel/pkg/roachprod/install"
 )
 
 // StartOpts is a type that combines the start options needed by roachprod and roachtest.

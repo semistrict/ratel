@@ -15,9 +15,9 @@
 package props
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/util/buildutil"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
+	"github.com/semistrict/ratel/pkg/util/buildutil"
 )
 
 // Verify runs consistency checks against the shared properties, in order to

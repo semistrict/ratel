@@ -29,12 +29,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/util/contextutil"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/logtags"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/util/contextutil"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 const (
@@ -646,7 +646,7 @@ func initHandshakeHelper(
 }
 
 // InitHandshake starts off an inter-node TLS handshake protocol, as described
-// here: https://github.com/cockroachdb/cockroach/pull/51991 . This method
+// here: https://github.com/semistrict/ratel/pull/51991 . This method
 // negotiates an inter-node CA and puts it in certsDir.
 func InitHandshake(
 	ctx context.Context,

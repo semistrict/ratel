@@ -19,11 +19,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/rel"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/rel/internal/comparetest"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/rel/internal/cyclegraphtest"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/rel/internal/entitynodetest"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/rel/reltest"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/rel"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/rel/internal/comparetest"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/rel/internal/cyclegraphtest"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/rel/internal/entitynodetest"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/rel/reltest"
 	"github.com/stretchr/testify/require"
 )
 

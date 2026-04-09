@@ -18,10 +18,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/ts/tspb"
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
 	"github.com/cockroachdb/errors"
 	prometheusgo "github.com/prometheus/client_model/go"
+	"github.com/semistrict/ratel/pkg/ts/tspb"
+	"github.com/semistrict/ratel/pkg/util/metric"
 )
 
 // catalog_generator.go generates a protobuf describing a set of pre-defined

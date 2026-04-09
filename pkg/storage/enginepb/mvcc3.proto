@@ -27,7 +27,7 @@ message TxnMeta {
   // id is a unique UUID value which identifies the transaction.
   // This field is always filled in.
   bytes id = 1 [(gogoproto.customname) = "ID",
-      (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.UUID",
+      (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/uuid.UUID",
       (gogoproto.nullable) = false];
   reserved 2;
   // key is the key which anchors the transaction. This is typically
@@ -252,7 +252,7 @@ message MVCCWriteValueOp {
 // transaction.
 message MVCCWriteIntentOp {
   bytes txn_id = 1 [
-    (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.UUID",
+    (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/uuid.UUID",
     (gogoproto.customname) = "TxnID",
     (gogoproto.nullable) = false];
   bytes txn_key = 2;
@@ -264,7 +264,7 @@ message MVCCWriteIntentOp {
 // timestamp for a given transaction.
 message MVCCUpdateIntentOp {
   bytes txn_id = 1 [
-    (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.UUID",
+    (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/uuid.UUID",
     (gogoproto.customname) = "TxnID",
     (gogoproto.nullable) = false];
   util.hlc.Timestamp timestamp = 2 [(gogoproto.nullable) = false];
@@ -274,7 +274,7 @@ message MVCCUpdateIntentOp {
 // transaction.
 message MVCCCommitIntentOp {
   bytes txn_id = 1 [
-    (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.UUID",
+    (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/uuid.UUID",
     (gogoproto.customname) = "TxnID",
     (gogoproto.nullable) = false];
   bytes key = 2;
@@ -292,7 +292,7 @@ message MVCCCommitIntentOp {
 // write in its final epoch.
 message MVCCAbortIntentOp {
   bytes txn_id = 1 [
-    (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.UUID",
+    (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/uuid.UUID",
     (gogoproto.customname) = "TxnID",
     (gogoproto.nullable) = false];
 }
@@ -302,7 +302,7 @@ message MVCCAbortIntentOp {
 // committed.
 message MVCCAbortTxnOp {
   bytes txn_id = 1 [
-    (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.UUID",
+    (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/uuid.UUID",
     (gogoproto.customname) = "TxnID",
     (gogoproto.nullable) = false];
 }

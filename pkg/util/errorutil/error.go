@@ -32,7 +32,7 @@ func UnexpectedWithIssueErrorf(issue int, format string, args ...interface{}) er
 	err = errors.WithHint(err,
 		fmt.Sprintf("We've been trying to track this particular issue down. "+
 			"Please report your reproduction at "+
-			"https://github.com/cockroachdb/cockroach/issues/%d "+
+			"https://github.com/semistrict/ratel/issues/%d "+
 			"unless that issue seems to have been resolved "+
 			"(in which case you might want to update crdb to a newer version).",
 			issue))

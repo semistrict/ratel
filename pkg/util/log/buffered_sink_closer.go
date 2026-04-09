@@ -19,8 +19,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 )
 
 // bufferedSinkCloser is a utility used by the logging system to

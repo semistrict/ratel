@@ -15,9 +15,9 @@
 package row
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/concurrency/lock"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/concurrency/lock"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
 )
 
 // getKeyLockingStrength returns the configured per-key locking strength to use

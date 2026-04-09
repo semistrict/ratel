@@ -17,7 +17,7 @@ package contention
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/settings"
+	"github.com/semistrict/ratel/pkg/settings"
 )
 
 // TxnIDResolutionInterval is the cluster setting that controls how often the

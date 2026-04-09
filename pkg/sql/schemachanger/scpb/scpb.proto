@@ -106,7 +106,7 @@ message DescriptorState {
   // JobID is the ID of the job responsible for this DescriptorState.
   int64 job_id = 5 [
     (gogoproto.customname) = "JobID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb.JobID"];
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/catpb.JobID"];
 
   // Revertible captures whether the job is currently revertible.
   // This is important to facilitate constructing the job in the appropriate

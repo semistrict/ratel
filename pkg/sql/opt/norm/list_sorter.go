@@ -14,7 +14,7 @@
 
 package norm
 
-import "github.com/cockroachdb/cockroach/pkg/sql/opt/memo"
+import "github.com/semistrict/ratel/pkg/sql/opt/memo"
 
 // listSorter is a helper struct that implements the sort.Slice "less"
 // comparison function.

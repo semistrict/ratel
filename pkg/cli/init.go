@@ -20,11 +20,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/clierrorplus"
-	"github.com/cockroachdb/cockroach/pkg/server/serverpb"
-	"github.com/cockroachdb/cockroach/pkg/util/contextutil"
-	"github.com/cockroachdb/cockroach/pkg/util/retry"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/cli/clierrorplus"
+	"github.com/semistrict/ratel/pkg/server/serverpb"
+	"github.com/semistrict/ratel/pkg/util/contextutil"
+	"github.com/semistrict/ratel/pkg/util/retry"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 )
@@ -71,7 +71,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 // so we make a best effort at minimizing chances for users to
 // arrive in an uncomfortable situation.
 //
-// [0]: https://github.com/cockroachdb/cockroach/pull/19753#issuecomment-341561452
+// [0]: https://github.com/semistrict/ratel/pull/19753#issuecomment-341561452
 func waitForClientReadinessAndGetClientGRPCConn(
 	ctx context.Context,
 ) (conn *grpc.ClientConn, finish func(), err error) {

@@ -19,7 +19,7 @@ import (
 	"net"
 	"os"
 
-	addrutil "github.com/cockroachdb/cockroach/pkg/util/netutil/addr"
+	addrutil "github.com/semistrict/ratel/pkg/util/netutil/addr"
 )
 
 // TestAddr is an address to use for test servers. Listening on port 0

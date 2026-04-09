@@ -28,12 +28,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/exit"
-	"github.com/cockroachdb/cockroach/pkg/util/log/severity"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/errors/oserror"
+	"github.com/semistrict/ratel/pkg/cli/exit"
+	"github.com/semistrict/ratel/pkg/util/log/severity"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 )
 
 // File I/O for logs.
@@ -43,7 +43,7 @@ import (
 // is called from multiple concurrent goroutines.
 //
 // For background about why this function exists, see:
-// https://github.com/cockroachdb/cockroach/issues/36861#issuecomment-483589446
+// https://github.com/semistrict/ratel/issues/36861#issuecomment-483589446
 func TemporarilyDisableFileGCForMainLogger() (cleanup func()) {
 	fileSink := debugLog.getFileSink()
 	if fileSink == nil || !fileSink.enabled.Get() {
@@ -249,7 +249,7 @@ func (l *fileSink) flushAndMaybeSyncLocked(doSync bool) {
 	}
 
 	// TODO(knz): the following stall detection code is misplaced.
-	// See: https://github.com/cockroachdb/cockroach/issues/56893
+	// See: https://github.com/semistrict/ratel/issues/56893
 	//
 	// If we can't flush or sync within this duration, exit the process.
 	t := time.AfterFunc(maxSyncDuration, func() {

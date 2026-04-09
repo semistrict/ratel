@@ -19,8 +19,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/envutil"
-	"github.com/cockroachdb/cockroach/pkg/util/sysutil"
+	"github.com/semistrict/ratel/pkg/util/envutil"
+	"github.com/semistrict/ratel/pkg/util/sysutil"
 )
 
 // flushSyncWriter is the interface satisfied by logging destinations.

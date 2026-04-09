@@ -17,7 +17,7 @@ package rpc
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
+	"github.com/semistrict/ratel/pkg/base"
 	"google.golang.org/grpc/keepalive"
 )
 

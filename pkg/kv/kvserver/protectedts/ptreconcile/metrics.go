@@ -15,8 +15,8 @@
 package ptreconcile
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
 	io_prometheus_client "github.com/prometheus/client_model/go"
+	"github.com/semistrict/ratel/pkg/util/metric"
 )
 
 // Metrics encapsulates the metrics exported by the Reconciler.

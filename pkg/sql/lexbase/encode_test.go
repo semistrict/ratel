@@ -21,8 +21,8 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/lexbase"
-	"github.com/cockroachdb/cockroach/pkg/sql/parser"
+	"github.com/semistrict/ratel/pkg/sql/lexbase"
+	"github.com/semistrict/ratel/pkg/sql/parser"
 )
 
 func TestEncodeRestrictedSQLIdent(t *testing.T) {

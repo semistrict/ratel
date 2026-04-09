@@ -4,7 +4,7 @@
 - Authors: Paul Bardea
 - RFC PR: #[42887]()
 - Cockroach Issue:
-  #[44814](https://github.com/cockroachdb/cockroach/issues/44814)
+  #[44814](https://github.com/semistrict/ratel/issues/44814)
 
 
 # Summary
@@ -22,7 +22,7 @@ appeared at the time of a backup.
 # Guide-level explanation
 
 This RFC builds on the original [Backup &
-Restore](https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20160720_backup_restore.md)
+Restore](https://github.com/semistrict/ratel/blob/master/docs/RFCS/20160720_backup_restore.md)
 functionality and extends it to include all logical data stored in the backup.
 A new syntax is introduced to perform a full cluster backup and restore:
 `BACKUP TO [...]` and `RESTORE FULL CLUSTER FROM [...]`.
@@ -99,7 +99,7 @@ be a list of names of system tables maintained inside the `backupccl` package.
 | comments | Stores up to 1 string comment per object ID | Yes | |
 | replication\_* | | No | Replication stats should be regenerated when the data is RESTORED. |
 | reports_meta | | No | " |
-| protectedts\_* | As proposed by the [protected timestamp RFC](https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20191009_gc_protected_timestamps.md) | No | Restore only restores a snapshot of the data in the backup, not the entire MVCC history. |
+| protectedts\_* | As proposed by the [protected timestamp RFC](https://github.com/semistrict/ratel/blob/master/docs/RFCS/20191009_gc_protected_timestamps.md) | No | Restore only restores a snapshot of the data in the backup, not the entire MVCC history. |
 
 There is no information in the system ranges that should be included in a
 CLUSTER backup since they all relate to properties of the ranges/nodes.

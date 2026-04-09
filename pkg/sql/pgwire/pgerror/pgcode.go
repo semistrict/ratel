@@ -17,8 +17,8 @@ package pgerror
 import (
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
 )
 
 // WithCandidateCode decorates the error with a candidate postgres

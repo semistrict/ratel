@@ -17,9 +17,9 @@ package rel
 import (
 	"sort"
 
-	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 )
 
 // Query searches for sets of entities which uphold a set of constraints.

@@ -15,8 +15,8 @@
 package colexecwindow_test
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/colexec/colbuilder"
-	"github.com/cockroachdb/cockroach/pkg/sql/colexec/colexecargs"
+	"github.com/semistrict/ratel/pkg/sql/colexec/colbuilder"
+	"github.com/semistrict/ratel/pkg/sql/colexec/colexecargs"
 )
 
 func init() {

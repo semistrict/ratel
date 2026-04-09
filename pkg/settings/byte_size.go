@@ -15,8 +15,8 @@
 package settings
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/util/humanizeutil"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util/humanizeutil"
 )
 
 // ByteSizeSetting is the interface of a setting variable that will be

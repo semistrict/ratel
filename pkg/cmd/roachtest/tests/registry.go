@@ -14,7 +14,7 @@
 
 package tests
 
-import "github.com/cockroachdb/cockroach/pkg/cmd/roachtest/registry"
+import "github.com/semistrict/ratel/pkg/cmd/roachtest/registry"
 
 // RegisterTests registers all tests to the Registry. This powers `roachtest run`.
 func RegisterTests(r registry.Registry) {

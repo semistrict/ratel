@@ -18,7 +18,7 @@ import (
 	"context"
 	"database/sql/driver"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/scanner"
+	"github.com/semistrict/ratel/pkg/sql/scanner"
 )
 
 // QueryFn is the type of functions produced by MakeQuery.

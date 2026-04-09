@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/cockroachdb/cockroach/pkg/roachprod/logger"
+	"github.com/semistrict/ratel/pkg/roachprod/logger"
 )
 
 var installCmds = map[string]string{

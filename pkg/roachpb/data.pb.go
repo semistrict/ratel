@@ -6,17 +6,17 @@ package roachpb
 import (
 	bytes "bytes"
 	fmt "fmt"
-	lock "github.com/cockroachdb/cockroach/pkg/kv/kvserver/concurrency/lock"
-	rspb "github.com/cockroachdb/cockroach/pkg/kv/kvserver/readsummary/rspb"
-	enginepb "github.com/cockroachdb/cockroach/pkg/storage/enginepb"
-	github_com_cockroachdb_cockroach_pkg_storage_enginepb "github.com/cockroachdb/cockroach/pkg/storage/enginepb"
-	github_com_cockroachdb_cockroach_pkg_util_hlc "github.com/cockroachdb/cockroach/pkg/util/hlc"
-	hlc "github.com/cockroachdb/cockroach/pkg/util/hlc"
-	github_com_cockroachdb_cockroach_pkg_util_uuid "github.com/cockroachdb/cockroach/pkg/util/uuid"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	_ "github.com/gogo/protobuf/types"
 	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
+	lock "github.com/semistrict/ratel/pkg/kv/kvserver/concurrency/lock"
+	rspb "github.com/semistrict/ratel/pkg/kv/kvserver/readsummary/rspb"
+	enginepb "github.com/semistrict/ratel/pkg/storage/enginepb"
+	github_com_cockroachdb_cockroach_pkg_storage_enginepb "github.com/semistrict/ratel/pkg/storage/enginepb"
+	github_com_cockroachdb_cockroach_pkg_util_hlc "github.com/semistrict/ratel/pkg/util/hlc"
+	hlc "github.com/semistrict/ratel/pkg/util/hlc"
+	github_com_cockroachdb_cockroach_pkg_util_uuid "github.com/semistrict/ratel/pkg/util/uuid"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -402,7 +402,7 @@ var xxx_messageInfo_KeyValue proto.InternalMessageInfo
 // StoreIdent is written to the underlying storage engine at a
 // store-reserved system key (KeyLocalIdent).
 type StoreIdent struct {
-	ClusterID github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,1,opt,name=cluster_id,json=clusterId,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/uuid.UUID" json:"cluster_id"`
+	ClusterID github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,1,opt,name=cluster_id,json=clusterId,proto3,customtype=github.com/semistrict/ratel/pkg/util/uuid.UUID" json:"cluster_id"`
 	NodeID    NodeID                                              `protobuf:"varint,2,opt,name=node_id,json=nodeId,proto3,casttype=NodeID" json:"node_id,omitempty"`
 	StoreID   StoreID                                             `protobuf:"varint,3,opt,name=store_id,json=storeId,proto3,casttype=StoreID" json:"store_id,omitempty"`
 }
@@ -493,7 +493,7 @@ type MergeTrigger struct {
 	// being subsumed). It is suitable for use as the timestamp cache's low water
 	// mark for the keys previously owned by the subsumed range, though this role
 	// is largely being... subsumed by the RightReadSummary.
-	FreezeStart github_com_cockroachdb_cockroach_pkg_util_hlc.ClockTimestamp `protobuf:"bytes,5,opt,name=freeze_start,json=freezeStart,proto3,casttype=github.com/cockroachdb/cockroach/pkg/util/hlc.ClockTimestamp" json:"freeze_start"`
+	FreezeStart github_com_cockroachdb_cockroach_pkg_util_hlc.ClockTimestamp `protobuf:"bytes,5,opt,name=freeze_start,json=freezeStart,proto3,casttype=github.com/semistrict/ratel/pkg/util/hlc.ClockTimestamp" json:"freeze_start"`
 	// right_closed_timestamp is the closed timestamp of the RHS at the moment of
 	// the subsumption. Because the SubsumeRequest synchronizes with all other
 	// requests, the range's closed timestamp does not advance past the snapshot
@@ -785,7 +785,7 @@ func (m *InternalCommitTrigger) GetStickyBitTrigger() *StickyBitTrigger {
 
 type ObservedTimestamp struct {
 	NodeID    NodeID                                                       `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=NodeID" json:"node_id,omitempty"`
-	Timestamp github_com_cockroachdb_cockroach_pkg_util_hlc.ClockTimestamp `protobuf:"bytes,2,opt,name=timestamp,proto3,casttype=github.com/cockroachdb/cockroach/pkg/util/hlc.ClockTimestamp" json:"timestamp"`
+	Timestamp github_com_cockroachdb_cockroach_pkg_util_hlc.ClockTimestamp `protobuf:"bytes,2,opt,name=timestamp,proto3,casttype=github.com/semistrict/ratel/pkg/util/hlc.ClockTimestamp" json:"timestamp"`
 }
 
 func (m *ObservedTimestamp) Reset()         { *m = ObservedTimestamp{} }
@@ -1250,7 +1250,7 @@ type SequencedWrite struct {
 	// The key that the write was made at.
 	Key Key `protobuf:"bytes,1,opt,name=key,proto3,casttype=Key" json:"key,omitempty"`
 	// The sequence number of the request that created the write.
-	Sequence github_com_cockroachdb_cockroach_pkg_storage_enginepb.TxnSeq `protobuf:"varint,2,opt,name=sequence,proto3,casttype=github.com/cockroachdb/cockroach/pkg/storage/enginepb.TxnSeq" json:"sequence,omitempty"`
+	Sequence github_com_cockroachdb_cockroach_pkg_storage_enginepb.TxnSeq `protobuf:"varint,2,opt,name=sequence,proto3,casttype=github.com/semistrict/ratel/pkg/storage/enginepb.TxnSeq" json:"sequence,omitempty"`
 }
 
 func (m *SequencedWrite) Reset()         { *m = SequencedWrite{} }
@@ -1288,7 +1288,7 @@ type Lease struct {
 	// The start is a timestamp at which the lease begins. This value
 	// must be greater than the last lease expiration or the lease request
 	// is considered invalid.
-	Start github_com_cockroachdb_cockroach_pkg_util_hlc.ClockTimestamp `protobuf:"bytes,1,opt,name=start,proto3,casttype=github.com/cockroachdb/cockroach/pkg/util/hlc.ClockTimestamp" json:"start"`
+	Start github_com_cockroachdb_cockroach_pkg_util_hlc.ClockTimestamp `protobuf:"bytes,1,opt,name=start,proto3,casttype=github.com/semistrict/ratel/pkg/util/hlc.ClockTimestamp" json:"start"`
 	// The expiration is a timestamp at which the lease expires. This means that a
 	// new lease can be granted for a later timestamp. This field is only set for
 	// expiration-based leases.
@@ -1303,7 +1303,7 @@ type Lease struct {
 	// to help with the rollout (such that a lease applied by some nodes before
 	// the rollout and some nodes after the rollout is serialized the same).
 	// TODO(andrei): Make this non-nullable after the rollout.
-	ProposedTS *github_com_cockroachdb_cockroach_pkg_util_hlc.ClockTimestamp `protobuf:"bytes,5,opt,name=proposed_ts,json=proposedTs,proto3,casttype=github.com/cockroachdb/cockroach/pkg/util/hlc.ClockTimestamp" json:"proposed_ts,omitempty"`
+	ProposedTS *github_com_cockroachdb_cockroach_pkg_util_hlc.ClockTimestamp `protobuf:"bytes,5,opt,name=proposed_ts,json=proposedTs,proto3,casttype=github.com/semistrict/ratel/pkg/util/hlc.ClockTimestamp" json:"proposed_ts,omitempty"`
 	// The epoch of the lease holder's node liveness entry. If this value is
 	// non-zero, the expiration field is ignored.
 	Epoch int64 `protobuf:"varint,6,opt,name=epoch,proto3" json:"epoch,omitempty"`
@@ -1363,7 +1363,7 @@ type AbortSpanEntry struct {
 	// it was aborted.
 	Timestamp hlc.Timestamp `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp"`
 	// The priority of the transaction.
-	Priority github_com_cockroachdb_cockroach_pkg_storage_enginepb.TxnPriority `protobuf:"varint,3,opt,name=priority,proto3,casttype=github.com/cockroachdb/cockroach/pkg/storage/enginepb.TxnPriority" json:"priority,omitempty"`
+	Priority github_com_cockroachdb_cockroach_pkg_storage_enginepb.TxnPriority `protobuf:"varint,3,opt,name=priority,proto3,casttype=github.com/semistrict/ratel/pkg/storage/enginepb.TxnPriority" json:"priority,omitempty"`
 }
 
 func (m *AbortSpanEntry) Reset()         { *m = AbortSpanEntry{} }
@@ -1420,7 +1420,7 @@ type LeafTxnInputState struct {
 	// this field becomes the sequence number used for reads,
 	// regardless of the current seqnum generated for writes. This is
 	// updated via the (client.TxnSender).Step() operation.
-	ReadSeqNum github_com_cockroachdb_cockroach_pkg_storage_enginepb.TxnSeq `protobuf:"varint,10,opt,name=read_seq_num,json=readSeqNum,proto3,casttype=github.com/cockroachdb/cockroach/pkg/storage/enginepb.TxnSeq" json:"read_seq_num,omitempty"`
+	ReadSeqNum github_com_cockroachdb_cockroach_pkg_storage_enginepb.TxnSeq `protobuf:"varint,10,opt,name=read_seq_num,json=readSeqNum,proto3,casttype=github.com/semistrict/ratel/pkg/storage/enginepb.TxnSeq" json:"read_seq_num,omitempty"`
 }
 
 func (m *LeafTxnInputState) Reset()         { *m = LeafTxnInputState{} }
@@ -1459,7 +1459,7 @@ type LeafTxnFinalState struct {
 	// txn is a copy of the transaction record.
 	// TODO(knz,andrei): We don't actually need the fully txn
 	// record. This can be simplified.
-	// See: https://github.com/cockroachdb/cockroach/issues/43192
+	// See: https://github.com/semistrict/ratel/issues/43192
 	Txn Transaction `protobuf:"bytes,1,opt,name=txn,proto3" json:"txn"`
 	// deprecated_command_count indicates that at least one request
 	// has been processed in this transaction.

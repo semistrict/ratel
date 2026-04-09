@@ -14,7 +14,7 @@
 
 package a
 
-import "github.com/cockroachdb/cockroach/pkg/util/timeutil"
+import "github.com/semistrict/ratel/pkg/util/timeutil"
 
 func init() {
 	timer := timeutil.NewTimer()

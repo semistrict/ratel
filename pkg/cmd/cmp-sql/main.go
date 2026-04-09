@@ -39,9 +39,9 @@ import (
 	"strings"
 
 	"github.com/cockroachdb/apd/v3"
-	"github.com/cockroachdb/cockroach/pkg/util/randutil"
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
+	"github.com/semistrict/ratel/pkg/util/randutil"
 )
 
 var (

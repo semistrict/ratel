@@ -14,7 +14,7 @@
 
 package server
 
-import "github.com/cockroachdb/cockroach/pkg/storage"
+import "github.com/semistrict/ratel/pkg/storage"
 
 func setOpenFileLimitInner(physicalStoreCount int) (uint64, error) {
 	return storage.RecommendedMaxOpenFiles, nil

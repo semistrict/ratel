@@ -21,10 +21,10 @@ import (
 	"math"
 	"sort"
 
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/constraint"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/settings"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/constraint"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/settings"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 const (
@@ -323,7 +323,7 @@ type qpsScorerOptions struct {
 	// assumption is not always valid for lease transfers because only the
 	// non-follower-read traffic will move to the target replica, but we don't
 	// track it separately yet. See
-	// https://github.com/cockroachdb/cockroach/issues/75630.
+	// https://github.com/semistrict/ratel/issues/75630.
 
 	// qpsPerReplica states the level of traffic being served by each replica in a
 	// range.

@@ -15,8 +15,8 @@
 package slstorage
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
 	io_prometheus_client "github.com/prometheus/client_model/go"
+	"github.com/semistrict/ratel/pkg/util/metric"
 )
 
 var (

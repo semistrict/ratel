@@ -23,7 +23,7 @@
 
 package tree
 
-import "github.com/cockroachdb/cockroach/pkg/sql/privilege"
+import "github.com/semistrict/ratel/pkg/sql/privilege"
 
 // Grant represents a GRANT statement.
 type Grant struct {

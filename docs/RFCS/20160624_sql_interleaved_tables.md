@@ -2,8 +2,8 @@
 - Status: completed
 - Start Date: 2016-06-24
 - Authors: Daniel Harrison
-- RFC PR: [#7465](https://github.com/cockroachdb/cockroach/pull/7465)
-- Cockroach Issue: [#2972](https://github.com/cockroachdb/cockroach/issues/2972)
+- RFC PR: [#7465](https://github.com/semistrict/ratel/pull/7465)
+- Cockroach Issue: [#2972](https://github.com/semistrict/ratel/issues/2972)
 
 # Summary
 
@@ -72,7 +72,7 @@ The keys for a sql table represented in the kv map are
     /<tableID>/1/<pkCol1>/<pkCol2>/<familyID>/<suffix>
 
 Where `pkColN` is the key encoding of the Nth primary index column, there is one
-row per [family of columns](https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20151214_sql_column_families.md),
+row per [family of columns](https://github.com/semistrict/ratel/blob/master/docs/RFCS/20151214_sql_column_families.md),
 and `suffix` counts how many bytes are stripped off the end to determine where
 ranges can split. The 0 row is always present and acts as a sentinel for the
 existence of the row. The single `0` on the end is an optimization that reuses

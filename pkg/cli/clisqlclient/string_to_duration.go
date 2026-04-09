@@ -30,7 +30,7 @@ import (
 // Note: this parser only supports the 'postgres' encoding for
 // IntervalStyle. This code breaks if the server-side
 // IntervalStyle is set to another value e.g. 'iso_8601'.
-// See: https://github.com/cockroachdb/cockroach/issues/67618
+// See: https://github.com/semistrict/ratel/issues/67618
 func stringToDuration(s string) (time.Duration, error) {
 	m := intervalRe.FindStringSubmatch(s)
 	if m == nil {

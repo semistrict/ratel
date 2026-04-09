@@ -21,7 +21,7 @@ import (
 	"sort"
 	"unicode"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/optgen/lang"
+	"github.com/semistrict/ratel/pkg/sql/opt/optgen/lang"
 )
 
 // opsGen generates the enumeration of all operator types.

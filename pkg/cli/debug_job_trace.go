@@ -22,10 +22,10 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/clierrorplus"
-	"github.com/cockroachdb/cockroach/pkg/cli/clisqlclient"
-	tracezipper "github.com/cockroachdb/cockroach/pkg/util/tracing/zipper"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/cli/clierrorplus"
+	"github.com/semistrict/ratel/pkg/cli/clisqlclient"
+	tracezipper "github.com/semistrict/ratel/pkg/util/tracing/zipper"
 	"github.com/spf13/cobra"
 )
 

@@ -14,7 +14,7 @@ cur.execute("SELECT now()")
 v = cur.fetchall()
 
 # Verify round-trip of strings containing backslashes.
-# https://github.com/cockroachdb/cockroachdb-python/issues/23
+# https://github.com/semistrict/rateldb-python/issues/23
 s = ('\\\\',)
 cur.execute("SELECT %s", s)
 v = cur.fetchall()

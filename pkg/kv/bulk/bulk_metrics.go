@@ -17,7 +17,7 @@ package bulk
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/metric"
+	"github.com/semistrict/ratel/pkg/util/metric"
 )
 
 // Metrics contains pointers to the metrics for

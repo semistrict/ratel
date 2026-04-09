@@ -23,9 +23,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb"
 	"github.com/cockroachdb/redact"
 	"github.com/gogo/protobuf/types"
+	"github.com/semistrict/ratel/pkg/util/tracing/tracingpb"
 )
 
 // RecordingType is the type of recording that a Span might be performing.

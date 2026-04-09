@@ -6,11 +6,11 @@ package rpc
 import (
 	context "context"
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	github_com_cockroachdb_cockroach_pkg_util_uuid "github.com/cockroachdb/cockroach/pkg/util/uuid"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	github_com_cockroachdb_cockroach_pkg_roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	github_com_cockroachdb_cockroach_pkg_util_uuid "github.com/semistrict/ratel/pkg/util/uuid"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -87,13 +87,13 @@ type PingRequest struct {
 	// The configured maximum clock offset (in nanoseconds) on the server.
 	OriginMaxOffsetNanos int64 `protobuf:"varint,4,opt,name=origin_max_offset_nanos,json=originMaxOffsetNanos" json:"origin_max_offset_nanos"`
 	// Cluster ID to prevent connections between nodes in different clusters.
-	ClusterID     *github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,5,opt,name=origin_cluster_id,json=originClusterId,customtype=github.com/cockroachdb/cockroach/pkg/util/uuid.UUID" json:"origin_cluster_id,omitempty"`
+	ClusterID     *github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,5,opt,name=origin_cluster_id,json=originClusterId,customtype=github.com/semistrict/ratel/pkg/util/uuid.UUID" json:"origin_cluster_id,omitempty"`
 	ServerVersion roachpb.Version                                      `protobuf:"bytes,6,opt,name=server_version,json=serverVersion" json:"server_version"`
 	// NodeID the originator of the request wishes to connect to.
 	// This helps prevent connections from being misrouted when addresses are reused.
-	TargetNodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,7,opt,name=target_node_id,json=targetNodeId,customtype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"target_node_id"`
+	TargetNodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,7,opt,name=target_node_id,json=targetNodeId,customtype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"target_node_id"`
 	// NodeID of the originator of the PingRequest.
-	OriginNodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,8,opt,name=origin_node_id,json=originNodeId,customtype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"origin_node_id"`
+	OriginNodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,8,opt,name=origin_node_id,json=originNodeId,customtype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"origin_node_id"`
 }
 
 func (m *PingRequest) Reset()         { *m = PingRequest{} }

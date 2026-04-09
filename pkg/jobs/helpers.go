@@ -14,7 +14,7 @@
 
 package jobs
 
-import "github.com/cockroachdb/cockroach/pkg/jobs/jobspb"
+import "github.com/semistrict/ratel/pkg/jobs/jobspb"
 
 // ResetConstructors resets the registered Resumer constructors.
 func ResetConstructors() func() {

@@ -18,13 +18,13 @@ import (
 	"context"
 	"sort"
 
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverbase"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/liveness"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/liveness/livenesspb"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverbase"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/liveness"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/liveness/livenesspb"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 )
@@ -114,7 +114,7 @@ func (r *Replica) canUnquiesceRLocked() bool {
 		//
 		// There are multiple ways for an uninitialized replica to be created and
 		// then abandoned, and we don't do a good job garbage collecting them at a
-		// later point (see https://github.com/cockroachdb/cockroach/issues/73424),
+		// later point (see https://github.com/semistrict/ratel/issues/73424),
 		// so it is important that they are cheap. Keeping them quiesced instead of
 		// letting them unquiesce and tick every 200ms indefinitely avoids a
 		// meaningful amount of periodic work for each uninitialized replica.

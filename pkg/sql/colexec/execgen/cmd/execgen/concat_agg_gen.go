@@ -18,7 +18,7 @@ import (
 	"io"
 	"text/template"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/sql/types"
 )
 
 const concatAggTmpl = "pkg/sql/colexec/colexecagg/concat_agg_tmpl.go"

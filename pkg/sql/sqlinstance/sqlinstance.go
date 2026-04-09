@@ -22,9 +22,9 @@ package sqlinstance
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlliveness"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/sql/sqlliveness"
 )
 
 // InstanceInfo exposes information on a SQL instance such as ID, network address and

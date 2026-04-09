@@ -15,8 +15,8 @@
 package execgen
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/colexecerror"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/sql/colexecerror"
 )
 
 const nonTemplatePanic = "do not call from non-template code"

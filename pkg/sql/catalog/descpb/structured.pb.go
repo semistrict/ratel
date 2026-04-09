@@ -6,18 +6,18 @@ package descpb
 import (
 	bytes "bytes"
 	fmt "fmt"
-	zonepb "github.com/cockroachdb/cockroach/pkg/config/zonepb"
-	geoindex "github.com/cockroachdb/cockroach/pkg/geo/geoindex"
-	github_com_cockroachdb_cockroach_pkg_roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	catpb "github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb"
-	github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb "github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb"
-	scpb "github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scpb"
-	types "github.com/cockroachdb/cockroach/pkg/sql/types"
-	hlc "github.com/cockroachdb/cockroach/pkg/util/hlc"
 	_ "github.com/gogo/protobuf/gogoproto"
 	github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
 	proto "github.com/gogo/protobuf/proto"
 	github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
+	zonepb "github.com/semistrict/ratel/pkg/config/zonepb"
+	geoindex "github.com/semistrict/ratel/pkg/geo/geoindex"
+	github_com_cockroachdb_cockroach_pkg_roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	catpb "github.com/semistrict/ratel/pkg/sql/catalog/catpb"
+	github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb "github.com/semistrict/ratel/pkg/sql/catalog/catpb"
+	scpb "github.com/semistrict/ratel/pkg/sql/schemachanger/scpb"
+	types "github.com/semistrict/ratel/pkg/sql/types"
+	hlc "github.com/semistrict/ratel/pkg/util/hlc"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -1996,7 +1996,7 @@ type TableDescriptor struct {
 	AuditMode     TableDescriptor_AuditMode   `protobuf:"varint,31,opt,name=audit_mode,json=auditMode,enum=cockroach.sql.sqlbase.TableDescriptor_AuditMode" json:"audit_mode"`
 	// The job id for a drop job is the id in the system.jobs table of the
 	// dropping of this table.
-	DropJobID github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.JobID `protobuf:"varint,32,opt,name=drop_job_id,json=dropJobId,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb.JobID" json:"drop_job_id"`
+	DropJobID github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.JobID `protobuf:"varint,32,opt,name=drop_job_id,json=dropJobId,casttype=github.com/semistrict/ratel/pkg/sql/catalog/catpb.JobID" json:"drop_job_id"`
 	// Before 22.1:
 	// The schema elements that have been dropped and whose underlying
 	// data needs to be gc-ed. These schema elements have already transitioned
@@ -2432,7 +2432,7 @@ func (m *TableDescriptor) GetForecastStats() bool {
 // it is legal for more than one goroutine to attempt to execute it. This
 // lease reduces write contention on the schema change.
 type TableDescriptor_SchemaChangeLease struct {
-	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id"`
+	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id"`
 	// Nanoseconds since the Unix epoch.
 	ExpirationTime int64 `protobuf:"varint,2,opt,name=expiration_time,json=expirationTime" json:"expiration_time"`
 }
@@ -2569,7 +2569,7 @@ type TableDescriptor_MutationJob struct {
 	// The job id for a mutation job is the id in the system.jobs table of the
 	// schema change job executing the mutation referenced by mutation_id.
 	// This is not a jobspb.JobID to avoid a dependency cycle.
-	JobID github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.JobID `protobuf:"varint,2,opt,name=job_id,json=jobId,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb.JobID" json:"job_id"`
+	JobID github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.JobID `protobuf:"varint,2,opt,name=job_id,json=jobId,casttype=github.com/semistrict/ratel/pkg/sql/catalog/catpb.JobID" json:"job_id"`
 }
 
 func (m *TableDescriptor_MutationJob) Reset()         { *m = TableDescriptor_MutationJob{} }
@@ -2735,7 +2735,7 @@ type TableDescriptor_GCDescriptorMutation struct {
 	DropTime int64   `protobuf:"varint,2,opt,name=drop_time,json=dropTime" json:"drop_time"` // Deprecated: Do not use.
 	// The job id for a mutation job is the id in the system.jobs table of the
 	// schema change job executing the mutation referenced by mutation_id.
-	JobID github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.JobID `protobuf:"varint,3,opt,name=job_id,json=jobId,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb.JobID" json:"job_id"` // Deprecated: Do not use.
+	JobID github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.JobID `protobuf:"varint,3,opt,name=job_id,json=jobId,casttype=github.com/semistrict/ratel/pkg/sql/catalog/catpb.JobID" json:"job_id"` // Deprecated: Do not use.
 }
 
 func (m *TableDescriptor_GCDescriptorMutation) Reset()         { *m = TableDescriptor_GCDescriptorMutation{} }
@@ -2952,7 +2952,7 @@ var xxx_messageInfo_DatabaseDescriptor_SchemaInfo proto.InternalMessageInfo
 // RegionConfig stores region configuration for a given database.
 type DatabaseDescriptor_RegionConfig struct {
 	SurvivalGoal  SurvivalGoal                                                      `protobuf:"varint,2,opt,name=survival_goal,json=survivalGoal,enum=cockroach.sql.sqlbase.SurvivalGoal" json:"survival_goal"`
-	PrimaryRegion github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.RegionName `protobuf:"bytes,3,opt,name=primary_region,json=primaryRegion,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb.RegionName" json:"primary_region"`
+	PrimaryRegion github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.RegionName `protobuf:"bytes,3,opt,name=primary_region,json=primaryRegion,casttype=github.com/semistrict/ratel/pkg/sql/catalog/catpb.RegionName" json:"primary_region"`
 	// RegionEnumID represents ID of the type descriptor corresponding to the
 	// region enum for a multi-region database. If the database is not a
 	// multi-region database then this field is 0 and no such region enum exists.
@@ -2994,7 +2994,7 @@ var xxx_messageInfo_DatabaseDescriptor_RegionConfig proto.InternalMessageInfo
 // SuperRegion stores a super region configuration.
 type SuperRegion struct {
 	SuperRegionName string                                                              `protobuf:"bytes,1,opt,name=super_region_name,json=superRegionName" json:"super_region_name"`
-	Regions         []github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.RegionName `protobuf:"bytes,2,rep,name=regions,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb.RegionName" json:"regions,omitempty"`
+	Regions         []github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.RegionName `protobuf:"bytes,2,rep,name=regions,casttype=github.com/semistrict/ratel/pkg/sql/catalog/catpb.RegionName" json:"regions,omitempty"`
 }
 
 func (m *SuperRegion) Reset()         { *m = SuperRegion{} }
@@ -3058,7 +3058,7 @@ type ZoneConfigExtensions struct {
 	Regional *zonepb.ZoneConfig `protobuf:"bytes,2,opt,name=regional" json:"regional,omitempty"`
 	// RegionalIn further extends the zone configs applied to REGIONAL [ BY ROW ]
 	// tables and partitions, according to affinity region.
-	RegionalIn map[github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.RegionName]zonepb.ZoneConfig `protobuf:"bytes,3,rep,name=regional_in,json=regionalIn,castkey=github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb.RegionName" json:"regional_in" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	RegionalIn map[github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.RegionName]zonepb.ZoneConfig `protobuf:"bytes,3,rep,name=regional_in,json=regionalIn,castkey=github.com/semistrict/ratel/pkg/sql/catalog/catpb.RegionName" json:"regional_in" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 }
 
 func (m *ZoneConfigExtensions) Reset()         { *m = ZoneConfigExtensions{} }
@@ -3318,7 +3318,7 @@ var xxx_messageInfo_TypeDescriptor_EnumMember proto.InternalMessageInfo
 // MULTIREGION_ENUM kind.
 type TypeDescriptor_RegionConfig struct {
 	// PrimaryRegion represents the PrimaryRegion for a multi-region enum.
-	PrimaryRegion github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.RegionName `protobuf:"bytes,1,opt,name=primary_region,json=primaryRegion,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb.RegionName" json:"primary_region"`
+	PrimaryRegion github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.RegionName `protobuf:"bytes,1,opt,name=primary_region,json=primaryRegion,casttype=github.com/semistrict/ratel/pkg/sql/catalog/catpb.RegionName" json:"primary_region"`
 	// SuperRegions represents the super regions defined on the database.
 	SuperRegions []SuperRegion `protobuf:"bytes,2,rep,name=super_regions,json=superRegions" json:"super_regions"`
 	// ZoneConfigExtensions represents per-locality zone configurations that

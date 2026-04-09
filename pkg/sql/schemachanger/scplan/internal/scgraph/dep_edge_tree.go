@@ -15,9 +15,9 @@
 package scgraph
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/screl"
-	"github.com/cockroachdb/cockroach/pkg/util/iterutil"
 	"github.com/google/btree"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/screl"
+	"github.com/semistrict/ratel/pkg/util/iterutil"
 )
 
 type depEdgeTree struct {

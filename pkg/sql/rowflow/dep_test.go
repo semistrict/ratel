@@ -17,18 +17,18 @@ package rowflow
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils/buildutil"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/testutils/buildutil"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 )
 
 func TestNoLinkForbidden(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 
 	buildutil.VerifyNoImports(t,
-		"github.com/cockroachdb/cockroach/pkg/sql/rowflow", true,
+		"github.com/semistrict/ratel/pkg/sql/rowflow", true,
 		[]string{
-			"github.com/cockroachdb/cockroach/pkg/sql/colflow",
-			"github.com/cockroachdb/cockroach/pkg/sql/distsql",
+			"github.com/semistrict/ratel/pkg/sql/colflow",
+			"github.com/semistrict/ratel/pkg/sql/distsql",
 		}, nil,
 	)
 }

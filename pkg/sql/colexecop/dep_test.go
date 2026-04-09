@@ -17,21 +17,21 @@ package colexecop
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils/buildutil"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/testutils/buildutil"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 )
 
 func TestNoLinkForbidden(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 
 	buildutil.VerifyNoImports(t,
-		"github.com/cockroachdb/cockroach/pkg/sql/colexecop", true,
+		"github.com/semistrict/ratel/pkg/sql/colexecop", true,
 		[]string{
-			"github.com/cockroachdb/cockroach/pkg/sql/colcontainer",
-			"github.com/cockroachdb/cockroach/pkg/sql/colexec",
-			"github.com/cockroachdb/cockroach/pkg/sql/colflow",
-			"github.com/cockroachdb/cockroach/pkg/sql/rowexec",
-			"github.com/cockroachdb/cockroach/pkg/sql/rowflow",
+			"github.com/semistrict/ratel/pkg/sql/colcontainer",
+			"github.com/semistrict/ratel/pkg/sql/colexec",
+			"github.com/semistrict/ratel/pkg/sql/colflow",
+			"github.com/semistrict/ratel/pkg/sql/rowexec",
+			"github.com/semistrict/ratel/pkg/sql/rowflow",
 		}, nil,
 	)
 }

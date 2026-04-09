@@ -3,7 +3,7 @@
 - Start Date: 2017-09-25
 - Authors: Masha Schneider, Justin Jaffray
 - RFC PR: #18739
-- Cockroach Issue: [#2969](https://github.com/cockroachdb/cockroach/issues/2969)
+- Cockroach Issue: [#2969](https://github.com/semistrict/ratel/issues/2969)
 
 # Summary
 
@@ -31,7 +31,7 @@ precise binary encoding.
 
 JSONB is a popular feature of PostgreSQL and one of the most requested features
 for CockroachDB, with the
-[issue](https://github.com/cockroachdb/cockroach/issues/2969) having by far
+[issue](https://github.com/semistrict/ratel/issues/2969) having by far
 the largest number of thumbs-ups of any feature request.
 Many users of CockroachDB would prefer to store JSON blobs in columns, either
 in addition to a traditional relational schema, or as a replacement of it

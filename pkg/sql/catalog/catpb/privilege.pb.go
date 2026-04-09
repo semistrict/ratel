@@ -5,11 +5,11 @@ package catpb
 
 import (
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_security "github.com/cockroachdb/cockroach/pkg/security"
-	github_com_cockroachdb_cockroach_pkg_sql_sem_tree "github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
+	github_com_cockroachdb_cockroach_pkg_security "github.com/semistrict/ratel/pkg/security"
+	github_com_cockroachdb_cockroach_pkg_sql_sem_tree "github.com/semistrict/ratel/pkg/sql/sem/tree"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -68,7 +68,7 @@ func (DefaultPrivilegeDescriptor_DefaultPrivilegeDescriptorType) EnumDescriptor(
 
 // UserPrivileges describes the list of privileges available for a given user.
 type UserPrivileges struct {
-	UserProto github_com_cockroachdb_cockroach_pkg_security.SQLUsernameProto `protobuf:"bytes,1,opt,name=user_proto,json=userProto,casttype=github.com/cockroachdb/cockroach/pkg/security.SQLUsernameProto" json:"user_proto"`
+	UserProto github_com_cockroachdb_cockroach_pkg_security.SQLUsernameProto `protobuf:"bytes,1,opt,name=user_proto,json=userProto,casttype=github.com/semistrict/ratel/pkg/security.SQLUsernameProto" json:"user_proto"`
 	// privileges is a bitfield of 1<<Privilege values.
 	Privileges      uint32 `protobuf:"varint,2,opt,name=privileges" json:"privileges"`
 	WithGrantOption uint32 `protobuf:"varint,3,opt,name=with_grant_option,json=withGrantOption" json:"with_grant_option"`
@@ -107,7 +107,7 @@ var xxx_messageInfo_UserPrivileges proto.InternalMessageInfo
 // privileges. The list should be sorted by user for fast access.
 type PrivilegeDescriptor struct {
 	Users      []UserPrivileges                                               `protobuf:"bytes,1,rep,name=users" json:"users"`
-	OwnerProto github_com_cockroachdb_cockroach_pkg_security.SQLUsernameProto `protobuf:"bytes,2,opt,name=owner_proto,json=ownerProto,casttype=github.com/cockroachdb/cockroach/pkg/security.SQLUsernameProto" json:"owner_proto"`
+	OwnerProto github_com_cockroachdb_cockroach_pkg_security.SQLUsernameProto `protobuf:"bytes,2,opt,name=owner_proto,json=ownerProto,casttype=github.com/semistrict/ratel/pkg/security.SQLUsernameProto" json:"owner_proto"`
 	Version    PrivilegeDescVersion                                           `protobuf:"varint,3,opt,name=version,casttype=PrivilegeDescVersion" json:"version"`
 }
 
@@ -159,7 +159,7 @@ type DefaultPrivilegesForRole struct {
 	//	*DefaultPrivilegesForRole_ExplicitRole_
 	//	*DefaultPrivilegesForRole_ForAllRoles
 	Role                       isDefaultPrivilegesForRole_Role                                                                              `protobuf_oneof:"role"`
-	DefaultPrivilegesPerObject map[github_com_cockroachdb_cockroach_pkg_sql_sem_tree.AlterDefaultPrivilegesTargetObject]PrivilegeDescriptor `protobuf:"bytes,14,rep,name=default_privileges_per_object,json=defaultPrivilegesPerObject,castkey=github.com/cockroachdb/cockroach/pkg/sql/sem/tree.AlterDefaultPrivilegesTargetObject" json:"default_privileges_per_object" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	DefaultPrivilegesPerObject map[github_com_cockroachdb_cockroach_pkg_sql_sem_tree.AlterDefaultPrivilegesTargetObject]PrivilegeDescriptor `protobuf:"bytes,14,rep,name=default_privileges_per_object,json=defaultPrivilegesPerObject,castkey=github.com/semistrict/ratel/pkg/sql/sem/tree.AlterDefaultPrivilegesTargetObject" json:"default_privileges_per_object" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 }
 
 func (m *DefaultPrivilegesForRole) Reset()         { *m = DefaultPrivilegesForRole{} }
@@ -240,7 +240,7 @@ func (*DefaultPrivilegesForRole) XXX_OneofWrappers() []interface{} {
 // ExplicitRole represents when default privileges are defined for an
 // explicit role.
 type DefaultPrivilegesForRole_ExplicitRole struct {
-	UserProto github_com_cockroachdb_cockroach_pkg_security.SQLUsernameProto `protobuf:"bytes,1,opt,name=user_proto,json=userProto,casttype=github.com/cockroachdb/cockroach/pkg/security.SQLUsernameProto" json:"user_proto"`
+	UserProto github_com_cockroachdb_cockroach_pkg_security.SQLUsernameProto `protobuf:"bytes,1,opt,name=user_proto,json=userProto,casttype=github.com/semistrict/ratel/pkg/security.SQLUsernameProto" json:"user_proto"`
 	// These are special cases in Postgres. Public has USAGE on types and
 	// the creator role has ALL privileges by default.
 	// Under the default cases where all these bools are true, the role can be

@@ -96,7 +96,7 @@ message DatabaseDetailsResponse {
     uint64 approximate_disk_bytes = 3;
     // node_ids is the ordered list of node ids on which data is stored.
     repeated int32 node_ids = 4 [(gogoproto.customname) = "NodeIDs",
-      (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.NodeID"];
+      (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.NodeID"];
   }
 
   // grants are the results of SHOW GRANTS for this database.
@@ -266,7 +266,7 @@ message TableStatsResponse {
 
   // node_ids is the ordered list of node ids on which the table data is stored.
   repeated int32 node_ids = 7 [(gogoproto.customname) = "NodeIDs",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.NodeID"];
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.NodeID"];
 }
 
 // NonTableStatsRequest requests statistics on cluster data ranges that do not
@@ -479,7 +479,7 @@ message DrainResponse {
 // specified or, if none are specified, all nodes.
 message DecommissionStatusRequest {
   repeated int32 node_ids = 1 [(gogoproto.customname) = "NodeIDs",
-                               (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.NodeID"];
+                               (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.NodeID"];
   // The number of decommissioning replicas to be reported.
   int32 num_replica_report = 2;
 }
@@ -490,7 +490,7 @@ message DecommissionStatusRequest {
 // If no NodeIDs are given, it targets the recipient node.
 message DecommissionRequest {
   repeated int32 node_ids = 1 [(gogoproto.customname) = "NodeIDs",
-                               (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.NodeID"];
+                               (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.NodeID"];
   kv.kvserver.liveness.livenesspb.MembershipStatus target_membership = 2;
   // The number of decommissioning replicas to be reported.
   int32 num_replica_report = 3;
@@ -500,13 +500,13 @@ message DecommissionRequest {
 message DecommissionStatusResponse {
   message Replica {
     int32 replica_id = 1 [ (gogoproto.customname) = "ReplicaID",
-      (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.ReplicaID"];
+      (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.ReplicaID"];
     int32 range_id = 2 [ (gogoproto.customname) = "RangeID",
-      (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.RangeID"];
+      (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.RangeID"];
   }
   message Status {
     int32 node_id = 1 [ (gogoproto.customname) = "NodeID",
-                        (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.NodeID"];
+                        (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.NodeID"];
     bool is_live = 2;
     // The number of replicas on the node, computed by scanning meta2 ranges.
     int64 replica_count = 3;
@@ -589,7 +589,7 @@ message LivenessResponse {
   repeated kv.kvserver.liveness.livenesspb.Liveness livenesses = 1 [(gogoproto.nullable) = false];
   map<int32, kv.kvserver.liveness.livenesspb.NodeLivenessStatus> statuses = 2 [
     (gogoproto.nullable) = false,
-    (gogoproto.castkey) = "github.com/cockroachdb/cockroach/pkg/roachpb.NodeID"
+    (gogoproto.castkey) = "github.com/semistrict/ratel/pkg/roachpb.NodeID"
   ];
 }
 
@@ -619,7 +619,7 @@ message JobResponse {
   string username = 4;
   repeated uint32 descriptor_ids = 5 [
     (gogoproto.customname) = "DescriptorIDs",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"
   ];
   string status = 6;
   google.protobuf.Timestamp created = 7 [(gogoproto.stdtime) = true];
@@ -737,7 +737,7 @@ message DataDistributionResponse {
   }
 
   message TableInfo {
-    map<int32, int64> replica_count_by_node_id = 1 [(gogoproto.castkey) = "github.com/cockroachdb/cockroach/pkg/roachpb.NodeID"];
+    map<int32, int64> replica_count_by_node_id = 1 [(gogoproto.castkey) = "github.com/semistrict/ratel/pkg/roachpb.NodeID"];
 
     int64 zone_config_id = 2;
     google.protobuf.Timestamp dropped_at = 3 [(gogoproto.stdtime) = true];
@@ -770,13 +770,13 @@ message EnqueueRangeRequest {
   // The node on which the queue should process the range. If node_id is 0,
   // the request will be forwarded to all other nodes.
   int32 node_id = 1 [(gogoproto.customname) = "NodeID",
-                     (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.NodeID"];
+                     (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.NodeID"];
   // The name of the replica queue to run the range through. Matched against
   // each queue's name field. See the implementation of baseQueue for details.
   string queue = 2;
   // The ID of the range to run through the queue.
   int32 range_id = 3 [(gogoproto.customname) = "RangeID",
-                      (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.RangeID"];
+                      (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.RangeID"];
   // If set, run the queue's process method without first checking whether the
   // replica should be processed by calling shouldQueue.
   bool skip_should_queue = 4;
@@ -785,7 +785,7 @@ message EnqueueRangeRequest {
 message EnqueueRangeResponse {
   message Details {
     int32 node_id = 1 [(gogoproto.customname) = "NodeID",
-                       (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.NodeID"];
+                       (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.NodeID"];
     // All trace events collected while processing the range in the queue.
     repeated TraceEvent events = 2;
     // The error message from the queue's processing, if any.
@@ -1143,7 +1143,7 @@ message GetTraceRequest {
   // snapshot. If a snapshot is not specified, information about currently
   // opened spans is returned from the active spans registry.
   int64 snapshot_id = 1 [(gogoproto.customname) = "SnapshotID"];
-  uint64 trace_id = 2 [(gogoproto.nullable)=false, (gogoproto.customname) = "TraceID", (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb.TraceID"];
+  uint64 trace_id = 2 [(gogoproto.nullable)=false, (gogoproto.customname) = "TraceID", (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/tracing/tracingpb.TraceID"];
   util.tracing.tracingpb.RecordingMode recording_type = 3;
 }
 
@@ -1153,7 +1153,7 @@ message GetTraceResponse {
   // 0, the trace was not retrieved from a registry, but directly from the
   // active spans registry.
   int64 snapshot_id = 1 [(gogoproto.customname) = "SnapshotID"];
-  uint64 trace_id = 2 [(gogoproto.nullable)=false, (gogoproto.customname) = "TraceID", (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb.TraceID"];
+  uint64 trace_id = 2 [(gogoproto.nullable)=false, (gogoproto.customname) = "TraceID", (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/tracing/tracingpb.TraceID"];
   // still_exists is set if any spans from this trace are currently present in
   // the active spans registry.
   //
@@ -1217,11 +1217,11 @@ message SpanTag {
 message SetTraceRecordingTypeRequest {
   // TraceID identifies the trace to toggle the recording of. It must always be
   // specified.
-  uint64 trace_id = 1 [(gogoproto.nullable) = false, (gogoproto.customname) = "TraceID", (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb.TraceID"];
+  uint64 trace_id = 1 [(gogoproto.nullable) = false, (gogoproto.customname) = "TraceID", (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/tracing/tracingpb.TraceID"];
   // SpanID, if not zero, controls which spans in the trace get their recording
   // mode set. If zero, all spans in the trace are updated. If not zero, only
   // the respective span and its descendants get updated.
-  uint64 span_id = 2 [(gogoproto.nullable) = false, (gogoproto.customname) = "SpanID", (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb.SpanID"];
+  uint64 span_id = 2 [(gogoproto.nullable) = false, (gogoproto.customname) = "SpanID", (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/tracing/tracingpb.SpanID"];
   util.tracing.tracingpb.RecordingMode recording_mode = 3;
 }
 

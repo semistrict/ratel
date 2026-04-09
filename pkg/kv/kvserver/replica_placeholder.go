@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/google/btree"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // ReplicaPlaceholder represents a "lock" of a part of the keyspace on a given

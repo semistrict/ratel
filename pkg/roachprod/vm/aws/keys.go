@@ -23,9 +23,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/errors/oserror"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 )
 
 const sshPublicKeyFile = "${HOME}/.ssh/id_rsa.pub"

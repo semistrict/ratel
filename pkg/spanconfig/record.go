@@ -15,8 +15,8 @@
 package spanconfig
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // Record ties a target to its corresponding config.

@@ -10,11 +10,11 @@ package execinfrapb
 import (
 	encoding_binary "encoding/binary"
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_jobs_jobspb "github.com/cockroachdb/cockroach/pkg/jobs/jobspb"
-	descpb "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	github_com_cockroachdb_cockroach_pkg_jobs_jobspb "github.com/semistrict/ratel/pkg/jobs/jobspb"
+	descpb "github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb "github.com/semistrict/ratel/pkg/sql/catalog/descpb"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -238,10 +238,10 @@ type SampleAggregatorSpec struct {
 	MinSampleSize uint32 `protobuf:"varint,9,opt,name=min_sample_size,json=minSampleSize" json:"min_sample_size"`
 	// The i-th value indicates the ColumnID of the i-th sampled row column.
 	// These are necessary for writing out the statistic data.
-	SampledColumnIDs []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ColumnID `protobuf:"varint,3,rep,name=sampled_column_ids,json=sampledColumnIds,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ColumnID" json:"sampled_column_ids,omitempty"`
-	TableID          github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID         `protobuf:"varint,4,opt,name=table_id,json=tableId,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"table_id"`
+	SampledColumnIDs []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ColumnID `protobuf:"varint,3,rep,name=sampled_column_ids,json=sampledColumnIds,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ColumnID" json:"sampled_column_ids,omitempty"`
+	TableID          github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID         `protobuf:"varint,4,opt,name=table_id,json=tableId,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"table_id"`
 	// JobID is the id of the CREATE STATISTICS job.
-	JobID github_com_cockroachdb_cockroach_pkg_jobs_jobspb.JobID `protobuf:"varint,6,opt,name=job_id,json=jobId,casttype=github.com/cockroachdb/cockroach/pkg/jobs/jobspb.JobID" json:"job_id"`
+	JobID github_com_cockroachdb_cockroach_pkg_jobs_jobspb.JobID `protobuf:"varint,6,opt,name=job_id,json=jobId,casttype=github.com/semistrict/ratel/pkg/jobs/jobspb.JobID" json:"job_id"`
 	// The total number of rows expected in the table based on previous runs of
 	// CREATE STATISTICS. Used for progress reporting. If rows expected is 0,
 	// reported progress is 0 until the very end.

@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/optgen/lang"
+	"github.com/semistrict/ratel/pkg/sql/opt/optgen/lang"
 )
 
 type execExplainGen struct {
@@ -34,15 +34,15 @@ func (g *execExplainGen) generate(compiled *lang.CompiledExpr, w io.Writer) {
 	g.w.write("package explain\n\n")
 
 	g.w.nestIndent("import (\n")
-	g.w.writeIndent("\"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo\"\n")
-	g.w.writeIndent("\"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb\"\n")
-	g.w.writeIndent("\"github.com/cockroachdb/cockroach/pkg/sql/opt\"\n")
-	g.w.writeIndent("\"github.com/cockroachdb/cockroach/pkg/sql/opt/cat\"\n")
-	g.w.writeIndent("\"github.com/cockroachdb/cockroach/pkg/sql/opt/constraint\"\n")
-	g.w.writeIndent("\"github.com/cockroachdb/cockroach/pkg/sql/opt/exec\"\n")
-	g.w.writeIndent("\"github.com/cockroachdb/cockroach/pkg/sql/sem/tree\"\n")
-	g.w.writeIndent("\"github.com/cockroachdb/cockroach/pkg/sql/types\"\n")
-	g.w.writeIndent("\"github.com/cockroachdb/cockroach/pkg/sql/inverted\"\n")
+	g.w.writeIndent("\"github.com/semistrict/ratel/pkg/sql/catalog/colinfo\"\n")
+	g.w.writeIndent("\"github.com/semistrict/ratel/pkg/sql/catalog/descpb\"\n")
+	g.w.writeIndent("\"github.com/semistrict/ratel/pkg/sql/opt\"\n")
+	g.w.writeIndent("\"github.com/semistrict/ratel/pkg/sql/opt/cat\"\n")
+	g.w.writeIndent("\"github.com/semistrict/ratel/pkg/sql/opt/constraint\"\n")
+	g.w.writeIndent("\"github.com/semistrict/ratel/pkg/sql/opt/exec\"\n")
+	g.w.writeIndent("\"github.com/semistrict/ratel/pkg/sql/sem/tree\"\n")
+	g.w.writeIndent("\"github.com/semistrict/ratel/pkg/sql/types\"\n")
+	g.w.writeIndent("\"github.com/semistrict/ratel/pkg/sql/inverted\"\n")
 	g.w.unnest(")\n")
 
 	g.genExplainFactory()

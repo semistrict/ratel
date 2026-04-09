@@ -19,7 +19,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
+	"github.com/semistrict/ratel/pkg/base"
 )
 
 type option interface {

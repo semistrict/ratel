@@ -1,8 +1,8 @@
 - Feature Name: online_schema_change
 - Status: completed
 - Start Date: 2015-10-14
-- RFC PR: [#2842](https://github.com/cockroachdb/cockroach/pull/2842)
-- Cockroach Issue: [#2036](https://github.com/cockroachdb/cockroach/issues/2036)
+- RFC PR: [#2842](https://github.com/semistrict/ratel/pull/2842)
+- Cockroach Issue: [#2036](https://github.com/semistrict/ratel/issues/2036)
 
 # Summary
 
@@ -25,7 +25,7 @@ from accessing the table and yet never leave table or index data in an
 invalid state.
 
 Online schema change will be built on top of [table descriptor
-leases](https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20151009_table_descriptor_lease.md)
+leases](https://github.com/semistrict/ratel/blob/master/docs/RFCS/20151009_table_descriptor_lease.md)
 which describes the mechanism for asynchronously distributing
 modifications to table descriptors. This RFC is concerned with the
 actual steps of performing a schema change.

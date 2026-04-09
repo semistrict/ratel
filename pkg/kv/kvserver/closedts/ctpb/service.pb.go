@@ -6,11 +6,11 @@ package ctpb
 import (
 	context "context"
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	hlc "github.com/cockroachdb/cockroach/pkg/util/hlc"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	github_com_cockroachdb_cockroach_pkg_roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	hlc "github.com/semistrict/ratel/pkg/util/hlc"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
@@ -44,7 +44,7 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 // group of ranges that can be implicitly referenced by the next message.
 type Update struct {
 	// node_id identifies the sending node.
-	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
 	// seq_num identifies this update across all updates produced by a node. The
 	// sequence is reset when the node restarts, so a recipient can only count on
 	// it increasing within a single PushUpdates stream.
@@ -70,7 +70,7 @@ type Update struct {
 	// The field will be empty if snapshot is true, as a snapshot message implies
 	// that all ranges not present in the snapshot's added_or_updated list are no
 	// longer tracked.
-	Removed        []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,5,rep,packed,name=removed,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RangeID" json:"removed,omitempty"`
+	Removed        []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,5,rep,packed,name=removed,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RangeID" json:"removed,omitempty"`
 	AddedOrUpdated []Update_RangeUpdate                                   `protobuf:"bytes,6,rep,name=added_or_updated,json=addedOrUpdated,proto3" json:"added_or_updated"`
 }
 
@@ -152,7 +152,7 @@ var xxx_messageInfo_Update_GroupUpdate proto.InternalMessageInfo
 // explicitly by being included in a future removed set or implicitly by not
 // being included in the added_or_updated field of a future snapshot.
 type Update_RangeUpdate struct {
-	RangeID github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,1,opt,name=range_id,json=rangeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RangeID" json:"range_id,omitempty"`
+	RangeID github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,1,opt,name=range_id,json=rangeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RangeID" json:"range_id,omitempty"`
 	LAI     LAI                                                  `protobuf:"varint,2,opt,name=lai,proto3,casttype=LAI" json:"lai,omitempty"`
 	Policy  roachpb.RangeClosedTimestampPolicy                   `protobuf:"varint,3,opt,name=policy,proto3,enum=cockroach.roachpb.RangeClosedTimestampPolicy" json:"policy,omitempty"`
 }

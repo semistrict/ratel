@@ -89,7 +89,7 @@ message LeaseStatus {
   roachpb.Lease lease = 1 [(gogoproto.nullable) = false];
   // Clock timestamp that the lease was evaluated at.
   util.hlc.Timestamp now = 2 [(gogoproto.nullable) = false,
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/util/hlc.ClockTimestamp"];
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/util/hlc.ClockTimestamp"];
   // Timestamp for the request operating under the lease.
   util.hlc.Timestamp request_time = 5 [(gogoproto.nullable) = false];
   // State of the lease at now for a request at request_time.

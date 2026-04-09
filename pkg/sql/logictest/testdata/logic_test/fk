@@ -3977,7 +3977,7 @@ SET enable_insert_fast_path = $enable_insert_fast_path
 
 subtest reference_constraint_different_order
 
-# https://github.com/cockroachdb/cockroach/issues/63324
+# https://github.com/semistrict/ratel/issues/63324
 # Referencing an existing constraint by fields in a different order
 # should still find existing constraint.
 

@@ -106,7 +106,7 @@ message ZoneConfig {
   // can be served consistently from all replicas and do not block on writes. In
   // exchange, writes get pushed into the future and must wait on commit to
   // ensure linearizability. For more, see:
-  //   https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20200811_non_blocking_txns.md
+  //   https://github.com/semistrict/ratel/blob/master/docs/RFCS/20200811_non_blocking_txns.md
   optional bool global_reads = 12 [(gogoproto.moretags) = "yaml:\"global_reads\""];
 
   // NumReplicas specifies the desired number of replicas. This includes voting
@@ -120,7 +120,7 @@ message ZoneConfig {
 
   // Constraints constrains which stores the replicas can be stored on. The
   // order in which the constraints are stored is arbitrary and may change.
-  // https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20160706_expressive_zone_config.md#constraint-system
+  // https://github.com/semistrict/ratel/blob/master/docs/RFCS/20160706_expressive_zone_config.md#constraint-system
   //
   // NOTE: The sum of the num_replicas fields of the Constraints must add up to
   // at most ZoneConfig.num_replicas, or there must be no more than a single
@@ -216,12 +216,12 @@ message SubzoneSpan {
   // Both Key and EndKey, below, are cast to roachpb.Key for convenience, but
   // there's no technical restriction that prevents switching them to []byte or
   // another type that communicates their missing prefix.
-  optional bytes key = 1 [(gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.Key"];
+  optional bytes key = 1 [(gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.Key"];
 
   // EndKey stores a key suffix that represents the exclusive upper bound for
   // this span. Like with Key, the SQL table prefix is omitted. If EndKey is
   // empty, it is assumed to be Key.PrefixEnd().
-  optional bytes end_key = 2 [(gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.Key"];
+  optional bytes end_key = 2 [(gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.Key"];
 
   // SubzoneIndex is the slice index of the Subzone this span belongs to in the
   // parent ZoneConfig's Subzones field.

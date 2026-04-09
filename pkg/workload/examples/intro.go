@@ -17,7 +17,7 @@ package examples
 import (
 	"encoding/hex"
 
-	"github.com/cockroachdb/cockroach/pkg/workload"
+	"github.com/semistrict/ratel/pkg/workload"
 )
 
 type intro struct{}

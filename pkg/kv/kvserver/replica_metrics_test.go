@@ -17,11 +17,11 @@ package kvserver
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverpb"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/liveness"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverpb"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/liveness"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/log"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,7 +40,7 @@ func TestCalcRangeCounterIsLiveMap(t *testing.T) {
 	}
 
 	// Regression test for a bug, see:
-	// https://github.com/cockroachdb/cockroach/pull/39936#pullrequestreview-359059629
+	// https://github.com/semistrict/ratel/pull/39936#pullrequestreview-359059629
 
 	threeVotersAndSingleNonVoter := roachpb.NewRangeDescriptor(123, roachpb.RKeyMin, roachpb.RKeyMax,
 		roachpb.MakeReplicaSet([]roachpb.ReplicaDescriptor{

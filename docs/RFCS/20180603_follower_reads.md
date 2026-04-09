@@ -30,11 +30,11 @@ Consistent historical reads are useful for analytics queries and in particular
 allow such queries to be carried out more efficiently and, with appropriate
 configuration, away from foreground traffic. But historical reads are also key
 to a proposal for [reference-like
-tables](https://github.com/cockroachdb/cockroach/issues/26301) aimed at cutting
+tables](https://github.com/semistrict/ratel/issues/26301) aimed at cutting
 down on foreign key check latencies particularly in geo-distributed clusters;
 they help recover a reasonably recent consistent snapshot of a cluster after a
 loss of quorum; and they are one of the ingredients for [Change Data
-Capture](https://github.com/cockroachdb/cockroach/pull/25229).
+Capture](https://github.com/semistrict/ratel/pull/25229).
 
 # Guide-level explanation
 
@@ -625,5 +625,5 @@ Transactions which exceed the lag are usually forced to restart, though this
 will often happen through a refresh (which is comparatively cheap, though it
 needs to be tested).
 
-[RangeFeed]: https://github.com/cockroachdb/cockroach/pull/26782
-[autoaost]: https://github.com/cockroachdb/cockroach/issues/25405
+[RangeFeed]: https://github.com/semistrict/ratel/pull/26782
+[autoaost]: https://github.com/semistrict/ratel/issues/25405

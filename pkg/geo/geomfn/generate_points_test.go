@@ -18,7 +18,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/geo"
+	"github.com/semistrict/ratel/pkg/geo"
 	"github.com/stretchr/testify/require"
 )
 

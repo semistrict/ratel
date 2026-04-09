@@ -18,9 +18,9 @@ import (
 	"bytes"
 	"math"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/encoding"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/encoding"
 )
 
 // MakeTenantPrefix creates the key prefix associated with the specified tenant.

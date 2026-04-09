@@ -2,8 +2,8 @@
 - Status: in-progress
 - Start Date: 2017-10-09
 - Authors: Pete Vilter
-- RFC PR: [#19196](https://github.com/cockroachdb/cockroach/pull/19196)
-- Cockroach Issue: [#5811](https://github.com/cockroachdb/cockroach/issues/5811)
+- RFC PR: [#19196](https://github.com/semistrict/ratel/pull/19196)
+- Cockroach Issue: [#5811](https://github.com/semistrict/ratel/issues/5811)
 
 # Summary
 
@@ -428,5 +428,5 @@ the functions the capabilities they need.
 [mysql-seq]: https://dev.mysql.com/doc/refman/5.7/en/innodb-auto-increment-handling.html
 [oracle-create-seq]: https://docs.oracle.com/cd/B28359_01/server.111/b28286/statements_6015.htm#SQLRF01314
 [sql-server-create-seq]: https://docs.microsoft.com/en-us/sql/t-sql/statements/create-sequence-transact-sql
-[value-size-check-gh]: https://github.com/cockroachdb/cockroach/blob/1a71f80dbcccb51b908089ee42ee41f2598866fb/pkg/sql/insert.go#L464
+[value-size-check-gh]: https://github.com/semistrict/ratel/blob/1a71f80dbcccb51b908089ee42ee41f2598866fb/pkg/sql/insert.go#L464
 [new-desc-commit]: https://github.com/vilterp/cockroach/commit/4819328d6b80cab608ddfec891bf806d5ccb160c

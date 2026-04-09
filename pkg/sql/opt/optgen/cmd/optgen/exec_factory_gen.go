@@ -18,7 +18,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/optgen/lang"
+	"github.com/semistrict/ratel/pkg/sql/opt/optgen/lang"
 )
 
 type execFactoryGen struct {
@@ -33,15 +33,15 @@ func (g *execFactoryGen) generate(compiled *lang.CompiledExpr, w io.Writer) {
 	g.w.write("package exec\n\n")
 
 	g.w.nestIndent("import (\n")
-	g.w.writeIndent("\"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb\"\n")
-	g.w.writeIndent("\"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo\"\n")
-	g.w.writeIndent("\"github.com/cockroachdb/cockroach/pkg/sql/opt/cat\"\n")
-	g.w.writeIndent("\"github.com/cockroachdb/cockroach/pkg/sql/opt\"\n")
-	g.w.writeIndent("\"github.com/cockroachdb/cockroach/pkg/sql/opt/cat\"\n")
-	g.w.writeIndent("\"github.com/cockroachdb/cockroach/pkg/sql/opt/constraint\"\n")
-	g.w.writeIndent("\"github.com/cockroachdb/cockroach/pkg/sql/sem/tree\"\n")
-	g.w.writeIndent("\"github.com/cockroachdb/cockroach/pkg/sql/types\"\n")
-	g.w.writeIndent("\"github.com/cockroachdb/cockroach/pkg/sql/inverted\"\n")
+	g.w.writeIndent("\"github.com/semistrict/ratel/pkg/sql/catalog/descpb\"\n")
+	g.w.writeIndent("\"github.com/semistrict/ratel/pkg/sql/catalog/colinfo\"\n")
+	g.w.writeIndent("\"github.com/semistrict/ratel/pkg/sql/opt/cat\"\n")
+	g.w.writeIndent("\"github.com/semistrict/ratel/pkg/sql/opt\"\n")
+	g.w.writeIndent("\"github.com/semistrict/ratel/pkg/sql/opt/cat\"\n")
+	g.w.writeIndent("\"github.com/semistrict/ratel/pkg/sql/opt/constraint\"\n")
+	g.w.writeIndent("\"github.com/semistrict/ratel/pkg/sql/sem/tree\"\n")
+	g.w.writeIndent("\"github.com/semistrict/ratel/pkg/sql/types\"\n")
+	g.w.writeIndent("\"github.com/semistrict/ratel/pkg/sql/inverted\"\n")
 	g.w.unnest(")\n\n")
 
 	g.genExecFactory()

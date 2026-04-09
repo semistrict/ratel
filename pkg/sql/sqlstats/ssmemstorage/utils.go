@@ -17,7 +17,7 @@ package ssmemstorage
 import (
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 type stmtList []stmtKey

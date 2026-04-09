@@ -364,7 +364,7 @@ There is an extra write to the WAL due to the newly introduced intermediate tran
 
 The set of **promised writes** are writes that *need to leave an intent*. This is in contrast to the remaining *intent spans*, which only need to be a *superset* of the actually written intents. Today, this is true: any successful "write" command leaves an intent.
 
-But, it is a restriction for the future: We must never issue [no-op writes](https://github.com/cockroachdb/cockroach/issues/23942) in the final batch of a transaction, and appropriate care must be taken to preserve this invariant. As of https://github.com/cockroachdb/cockroach/commit/9d7c35f, we assert against these no-op writes for successful point writes. Even with this added level of protection, we'll need to remember never to issue no-op writes as promised writes.
+But, it is a restriction for the future: We must never issue [no-op writes](https://github.com/semistrict/ratel/issues/23942) in the final batch of a transaction, and appropriate care must be taken to preserve this invariant. As of https://github.com/semistrict/ratel/commit/9d7c35f, we assert against these no-op writes for successful point writes. Even with this added level of protection, we'll need to remember never to issue no-op writes as promised writes.
 
 ### Error handling
 

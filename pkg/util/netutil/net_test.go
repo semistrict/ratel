@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/cockroachdb/cmux"
-	"github.com/cockroachdb/cockroach/pkg/util/contextutil"
+	"github.com/semistrict/ratel/pkg/util/contextutil"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )

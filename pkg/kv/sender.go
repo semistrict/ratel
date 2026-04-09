@@ -17,9 +17,9 @@ package kv
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/storage/enginepb"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/storage/enginepb"
+	"github.com/semistrict/ratel/pkg/util/hlc"
 )
 
 // TxnType specifies whether a transaction is the root (parent)
@@ -258,7 +258,7 @@ type TxnSender interface {
 	// this txn already.
 	//
 	// TODO(knz): Remove this, see
-	// https://github.com/cockroachdb/cockroach/issues/15012
+	// https://github.com/semistrict/ratel/issues/15012
 	Active() bool
 
 	// Epoch returns the txn's epoch.

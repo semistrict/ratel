@@ -14,7 +14,7 @@
 
 package clisqlexec_test
 
-import "github.com/cockroachdb/cockroach/pkg/cli"
+import "github.com/semistrict/ratel/pkg/cli"
 
 func Example_sql_format() {
 	c := cli.NewCLITest(cli.TestCLIParams{})

@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/lexbase"
+	"github.com/semistrict/ratel/pkg/sql/lexbase"
 	"github.com/stretchr/testify/require"
 )
 

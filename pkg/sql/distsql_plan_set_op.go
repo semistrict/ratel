@@ -15,8 +15,8 @@
 package sql
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/sql/types"
 )
 
 // mergeResultTypesForSetOp reconciles the ResultTypes between two plans. It

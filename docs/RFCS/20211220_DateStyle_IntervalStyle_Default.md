@@ -2,8 +2,8 @@
 - Status: in-progress
 - Start Date: 2021-11-12
 - Authors: Ebony Brown
-- RFC PR: [#75084](https://github.com/cockroachdb/cockroach/pull/75084)
-- Cockroach Issue: [#69352](https://github.com/cockroachdb/cockroach/issues/69352)
+- RFC PR: [#75084](https://github.com/semistrict/ratel/pull/75084)
+- Cockroach Issue: [#69352](https://github.com/semistrict/ratel/issues/69352)
 
 # Summary
 
@@ -50,7 +50,7 @@ partial indexes.
 
 
 
-In v21.2 an [experimental feature](https://github.com/cockroachdb/cockroach/pull/67000)
+In v21.2 an [experimental feature](https://github.com/semistrict/ratel/pull/67000)
 was added to CockroachDB which allowed DateStyle and IntervalStyle to take on multiple
 values. The change was experimental due to it affecting the volatility of cast
 to and from the Date, Time, and Interval types. The casts were changed from

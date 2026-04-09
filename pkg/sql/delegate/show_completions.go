@@ -21,9 +21,9 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/lexbase"
-	"github.com/cockroachdb/cockroach/pkg/sql/parser"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/lexbase"
+	"github.com/semistrict/ratel/pkg/sql/parser"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 )
 
 func (d *delegator) delegateShowCompletions(n *tree.ShowCompletions) (tree.Statement, error) {

@@ -17,7 +17,7 @@ package rangefeedbuffer
 import (
 	"sort"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // RangeFeedValueEventToKV is a function to type assert an Event into a

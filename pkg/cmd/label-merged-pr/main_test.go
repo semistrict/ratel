@@ -23,7 +23,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
+	"github.com/semistrict/ratel/pkg/testutils/skip"
 	"github.com/stretchr/testify/assert"
 )
 

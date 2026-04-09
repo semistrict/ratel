@@ -2,15 +2,15 @@
 - Status: completed
 - Start Date: 2019-07-31
 - Authors: knz, ben, marc
-- RFC PR: [#39196](https://github.com/cockroachdb/cockroach/pull/39196)
-- Cockroach Issue: [#16784](https://github.com/cockroachdb/cockroach/issues/16784) [#15888](https://github.com/cockroachdb/cockroach/issues/15888) [#28408](https://github.com/cockroachdb/cockroach/issues/28408)
+- RFC PR: [#39196](https://github.com/semistrict/ratel/pull/39196)
+- Cockroach Issue: [#16784](https://github.com/semistrict/ratel/issues/16784) [#15888](https://github.com/semistrict/ratel/issues/15888) [#28408](https://github.com/semistrict/ratel/issues/28408)
 
 # Summary
 
 New feature: a string value, called "cluster name", and checked for
 equality when a newly started node joins a cluster.
 
-Prototype implementation:  https://github.com/cockroachdb/cockroach/pull/39270
+Prototype implementation:  https://github.com/semistrict/ratel/pull/39270
 
 This will prevent newly added nodes to join the wrong cluster when a
 user has multiple clusters running side by side.
@@ -35,14 +35,14 @@ Other impact:
 Out of scope: it would be good to check the cluster name for equality
 in the node certificate properties. This would prevent a node from
 trusting another node's certificate if not in the same cluster, even
-though they may be signed by the same CA. See https://github.com/cockroachdb/cockroach/issues/28408
+though they may be signed by the same CA. See https://github.com/semistrict/ratel/issues/28408
 
 
 # Motivation
 
 The motivation for doing this has been detail in
-https://github.com/cockroachdb/cockroach/issues/16784 and
-https://github.com/cockroachdb/cockroach/issues/15888
+https://github.com/semistrict/ratel/issues/16784 and
+https://github.com/semistrict/ratel/issues/15888
 
 - avoid mistaken node joins
 - disambiguate UI screens
@@ -176,7 +176,7 @@ None known at this time.
 
   Another alternative is to do nothing. A current way of setting a
   cluster name label on prometheus metrics is to have a rule to attach
-  the label at metric scraping time. See [example](https://github.com/cockroachdb/cockroach/blob/master/monitoring/prometheus.yml#L35).
+  the label at metric scraping time. See [example](https://github.com/semistrict/ratel/blob/master/monitoring/prometheus.yml#L35).
 
 - Avoiding the `--disable-cluster-name-verification` altogether:
   we have not been able to find a protocol that lets an existing

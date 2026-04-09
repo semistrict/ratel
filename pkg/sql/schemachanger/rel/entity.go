@@ -18,8 +18,8 @@ import (
 	"reflect"
 	"unsafe"
 
-	"github.com/cockroachdb/cockroach/pkg/util/iterutil"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util/iterutil"
 )
 
 // entity is the internal representation of a struct pointer.

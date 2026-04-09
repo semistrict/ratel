@@ -27,7 +27,7 @@ import (
 	"bytes"
 	"unicode/utf8"
 
-	"github.com/cockroachdb/cockroach/pkg/util/stringencoding"
+	"github.com/semistrict/ratel/pkg/util/stringencoding"
 )
 
 // EncodeFlags influence the formatting of strings and identifiers.

@@ -15,9 +15,9 @@
 package metamorphic
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/storage"
-	"github.com/cockroachdb/cockroach/pkg/util/randutil"
 	"github.com/cockroachdb/pebble"
+	"github.com/semistrict/ratel/pkg/storage"
+	"github.com/semistrict/ratel/pkg/util/randutil"
 )
 
 const numStandardOptions = 18

@@ -27,15 +27,15 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scop"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scplan/internal/scgraph"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scplan/internal/scstage"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/screl"
-	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
 	"github.com/cockroachdb/errors"
 	"github.com/emicklei/dot"
 	"github.com/gogo/protobuf/jsonpb"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scop"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scpb"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scplan/internal/scgraph"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scplan/internal/scstage"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/screl"
+	"github.com/semistrict/ratel/pkg/util/protoutil"
 )
 
 // StagesURL returns a URL to a rendering of the stages of the Plan.

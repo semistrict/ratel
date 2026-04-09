@@ -17,15 +17,15 @@ package optbuilder
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/memo"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/privilege"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlerrors"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/sql/opt"
+	"github.com/semistrict/ratel/pkg/sql/opt/memo"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
+	"github.com/semistrict/ratel/pkg/sql/privilege"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/sqlerrors"
+	"github.com/semistrict/ratel/pkg/sql/types"
 )
 
 // buildUpdate builds a memo group for an UpdateOp expression. First, an input
@@ -212,7 +212,7 @@ func (mb *mutationBuilder) addUpdateCols(exprs tree.UpdateExprs) {
 			// TODO(janexing): Implement the OVERRIDING SYSTEM VALUE syntax for
 			// INSERT which allows a GENERATED ALWAYS AS IDENTITY column to be
 			// overwritten.
-			// See https://github.com/cockroachdb/cockroach/issues/68201.
+			// See https://github.com/semistrict/ratel/issues/68201.
 			if targetCol.IsGeneratedAlwaysAsIdentity() {
 				panic(sqlerrors.NewGeneratedAlwaysAsIdentityColumnUpdateError(string(targetCol.ColName())))
 			}

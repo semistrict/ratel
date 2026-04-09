@@ -15,8 +15,8 @@
 package tree
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/geo/geopb"
-	"github.com/cockroachdb/cockroach/pkg/util"
+	"github.com/semistrict/ratel/pkg/geo/geopb"
+	"github.com/semistrict/ratel/pkg/util"
 )
 
 // DatumAlloc provides batch allocation of datum pointers, amortizing the cost

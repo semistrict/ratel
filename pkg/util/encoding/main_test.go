@@ -18,8 +18,8 @@ import (
 	"os"
 	"testing"
 
-	_ "github.com/cockroachdb/cockroach/pkg/util/log" // for flags
-	"github.com/cockroachdb/cockroach/pkg/util/randutil"
+	_ "github.com/semistrict/ratel/pkg/util/log" // for flags
+	"github.com/semistrict/ratel/pkg/util/randutil"
 )
 
 func TestMain(m *testing.M) {

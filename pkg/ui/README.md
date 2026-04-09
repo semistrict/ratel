@@ -183,7 +183,7 @@ Let's pretend you want to add a dependency on `left-pad`. Just use `yarn add`
 like you normally would:
 
 ```bash
-$ cd $GOPATH/src/github.com/cockroachdb/cockroach/pkg/ui
+$ cd $GOPATH/src/github.com/semistrict/ratel/pkg/ui
 $ yarn add FOO
 ```
 
@@ -269,7 +269,7 @@ vendored correctly.
 You can perform the verification locally if you'd like, though:
 
 ```bash
-$ cd $GOPATH/src/github.com/cockroachdb/cockroach/pkg/ui
+$ cd $GOPATH/src/github.com/semistrict/ratel/pkg/ui
 $ rm -r node_modules yarn.installed
 $ yarn cache clean
 $ make

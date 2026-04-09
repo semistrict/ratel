@@ -19,7 +19,7 @@ import (
 	"log"
 	"os/exec"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/urlcheck/lib/urlcheck"
+	"github.com/semistrict/ratel/pkg/cmd/urlcheck/lib/urlcheck"
 )
 
 func main() {

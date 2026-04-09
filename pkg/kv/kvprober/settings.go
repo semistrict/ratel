@@ -17,8 +17,8 @@ package kvprober
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/settings"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/settings"
 )
 
 // kv.prober.bypass_admission_control controls whether kvprober's requests

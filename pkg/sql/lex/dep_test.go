@@ -17,14 +17,14 @@ package lex
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils/buildutil"
+	"github.com/semistrict/ratel/pkg/testutils/buildutil"
 )
 
 func TestNoLinkForbidden(t *testing.T) {
 	buildutil.VerifyNoImports(t,
-		"github.com/cockroachdb/cockroach/pkg/sql/lex", true,
+		"github.com/semistrict/ratel/pkg/sql/lex", true,
 		[]string{
-			"github.com/cockroachdb/cockroach/pkg/sql/sessiondatapb",
+			"github.com/semistrict/ratel/pkg/sql/sessiondatapb",
 		}, nil,
 	)
 }

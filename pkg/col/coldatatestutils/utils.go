@@ -15,8 +15,8 @@
 package coldatatestutils
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/col/coldata"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/col/coldata"
+	"github.com/semistrict/ratel/pkg/sql/types"
 )
 
 // CopyBatch copies the original batch and returns that copy. However, note that

@@ -14,7 +14,7 @@
 
 package cat
 
-import "github.com/cockroachdb/cockroach/pkg/util/treeprinter"
+import "github.com/semistrict/ratel/pkg/util/treeprinter"
 
 // Sequence is an interface to a database sequence.
 type Sequence interface {

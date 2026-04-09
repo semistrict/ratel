@@ -34,20 +34,20 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/exit"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/cloud"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/config"
-	rperrors "github.com/cockroachdb/cockroach/pkg/roachprod/errors"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/logger"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/ssh"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/ui"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/vm/aws"
-	"github.com/cockroachdb/cockroach/pkg/roachprod/vm/local"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/retry"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/cli/exit"
+	"github.com/semistrict/ratel/pkg/roachprod/cloud"
+	"github.com/semistrict/ratel/pkg/roachprod/config"
+	rperrors "github.com/semistrict/ratel/pkg/roachprod/errors"
+	"github.com/semistrict/ratel/pkg/roachprod/logger"
+	"github.com/semistrict/ratel/pkg/roachprod/ssh"
+	"github.com/semistrict/ratel/pkg/roachprod/ui"
+	"github.com/semistrict/ratel/pkg/roachprod/vm/aws"
+	"github.com/semistrict/ratel/pkg/roachprod/vm/local"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/retry"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -1900,7 +1900,7 @@ func (c *SyncedCluster) Get(l *logger.Logger, src, dest string) error {
 				copy = func(src, dest string, info os.FileInfo) error {
 					// Make sure the destination file is world readable.
 					// See:
-					// https://github.com/cockroachdb/cockroach/issues/44843
+					// https://github.com/semistrict/ratel/issues/44843
 					mode := info.Mode() | 0444
 					if info.IsDir() {
 						if err := os.MkdirAll(dest, mode); err != nil {
@@ -1972,7 +1972,7 @@ func (c *SyncedCluster) Get(l *logger.Logger, src, dest string) error {
 				// that we circumvent wholesale by adding o+r back here.
 				// See:
 				//
-				// https://github.com/cockroachdb/cockroach/issues/44843
+				// https://github.com/semistrict/ratel/issues/44843
 				chmod := func(path string, info os.FileInfo, err error) error {
 					if err != nil {
 						return err

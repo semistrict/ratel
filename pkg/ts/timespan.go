@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 )
 
 // QueryTimespan describes the time range information for a query - the start

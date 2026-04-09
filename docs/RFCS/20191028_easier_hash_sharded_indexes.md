@@ -3,7 +3,7 @@
 - Start Date: 2019-10-28
 - Authors: Aayush Shah, Andrew Werner
 - RFC PR: PR # after acceptance of initial draft
-- Cockroach Issue: [#39340] (https://github.com/cockroachdb/cockroach/issues/39340)
+- Cockroach Issue: [#39340] (https://github.com/semistrict/ratel/issues/39340)
 
 # Summary
 
@@ -25,7 +25,7 @@ constraints. This can allow users to alleviate aforementioned single range hotsp
 creating an index on a computed shard column. However, this feature still requires some
 relatively unattractive syntax to manually add a computed column which will act as the
 shard key. This is illustrated in the following example from issue [#39340]
-(https://github.com/cockroachdb/cockroach/issues/39340).
+(https://github.com/semistrict/ratel/issues/39340).
 
 Imagine we have an IOT application where we are tracking a bunch of devices and each
 device creates events. Sometimes we want to know which devices published events in some
@@ -249,7 +249,7 @@ CREATE TABLE kv
 
 
 First, we demonstrate sequential write throughput on
-[kv0bench](https://github.com/cockroachdb/cockroach/pull/42203), which is a `tpcc-bench`
+[kv0bench](https://github.com/semistrict/ratel/pull/42203), which is a `tpcc-bench`
 style benchmark that searches for the maximum throughput that can be sustained while
 maintaining an average latency less than a provided threshold, on a sequential `kv0`
 workload. We ran `kv0bench` with the aforementioned threshold value configured to
@@ -437,5 +437,5 @@ place, since load-based splitting should take care of finding viable split point
 other common workload distributions. However, If we can think of a good use case for this
 kind of thing, we should easily be able to support it.
 
-[#31413]: https://github.com/cockroachdb/cockroach/pull/31413
-[#42922]: https://github.com/cockroachdb/cockroach/pull/42922
+[#31413]: https://github.com/semistrict/ratel/pull/31413
+[#42922]: https://github.com/semistrict/ratel/pull/42922

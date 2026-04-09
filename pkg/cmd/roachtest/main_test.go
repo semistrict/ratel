@@ -14,7 +14,7 @@
 
 package main
 
-import "github.com/cockroachdb/cockroach/pkg/internal/team"
+import "github.com/semistrict/ratel/pkg/internal/team"
 
 func init() {
 	// Set a bogus build tag. Tests that make a testRegistry would otherwise end

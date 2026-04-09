@@ -61,16 +61,16 @@ message RangeLogEvent {
   ];
   int64 range_id = 2 [
     (gogoproto.customname) = "RangeID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.RangeID"
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.RangeID"
   ];
   int32 store_id = 3 [
     (gogoproto.customname) = "StoreID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.StoreID"
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.StoreID"
   ];
   RangeLogEventType event_type = 4;
   int64 other_range_id = 5 [
     (gogoproto.customname) = "OtherRangeID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.RangeID"
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.RangeID"
   ];
   Info info = 6;
 }

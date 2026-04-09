@@ -17,7 +17,7 @@ package rel
 import (
 	"reflect"
 
-	"github.com/cockroachdb/cockroach/pkg/util"
+	"github.com/semistrict/ratel/pkg/util"
 )
 
 type slotIdx int

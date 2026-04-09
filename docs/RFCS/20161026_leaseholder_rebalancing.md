@@ -2,8 +2,8 @@
 - Status: completed
 - Start Date: 2016-10-26
 - Authors: Peter Mattis
-- RFC PR: [#10262](https://github.com/cockroachdb/cockroach/pull/10262)
-- Cockroach Issue: [#9462](https://github.com/cockroachdb/cockroach/issues/9462) [#9435](https://github.com/cockroachdb/cockroach/issues/9435)
+- RFC PR: [#10262](https://github.com/semistrict/ratel/pull/10262)
+- Cockroach Issue: [#9462](https://github.com/semistrict/ratel/issues/9462) [#9435](https://github.com/semistrict/ratel/issues/9435)
 
 # Summary
 

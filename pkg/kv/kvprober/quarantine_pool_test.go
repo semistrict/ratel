@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/keys"
+	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/stretchr/testify/require"
 )
 

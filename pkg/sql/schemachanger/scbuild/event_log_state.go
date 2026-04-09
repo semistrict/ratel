@@ -15,8 +15,8 @@
 package scbuild
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scbuild/internal/scbuildstmt"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scpb"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scbuild/internal/scbuildstmt"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scpb"
 )
 
 var _ scbuildstmt.EventLogState = (*eventLogState)(nil)

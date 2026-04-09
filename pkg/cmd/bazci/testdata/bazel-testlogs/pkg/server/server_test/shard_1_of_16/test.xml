@@ -1,5 +1,5 @@
 <testsuites>
-	<testsuite errors="0" failures="0" skipped="0" tests="11" time="16.885" name="github.com/cockroachdb/cockroach/pkg/server">
+	<testsuite errors="0" failures="0" skipped="0" tests="11" time="16.885" name="github.com/semistrict/ratel/pkg/server">
 		<testcase classname="server" name="TestAdminAPITableStats" time="2.690"></testcase>
 		<testcase classname="server" name="TestAdminAPIZoneDetails" time="0.690"></testcase>
 		<testcase classname="server" name="TestAllVersionsAgree" time="2.090"></testcase>

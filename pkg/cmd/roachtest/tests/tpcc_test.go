@@ -17,8 +17,8 @@ package tests
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/spec"
-	"github.com/cockroachdb/cockroach/pkg/util/version"
+	"github.com/semistrict/ratel/pkg/cmd/roachtest/spec"
+	"github.com/semistrict/ratel/pkg/util/version"
 	"github.com/stretchr/testify/require"
 )
 

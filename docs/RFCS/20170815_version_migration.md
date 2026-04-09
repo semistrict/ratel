@@ -2,8 +2,8 @@
 - Status: completed
 - Start Date: 2017-07-10
 - Authors: Spencer Kimball, Tobias Schottdorf
-- RFC PR: [#16977](https://github.com/cockroachdb/cockroach/pull/16977), [#17216](https://github.com/cockroachdb/cockroach/pull/17216), [#17411](https://github.com/cockroachdb/cockroach/pull/17411), [#17694](https://github.com/cockroachdb/cockroach/pull/17694)
-- Cockroach Issue(s): [#17389](https://github.com/cockroachdb/cockroach/issues/17389)
+- RFC PR: [#16977](https://github.com/semistrict/ratel/pull/16977), [#17216](https://github.com/semistrict/ratel/pull/17216), [#17411](https://github.com/semistrict/ratel/pull/17411), [#17694](https://github.com/semistrict/ratel/pull/17694)
+- Cockroach Issue(s): [#17389](https://github.com/semistrict/ratel/issues/17389)
 
 
 # Summary
@@ -223,10 +223,10 @@ the following:
 
 ```go
 var (
-	// VersionSplitHardStateBelowRaft is https://github.com/cockroachdb/cockroach/pull/17051.
+	// VersionSplitHardStateBelowRaft is https://github.com/semistrict/ratel/pull/17051.
 	VersionSplitHardStateBelowRaft = roachpb.Version{Major: 1, Minor: 0, Unstable: 2}
 
-	// VersionRaftLogTruncationBelowRaft is https://github.com/cockroachdb/cockroach/pull/16993.
+	// VersionRaftLogTruncationBelowRaft is https://github.com/semistrict/ratel/pull/16993.
 	VersionRaftLogTruncationBelowRaft = roachpb.Version{Major: 1, Minor: 0, Unstable: 1}
 
 	// VersionBase corresponds to any binary older than 1.0-1,

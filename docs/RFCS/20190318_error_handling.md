@@ -2,10 +2,10 @@
 - Status: completed
 - Start Date: 2019-03-18
 - Authors: knz
-- RFC PR: [#36987](https://github.com/cockroachdb/cockroach/pull/36987)
-- Cockroach Issue: [#35854](https://github.com/cockroachdb/cockroach/issues/35854)
-  [#36918](https://github.com/cockroachdb/cockroach/issues/36918)
-  [#24108](https://github.com/cockroachdb/cockroach/issues/24108)
+- RFC PR: [#36987](https://github.com/semistrict/ratel/pull/36987)
+- Cockroach Issue: [#35854](https://github.com/semistrict/ratel/issues/35854)
+  [#36918](https://github.com/semistrict/ratel/issues/36918)
+  [#24108](https://github.com/semistrict/ratel/issues/24108)
 
 # Summary
 
@@ -50,11 +50,11 @@ The expected benefits include:
 - more details available for troubleshooting unexpected errors in tests.
 
 Note: [PR
-#37121](https://github.com/cockroachdb/cockroach/pull/37121) and [https://github.com/cockroachdb/errors](https://github.com/cockroachdb/errors) contain code
+#37121](https://github.com/semistrict/ratel/pull/37121) and [https://github.com/cockroachdb/errors](https://github.com/cockroachdb/errors) contain code
 that prototype/demonstrates this RFC. The reader is invited to peruse
 that code to complement the reading.  An [early prototype had been
 implemented earlier in PR
-#36023](https://github.com/cockroachdb/cockroach/pull/36023) however
+#36023](https://github.com/semistrict/ratel/pull/36023) however
 the ideas in there were confused and should not be considered further.
 
 Table of contents:
@@ -588,7 +588,7 @@ When using the formatting variants (`Newf`, `Wrapf` etc) from the
 library, additionally the format string is shipped to telemetry,
 together with the value of any subsequent positional argument
 constructed using `log.Safe` from
-`github.com/cockroachdb/cockroach/pkg/util/log` (aliased to
+`github.com/semistrict/ratel/pkg/util/log` (aliased to
 `errors.Safe` for convenience).
 
 For example: `errors.Newf("hello %s", log.Safe("world"))` will
@@ -2816,7 +2816,7 @@ network boundaries would evolve as follows:
        checks for things using the pg error code or error message, any
        structured error must be "flattened" into `pgerror.Error` while
        preserving its full message string. [PR
-#36023](https://github.com/cockroachdb/cockroach/pull/36023) contains an example suitable flatten function that achieves this.
+#36023](https://github.com/semistrict/ratel/pull/36023) contains an example suitable flatten function that achieves this.
 
      - if a new-style DistSQL server internally encounters assertion
        failures or other reportable errors, it must take care to call

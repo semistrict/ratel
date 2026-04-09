@@ -14,7 +14,7 @@
 
 package sslocal
 
-import "github.com/cockroachdb/cockroach/pkg/settings"
+import "github.com/semistrict/ratel/pkg/settings"
 
 // AssociateStmtWithTxnFingerprint determines whether to segment
 // per-statment statistics by transaction fingerprint. While enabled by

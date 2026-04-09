@@ -20,19 +20,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/clusterversion"
-	"github.com/cockroachdb/cockroach/pkg/kv"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/settings"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/spanconfig"
-	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/humanizeutil"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
+	"github.com/semistrict/ratel/pkg/clusterversion"
+	"github.com/semistrict/ratel/pkg/kv"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/settings"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/spanconfig"
+	"github.com/semistrict/ratel/pkg/util"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/humanizeutil"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/tracker"
 )
@@ -89,7 +89,7 @@ import (
 // coupling (legacy), the proposal causes immediate truncation -- this is
 // correct because other externally maintained invariants ensure that the
 // state machine is durable (though we have some concerns in
-// https://github.com/cockroachdb/cockroach/issues/38566).
+// https://github.com/semistrict/ratel/issues/38566).
 //
 // NB: Loosely coupled truncation loses the pending truncations that were
 // queued in-memory when a node restarts. This is considered ok for now since
@@ -116,7 +116,7 @@ import (
 //     coupled. This co-existence is correct.
 //
 // NB: The above comment is incorrect about the default value being true. Due
-// to https://github.com/cockroachdb/cockroach/issues/78412 we have changed
+// to https://github.com/semistrict/ratel/issues/78412 we have changed
 // the default to false for v22.1.
 // TODO(sumeer): update the above comment when we have a revised plan.
 var looselyCoupledTruncationEnabled = func() *settings.BoolSetting {

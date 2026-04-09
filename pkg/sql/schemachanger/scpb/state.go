@@ -18,8 +18,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util/protoutil"
 )
 
 // CurrentState is a TargetState decorated with the current status of the

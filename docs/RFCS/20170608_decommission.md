@@ -226,5 +226,5 @@ connection might timeout if no response was sent to the client.
 
 None.
 
-[#16447]: https://github.com/cockroachdb/cockroach/pull/16447
-[#6198]: https://github.com/cockroachdb/cockroach/issues/6198
+[#16447]: https://github.com/semistrict/ratel/pull/16447
+[#6198]: https://github.com/semistrict/ratel/issues/6198

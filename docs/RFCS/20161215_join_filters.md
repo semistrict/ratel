@@ -2,8 +2,8 @@
 - Status: completed
 - Start Date: 2016-12-15
 - Authors: Radu
-- RFC PR: [#12430](https://github.com/cockroachdb/cockroach/pull/12430)
-- Cockroach Issue: [#12418](https://github.com/cockroachdb/cockroach/issues/12418)
+- RFC PR: [#12430](https://github.com/semistrict/ratel/pull/12430)
+- Cockroach Issue: [#12418](https://github.com/semistrict/ratel/issues/12418)
 
 # Summary
 

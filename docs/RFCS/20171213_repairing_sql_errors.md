@@ -2,7 +2,7 @@
 - Status: draft
 - Start Date: 2017-11-20
 - Authors: Joey Pereira
-- RFC PR: [#20293](https://github.com/cockroachdb/cockroach/pull/20293)
+- RFC PR: [#20293](https://github.com/semistrict/ratel/pull/20293)
 - Cockroach Issue: [Scrub SQL Consistency Check RFC][scrub command rfc]
 
 
@@ -273,7 +273,7 @@ If the error is instead on the primary index, we will delete the key
 with the error. If the key-value pair is able to decode at all into SQL
 values, they will be logged.
 
-[#19961]: https://github.com/cockroachdb/cockroach/pull/19961
+[#19961]: https://github.com/semistrict/ratel/pull/19961
 
 
 ## Rationale and Drawbacks

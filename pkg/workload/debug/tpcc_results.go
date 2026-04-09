@@ -19,9 +19,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/workload/histogram"
-	"github.com/cockroachdb/cockroach/pkg/workload/tpcc"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/workload/histogram"
+	"github.com/semistrict/ratel/pkg/workload/tpcc"
 	"github.com/spf13/cobra"
 )
 

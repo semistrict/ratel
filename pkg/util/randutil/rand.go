@@ -24,8 +24,8 @@ import (
 	"strings"
 	_ "unsafe" // required by go:linkname
 
-	"github.com/cockroachdb/cockroach/pkg/util/envutil"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/util/envutil"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 )
 
 // lockedSource is a thread safe math/rand.Source. See math/rand/rand.go.

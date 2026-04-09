@@ -17,8 +17,8 @@ package migration
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/clusterversion"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/clusterversion"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 // FenceVersionFor constructs the appropriate "fence version" for the given

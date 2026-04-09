@@ -14,7 +14,7 @@
 
 package sqltelemetry
 
-import "github.com/cockroachdb/cockroach/pkg/server/telemetry"
+import "github.com/semistrict/ratel/pkg/server/telemetry"
 
 // FeatureDeniedByFeatureFlagCounter is a counter that is incremented every time a feature is
 // denied via the feature flag cluster setting, for example. feature.schema_change.enabled = FALSE.

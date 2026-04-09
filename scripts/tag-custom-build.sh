@@ -25,7 +25,7 @@
 # Verify the SHA on the GitHub page for the tag (it should open automatically
 # in your browser) is the one you tagged. (If the page didn't open in your
 # browser, the tag should be somewhere in this list, not necessarily at the top:
-# https://github.com/cockroachdb/cockroach/tags .)
+# https://github.com/semistrict/ratel/tags .)
 #
 # Use the tag name to find the build in the Make and Publish Build build config
 # in TeamCity.
@@ -49,7 +49,7 @@ TAG="custombuild-$ID"
 git tag "$TAG" "$SHA"
 git push git@github.com:cockroachdb/cockroach.git "$TAG"
 
-TAG_URL="https://github.com/cockroachdb/cockroach/releases/tag/${TAG}"
+TAG_URL="https://github.com/semistrict/ratel/releases/tag/${TAG}"
 TEAMCITY_URL="https://teamcity.cockroachdb.com/buildConfiguration/Internal_Release_MakeAndPublishBuild?branch=${TAG}&mode=builds"
 if [ "$(command -v open)" ] ; then
     open "$TEAMCITY_URL"

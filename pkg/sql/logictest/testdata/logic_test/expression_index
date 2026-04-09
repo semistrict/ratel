@@ -901,12 +901,12 @@ statement ok
 INSERT INTO uniq VALUES (3, 1, 109) ON CONFLICT DO NOTHING
 
 # Expressions as ON CONFLICT targets are not yet allowed.
-# See https://github.com/cockroachdb/cockroach/issues/67893.
+# See https://github.com/semistrict/ratel/issues/67893.
 statement error syntax error
 INSERT INTO uniq VALUES (3, 1, 109) ON CONFLICT ((a + b)) DO NOTHING
 
 # Expressions as ON CONFLICT targets are not yet allowed.
-# See https://github.com/cockroachdb/cockroach/issues/67893.
+# See https://github.com/semistrict/ratel/issues/67893.
 statement error syntax error
 INSERT INTO uniq VALUES (4, 1, 219) ON CONFLICT ((a + b)) DO UPDATE SET b = 90
 

@@ -17,10 +17,10 @@ package diagnostics
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/server/diagnostics/diagnosticspb"
-	"github.com/cockroachdb/cockroach/pkg/util/cloudinfo"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
-	"github.com/cockroachdb/cockroach/pkg/util/system"
+	"github.com/semistrict/ratel/pkg/server/diagnostics/diagnosticspb"
+	"github.com/semistrict/ratel/pkg/util/cloudinfo"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/util/system"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/load"

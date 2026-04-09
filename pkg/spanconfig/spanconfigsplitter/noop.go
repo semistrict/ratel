@@ -17,8 +17,8 @@ package spanconfigsplitter
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/spanconfig"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
+	"github.com/semistrict/ratel/pkg/spanconfig"
+	"github.com/semistrict/ratel/pkg/sql/catalog"
 )
 
 var _ spanconfig.Splitter = &NoopSplitter{}

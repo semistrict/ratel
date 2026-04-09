@@ -5,12 +5,12 @@ package kvserverpb
 
 import (
 	fmt "fmt"
-	livenesspb "github.com/cockroachdb/cockroach/pkg/kv/kvserver/liveness/livenesspb"
-	roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	github_com_cockroachdb_cockroach_pkg_util_hlc "github.com/cockroachdb/cockroach/pkg/util/hlc"
-	hlc "github.com/cockroachdb/cockroach/pkg/util/hlc"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	livenesspb "github.com/semistrict/ratel/pkg/kv/kvserver/liveness/livenesspb"
+	roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	github_com_cockroachdb_cockroach_pkg_util_hlc "github.com/semistrict/ratel/pkg/util/hlc"
+	hlc "github.com/semistrict/ratel/pkg/util/hlc"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -119,7 +119,7 @@ type LeaseStatus struct {
 	// Lease which this status describes.
 	Lease roachpb.Lease `protobuf:"bytes,1,opt,name=lease,proto3" json:"lease"`
 	// Clock timestamp that the lease was evaluated at.
-	Now github_com_cockroachdb_cockroach_pkg_util_hlc.ClockTimestamp `protobuf:"bytes,2,opt,name=now,proto3,casttype=github.com/cockroachdb/cockroach/pkg/util/hlc.ClockTimestamp" json:"now"`
+	Now github_com_cockroachdb_cockroach_pkg_util_hlc.ClockTimestamp `protobuf:"bytes,2,opt,name=now,proto3,casttype=github.com/semistrict/ratel/pkg/util/hlc.ClockTimestamp" json:"now"`
 	// Timestamp for the request operating under the lease.
 	RequestTime hlc.Timestamp `protobuf:"bytes,5,opt,name=request_time,json=requestTime,proto3" json:"request_time"`
 	// State of the lease at now for a request at request_time.

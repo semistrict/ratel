@@ -14,7 +14,7 @@
 
 package clisqlclient
 
-import "github.com/cockroachdb/cockroach/pkg/cli/clicfg"
+import "github.com/semistrict/ratel/pkg/cli/clicfg"
 
 // Context represents configuration for establishing SQL
 // connections to servers.

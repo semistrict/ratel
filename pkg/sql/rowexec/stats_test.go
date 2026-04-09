@@ -17,10 +17,10 @@ package rowexec
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/randgen"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/testutils/distsqlutils"
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/sql/randgen"
+	"github.com/semistrict/ratel/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/testutils/distsqlutils"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 )
 
 // TestInputStatCollector verifies that an inputStatCollector correctly collects

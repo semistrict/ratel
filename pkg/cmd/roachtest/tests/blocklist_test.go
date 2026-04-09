@@ -23,8 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
 	"github.com/google/go-github/github"
+	"github.com/semistrict/ratel/pkg/testutils/skip"
 	"golang.org/x/oauth2"
 )
 
@@ -102,7 +102,7 @@ func TestBlocklists(t *testing.T) {
 					anyClosed = true
 				}
 			}
-			reason = fmt.Sprintf("https://github.com/cockroachdb/cockroach/issues/%d", issueNum)
+			reason = fmt.Sprintf("https://github.com/semistrict/ratel/issues/%d", issueNum)
 		}
 		suites := ""
 		for suite := range counts[i].suites {

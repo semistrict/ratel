@@ -48,7 +48,7 @@ func TestOutputOfBinaryRule(t *testing.T) {
 func TestOutputsOfGenrule(t *testing.T) {
 	xmlQueryOutput := `<?xml version="1.1" encoding="UTF-8" standalone="no"?>
 <query version="2">
-    <rule class="genrule" location="/Users/ricky/go/src/github.com/cockroachdb/cockroach/docs/generated/sql/BUILD.bazel:1:8" name="//docs/generated/sql:sql">
+    <rule class="genrule" location="/Users/ricky/go/src/github.com/semistrict/ratel/docs/generated/sql/BUILD.bazel:1:8" name="//docs/generated/sql:sql">
         <string name="name" value="sql"/>
         <list name="exec_tools">
             <label value="//pkg/cmd/docgen:docgen"/>
@@ -84,7 +84,7 @@ func TestOutputsOfGenrule(t *testing.T) {
 
 func TestMergeXml(t *testing.T) {
 	const xml1 = `<testsuites>
-	<testsuite errors="0" failures="1" skipped="0" tests="17" time="0.029" name="github.com/cockroachdb/cockroach/pkg/cmd/dev">
+	<testsuite errors="0" failures="1" skipped="0" tests="17" time="0.029" name="github.com/semistrict/ratel/pkg/cmd/dev">
 		<testcase classname="dev" name="TestDataDriven" time="0.010"></testcase>
 		<testcase classname="dev" name="TestDataDriven/bench.txt" time="0.000"></testcase>
 		<testcase classname="dev" name="TestDataDriven/build.txt" time="0.000"></testcase>
@@ -107,7 +107,7 @@ func TestMergeXml(t *testing.T) {
 	</testsuite>
 </testsuites>`
 	const xml2 = `<testsuites>
-	<testsuite errors="0" failures="1" skipped="0" tests="17" time="0.029" name="github.com/cockroachdb/cockroach/pkg/cmd/dev">
+	<testsuite errors="0" failures="1" skipped="0" tests="17" time="0.029" name="github.com/semistrict/ratel/pkg/cmd/dev">
 		<testcase classname="dev" name="TestDataDriven" time="0.010"></testcase>
 		<testcase classname="dev" name="TestDataDriven/bench.txt" time="0.000"></testcase>
 		<testcase classname="dev" name="TestDataDriven/build.txt" time="0.000"></testcase>
@@ -130,7 +130,7 @@ func TestMergeXml(t *testing.T) {
 	</testsuite>
 </testsuites>`
 	const expected = `<testsuites>
-	<testsuite errors="0" failures="1" skipped="0" tests="17" time="0.029" name="github.com/cockroachdb/cockroach/pkg/cmd/dev">
+	<testsuite errors="0" failures="1" skipped="0" tests="17" time="0.029" name="github.com/semistrict/ratel/pkg/cmd/dev">
 		<testcase name="TestDataDriven" time="0.010"></testcase>
 		<testcase name="TestDataDriven/bench.txt" time="0.000"></testcase>
 		<testcase name="TestDataDriven/build.txt" time="0.000"></testcase>

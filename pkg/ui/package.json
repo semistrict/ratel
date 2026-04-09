@@ -2,7 +2,7 @@
   "name": "ui",
   "version": "1.0.0",
   "private": true,
-  "repository": "github.com/cockroachdb/cockroach",
+  "repository": "github.com/semistrict/ratel",
   "license": "MIT",
   "devDependencies": {
     "@bazel/typescript": "4.1.0",

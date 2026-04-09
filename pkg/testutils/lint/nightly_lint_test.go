@@ -23,9 +23,9 @@ import (
 	"os/exec"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/cmd/urlcheck/lib/urlcheck"
-	sqlparser "github.com/cockroachdb/cockroach/pkg/sql/parser"
-	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
+	"github.com/semistrict/ratel/pkg/cmd/urlcheck/lib/urlcheck"
+	sqlparser "github.com/semistrict/ratel/pkg/sql/parser"
+	"github.com/semistrict/ratel/pkg/testutils/skip"
 )
 
 func TestNightlyLint(t *testing.T) {

@@ -17,7 +17,7 @@ package physical
 import (
 	"bytes"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt"
+	"github.com/semistrict/ratel/pkg/sql/opt"
 )
 
 // Provided physical properties of an operator. An operator might be able to

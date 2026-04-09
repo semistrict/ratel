@@ -22,8 +22,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	crdbJSON "github.com/cockroachdb/cockroach/pkg/util/json"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	crdbJSON "github.com/semistrict/ratel/pkg/util/json"
 	v8 "github.com/tommie/v8go"
 )
 

@@ -19,8 +19,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/geo"
-	"github.com/cockroachdb/cockroach/pkg/geo/geos"
+	"github.com/semistrict/ratel/pkg/geo"
+	"github.com/semistrict/ratel/pkg/geo/geos"
 	"github.com/stretchr/testify/require"
 )
 
@@ -359,7 +359,7 @@ var distanceTestCases = []struct {
 	},
 }
 
-// TODO(otan): delete after https://github.com/cockroachdb/cockroach/issues/49209
+// TODO(otan): delete after https://github.com/semistrict/ratel/issues/49209
 var knownGEOSPanics = map[string]struct{}{
 	"GEOMETRYCOLLECTION (POINT, EMPTY) with POINT":           {},
 	"GEOMETRYCOLLECTION (POINT, EMPTY) with DIFFERENT POINT": {},

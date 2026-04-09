@@ -17,7 +17,7 @@ package cat
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 )
 
 // Table is an interface to a database table, exposing only the information

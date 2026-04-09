@@ -143,7 +143,7 @@ SELECT k, v FROM t ORDER BY k LIMIT (SELECT count(*)-3 FROM t) OFFSET (SELECT co
 3  9
 4  -16
 
-# Test sort node with both filter and limit. (https://github.com/cockroachdb/cockroach/issues/31163)
+# Test sort node with both filter and limit. (https://github.com/semistrict/ratel/issues/31163)
 statement ok
 SET TRACING = ON; SELECT 1; SET TRACING = OFF
 

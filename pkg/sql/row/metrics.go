@@ -14,7 +14,7 @@
 
 package row
 
-import "github.com/cockroachdb/cockroach/pkg/util/metric"
+import "github.com/semistrict/ratel/pkg/util/metric"
 
 var (
 	// MetaMaxRowSizeLog is metadata for the

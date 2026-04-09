@@ -38,12 +38,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/geo/geoproj"
-	"github.com/cockroachdb/cockroach/pkg/geo/geoprojbase"
-	"github.com/cockroachdb/cockroach/pkg/geo/geoprojbase/embeddedproj"
-	"github.com/cockroachdb/cockroach/pkg/util/ctxgroup"
-	"github.com/cockroachdb/cockroach/pkg/util/httputil"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/semistrict/ratel/pkg/geo/geoproj"
+	"github.com/semistrict/ratel/pkg/geo/geoprojbase"
+	"github.com/semistrict/ratel/pkg/geo/geoprojbase/embeddedproj"
+	"github.com/semistrict/ratel/pkg/util/ctxgroup"
+	"github.com/semistrict/ratel/pkg/util/httputil"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 )
 
 var (

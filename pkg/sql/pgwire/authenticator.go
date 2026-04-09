@@ -17,7 +17,7 @@ package pgwire
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/security"
+	"github.com/semistrict/ratel/pkg/security"
 )
 
 // Authenticator is a component of an AuthMethod that determines if the

@@ -18,9 +18,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/semistrict/ratel/pkg/util/leaktest"
 	// register some workloads for TestWorkload
-	_ "github.com/cockroachdb/cockroach/pkg/workload/examples"
+	_ "github.com/semistrict/ratel/pkg/workload/examples"
 )
 
 func TestWorkload(t *testing.T) {

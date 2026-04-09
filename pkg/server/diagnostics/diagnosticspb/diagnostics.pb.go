@@ -6,15 +6,15 @@ package diagnosticspb
 import (
 	encoding_binary "encoding/binary"
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_base "github.com/cockroachdb/cockroach/pkg/base"
-	build "github.com/cockroachdb/cockroach/pkg/build"
-	zonepb "github.com/cockroachdb/cockroach/pkg/config/zonepb"
-	github_com_cockroachdb_cockroach_pkg_roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	descpb "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
+	github_com_cockroachdb_cockroach_pkg_base "github.com/semistrict/ratel/pkg/base"
+	build "github.com/semistrict/ratel/pkg/build"
+	zonepb "github.com/semistrict/ratel/pkg/config/zonepb"
+	github_com_cockroachdb_cockroach_pkg_roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	descpb "github.com/semistrict/ratel/pkg/sql/catalog/descpb"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -78,7 +78,7 @@ var xxx_messageInfo_DiagnosticReport proto.InternalMessageInfo
 // will be set to its empty value (e.g. NodeID = 0) when the report is generated
 // by a SQL-only instance.
 type NodeInfo struct {
-	NodeID     github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	NodeID     github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
 	Bytes      int64                                               `protobuf:"varint,2,opt,name=bytes,proto3" json:"bytes,omitempty"`
 	KeyCount   int64                                               `protobuf:"varint,3,opt,name=key_count,json=keyCount,proto3" json:"key_count,omitempty"`
 	RangeCount int64                                               `protobuf:"varint,4,opt,name=range_count,json=rangeCount,proto3" json:"range_count,omitempty"`
@@ -122,8 +122,8 @@ func (m *NodeInfo) XXX_DiscardUnknown() {
 var xxx_messageInfo_NodeInfo proto.InternalMessageInfo
 
 type StoreInfo struct {
-	NodeID              github_com_cockroachdb_cockroach_pkg_roachpb.NodeID  `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
-	StoreID             github_com_cockroachdb_cockroach_pkg_roachpb.StoreID `protobuf:"varint,2,opt,name=store_id,json=storeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.StoreID" json:"store_id,omitempty"`
+	NodeID              github_com_cockroachdb_cockroach_pkg_roachpb.NodeID  `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	StoreID             github_com_cockroachdb_cockroach_pkg_roachpb.StoreID `protobuf:"varint,2,opt,name=store_id,json=storeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.StoreID" json:"store_id,omitempty"`
 	Bytes               int64                                                `protobuf:"varint,3,opt,name=bytes,proto3" json:"bytes,omitempty"`
 	KeyCount            int64                                                `protobuf:"varint,4,opt,name=key_count,json=keyCount,proto3" json:"key_count,omitempty"`
 	RangeCount          int64                                                `protobuf:"varint,5,opt,name=range_count,json=rangeCount,proto3" json:"range_count,omitempty"`
@@ -168,7 +168,7 @@ type SQLInstanceInfo struct {
 	// SQLInstanceID is the ephemeral identifier for the SQL instance which is
 	// reporting diagnostics. This is unique across all running SQL instances in
 	// the cluster (physical or tenant).
-	SQLInstanceID github_com_cockroachdb_cockroach_pkg_base.SQLInstanceID `protobuf:"varint,1,opt,name=sql_instance_id,json=sqlInstanceId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/base.SQLInstanceID" json:"sql_instance_id,omitempty"`
+	SQLInstanceID github_com_cockroachdb_cockroach_pkg_base.SQLInstanceID `protobuf:"varint,1,opt,name=sql_instance_id,json=sqlInstanceId,proto3,casttype=github.com/semistrict/ratel/pkg/base.SQLInstanceID" json:"sql_instance_id,omitempty"`
 	// Uptime is the number of seconds since the SQL instance was started.
 	Uptime int64 `protobuf:"varint,2,opt,name=uptime,proto3" json:"uptime,omitempty"`
 }

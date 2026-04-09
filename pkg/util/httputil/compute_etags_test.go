@@ -21,7 +21,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/cockroachdb/cockroach/pkg/util/targz"
+	"github.com/semistrict/ratel/pkg/util/targz"
 	"github.com/stretchr/testify/require"
 )
 

@@ -40,7 +40,7 @@ def gen_reports(name, dep, transitions_variable, starting_state_name):
     go_library(
         name = template_name + "_lib",
         srcs = [":" + template_name],
-        importpath = "github.com/cockroachdb/cockroach/pkg/util/fsm/gen",
+        importpath = "github.com/semistrict/ratel/pkg/util/fsm/gen",
         visibility = ["//visibility:private"],
         deps = [dep],
     )

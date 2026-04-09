@@ -19,9 +19,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/clusterversion"
-	"github.com/cockroachdb/cockroach/pkg/server/dumpstore"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/clusterversion"
+	"github.com/semistrict/ratel/pkg/server/dumpstore"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
 	"github.com/stretchr/testify/require"
 )
 

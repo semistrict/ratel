@@ -2,10 +2,10 @@
 - Status: In-Progress
 - Start Date: 2018-04-11
 - Authors: Bob Vawter
-- RFC PR: [#24703](https://github.com/cockroachdb/cockroach/pull/24703)
+- RFC PR: [#24703](https://github.com/semistrict/ratel/pull/24703)
 - Cockroach Issues:
-  [#9851](https://github.com/cockroachdb/cockroach/issues/9851)
-  [#5950](https://github.com/cockroachdb/cockroach/issues/5950)
+  [#9851](https://github.com/semistrict/ratel/issues/9851)
+  [#5950](https://github.com/semistrict/ratel/issues/5950)
 
 [TOC levels=1-3 markdown]: #
 
@@ -238,7 +238,7 @@ are necessarily executed for trivial or validated changes.
     index is created that substitutes the shadow column.
 * The shadow column and indexes are backfilled using existing
   functionality for creating
-  [new computed columns](https://github.com/cockroachdb/cockroach/issues/22652)
+  [new computed columns](https://github.com/semistrict/ratel/issues/22652)
   and indexes.
 * Nodes that write to the source column will synchronously apply the
   requested type change and duplicate the write to the shadow column and
@@ -479,7 +479,7 @@ since a copy-and-rename operation can be performed or users can write
 their own migration code. This is, however, a sub-optimal user
 experience and diminishes compatibility with ORM or other tooling that
 expects to be able to manipulate column definitions at runtime, e.g.
-[Django](https://github.com/cockroachdb/cockroach/issues/5950),
+[Django](https://github.com/semistrict/ratel/issues/5950),
 [Grafana](https://github.com/grafana/grafana/issues/8900).
 
 This proposal will require a new cluster version and the feature can

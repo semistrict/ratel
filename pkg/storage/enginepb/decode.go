@@ -17,8 +17,8 @@ package enginepb
 import (
 	"encoding/binary"
 
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util/hlc"
 )
 
 // Helpers here are split out of storage/engine since that package also contains

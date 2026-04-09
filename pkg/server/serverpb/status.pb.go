@@ -7,31 +7,31 @@ import (
 	context "context"
 	encoding_binary "encoding/binary"
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_base "github.com/cockroachdb/cockroach/pkg/base"
-	build "github.com/cockroachdb/cockroach/pkg/build"
-	gossip "github.com/cockroachdb/cockroach/pkg/gossip"
-	jobspb "github.com/cockroachdb/cockroach/pkg/jobs/jobspb"
-	kvserverpb "github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverpb"
-	livenesspb "github.com/cockroachdb/cockroach/pkg/kv/kvserver/liveness/livenesspb"
-	github_com_cockroachdb_cockroach_pkg_roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	diagnosticspb "github.com/cockroachdb/cockroach/pkg/server/diagnostics/diagnosticspb"
-	statuspb "github.com/cockroachdb/cockroach/pkg/server/status/statuspb"
-	contentionpb "github.com/cockroachdb/cockroach/pkg/sql/contentionpb"
-	_ "github.com/cockroachdb/cockroach/pkg/sql/execinfrapb"
-	github_com_cockroachdb_cockroach_pkg_sql_execinfrapb "github.com/cockroachdb/cockroach/pkg/sql/execinfrapb"
-	github_com_cockroachdb_cockroach_pkg_sql_pgwire_pgwirecancel "github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgwirecancel"
-	enginepb "github.com/cockroachdb/cockroach/pkg/storage/enginepb"
-	util "github.com/cockroachdb/cockroach/pkg/util"
-	_ "github.com/cockroachdb/cockroach/pkg/util/hlc"
-	logpb "github.com/cockroachdb/cockroach/pkg/util/log/logpb"
-	_ "github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb"
-	github_com_cockroachdb_cockroach_pkg_util_uuid "github.com/cockroachdb/cockroach/pkg/util/uuid"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
 	_ "github.com/gogo/protobuf/types"
 	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
+	github_com_cockroachdb_cockroach_pkg_base "github.com/semistrict/ratel/pkg/base"
+	build "github.com/semistrict/ratel/pkg/build"
+	gossip "github.com/semistrict/ratel/pkg/gossip"
+	jobspb "github.com/semistrict/ratel/pkg/jobs/jobspb"
+	kvserverpb "github.com/semistrict/ratel/pkg/kv/kvserver/kvserverpb"
+	livenesspb "github.com/semistrict/ratel/pkg/kv/kvserver/liveness/livenesspb"
+	github_com_cockroachdb_cockroach_pkg_roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	diagnosticspb "github.com/semistrict/ratel/pkg/server/diagnostics/diagnosticspb"
+	statuspb "github.com/semistrict/ratel/pkg/server/status/statuspb"
+	contentionpb "github.com/semistrict/ratel/pkg/sql/contentionpb"
+	_ "github.com/semistrict/ratel/pkg/sql/execinfrapb"
+	github_com_cockroachdb_cockroach_pkg_sql_execinfrapb "github.com/semistrict/ratel/pkg/sql/execinfrapb"
+	github_com_cockroachdb_cockroach_pkg_sql_pgwire_pgwirecancel "github.com/semistrict/ratel/pkg/sql/pgwire/pgwirecancel"
+	enginepb "github.com/semistrict/ratel/pkg/storage/enginepb"
+	util "github.com/semistrict/ratel/pkg/util"
+	_ "github.com/semistrict/ratel/pkg/util/hlc"
+	logpb "github.com/semistrict/ratel/pkg/util/log/logpb"
+	_ "github.com/semistrict/ratel/pkg/util/tracing/tracingpb"
+	github_com_cockroachdb_cockroach_pkg_util_uuid "github.com/semistrict/ratel/pkg/util/uuid"
 	raftpb "go.etcd.io/etcd/raft/v3/raftpb"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	grpc "google.golang.org/grpc"
@@ -544,7 +544,7 @@ func (m *SystemInfo) XXX_DiscardUnknown() {
 var xxx_messageInfo_SystemInfo proto.InternalMessageInfo
 
 type DetailsResponse struct {
-	NodeID     github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	NodeID     github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
 	Address    util.UnresolvedAddr                                 `protobuf:"bytes,2,opt,name=address,proto3" json:"address"`
 	BuildInfo  build.Info                                          `protobuf:"bytes,3,opt,name=build_info,json=buildInfo,proto3" json:"build_info"`
 	SystemInfo SystemInfo                                          `protobuf:"bytes,4,opt,name=system_info,json=systemInfo,proto3" json:"system_info"`
@@ -622,7 +622,7 @@ type NodesResponse struct {
 	// API: PUBLIC ALPHA
 	Nodes []statuspb.NodeStatus `protobuf:"bytes,1,rep,name=nodes,proto3" json:"nodes"`
 	// liveness_by_node_id maps each node ID to a liveness status.
-	LivenessByNodeID map[github_com_cockroachdb_cockroach_pkg_roachpb.NodeID]livenesspb.NodeLivenessStatus `protobuf:"bytes,2,rep,name=liveness_by_node_id,json=livenessByNodeId,proto3,castkey=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"liveness_by_node_id" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3,enum=cockroach.kv.kvserver.liveness.livenesspb.NodeLivenessStatus"`
+	LivenessByNodeID map[github_com_cockroachdb_cockroach_pkg_roachpb.NodeID]livenesspb.NodeLivenessStatus `protobuf:"bytes,2,rep,name=liveness_by_node_id,json=livenessByNodeId,proto3,castkey=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"liveness_by_node_id" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3,enum=cockroach.kv.kvserver.liveness.livenesspb.NodeLivenessStatus"`
 }
 
 func (m *NodesResponse) Reset()         { *m = NodesResponse{} }
@@ -661,7 +661,7 @@ type NodesResponseExternal struct {
 	// API: PUBLIC ALPHA
 	Nodes []NodeResponse `protobuf:"bytes,1,rep,name=nodes,proto3" json:"nodes"`
 	// liveness_by_node_id maps each node ID to a liveness status.
-	LivenessByNodeID map[github_com_cockroachdb_cockroach_pkg_roachpb.NodeID]livenesspb.NodeLivenessStatus `protobuf:"bytes,2,rep,name=liveness_by_node_id,json=livenessByNodeId,proto3,castkey=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"liveness_by_node_id" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3,enum=cockroach.kv.kvserver.liveness.livenesspb.NodeLivenessStatus"`
+	LivenessByNodeID map[github_com_cockroachdb_cockroach_pkg_roachpb.NodeID]livenesspb.NodeLivenessStatus `protobuf:"bytes,2,rep,name=liveness_by_node_id,json=livenessByNodeId,proto3,castkey=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"liveness_by_node_id" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3,enum=cockroach.kv.kvserver.liveness.livenesspb.NodeLivenessStatus"`
 }
 
 func (m *NodesResponseExternal) Reset()         { *m = NodesResponseExternal{} }
@@ -810,7 +810,7 @@ var xxx_messageInfo_Version proto.InternalMessageInfo
 
 // NodeDescriptor holds details on node physical/network topology.
 type NodeDescriptor struct {
-	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
 	// address should only be visible by the Admin role.
 	Address util.UnresolvedAddr `protobuf:"bytes,2,opt,name=address,proto3" json:"address"`
 	// attrs should only be visible by the Admin role.
@@ -900,7 +900,7 @@ var xxx_messageInfo_Percentiles proto.InternalMessageInfo
 // StoreDescriptor holds store information including store attributes, node
 // descriptor and store capacity.
 type StoreDescriptor struct {
-	StoreID    github_com_cockroachdb_cockroach_pkg_roachpb.StoreID `protobuf:"varint,1,opt,name=store_id,json=storeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.StoreID" json:"store_id,omitempty"`
+	StoreID    github_com_cockroachdb_cockroach_pkg_roachpb.StoreID `protobuf:"varint,1,opt,name=store_id,json=storeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.StoreID" json:"store_id,omitempty"`
 	Attrs      roachpb.Attributes                                   `protobuf:"bytes,2,opt,name=attrs,proto3" json:"attrs"`
 	Node       NodeDescriptor                                       `protobuf:"bytes,3,opt,name=node,proto3" json:"node"`
 	Capacity   roachpb.StoreCapacity                                `protobuf:"bytes,4,opt,name=capacity,proto3" json:"capacity"`
@@ -1006,10 +1006,10 @@ type NodeResponse struct {
 	//
 	// NOTE: this is deprecated and is only set if the min supported
 	//       cluster version is >= VersionRPCNetworkStats.
-	Latencies map[github_com_cockroachdb_cockroach_pkg_roachpb.NodeID]int64 `protobuf:"bytes,9,rep,name=latencies,proto3,castkey=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"latencies" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
+	Latencies map[github_com_cockroachdb_cockroach_pkg_roachpb.NodeID]int64 `protobuf:"bytes,9,rep,name=latencies,proto3,castkey=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"latencies" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
 	// activity is a map of nodeIDs to network statistics from this node
 	// to other nodes.
-	Activity map[github_com_cockroachdb_cockroach_pkg_roachpb.NodeID]NodeResponse_NetworkActivity `protobuf:"bytes,10,rep,name=activity,proto3,castkey=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"activity" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	Activity map[github_com_cockroachdb_cockroach_pkg_roachpb.NodeID]NodeResponse_NetworkActivity `protobuf:"bytes,10,rep,name=activity,proto3,castkey=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"activity" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// total_system_memory is the total RAM available to the system
 	// (or, if detected, the memory available to the cgroup this process is in)
 	// in bytes.
@@ -1553,7 +1553,7 @@ var xxx_messageInfo_PrettySpan proto.InternalMessageInfo
 // is used to distinguish replicas.
 type TenantRangeInfo struct {
 	// The ID of the Range.
-	RangeID github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,1,opt,name=range_id,json=rangeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RangeID" json:"range_id,omitempty"`
+	RangeID github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,1,opt,name=range_id,json=rangeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RangeID" json:"range_id,omitempty"`
 	// The pretty-printed key span of the range.
 	Span PrettySpan `protobuf:"bytes,2,opt,name=span,proto3" json:"span"`
 	// Any locality information associated with this specific replica.
@@ -1618,7 +1618,7 @@ type TenantRangeInfo_LockInfo struct {
 	// The lock's key in pretty format.
 	PrettyKey string `protobuf:"bytes,1,opt,name=pretty_key,json=prettyKey,proto3" json:"pretty_key,omitempty"`
 	// The lock's key.
-	Key github_com_cockroachdb_cockroach_pkg_roachpb.Key `protobuf:"bytes,2,opt,name=key,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.Key" json:"key,omitempty"`
+	Key github_com_cockroachdb_cockroach_pkg_roachpb.Key `protobuf:"bytes,2,opt,name=key,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.Key" json:"key,omitempty"`
 	// Is the lock actively held by a transaction, or just a reservation?
 	Held bool `protobuf:"varint,3,opt,name=held,proto3" json:"held,omitempty"`
 	// The number of waiters in the lock's wait queue.
@@ -1662,8 +1662,8 @@ type RangeInfo struct {
 	Span                        PrettySpan                                           `protobuf:"bytes,1,opt,name=span,proto3" json:"span"`
 	RaftState                   RaftState                                            `protobuf:"bytes,2,opt,name=raft_state,json=raftState,proto3" json:"raft_state"`
 	State                       kvserverpb.RangeInfo                                 `protobuf:"bytes,4,opt,name=state,proto3" json:"state"`
-	SourceNodeID                github_com_cockroachdb_cockroach_pkg_roachpb.NodeID  `protobuf:"varint,5,opt,name=source_node_id,json=sourceNodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"source_node_id,omitempty"`
-	SourceStoreID               github_com_cockroachdb_cockroach_pkg_roachpb.StoreID `protobuf:"varint,6,opt,name=source_store_id,json=sourceStoreId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.StoreID" json:"source_store_id,omitempty"`
+	SourceNodeID                github_com_cockroachdb_cockroach_pkg_roachpb.NodeID  `protobuf:"varint,5,opt,name=source_node_id,json=sourceNodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"source_node_id,omitempty"`
+	SourceStoreID               github_com_cockroachdb_cockroach_pkg_roachpb.StoreID `protobuf:"varint,6,opt,name=source_store_id,json=sourceStoreId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.StoreID" json:"source_store_id,omitempty"`
 	ErrorMessage                string                                               `protobuf:"bytes,7,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
 	LeaseHistory                []roachpb.Lease                                      `protobuf:"bytes,8,rep,name=lease_history,json=leaseHistory,proto3" json:"lease_history"`
 	Problems                    RangeProblems                                        `protobuf:"bytes,9,opt,name=problems,proto3" json:"problems"`
@@ -1713,7 +1713,7 @@ var xxx_messageInfo_RangeInfo proto.InternalMessageInfo
 
 type RangeInfo_LockInfo struct {
 	PrettyKey      string                                           `protobuf:"bytes,1,opt,name=pretty_key,json=prettyKey,proto3" json:"pretty_key,omitempty"`
-	Key            github_com_cockroachdb_cockroach_pkg_roachpb.Key `protobuf:"bytes,2,opt,name=key,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.Key" json:"key,omitempty"`
+	Key            github_com_cockroachdb_cockroach_pkg_roachpb.Key `protobuf:"bytes,2,opt,name=key,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.Key" json:"key,omitempty"`
 	Held           bool                                             `protobuf:"varint,3,opt,name=held,proto3" json:"held,omitempty"`
 	Waiters        int64                                            `protobuf:"varint,4,opt,name=waiters,proto3" json:"waiters,omitempty"`
 	WaitingReaders int64                                            `protobuf:"varint,5,opt,name=waiting_readers,json=waitingReaders,proto3" json:"waiting_readers,omitempty"`
@@ -1753,7 +1753,7 @@ type RangesRequest struct {
 	// node_id is a string so that "local" can be used to specify that no
 	// forwarding is necessary.
 	NodeId   string                                                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	RangeIDs []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,2,rep,packed,name=range_ids,json=rangeIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RangeID" json:"range_ids,omitempty"`
+	RangeIDs []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,2,rep,packed,name=range_ids,json=rangeIds,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RangeID" json:"range_ids,omitempty"`
 }
 
 func (m *RangesRequest) Reset()         { *m = RangesRequest{} }
@@ -1956,7 +1956,7 @@ func (m *GossipRequest) XXX_DiscardUnknown() {
 var xxx_messageInfo_GossipRequest proto.InternalMessageInfo
 
 type EngineStatsInfo struct {
-	StoreID              github_com_cockroachdb_cockroach_pkg_roachpb.StoreID `protobuf:"varint,1,opt,name=store_id,json=storeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.StoreID" json:"store_id,omitempty"`
+	StoreID              github_com_cockroachdb_cockroach_pkg_roachpb.StoreID `protobuf:"varint,1,opt,name=store_id,json=storeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.StoreID" json:"store_id,omitempty"`
 	TickersAndHistograms *enginepb.TickersAndHistograms                       `protobuf:"bytes,2,opt,name=tickers_and_histograms,json=tickersAndHistograms,proto3" json:"tickers_and_histograms,omitempty"`
 	EngineType           enginepb.EngineType                                  `protobuf:"varint,3,opt,name=engine_type,json=engineType,proto3,enum=cockroach.storage.enginepb.EngineType" json:"engine_type,omitempty"`
 }
@@ -2093,7 +2093,7 @@ func (m *TraceEvent) XXX_DiscardUnknown() {
 var xxx_messageInfo_TraceEvent proto.InternalMessageInfo
 
 type AllocatorDryRun struct {
-	RangeID github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,1,opt,name=range_id,json=rangeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RangeID" json:"range_id,omitempty"`
+	RangeID github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,1,opt,name=range_id,json=rangeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RangeID" json:"range_id,omitempty"`
 	Events  []*TraceEvent                                        `protobuf:"bytes,2,rep,name=events,proto3" json:"events,omitempty"`
 }
 
@@ -2162,7 +2162,7 @@ var xxx_messageInfo_AllocatorRangeRequest proto.InternalMessageInfo
 type AllocatorRangeResponse struct {
 	// The NodeID of the store whose dry run is returned. Only the leaseholder
 	// for a given range will do an allocator dry run for it.
-	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
 	DryRun *AllocatorDryRun                                    `protobuf:"bytes,2,opt,name=dry_run,json=dryRun,proto3" json:"dry_run,omitempty"`
 }
 
@@ -2197,7 +2197,7 @@ var xxx_messageInfo_AllocatorRangeResponse proto.InternalMessageInfo
 
 type AllocatorRequest struct {
 	NodeId   string                                                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	RangeIDs []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,2,rep,packed,name=range_ids,json=rangeIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RangeID" json:"range_ids,omitempty"`
+	RangeIDs []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,2,rep,packed,name=range_ids,json=rangeIds,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RangeID" json:"range_ids,omitempty"`
 }
 
 func (m *AllocatorRequest) Reset()         { *m = AllocatorRequest{} }
@@ -2751,7 +2751,7 @@ func (m *MetricsRequest) XXX_DiscardUnknown() {
 var xxx_messageInfo_MetricsRequest proto.InternalMessageInfo
 
 type RaftRangeNode struct {
-	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
 	Range  RangeInfo                                           `protobuf:"bytes,2,opt,name=range,proto3" json:"range"`
 }
 
@@ -2818,7 +2818,7 @@ func (m *RaftRangeError) XXX_DiscardUnknown() {
 var xxx_messageInfo_RaftRangeError proto.InternalMessageInfo
 
 type RaftRangeStatus struct {
-	RangeID github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,1,opt,name=range_id,json=rangeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RangeID" json:"range_id,omitempty"`
+	RangeID github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,1,opt,name=range_id,json=rangeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RangeID" json:"range_id,omitempty"`
 	Errors  []RaftRangeError                                     `protobuf:"bytes,2,rep,name=errors,proto3" json:"errors"`
 	Nodes   []RaftRangeNode                                      `protobuf:"bytes,3,rep,name=nodes,proto3" json:"nodes"`
 }
@@ -2853,7 +2853,7 @@ func (m *RaftRangeStatus) XXX_DiscardUnknown() {
 var xxx_messageInfo_RaftRangeStatus proto.InternalMessageInfo
 
 type RaftDebugRequest struct {
-	RangeIDs []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,1,rep,packed,name=range_ids,json=rangeIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RangeID" json:"range_ids,omitempty"`
+	RangeIDs []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,1,rep,packed,name=range_ids,json=rangeIds,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RangeID" json:"range_ids,omitempty"`
 }
 
 func (m *RaftDebugRequest) Reset()         { *m = RaftDebugRequest{} }
@@ -2886,7 +2886,7 @@ func (m *RaftDebugRequest) XXX_DiscardUnknown() {
 var xxx_messageInfo_RaftDebugRequest proto.InternalMessageInfo
 
 type RaftDebugResponse struct {
-	Ranges map[github_com_cockroachdb_cockroach_pkg_roachpb.RangeID]RaftRangeStatus `protobuf:"bytes,1,rep,name=ranges,proto3,castkey=github.com/cockroachdb/cockroach/pkg/roachpb.RangeID" json:"ranges" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	Ranges map[github_com_cockroachdb_cockroach_pkg_roachpb.RangeID]RaftRangeStatus `protobuf:"bytes,1,rep,name=ranges,proto3,castkey=github.com/semistrict/ratel/pkg/roachpb.RangeID" json:"ranges" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	Errors []RaftRangeError                                                         `protobuf:"bytes,2,rep,name=errors,proto3" json:"errors"`
 }
 
@@ -2921,7 +2921,7 @@ var xxx_messageInfo_RaftDebugResponse proto.InternalMessageInfo
 
 // TxnInfo represents an in flight user transaction on some Session.
 type TxnInfo struct {
-	ID github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,1,opt,name=id,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/uuid.UUID" json:"id"`
+	ID github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,1,opt,name=id,proto3,customtype=github.com/semistrict/ratel/pkg/util/uuid.UUID" json:"id"`
 	// The start timestamp of the transaction.
 	Start time.Time `protobuf:"bytes,2,opt,name=start,proto3,stdtime" json:"start"`
 	// txn_description is a text description of the underlying kv.Txn, intended
@@ -2983,7 +2983,7 @@ type ActiveQuery struct {
 	// ID of the query (uint128 presented as a hexadecimal string).
 	ID string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// The UUID of the transaction this query is running in.
-	TxnID github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,7,opt,name=txn_id,json=txnId,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/uuid.UUID" json:"txn_id"`
+	TxnID github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,7,opt,name=txn_id,json=txnId,proto3,customtype=github.com/semistrict/ratel/pkg/util/uuid.UUID" json:"txn_id"`
 	// SQL query string specified by the user.
 	Sql string `protobuf:"bytes,2,opt,name=sql,proto3" json:"sql,omitempty"`
 	// Start timestamp of this query.
@@ -3070,7 +3070,7 @@ var xxx_messageInfo_ListSessionsRequest proto.InternalMessageInfo
 // Session represents one SQL session.
 type Session struct {
 	// ID of node where this session exists.
-	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
 	// Username of the user for this session.
 	Username string `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
 	// Connected client's IP address and port.
@@ -3129,7 +3129,7 @@ var xxx_messageInfo_Session proto.InternalMessageInfo
 // An error wrapper object for ListSessionsResponse.
 type ListSessionsError struct {
 	// ID of node that was being contacted when this error occurred
-	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
 	// Error message.
 	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 }
@@ -3290,10 +3290,10 @@ var xxx_messageInfo_CancelQueryResponse proto.InternalMessageInfo
 // Request object for issuing a pgwire query cancel request.
 type CancelQueryByKeyRequest struct {
 	// The SQLInstanceID of the gateway node for the query to be canceled.
-	SQLInstanceID github_com_cockroachdb_cockroach_pkg_base.SQLInstanceID `protobuf:"varint,1,opt,name=sql_instance_id,json=sqlInstanceId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/base.SQLInstanceID" json:"sql_instance_id,omitempty"`
+	SQLInstanceID github_com_cockroachdb_cockroach_pkg_base.SQLInstanceID `protobuf:"varint,1,opt,name=sql_instance_id,json=sqlInstanceId,proto3,casttype=github.com/semistrict/ratel/pkg/base.SQLInstanceID" json:"sql_instance_id,omitempty"`
 	// The key that was generated during session initialization as
 	// part of the pgwire protocol.
-	CancelQueryKey github_com_cockroachdb_cockroach_pkg_sql_pgwire_pgwirecancel.BackendKeyData `protobuf:"varint,2,opt,name=cancel_query_key,json=cancelQueryKey,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgwirecancel.BackendKeyData" json:"cancel_query_key,omitempty"`
+	CancelQueryKey github_com_cockroachdb_cockroach_pkg_sql_pgwire_pgwirecancel.BackendKeyData `protobuf:"varint,2,opt,name=cancel_query_key,json=cancelQueryKey,proto3,casttype=github.com/semistrict/ratel/pkg/sql/pgwire/pgwirecancel.BackendKeyData" json:"cancel_query_key,omitempty"`
 }
 
 func (m *CancelQueryByKeyRequest) Reset()         { *m = CancelQueryByKeyRequest{} }
@@ -3478,7 +3478,7 @@ var xxx_messageInfo_ListContentionEventsRequest proto.InternalMessageInfo
 // identify individual tenant pods.
 type ListActivityError struct {
 	// ID of node that was being contacted when this error occurred.
-	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
 	// Error message.
 	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 }
@@ -3588,7 +3588,7 @@ var xxx_messageInfo_ListDistSQLFlowsRequest proto.InternalMessageInfo
 type DistSQLRemoteFlows struct {
 	// FlowID is the unique identifier of the physical plan shared by all remote
 	// flows.
-	FlowID github_com_cockroachdb_cockroach_pkg_sql_execinfrapb.FlowID `protobuf:"bytes,1,opt,name=flow_id,json=flowId,proto3,customtype=github.com/cockroachdb/cockroach/pkg/sql/execinfrapb.FlowID" json:"flow_id"`
+	FlowID github_com_cockroachdb_cockroach_pkg_sql_execinfrapb.FlowID `protobuf:"bytes,1,opt,name=flow_id,json=flowId,proto3,customtype=github.com/semistrict/ratel/pkg/sql/execinfrapb.FlowID" json:"flow_id"`
 	// Infos contains the information about all remote flows that are part of this
 	// DistSQL physical plan and that haven't finished yet.
 	//
@@ -3629,7 +3629,7 @@ var xxx_messageInfo_DistSQLRemoteFlows proto.InternalMessageInfo
 // Info contains an information about a single DistSQL remote flow.
 type DistSQLRemoteFlows_Info struct {
 	// NodeID is the node on which this remote flow is either running or queued.
-	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
 	// Timestamp must be in the UTC timezone.
 	Timestamp time.Time `protobuf:"bytes,2,opt,name=timestamp,proto3,stdtime" json:"timestamp"`
 	// Status is the current status of this remote flow.
@@ -3707,8 +3707,8 @@ var xxx_messageInfo_ListDistSQLFlowsResponse proto.InternalMessageInfo
 
 type SpanStatsRequest struct {
 	NodeID   string                                            `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	StartKey github_com_cockroachdb_cockroach_pkg_roachpb.RKey `protobuf:"bytes,2,opt,name=start_key,json=startKey,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RKey" json:"start_key,omitempty"`
-	EndKey   github_com_cockroachdb_cockroach_pkg_roachpb.RKey `protobuf:"bytes,3,opt,name=end_key,json=endKey,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RKey" json:"end_key,omitempty"`
+	StartKey github_com_cockroachdb_cockroach_pkg_roachpb.RKey `protobuf:"bytes,2,opt,name=start_key,json=startKey,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RKey" json:"start_key,omitempty"`
+	EndKey   github_com_cockroachdb_cockroach_pkg_roachpb.RKey `protobuf:"bytes,3,opt,name=end_key,json=endKey,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RKey" json:"end_key,omitempty"`
 }
 
 func (m *SpanStatsRequest) Reset()         { *m = SpanStatsRequest{} }
@@ -3811,8 +3811,8 @@ var xxx_messageInfo_ProblemRangesRequest proto.InternalMessageInfo
 
 type ProblemRangesResponse struct {
 	// NodeID is the node that submitted all the requests.
-	NodeID           github_com_cockroachdb_cockroach_pkg_roachpb.NodeID                                        `protobuf:"varint,8,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
-	ProblemsByNodeID map[github_com_cockroachdb_cockroach_pkg_roachpb.NodeID]ProblemRangesResponse_NodeProblems `protobuf:"bytes,9,rep,name=problems_by_node_id,json=problemsByNodeId,proto3,castkey=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"problems_by_node_id" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	NodeID           github_com_cockroachdb_cockroach_pkg_roachpb.NodeID                                        `protobuf:"varint,8,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	ProblemsByNodeID map[github_com_cockroachdb_cockroach_pkg_roachpb.NodeID]ProblemRangesResponse_NodeProblems `protobuf:"bytes,9,rep,name=problems_by_node_id,json=problemsByNodeId,proto3,castkey=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"problems_by_node_id" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (m *ProblemRangesResponse) Reset()         { *m = ProblemRangesResponse{} }
@@ -3846,15 +3846,15 @@ var xxx_messageInfo_ProblemRangesResponse proto.InternalMessageInfo
 
 type ProblemRangesResponse_NodeProblems struct {
 	ErrorMessage                     string                                                 `protobuf:"bytes,1,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
-	UnavailableRangeIDs              []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,2,rep,packed,name=unavailable_range_ids,json=unavailableRangeIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RangeID" json:"unavailable_range_ids,omitempty"`
-	RaftLeaderNotLeaseHolderRangeIDs []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,3,rep,packed,name=raft_leader_not_lease_holder_range_ids,json=raftLeaderNotLeaseHolderRangeIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RangeID" json:"raft_leader_not_lease_holder_range_ids,omitempty"`
-	NoRaftLeaderRangeIDs             []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,4,rep,packed,name=no_raft_leader_range_ids,json=noRaftLeaderRangeIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RangeID" json:"no_raft_leader_range_ids,omitempty"`
-	NoLeaseRangeIDs                  []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,5,rep,packed,name=no_lease_range_ids,json=noLeaseRangeIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RangeID" json:"no_lease_range_ids,omitempty"`
-	UnderreplicatedRangeIDs          []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,6,rep,packed,name=underreplicated_range_ids,json=underreplicatedRangeIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RangeID" json:"underreplicated_range_ids,omitempty"`
-	OverreplicatedRangeIDs           []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,9,rep,packed,name=overreplicated_range_ids,json=overreplicatedRangeIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RangeID" json:"overreplicated_range_ids,omitempty"`
-	QuiescentEqualsTickingRangeIDs   []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,7,rep,packed,name=quiescent_equals_ticking_range_ids,json=quiescentEqualsTickingRangeIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RangeID" json:"quiescent_equals_ticking_range_ids,omitempty"`
-	RaftLogTooLargeRangeIDs          []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,8,rep,packed,name=raft_log_too_large_range_ids,json=raftLogTooLargeRangeIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RangeID" json:"raft_log_too_large_range_ids,omitempty"`
-	CircuitBreakerErrorRangeIDs      []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,10,rep,packed,name=circuit_breaker_error_range_ids,json=circuitBreakerErrorRangeIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RangeID" json:"circuit_breaker_error_range_ids,omitempty"`
+	UnavailableRangeIDs              []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,2,rep,packed,name=unavailable_range_ids,json=unavailableRangeIds,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RangeID" json:"unavailable_range_ids,omitempty"`
+	RaftLeaderNotLeaseHolderRangeIDs []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,3,rep,packed,name=raft_leader_not_lease_holder_range_ids,json=raftLeaderNotLeaseHolderRangeIds,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RangeID" json:"raft_leader_not_lease_holder_range_ids,omitempty"`
+	NoRaftLeaderRangeIDs             []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,4,rep,packed,name=no_raft_leader_range_ids,json=noRaftLeaderRangeIds,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RangeID" json:"no_raft_leader_range_ids,omitempty"`
+	NoLeaseRangeIDs                  []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,5,rep,packed,name=no_lease_range_ids,json=noLeaseRangeIds,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RangeID" json:"no_lease_range_ids,omitempty"`
+	UnderreplicatedRangeIDs          []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,6,rep,packed,name=underreplicated_range_ids,json=underreplicatedRangeIds,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RangeID" json:"underreplicated_range_ids,omitempty"`
+	OverreplicatedRangeIDs           []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,9,rep,packed,name=overreplicated_range_ids,json=overreplicatedRangeIds,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RangeID" json:"overreplicated_range_ids,omitempty"`
+	QuiescentEqualsTickingRangeIDs   []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,7,rep,packed,name=quiescent_equals_ticking_range_ids,json=quiescentEqualsTickingRangeIds,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RangeID" json:"quiescent_equals_ticking_range_ids,omitempty"`
+	RaftLogTooLargeRangeIDs          []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,8,rep,packed,name=raft_log_too_large_range_ids,json=raftLogTooLargeRangeIds,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RangeID" json:"raft_log_too_large_range_ids,omitempty"`
+	CircuitBreakerErrorRangeIDs      []github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,10,rep,packed,name=circuit_breaker_error_range_ids,json=circuitBreakerErrorRangeIds,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RangeID" json:"circuit_breaker_error_range_ids,omitempty"`
 }
 
 func (m *ProblemRangesResponse_NodeProblems) Reset()         { *m = ProblemRangesResponse_NodeProblems{} }
@@ -3939,11 +3939,11 @@ type HotRangesResponse struct {
 	// NodeID is the node that received the HotRangesRequest and
 	// forwarded requests to the selected target node(s).
 	// API: PUBLIC ALPHA
-	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
 	// HotRangesByNodeID contains a hot range report for each selected
 	// target node ID in the HotRangesRequest.
 	// API: PUBLIC ALPHA
-	HotRangesByNodeID map[github_com_cockroachdb_cockroach_pkg_roachpb.NodeID]HotRangesResponse_NodeResponse `protobuf:"bytes,2,rep,name=hot_ranges_by_node_id,json=hotRangesByNodeId,proto3,castkey=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"hot_ranges_by_node_id" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	HotRangesByNodeID map[github_com_cockroachdb_cockroach_pkg_roachpb.NodeID]HotRangesResponse_NodeResponse `protobuf:"bytes,2,rep,name=hot_ranges_by_node_id,json=hotRangesByNodeId,proto3,castkey=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"hot_ranges_by_node_id" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (m *HotRangesResponse) Reset()         { *m = HotRangesResponse{} }
@@ -3983,14 +3983,14 @@ type HotRangesResponse_HotRange struct {
 	// was produced.
 	//
 	// TODO(knz): This field should be removed.
-	// See: https://github.com/cockroachdb/cockroach/issues/53212
+	// See: https://github.com/semistrict/ratel/issues/53212
 	Desc roachpb.RangeDescriptor `protobuf:"bytes,1,opt,name=desc,proto3" json:"desc"`
 	// QueriesPerSecond is the recent number of queries per second
 	// on this range.
 	// API: PUBLIC ALPHA
 	QueriesPerSecond float64 `protobuf:"fixed64,2,opt,name=queries_per_second,json=queriesPerSecond,proto3" json:"queries_per_second,omitempty"`
 	// LeaseholderNodeID indicates the Node ID that is the current leaseholder for the given range.
-	LeaseholderNodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,3,opt,name=leaseholder_node_id,json=leaseholderNodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"leaseholder_node_id,omitempty"`
+	LeaseholderNodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,3,opt,name=leaseholder_node_id,json=leaseholderNodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"leaseholder_node_id,omitempty"`
 }
 
 func (m *HotRangesResponse_HotRange) Reset()         { *m = HotRangesResponse_HotRange{} }
@@ -4029,7 +4029,7 @@ type HotRangesResponse_StoreResponse struct {
 	// StoreID identifies the store for which the report was
 	// produced.
 	// API: PUBLIC ALPHA
-	StoreID github_com_cockroachdb_cockroach_pkg_roachpb.StoreID `protobuf:"varint,1,opt,name=store_id,json=storeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.StoreID" json:"store_id,omitempty"`
+	StoreID github_com_cockroachdb_cockroach_pkg_roachpb.StoreID `protobuf:"varint,1,opt,name=store_id,json=storeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.StoreID" json:"store_id,omitempty"`
 	// HotRanges is the hot ranges report for this store
 	// on the target node.
 	// API: PUBLIC ALPHA
@@ -4115,7 +4115,7 @@ type HotRangesResponseV2 struct {
 	// Ranges contain list of hot ranges info that has highest number of QPS.
 	Ranges []*HotRangesResponseV2_HotRange `protobuf:"bytes,1,rep,name=ranges,proto3" json:"ranges,omitempty"`
 	// errors contains any errors that occurred during fan-out calls to other nodes.
-	ErrorsByNodeID map[github_com_cockroachdb_cockroach_pkg_roachpb.NodeID]string `protobuf:"bytes,2,rep,name=errors_by_node_id,json=errorsByNodeId,proto3,castkey=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"errors_by_node_id" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	ErrorsByNodeID map[github_com_cockroachdb_cockroach_pkg_roachpb.NodeID]string `protobuf:"bytes,2,rep,name=errors_by_node_id,json=errorsByNodeId,proto3,castkey=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"errors_by_node_id" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// NextPageToken represents next pagination token to request next slice of data.
 	NextPageToken string `protobuf:"bytes,3,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
 }
@@ -4152,9 +4152,9 @@ var xxx_messageInfo_HotRangesResponseV2 proto.InternalMessageInfo
 // HotRange message describes a single hot range, ie its QPS, node ID it belongs to, etc.
 type HotRangesResponseV2_HotRange struct {
 	// range_id indicates Range ID that's identified as hot range.
-	RangeID github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,1,opt,name=range_id,json=rangeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RangeID" json:"range_id,omitempty"`
+	RangeID github_com_cockroachdb_cockroach_pkg_roachpb.RangeID `protobuf:"varint,1,opt,name=range_id,json=rangeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RangeID" json:"range_id,omitempty"`
 	// node_id indicates the node that contains the current hot range.
-	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,2,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	NodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,2,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
 	// qps (queries per second) shows the amount of queries that interact with current range.
 	QPS float64 `protobuf:"fixed64,3,opt,name=qps,proto3" json:"qps,omitempty"`
 	// table_name indicates the SQL table that the range belongs to.
@@ -4164,13 +4164,13 @@ type HotRangesResponseV2_HotRange struct {
 	// index_name indicates the index name for current range.
 	IndexName string `protobuf:"bytes,6,opt,name=index_name,json=indexName,proto3" json:"index_name,omitempty"`
 	// replica_node_ids specifies the list of node ids that contain replicas with current hot range.
-	ReplicaNodeIds []github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,7,rep,packed,name=replica_node_ids,json=replicaNodeIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"replica_node_ids,omitempty"`
+	ReplicaNodeIds []github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,7,rep,packed,name=replica_node_ids,json=replicaNodeIds,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"replica_node_ids,omitempty"`
 	// leaseholder_node_id indicates the Node ID that is the current leaseholder for the given range.
-	LeaseholderNodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,8,opt,name=leaseholder_node_id,json=leaseholderNodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"leaseholder_node_id,omitempty"`
+	LeaseholderNodeID github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,8,opt,name=leaseholder_node_id,json=leaseholderNodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"leaseholder_node_id,omitempty"`
 	// schema_name provides the name of schema (if exists) for table in current range.
 	SchemaName string `protobuf:"bytes,9,opt,name=schema_name,json=schemaName,proto3" json:"schema_name,omitempty"`
 	// store_id indicates the Store ID where range is stored.
-	StoreID github_com_cockroachdb_cockroach_pkg_roachpb.StoreID `protobuf:"varint,10,opt,name=store_id,json=storeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.StoreID" json:"store_id,omitempty"`
+	StoreID github_com_cockroachdb_cockroach_pkg_roachpb.StoreID `protobuf:"varint,10,opt,name=store_id,json=storeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.StoreID" json:"store_id,omitempty"`
 }
 
 func (m *HotRangesResponseV2_HotRange) Reset()         { *m = HotRangesResponseV2_HotRange{} }
@@ -4237,9 +4237,9 @@ var xxx_messageInfo_RangeRequest proto.InternalMessageInfo
 
 type RangeResponse struct {
 	// NodeID is the node that submitted all the requests.
-	NodeID            github_com_cockroachdb_cockroach_pkg_roachpb.NodeID                                `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
-	RangeID           github_com_cockroachdb_cockroach_pkg_roachpb.RangeID                               `protobuf:"varint,2,opt,name=range_id,json=rangeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.RangeID" json:"range_id,omitempty"`
-	ResponsesByNodeID map[github_com_cockroachdb_cockroach_pkg_roachpb.NodeID]RangeResponse_NodeResponse `protobuf:"bytes,3,rep,name=responses_by_node_id,json=responsesByNodeId,proto3,castkey=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"responses_by_node_id" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	NodeID            github_com_cockroachdb_cockroach_pkg_roachpb.NodeID                                `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	RangeID           github_com_cockroachdb_cockroach_pkg_roachpb.RangeID                               `protobuf:"varint,2,opt,name=range_id,json=rangeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.RangeID" json:"range_id,omitempty"`
+	ResponsesByNodeID map[github_com_cockroachdb_cockroach_pkg_roachpb.NodeID]RangeResponse_NodeResponse `protobuf:"bytes,3,rep,name=responses_by_node_id,json=responsesByNodeId,proto3,castkey=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"responses_by_node_id" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (m *RangeResponse) Reset()         { *m = RangeResponse{} }
@@ -4378,7 +4378,7 @@ func (m *StoresRequest) XXX_DiscardUnknown() {
 var xxx_messageInfo_StoresRequest proto.InternalMessageInfo
 
 type StoreDetails struct {
-	StoreID github_com_cockroachdb_cockroach_pkg_roachpb.StoreID `protobuf:"varint,1,opt,name=store_id,json=storeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.StoreID" json:"store_id,omitempty"`
+	StoreID github_com_cockroachdb_cockroach_pkg_roachpb.StoreID `protobuf:"varint,1,opt,name=store_id,json=storeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.StoreID" json:"store_id,omitempty"`
 	// encryption_status is a serialized
 	// ccl/storageccl/engineccl/enginepbccl/stats.go::EncryptionStatus protobuf.
 	EncryptionStatus []byte `protobuf:"bytes,2,opt,name=encryption_status,json=encryptionStatus,proto3" json:"encryption_status,omitempty"`
@@ -4543,7 +4543,7 @@ var xxx_messageInfo_StatementsResponse proto.InternalMessageInfo
 
 type StatementsResponse_ExtendedStatementStatisticsKey struct {
 	KeyData      roachpb.StatementStatisticsKey                      `protobuf:"bytes,1,opt,name=key_data,json=keyData,proto3" json:"key_data"`
-	NodeID       github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,2,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	NodeID       github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,2,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
 	AggregatedTs time.Time                                           `protobuf:"bytes,3,opt,name=aggregated_ts,json=aggregatedTs,proto3,stdtime" json:"aggregated_ts"`
 	// The aggregation duration.
 	AggregationInterval time.Duration `protobuf:"bytes,4,opt,name=aggregation_interval,json=aggregationInterval,proto3,stdduration" json:"aggregation_interval"`
@@ -4584,7 +4584,7 @@ var xxx_messageInfo_StatementsResponse_ExtendedStatementStatisticsKey proto.Inte
 
 type StatementsResponse_CollectedStatementStatistics struct {
 	Key   StatementsResponse_ExtendedStatementStatisticsKey              `protobuf:"bytes,1,opt,name=key,proto3" json:"key"`
-	ID    github_com_cockroachdb_cockroach_pkg_roachpb.StmtFingerprintID `protobuf:"varint,3,opt,name=id,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.StmtFingerprintID" json:"id,omitempty"`
+	ID    github_com_cockroachdb_cockroach_pkg_roachpb.StmtFingerprintID `protobuf:"varint,3,opt,name=id,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.StmtFingerprintID" json:"id,omitempty"`
 	Stats roachpb.StatementStatistics                                    `protobuf:"bytes,2,opt,name=stats,proto3" json:"stats"`
 }
 
@@ -4623,7 +4623,7 @@ var xxx_messageInfo_StatementsResponse_CollectedStatementStatistics proto.Intern
 
 type StatementsResponse_ExtendedCollectedTransactionStatistics struct {
 	StatsData roachpb.CollectedTransactionStatistics              `protobuf:"bytes,1,opt,name=stats_data,json=statsData,proto3" json:"stats_data"`
-	NodeID    github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,2,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	NodeID    github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,2,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
 }
 
 func (m *StatementsResponse_ExtendedCollectedTransactionStatistics) Reset() {
@@ -5342,7 +5342,7 @@ func (m *JobRegistryStatusRequest) XXX_DiscardUnknown() {
 var xxx_messageInfo_JobRegistryStatusRequest proto.InternalMessageInfo
 
 type JobRegistryStatusResponse struct {
-	NodeID      github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.NodeID" json:"node_id,omitempty"`
+	NodeID      github_com_cockroachdb_cockroach_pkg_roachpb.NodeID `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.NodeID" json:"node_id,omitempty"`
 	RunningJobs []*JobRegistryStatusResponse_Job                    `protobuf:"bytes,2,rep,name=running_jobs,json=runningJobs,proto3" json:"running_jobs,omitempty"`
 }
 
@@ -5880,7 +5880,7 @@ type TxnIDResolutionRequest struct {
 	// coordinator_id is either the NodeID or SQLInstanceID depending on whether
 	// the transaction is executed on a system tenant or a regular tenant.
 	CoordinatorID string                                                `protobuf:"bytes,1,opt,name=coordinator_id,json=coordinatorId,proto3" json:"coordinator_id,omitempty"`
-	TxnIDs        []github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,2,rep,name=txnIDs,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/uuid.UUID" json:"txnIDs"`
+	TxnIDs        []github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,2,rep,name=txnIDs,proto3,customtype=github.com/semistrict/ratel/pkg/util/uuid.UUID" json:"txnIDs"`
 }
 
 func (m *TxnIDResolutionRequest) Reset()         { *m = TxnIDResolutionRequest{} }

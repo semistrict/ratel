@@ -843,13 +843,13 @@
           "$ref": "#/definitions/UUID"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server/serverpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server/serverpb"
     },
     "ActiveQuery_Phase": {
       "type": "integer",
       "format": "int32",
       "title": "Enum for phase of execution.",
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server/serverpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server/serverpb"
     },
     "Attributes": {
       "description": "Attributes specifies a list of arbitrary strings describing\nnode topology, store type, and machine capabilities.",
@@ -863,7 +863,7 @@
           "x-go-name": "Attrs"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/roachpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/roachpb"
     },
     "ClockTimestamp": {
       "description": "ClockTimestamp is the statically typed version of a Timestamp with its\nSynthetic flag set to false.",
@@ -888,12 +888,12 @@
           "x-go-name": "Value"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/config/zonepb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/config/zonepb"
     },
     "Constraint_Type": {
       "type": "integer",
       "format": "int32",
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/config/zonepb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/config/zonepb"
     },
     "ConstraintsConjunction": {
       "description": "ConstraintsConjunction is a set of constraints that need to be satisfied\ntogether by a replica (i.e. by the replica's store).",
@@ -914,7 +914,7 @@
           "x-go-name": "NumReplicas"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/config/zonepb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/config/zonepb"
     },
     "DatabaseDetailsResponse_Grant": {
       "type": "object",
@@ -933,7 +933,7 @@
           "x-go-name": "User"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server/serverpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server/serverpb"
     },
     "DatabasesResponse": {
       "type": "object",
@@ -947,7 +947,7 @@
           "x-go-name": "Databases"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server/serverpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server/serverpb"
     },
     "EventsResponse": {
       "description": "EventsResponse contains a set of event log entries. This is always limited\nto the latest N entries (N is enforced in the associated endpoint).",
@@ -961,7 +961,7 @@
           "x-go-name": "Events"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server/serverpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server/serverpb"
     },
     "EventsResponse_Event": {
       "type": "object",
@@ -1004,7 +1004,7 @@
           "x-go-name": "UniqueID"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server/serverpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server/serverpb"
     },
     "GCPolicy": {
       "description": "TODO(spencer): flesh this out to include maximum number of values\n\nas well as whether there's an intersection between max values\nand TTL or a union.",
@@ -1018,7 +1018,7 @@
           "x-go-name": "TTLSeconds"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/config/zonepb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/config/zonepb"
     },
     "Key": {
       "description": "Key is a custom type for a byte string in proto\nmessages which refer to Cockroach keys.",
@@ -1027,7 +1027,7 @@
         "type": "integer",
         "format": "uint8"
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/roachpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/roachpb"
     },
     "Lease": {
       "description": "Lease contains information about range leases including the\nexpiration and lease holder.",
@@ -1061,13 +1061,13 @@
           "$ref": "#/definitions/ClockTimestamp"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/roachpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/roachpb"
     },
     "LeaseAcquisitionType": {
       "description": "LeaseAcquisitionType indicates the type of lease acquisition event that\nresulted in the current lease.",
       "type": "integer",
       "format": "int32",
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/roachpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/roachpb"
     },
     "LeasePreference": {
       "description": "LeasePreference specifies a preference about where range leases should be\nlocated.",
@@ -1081,13 +1081,13 @@
           "x-go-name": "Constraints"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/config/zonepb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/config/zonepb"
     },
     "LeaseSequence": {
       "type": "integer",
       "format": "int64",
       "title": "LeaseSequence is a custom type for a lease sequence number.",
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/roachpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/roachpb"
     },
     "ListSessionsError": {
       "type": "object",
@@ -1102,7 +1102,7 @@
           "$ref": "#/definitions/NodeID"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server/serverpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server/serverpb"
     },
     "ListSessionsResponse": {
       "type": "object",
@@ -1130,7 +1130,7 @@
           "x-go-name": "Sessions"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server/serverpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server/serverpb"
     },
     "Locality": {
       "description": "Locality is an ordered set of key value Tiers that describe a node's\nlocation. The tier keys should be the same across all nodes.",
@@ -1144,13 +1144,13 @@
           "x-go-name": "Tiers"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/roachpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/roachpb"
     },
     "NodeID": {
       "description": "NodeID is a custom type for a cockroach node ID. (not a raft node ID)\n0 is not a valid NodeID.",
       "type": "integer",
       "format": "int32",
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/roachpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/roachpb"
     },
     "PrettySpan": {
       "type": "object",
@@ -1164,7 +1164,7 @@
           "x-go-name": "StartKey"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server/serverpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server/serverpb"
     },
     "PrometheusRuleGroup": {
       "type": "object",
@@ -1177,7 +1177,7 @@
           }
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/util/metric"
+      "x-go-package": "github.com/semistrict/ratel/pkg/util/metric"
     },
     "PrometheusRuleNode": {
       "type": "object",
@@ -1208,13 +1208,13 @@
           "type": "string"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/util/metric"
+      "x-go-package": "github.com/semistrict/ratel/pkg/util/metric"
     },
     "RangeID": {
       "type": "integer",
       "format": "int64",
       "title": "A RangeID is a unique ID associated to a Raft consensus group.",
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/roachpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/roachpb"
     },
     "RangeProblems": {
       "type": "object",
@@ -1259,7 +1259,7 @@
           "x-go-name": "Underreplicated"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server/serverpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server/serverpb"
     },
     "RangeStatistics": {
       "description": "RangeStatistics describes statistics reported by a range. For internal use\nonly.",
@@ -1278,7 +1278,7 @@
           "x-go-name": "WritesPerSecond"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server/serverpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server/serverpb"
     },
     "ReplicaDescriptor": {
       "description": "ReplicaDescriptor describes a replica location by node ID\n(corresponds to a host:port via lookup on gossip network) and store\nID (identifies the device).\nTODO(jeffreyxiao): All nullable fields in ReplicaDescriptor can be made\nnon-nullable if #38302 is guaranteed to be on all nodes (I.E. 20.1).",
@@ -1297,20 +1297,20 @@
           "$ref": "#/definitions/ReplicaType"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/roachpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/roachpb"
     },
     "ReplicaID": {
       "type": "integer",
       "format": "int32",
       "title": "ReplicaID is a custom type for a range replica ID.",
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/roachpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/roachpb"
     },
     "ReplicaType": {
       "description": "All VOTER* types indicate a replica that participates in all raft activities,\nincluding voting for leadership and committing entries. Typically, this\nrequires a majority of voters to reach a decision. In a joint config, two\nseparate majorities are required: one from the set of replicas that have\neither type VOTER or VOTER_OUTGOING or VOTER_DEMOTING_{LEARNER, NON_VOTER},\nas well as that of the set of types VOTER and VOTER_INCOMING . For example,\nwhen type VOTER_FULL is assigned to replicas 1 and 2, while 3 is\nVOTER_OUTGOING and 4 is VOTER_INCOMING, then the two sets over which quorums\nneed to be achieved are {1,2,3} and {1,2,4}. Thus, {1,2} is a quorum of both,\n{1,3} is a quorum of the first but not the second, {1,4} is a quorum of the\nsecond but not the first, and {3,4} is a quorum of neither.",
       "type": "integer",
       "format": "int32",
       "title": "ReplicaType identifies which raft activities a replica participates in. In\nnormal operation, VOTER_FULL, NON_VOTER, and LEARNER are the only used\nstates. However, atomic replication changes require a transition through a\n\"joint config\"; in this joint config, the VOTER_DEMOTING_{LEARNER, NON_VOTER}\nand VOTER_INCOMING types are used as well to denote voters which are being\ndowngraded to learners and newly added by the change, respectively. When\nbeing removed, a demoting voter is turning into a learner, which we prefer\nover a direct removal, which was used prior to v20.1 and uses the\nVOTER_OUTGOING type instead (see VersionChangeReplicasDemotion for details on\nwhy we're not doing that any more).",
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/roachpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/roachpb"
     },
     "Session": {
       "type": "object",
@@ -1383,13 +1383,13 @@
           "x-go-name": "Username"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server/serverpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server/serverpb"
     },
     "StoreID": {
       "type": "integer",
       "format": "int32",
       "title": "StoreID is a custom type for a cockroach store ID.",
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/roachpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/roachpb"
     },
     "Subzone": {
       "type": "object",
@@ -1409,7 +1409,7 @@
           "x-go-name": "PartitionName"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/config/zonepb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/config/zonepb"
     },
     "SubzoneSpan": {
       "type": "object",
@@ -1427,7 +1427,7 @@
           "x-go-name": "SubzoneIndex"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/config/zonepb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/config/zonepb"
     },
     "TableDetailsResponse": {
       "description": "TableDetailsResponse contains grants, column names, and indexes for\na table.",
@@ -1489,7 +1489,7 @@
           "$ref": "#/definitions/ZoneConfigurationLevel"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server/serverpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server/serverpb"
     },
     "TableDetailsResponse_Column": {
       "type": "object",
@@ -1525,7 +1525,7 @@
           "x-go-name": "Type"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server/serverpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server/serverpb"
     },
     "TableDetailsResponse_Grant": {
       "type": "object",
@@ -1545,7 +1545,7 @@
           "x-go-name": "User"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server/serverpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server/serverpb"
     },
     "TableDetailsResponse_Index": {
       "type": "object",
@@ -1587,7 +1587,7 @@
           "x-go-name": "Unique"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server/serverpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server/serverpb"
     },
     "Tier": {
       "type": "object",
@@ -1604,7 +1604,7 @@
           "x-go-name": "Value"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/roachpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/roachpb"
     },
     "Timestamp": {
       "type": "object",
@@ -1628,7 +1628,7 @@
           "x-go-name": "WallTime"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/util/hlc"
+      "x-go-package": "github.com/semistrict/ratel/pkg/util/hlc"
     },
     "TxnInfo": {
       "type": "object",
@@ -1706,7 +1706,7 @@
           "x-go-name": "TxnDescription"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server/serverpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server/serverpb"
     },
     "UUID": {
       "type": "array",
@@ -1715,7 +1715,7 @@
         "type": "integer",
         "format": "uint8"
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/util/uuid"
+      "x-go-package": "github.com/semistrict/ratel/pkg/util/uuid"
     },
     "UnresolvedAddr": {
       "type": "object",
@@ -1730,7 +1730,7 @@
           "x-go-name": "NetworkField"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/util"
+      "x-go-package": "github.com/semistrict/ratel/pkg/util"
     },
     "UsersResponse": {
       "type": "object",
@@ -1745,7 +1745,7 @@
           "x-go-name": "Users"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server/serverpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server/serverpb"
     },
     "UsersResponse_User": {
       "type": "object",
@@ -1756,7 +1756,7 @@
           "x-go-name": "Username"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server/serverpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server/serverpb"
     },
     "Version": {
       "type": "object",
@@ -1784,7 +1784,7 @@
           "x-go-name": "Patch"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/roachpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/roachpb"
     },
     "ZoneConfig": {
       "description": "Note: when adding/removing fields here, be sure to update\nsupportedZoneConfigOptions in the sql package, to synchronize\nwith the code for ALTER ... CONFIGURE ZONE.",
@@ -1792,7 +1792,7 @@
       "title": "ZoneConfig holds configuration that applies to one or more ranges.",
       "properties": {
         "constraints": {
-          "description": "Constraints constrains which stores the replicas can be stored on. The\norder in which the constraints are stored is arbitrary and may change.\nhttps://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20160706_expressive_zone_config.md#constraint-system\n\nNOTE: The sum of the num_replicas fields of the Constraints must add up to\nat most ZoneConfig.num_replicas, or there must be no more than a single\nConstraints field with num_replicas set to 0.",
+          "description": "Constraints constrains which stores the replicas can be stored on. The\norder in which the constraints are stored is arbitrary and may change.\nhttps://github.com/semistrict/ratel/blob/master/docs/RFCS/20160706_expressive_zone_config.md#constraint-system\n\nNOTE: The sum of the num_replicas fields of the Constraints must add up to\nat most ZoneConfig.num_replicas, or there must be no more than a single\nConstraints field with num_replicas set to 0.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/ConstraintsConjunction"
@@ -1803,7 +1803,7 @@
           "$ref": "#/definitions/GCPolicy"
         },
         "global_reads": {
-          "description": "GlobalReads specifies whether transactions operating over the range(s)\nshould be configured to provide non-blocking behavior, meaning that reads\ncan be served consistently from all replicas and do not block on writes. In\nexchange, writes get pushed into the future and must wait on commit to\nensure linearizability. For more, see:\n\nhttps://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20200811_non_blocking_txns.md",
+          "description": "GlobalReads specifies whether transactions operating over the range(s)\nshould be configured to provide non-blocking behavior, meaning that reads\ncan be served consistently from all replicas and do not block on writes. In\nexchange, writes get pushed into the future and must wait on commit to\nensure linearizability. For more, see:\n\nhttps://github.com/semistrict/ratel/blob/master/docs/RFCS/20200811_non_blocking_txns.md",
           "type": "boolean",
           "x-go-name": "GlobalReads"
         },
@@ -1877,14 +1877,14 @@
           "x-go-name": "VoterConstraints"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/config/zonepb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/config/zonepb"
     },
     "ZoneConfigurationLevel": {
       "description": "the object level at which the configuration is defined. This is needed\nbecause objects without a specifically indicated Zone Configuration will\ninherit the configuration of their \"parent\".",
       "type": "integer",
       "format": "int32",
       "title": "ZoneConfigurationLevel indicates, for objects with a Zone Configuration,",
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server/serverpb"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server/serverpb"
     },
     "databaseDetailsResponse": {
       "type": "object",
@@ -1897,7 +1897,7 @@
           "x-go-name": "DescriptorID"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server"
     },
     "databaseGrantsResponse": {
       "type": "object",
@@ -1918,7 +1918,7 @@
           "x-go-name": "Next"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server"
     },
     "databaseTablesResponse": {
       "type": "object",
@@ -1939,7 +1939,7 @@
           "x-go-name": "TableNames"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server"
     },
     "databasesResponse": {
       "type": "object",
@@ -1959,7 +1959,7 @@
           "x-go-name": "Next"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server"
     },
     "eventsResponse": {
       "type": "object",
@@ -1979,7 +1979,7 @@
           "x-go-name": "Next"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server"
     },
     "hotRangeInfo": {
       "description": "(ie its range ID, QPS, table name, etc.).",
@@ -2027,7 +2027,7 @@
           "x-go-name": "TableName"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server"
     },
     "hotRangesResponse": {
       "type": "object",
@@ -2053,7 +2053,7 @@
           "x-go-name": "Errors"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server"
     },
     "listSessionsResp": {
       "type": "object",
@@ -2087,7 +2087,7 @@
         }
       },
       "x-go-name": "listSessionsResponse",
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server"
     },
     "loginResponse": {
       "type": "object",
@@ -2098,7 +2098,7 @@
           "x-go-name": "Session"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server"
     },
     "logoutResponse": {
       "type": "object",
@@ -2109,7 +2109,7 @@
           "x-go-name": "LoggedOut"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server"
     },
     "nodeRangeResponse": {
       "type": "object",
@@ -2122,7 +2122,7 @@
           "$ref": "#/definitions/rangeInfo"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server"
     },
     "nodeRangesResponse": {
       "type": "object",
@@ -2143,7 +2143,7 @@
           "x-go-name": "Ranges"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server"
     },
     "nodeStatus": {
       "type": "object",
@@ -2220,7 +2220,7 @@
           "x-go-name": "UpdatedAt"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server"
     },
     "nodesResponse": {
       "type": "object",
@@ -2241,7 +2241,7 @@
           "x-go-name": "Nodes"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server"
     },
     "rangeDescriptorInfo": {
       "description": "rangeDescriptorInfo contains a subset of fields from the Cockroach-internal\nrange descriptor that are safe to be returned from APIs.",
@@ -2284,7 +2284,7 @@
           "x-go-name": "StoreID"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server"
     },
     "rangeInfo": {
       "type": "object",
@@ -2338,7 +2338,7 @@
           "x-go-name": "Ticking"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server"
     },
     "rangeResponse": {
       "type": "object",
@@ -2351,7 +2351,7 @@
           "x-go-name": "Responses"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server"
     },
     "responseError": {
       "type": "object",
@@ -2364,7 +2364,7 @@
           "$ref": "#/definitions/NodeID"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server"
     },
     "tableDetailsResponse": {
       "title": "Response for tableDetails.",
@@ -2389,7 +2389,7 @@
           "x-go-name": "Users"
         }
       },
-      "x-go-package": "github.com/cockroachdb/cockroach/pkg/server"
+      "x-go-package": "github.com/semistrict/ratel/pkg/server"
     }
   },
   "securityDefinitions": {

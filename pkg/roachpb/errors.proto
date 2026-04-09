@@ -461,7 +461,7 @@ message TransactionRetryWithProtoRefreshError {
   // this against the ID of its transaction and make sure the retryable error
   // is meant for its level and didn't escape from some inner transaction.
   optional bytes txn_id = 2 [
-    (gogoproto.customtype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.UUID",
+    (gogoproto.customtype) = "github.com/semistrict/ratel/pkg/util/uuid.UUID",
     (gogoproto.customname) = "TxnID",
     (gogoproto.nullable) = false];
 
@@ -712,7 +712,7 @@ message Error {
   // now is the current time at the node sending the response,
   // which can be used by the receiver to update its local HLC.
   optional util.hlc.Timestamp now = 8 [(gogoproto.nullable) = false,
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/util/hlc.ClockTimestamp"];
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/util/hlc.ClockTimestamp"];
 
   reserved 2;
 }

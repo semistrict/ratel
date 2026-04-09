@@ -19,9 +19,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/testutils"
 	"github.com/cockroachdb/datadriven"
 	"github.com/kr/pretty"
+	"github.com/semistrict/ratel/pkg/testutils"
 )
 
 func TestParse(t *testing.T) {

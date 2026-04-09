@@ -19,11 +19,11 @@ import (
 	"runtime"
 	"runtime/debug"
 
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/readsummary/rspb"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/readsummary/rspb"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 // maybeAssertNoHole, if enabled (see within), starts a watcher that
@@ -34,7 +34,7 @@ func (s *Store) maybeAssertNoHole(ctx context.Context, from, to roachpb.RKey) fu
 	// Access to replicasByKey is unfortunately deadlock-prone. We can enable this
 	// after we've revisited the locking, see:
 	//
-	// https://github.com/cockroachdb/cockroach/issues/74384.
+	// https://github.com/semistrict/ratel/issues/74384.
 	//
 	// Until then, this is still useful for checking individual tests known not to
 	// experience the deadlock. Even tests that have the deadlock can still be checked

@@ -19,7 +19,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scpb"
+	"github.com/semistrict/ratel/pkg/sql/schemachanger/scpb"
 )
 
 func TestOpGen(t *testing.T) {

@@ -19,11 +19,11 @@ import (
 	"reflect"
 	"strings"
 
-	jsonb "github.com/cockroachdb/cockroach/pkg/util/json"
-	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
 	"github.com/cockroachdb/errors"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
+	jsonb "github.com/semistrict/ratel/pkg/util/json"
+	"github.com/semistrict/ratel/pkg/util/protoutil"
 )
 
 // anyResolver implements jsonpb.AnyResolver

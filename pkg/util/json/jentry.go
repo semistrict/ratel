@@ -14,7 +14,7 @@
 
 package json
 
-import "github.com/cockroachdb/cockroach/pkg/util/encoding"
+import "github.com/semistrict/ratel/pkg/util/encoding"
 
 const nullTag = 0x00000000
 const stringTag = 0x10000000
@@ -29,7 +29,7 @@ const jEntryOffLenMask = 0x0FFFFFFF
 
 // jEntry is a header for a particular JSON value. See the JSONB encoding RFC
 // for an explanation of its purpose and format:
-// https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20171005_jsonb_encoding.md
+// https://github.com/semistrict/ratel/blob/master/docs/RFCS/20171005_jsonb_encoding.md
 type jEntry struct {
 	typCode uint32
 	length  uint32

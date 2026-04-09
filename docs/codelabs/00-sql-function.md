@@ -95,9 +95,9 @@ followed the instructions in [CONTRIBUTING.md], you should be able to build
 CockroachDB from source:
 
 ```text
-~/go/src/github.com/cockroachdb/cockroach$ make build
+~/go/src/github.com/semistrict/ratel$ make build
 ...
-github.com/cockroachdb/cockroach
+github.com/semistrict/ratel
 ```
 
 Now, let’s run a single-node Cockroach instance:
@@ -389,6 +389,6 @@ check your solution against ours.
 That’s it! You’ve successfully added a bug-free built-in SQL function to
 CockroachDB.
 
-[CONTRIBUTING.md]: https://github.com/cockroachdb/cockroach/blob/master/CONTRIBUTING.md
+[CONTRIBUTING.md]: https://github.com/semistrict/ratel/blob/master/CONTRIBUTING.md
 [built-ins]: https://www.cockroachlabs.com/docs/stable/functions-and-operators.html#built-in-functions
 [blog-maps]: https://blog.golang.org/go-maps-in-action#TOC_7.

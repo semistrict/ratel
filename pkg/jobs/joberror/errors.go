@@ -18,12 +18,12 @@ import (
 	"strings"
 
 	circuitbreaker "github.com/cockroachdb/circuitbreaker"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvclient/kvcoord"
-	"github.com/cockroachdb/cockroach/pkg/sql/flowinfra"
-	"github.com/cockroachdb/cockroach/pkg/util/circuit"
-	"github.com/cockroachdb/cockroach/pkg/util/grpcutil"
-	"github.com/cockroachdb/cockroach/pkg/util/sysutil"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/kv/kvclient/kvcoord"
+	"github.com/semistrict/ratel/pkg/sql/flowinfra"
+	"github.com/semistrict/ratel/pkg/util/circuit"
+	"github.com/semistrict/ratel/pkg/util/grpcutil"
+	"github.com/semistrict/ratel/pkg/util/sysutil"
 )
 
 // IsDistSQLRetryableError returns true if the supplied error, or any of its parent

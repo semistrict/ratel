@@ -19,13 +19,13 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/util/envutil"
-	"github.com/cockroachdb/cockroach/pkg/util/mon"
-	"github.com/cockroachdb/cockroach/pkg/util/retry"
 	"github.com/cockroachdb/redact"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/util/envutil"
+	"github.com/semistrict/ratel/pkg/util/mon"
+	"github.com/semistrict/ratel/pkg/util/retry"
 )
 
 // Base config defaults.
@@ -64,7 +64,7 @@ const (
 	defaultRangeLeaseRaftElectionTimeoutMultiplier = 3
 
 	// NB: this can't easily become a variable as the UI hard-codes it to 10s.
-	// See https://github.com/cockroachdb/cockroach/issues/20310.
+	// See https://github.com/semistrict/ratel/issues/20310.
 	DefaultMetricsSampleInterval = 10 * time.Second
 
 	// defaultRaftHeartbeatIntervalTicks is the default value for
@@ -161,7 +161,7 @@ type Config struct {
 	// Insecure specifies whether to disable security checks throughout
 	// the code base.
 	// This is really not recommended.
-	// See: https://github.com/cockroachdb/cockroach/issues/53404
+	// See: https://github.com/semistrict/ratel/issues/53404
 	Insecure bool
 
 	// AcceptSQLWithoutTLS, when set, makes it possible for SQL

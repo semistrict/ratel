@@ -201,8 +201,8 @@ func formatReleaseNotes(message string, prNumber int, crdbSha string) []string {
 		releaseJustification := releaseJustificationRE.MatchString(x)
 		if len(releaseNoteLines) > 0 && (validRn || releaseJustification) {
 			rnBody = fmt.Sprintf(
-				"Related PR: https://github.com/cockroachdb/cockroach/pull/%s\n"+
-					"Commit: https://github.com/cockroachdb/cockroach/commit/%s\n"+
+				"Related PR: https://github.com/semistrict/ratel/pull/%s\n"+
+					"Commit: https://github.com/semistrict/ratel/commit/%s\n"+
 					"\n---\n\n%s",
 				strconv.Itoa(prNumber),
 				crdbSha,
@@ -218,8 +218,8 @@ func formatReleaseNotes(message string, prNumber int, crdbSha string) []string {
 	}
 	if len(releaseNoteLines) > 0 { // commit whatever is left in the buffer to the rnBodySlice set
 		rnBody = fmt.Sprintf(
-			"Related PR: https://github.com/cockroachdb/cockroach/pull/%s\n"+
-				"Commit: https://github.com/cockroachdb/cockroach/commit/%s\n"+
+			"Related PR: https://github.com/semistrict/ratel/pull/%s\n"+
+				"Commit: https://github.com/semistrict/ratel/commit/%s\n"+
 				"\n---\n\n%s",
 			strconv.Itoa(prNumber),
 			crdbSha,

@@ -26,7 +26,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/geo/geos"
+	"github.com/semistrict/ratel/pkg/geo/geos"
 )
 
 var (
@@ -44,7 +44,7 @@ type indexTemplate struct {
 
 // handleIndex serves the HTML page that contains the map.
 func handleIndex(w http.ResponseWriter, r *http.Request) {
-	pkg, err := build.Import("github.com/cockroachdb/cockroach", "", build.FindOnly)
+	pkg, err := build.Import("github.com/semistrict/ratel", "", build.FindOnly)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

@@ -19,8 +19,8 @@ import (
 	gosql "database/sql"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/workload"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/workload"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )

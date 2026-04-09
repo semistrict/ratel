@@ -71,7 +71,7 @@ implementing the feature until after temporary tables are available at some
 undetermined time in the future.
 
 An
-[initial implementation](https://github.com/cockroachdb/cockroach/pull/20359)
+[initial implementation](https://github.com/semistrict/ratel/pull/20359)
 of this subset was straightforward and weighed in at less than 300 lines of new
 non-test code.
 

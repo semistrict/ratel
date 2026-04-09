@@ -2,8 +2,8 @@
 - Status: completed
 - Start Date: 2017-05-11
 - Authors: Arjun Narayan and Alfonso Subiotto Marques
-- RFC PR: [#16069](https://github.com/cockroachdb/cockroach/pull/16069)
-- Cockroach Issue: [#15206](https://github.com/cockroachdb/cockroach/issues/15206)
+- RFC PR: [#16069](https://github.com/semistrict/ratel/pull/16069)
+- Cockroach Issue: [#15206](https://github.com/semistrict/ratel/issues/15206)
 
 # Summary
 Add support for DistSQL processors to use external storage in addition

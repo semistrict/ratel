@@ -18,7 +18,7 @@ import (
 	"math"
 	"sort"
 
-	"github.com/cockroachdb/cockroach/pkg/ts/tspb"
+	"github.com/semistrict/ratel/pkg/ts/tspb"
 )
 
 // dp is a shorthand function for constructing a TimeSeriesDatapoint, used for

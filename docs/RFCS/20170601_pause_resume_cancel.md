@@ -105,5 +105,5 @@ proposed top-level `PAUSE`/`RESUME`/`CANCEL` verbs read more naturally.
 
 None. How these operations will actually be implemented is out of scope.
 
-[#16273]: https://github.com/cockroachdb/cockroach/pull/16273
-[peter-suggestion]: https://github.com/cockroachdb/cockroach/pull/16273#issuecomment-305590661
+[#16273]: https://github.com/semistrict/ratel/pull/16273
+[peter-suggestion]: https://github.com/semistrict/ratel/pull/16273#issuecomment-305590661

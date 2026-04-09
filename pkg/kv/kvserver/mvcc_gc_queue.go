@@ -22,21 +22,21 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/gc"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/intentresolver"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/settings"
-	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
-	"github.com/cockroachdb/cockroach/pkg/spanconfig"
-	"github.com/cockroachdb/cockroach/pkg/storage/enginepb"
-	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/cockroach/pkg/util/admission"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/humanizeutil"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/stop"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/gc"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/intentresolver"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/settings"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
+	"github.com/semistrict/ratel/pkg/spanconfig"
+	"github.com/semistrict/ratel/pkg/storage/enginepb"
+	"github.com/semistrict/ratel/pkg/util"
+	"github.com/semistrict/ratel/pkg/util/admission"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/humanizeutil"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/stop"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 )
 
 const (
@@ -95,12 +95,12 @@ func largeAbortSpan(ms enginepb.MVCCStats) bool {
 	//    this code block here was written)
 	// 2. transaction aborts tended to create unnecessary abort span entries,
 	//    fixed (and 19.2-backported) in:
-	//    https://github.com/cockroachdb/cockroach/pull/42765
+	//    https://github.com/semistrict/ratel/pull/42765
 	// 3. aborting transactions in a busy loop:
-	//    https://github.com/cockroachdb/cockroach/issues/38088
+	//    https://github.com/semistrict/ratel/issues/38088
 	//    (and we suspect this also happens in user apps occasionally)
 	// 4. large snapshots would never complete due to the queue time limits
-	//    (addressed in https://github.com/cockroachdb/cockroach/pull/44952).
+	//    (addressed in https://github.com/semistrict/ratel/pull/44952).
 
 	// New versions (20.2+) of Cockroach accurately track the size of the abort
 	// span (after a migration period of a few days, assuming default consistency

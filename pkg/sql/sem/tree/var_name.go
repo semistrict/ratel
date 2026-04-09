@@ -15,8 +15,8 @@
 package tree
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/sql/types"
 )
 
 // VarName occurs inside scalar expressions.

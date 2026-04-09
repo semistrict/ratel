@@ -17,9 +17,9 @@ package uncertainty
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverpb"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverpb"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/hlc"
 )
 
 // ComputeInterval returns the provided request's uncertainty interval to be
@@ -178,7 +178,7 @@ func minimumLocalLimitForLeaseholder(lease roachpb.Lease) hlc.ClockTimestamp {
 	min := lease.Start
 
 	// TODO(nvanbenschoten): handle RHS freeze timestamp after merge here when
-	// we fix https://github.com/cockroachdb/cockroach/issues/73292.
+	// we fix https://github.com/semistrict/ratel/issues/73292.
 
 	return min
 }

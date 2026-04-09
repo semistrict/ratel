@@ -115,7 +115,7 @@ are:
 
 - **KV**: KV work admission, specifically the
   `roachpb.InternalServer.Batch` API implemented by
-  [`Node`](https://github.com/cockroachdb/cockroach/blob/d10b3a5badf25c9e19ca84037f2426b03196b2ac/pkg/server/node.go#L938). This
+  [`Node`](https://github.com/semistrict/ratel/blob/d10b3a5badf25c9e19ca84037f2426b03196b2ac/pkg/server/node.go#L938). This
   includes work submitted by SQL, and internal operations like
   garbage collection and node heartbeats.
 
@@ -304,7 +304,7 @@ prioritization in the goroutine scheduler. A TPCC run with 3000
 warehouses showed 2x reduction in lock waiters and 10+% improvement in
 transaction throughput with this priority adjustment compared to no
 priority adjustment. See
-https://github.com/cockroachdb/cockroach/pull/69337#issue-978534871
+https://github.com/semistrict/ratel/pull/69337#issue-978534871
 for comparison graphs.
 
 ### Tuning Knobs
@@ -333,11 +333,11 @@ experimental run.
 For some graphs showing before and after effects of enabling admission control see:
 
 - CPU overload:
-  https://github.com/cockroachdb/cockroach/pull/65614#issue-651424608
+  https://github.com/semistrict/ratel/pull/65614#issue-651424608
   and
-  https://github.com/cockroachdb/cockroach/pull/66891#issue-930351128
+  https://github.com/semistrict/ratel/pull/66891#issue-930351128
 
 - IO overload:
-  https://github.com/cockroachdb/cockroach/pull/65850#issue-656777155
+  https://github.com/semistrict/ratel/pull/65850#issue-656777155
   and
-  https://github.com/cockroachdb/cockroach/pull/69311#issue-978297918
+  https://github.com/semistrict/ratel/pull/69311#issue-978297918

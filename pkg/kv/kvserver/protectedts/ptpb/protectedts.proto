@@ -93,7 +93,7 @@ message Metadata {
 // Record corresponds to a protected timestamp.
 message Record {
   // ID uniquely identifies this row.
-  bytes id = 1 [(gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/util/uuid.Bytes", (gogoproto.customname) = "ID"];
+  bytes id = 1 [(gogoproto.casttype) = "github.com/semistrict/ratel/pkg/util/uuid.Bytes", (gogoproto.customname) = "ID"];
 
   // Timestamp is the timestamp which is protected.
   util.hlc.Timestamp timestamp = 2  [(gogoproto.nullable) = false];
@@ -149,7 +149,7 @@ message Target {
     // IDs are the descriptor IDs of the schema objects being protected by this
     // Record. This field will only contain database and table IDs.
     repeated uint32 ids = 1 [(gogoproto.customname) = "IDs",
-      (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID"];
+      (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID"];
   }
 
   message TenantsTarget {

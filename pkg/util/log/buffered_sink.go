@@ -18,9 +18,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/exit"
-	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/cli/exit"
+	"github.com/semistrict/ratel/pkg/util/syncutil"
 )
 
 // bufferedSink wraps a child sink to add buffering. Messages are accumulated
@@ -240,7 +240,7 @@ func (bs *bufferedSink) exitCode() exit.Code {
 // bs.msgBuf to the wrapped sink. The function returns when ctx is canceled.
 //
 // TODO(knz): How does this interact with the runFlusher logic in log_flush.go?
-// See: https://github.com/cockroachdb/cockroach/issues/72458
+// See: https://github.com/semistrict/ratel/issues/72458
 func (bs *bufferedSink) runFlusher(stopC <-chan struct{}) {
 	buf := &bs.mu.buf
 	for {
@@ -392,7 +392,7 @@ func (b *msgBuf) concatMessages() *buffer {
 
 func (b *msgBuf) dropFirstMsg() {
 	// TODO(knz): This needs to get reported somehow, see
-	// https://github.com/cockroachdb/cockroach/issues/72453
+	// https://github.com/semistrict/ratel/issues/72453
 	firstMsg := b.messages[0]
 	b.messages = b.messages[1:]
 	b.sizeBytes -= uint64(firstMsg.Len())

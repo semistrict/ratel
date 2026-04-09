@@ -17,7 +17,7 @@ package kvserverpb
 import (
 	"math"
 
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/hlc"
 )
 
 var maxRaftCommandFooterSize = (&RaftCommandFooter{

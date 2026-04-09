@@ -6,10 +6,10 @@ package roachpb
 import (
 	encoding_binary "encoding/binary"
 	fmt "fmt"
-	util "github.com/cockroachdb/cockroach/pkg/util"
-	hlc "github.com/cockroachdb/cockroach/pkg/util/hlc"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	util "github.com/semistrict/ratel/pkg/util"
+	hlc "github.com/semistrict/ratel/pkg/util/hlc"
 	io "io"
 	math "math"
 	math_bits "math/bits"

@@ -17,7 +17,7 @@
 
 package util
 
-import "github.com/cockroachdb/cockroach/pkg/util/envutil"
+import "github.com/semistrict/ratel/pkg/util/envutil"
 
 // disableMetamorphicTesting can be used to disable metamorphic tests. If it
 // is set to true then metamorphic testing will not be enabled.

@@ -17,8 +17,8 @@ package sslocal
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/server/serverpb"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/server/serverpb"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 // Controller implements the SQL Stats subsystem control plane. This exposes

@@ -26,8 +26,8 @@ import (
 	"context"
 	"os"
 
-	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 // ClockSource contains the handle of the clock device as well as the

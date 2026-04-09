@@ -18,9 +18,9 @@ import (
 	"context"
 	"math/rand"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/server/serverpb"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/server/serverpb"
 )
 
 // SetupAllNodesPlanning creates a planCtx and sets up the planCtx.NodeStatuses

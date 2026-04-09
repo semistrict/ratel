@@ -2,9 +2,9 @@
 - Status: completed
 - Start Date: 2017-01-25
 - Authors: Alex Robinson
-- RFC PR: [#13233](https://github.com/cockroachdb/cockroach/pull/13233)
+- RFC PR: [#13233](https://github.com/semistrict/ratel/pull/13233)
 - Cockroach Issue:
-  - [#13232](https://github.com/cockroachdb/cockroach/issues/13232)
+  - [#13232](https://github.com/semistrict/ratel/issues/13232)
 
 # Summary
 
@@ -134,7 +134,7 @@ requests suffering from the large network RTT.
 ## Making lease transfer decisions
 
 Much of the infrastructure needed for making decisions about when to transfer
-leases was [already added](https://github.com/cockroachdb/cockroach/pull/10464)
+leases was [already added](https://github.com/semistrict/ratel/pull/10464)
 as part of the initial lease balancing work, so all we need to do is start using
 request locality as an additional input to the decision-making process. The
 difficult problems that we really need to solve for are:
@@ -174,7 +174,7 @@ to expose a tuning knob for this to give users more control over the tradeoff.
 In order to avoid thrashing of leases, we can partially reuse the mechanisms
 already in place for avoiding lease thrashing with respect to leaseholder
 balance, particularly the rate-limiting of lease transfers
-([#11729](https://github.com/cockroachdb/cockroach/pull/11729)).
+([#11729](https://github.com/semistrict/ratel/pull/11729)).
 
 Additionally, we can learn from both lease and replica rebalancing that there
 needs to be a wide range of configurations in which no action is taken -- e.g.

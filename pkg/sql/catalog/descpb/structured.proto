@@ -917,7 +917,7 @@ message TableDescriptor {
     option (gogoproto.equal) = true;
     optional uint32 node_id = 1 [(gogoproto.nullable) = false,
         (gogoproto.customname) = "NodeID",
-        (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.NodeID"];
+        (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.NodeID"];
     // Nanoseconds since the Unix epoch.
     optional int64 expiration_time = 2 [(gogoproto.nullable) = false];
   }
@@ -1033,7 +1033,7 @@ message TableDescriptor {
     optional int64 job_id = 2 [
       (gogoproto.nullable) = false,
       (gogoproto.customname) = "JobID",
-      (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb.JobID"];
+      (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/catpb.JobID"];
   }
 
   // Mutation jobs queued for execution in a FIFO order. Remains synchronized
@@ -1123,7 +1123,7 @@ message TableDescriptor {
   optional int64 drop_job_id = 32 [
     (gogoproto.nullable) = false,
     (gogoproto.customname) = "DropJobID",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb.JobID"];
+    (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/catpb.JobID"];
 
   message GCDescriptorMutation {
     option (gogoproto.equal) = true;
@@ -1137,7 +1137,7 @@ message TableDescriptor {
     optional int64 job_id = 3 [
       (gogoproto.nullable) = false,
       (gogoproto.customname) = "JobID", deprecated = true,
-      (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb.JobID"];
+      (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/sql/catalog/catpb.JobID"];
   }
 
   // Before 22.1:
@@ -1283,7 +1283,7 @@ message DatabaseDescriptor {
 
     reserved 1;
     optional SurvivalGoal survival_goal = 2 [(gogoproto.nullable)=false];
-    optional string primary_region = 3 [(gogoproto.nullable)=false,(gogoproto.casttype)="github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb.RegionName"];
+    optional string primary_region = 3 [(gogoproto.nullable)=false,(gogoproto.casttype)="github.com/semistrict/ratel/pkg/sql/catalog/catpb.RegionName"];
 
     // RegionEnumID represents ID of the type descriptor corresponding to the
     // region enum for a multi-region database. If the database is not a
@@ -1312,7 +1312,7 @@ message SuperRegion {
   option (gogoproto.equal) = true;
 
   optional string super_region_name = 1 [(gogoproto.nullable)=false];
-  repeated string regions = 2 [(gogoproto.casttype)="github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb.RegionName"];
+  repeated string regions = 2 [(gogoproto.casttype)="github.com/semistrict/ratel/pkg/sql/catalog/catpb.RegionName"];
 }
 
 // ZoneConfigExtensions represents per-locality zone configurations that
@@ -1350,7 +1350,7 @@ message ZoneConfigExtensions {
   // RegionalIn further extends the zone configs applied to REGIONAL [ BY ROW ]
   // tables and partitions, according to affinity region.
   map<string, config.zonepb.ZoneConfig> regional_in = 3 [(gogoproto.nullable) = false,
-    (gogoproto.castkey)="github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb.RegionName"];
+    (gogoproto.castkey)="github.com/semistrict/ratel/pkg/sql/catalog/catpb.RegionName"];
 }
 
 // TypeDescriptor represents a user defined type and is stored in a structured
@@ -1468,7 +1468,7 @@ message TypeDescriptor {
     option (gogoproto.equal) = true;
 
     // PrimaryRegion represents the PrimaryRegion for a multi-region enum.
-    optional string primary_region = 1 [(gogoproto.nullable) = false, (gogoproto.casttype)="github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb.RegionName"];
+    optional string primary_region = 1 [(gogoproto.nullable) = false, (gogoproto.casttype)="github.com/semistrict/ratel/pkg/sql/catalog/catpb.RegionName"];
 
     // SuperRegions represents the super regions defined on the database.
     repeated SuperRegion super_regions = 2 [(gogoproto.nullable) = false];

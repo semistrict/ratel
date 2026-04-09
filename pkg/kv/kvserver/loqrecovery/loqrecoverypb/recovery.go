@@ -15,11 +15,11 @@
 package loqrecoverypb
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/keysutil"
-	"github.com/cockroachdb/cockroach/pkg/util/log/eventpb"
 	"github.com/cockroachdb/errors"
 	"github.com/gogo/protobuf/proto"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/keysutil"
+	"github.com/semistrict/ratel/pkg/util/log/eventpb"
 )
 
 // RecoveryKey is an alias for RKey that is used to make it

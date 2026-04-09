@@ -6,16 +6,16 @@ package kvserverpb
 import (
 	bytes "bytes"
 	fmt "fmt"
-	rspb "github.com/cockroachdb/cockroach/pkg/kv/kvserver/readsummary/rspb"
-	github_com_cockroachdb_cockroach_pkg_roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	enginepb "github.com/cockroachdb/cockroach/pkg/storage/enginepb"
-	github_com_cockroachdb_cockroach_pkg_util_hlc "github.com/cockroachdb/cockroach/pkg/util/hlc"
-	hlc "github.com/cockroachdb/cockroach/pkg/util/hlc"
-	github_com_cockroachdb_cockroach_pkg_util_uuid "github.com/cockroachdb/cockroach/pkg/util/uuid"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
+	rspb "github.com/semistrict/ratel/pkg/kv/kvserver/readsummary/rspb"
+	github_com_cockroachdb_cockroach_pkg_roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	enginepb "github.com/semistrict/ratel/pkg/storage/enginepb"
+	github_com_cockroachdb_cockroach_pkg_util_hlc "github.com/semistrict/ratel/pkg/util/hlc"
+	hlc "github.com/semistrict/ratel/pkg/util/hlc"
+	github_com_cockroachdb_cockroach_pkg_util_uuid "github.com/semistrict/ratel/pkg/util/uuid"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -149,7 +149,7 @@ var xxx_messageInfo_ChangeReplicas proto.InternalMessageInfo
 type ComputeChecksum struct {
 	// ChecksumID is a handle by which the checksum can be retrieved in a later
 	// CollectChecksum request.
-	ChecksumID github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,1,opt,name=checksum_id,json=checksumId,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/uuid.UUID" json:"checksum_id"`
+	ChecksumID github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,1,opt,name=checksum_id,json=checksumId,proto3,customtype=github.com/semistrict/ratel/pkg/util/uuid.UUID" json:"checksum_id"`
 	// The version used to pick the checksum method. Only when the version matches
 	// that hardcoded in the binary will a computation be carried out.
 	Version uint32 `protobuf:"varint,5,opt,name=version,proto3" json:"version,omitempty"`
@@ -235,8 +235,8 @@ var xxx_messageInfo_Compaction proto.InternalMessageInfo
 // SuggestedCompaction holds start and end keys in conjunction with
 // the compaction details.
 type SuggestedCompaction struct {
-	StartKey   github_com_cockroachdb_cockroach_pkg_roachpb.Key `protobuf:"bytes,1,opt,name=start_key,json=startKey,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.Key" json:"start_key,omitempty"`
-	EndKey     github_com_cockroachdb_cockroach_pkg_roachpb.Key `protobuf:"bytes,2,opt,name=end_key,json=endKey,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.Key" json:"end_key,omitempty"`
+	StartKey   github_com_cockroachdb_cockroach_pkg_roachpb.Key `protobuf:"bytes,1,opt,name=start_key,json=startKey,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.Key" json:"start_key,omitempty"`
+	EndKey     github_com_cockroachdb_cockroach_pkg_roachpb.Key `protobuf:"bytes,2,opt,name=end_key,json=endKey,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.Key" json:"end_key,omitempty"`
 	Compaction `protobuf:"bytes,3,opt,name=compaction,proto3,embedded=compaction" json:"compaction"`
 }
 
@@ -319,7 +319,7 @@ type ReplicatedEvalResult struct {
 	// This is the proposal timestamp for the active lease while evaluating a lease request.
 	// It will be used to make sure we know if a lease was extended after we sent out the request
 	// but before we tried to apply it.
-	PrevLeaseProposal *github_com_cockroachdb_cockroach_pkg_util_hlc.ClockTimestamp `protobuf:"bytes,20,opt,name=prev_lease_proposal,json=prevLeaseProposal,proto3,casttype=github.com/cockroachdb/cockroach/pkg/util/hlc.ClockTimestamp" json:"prev_lease_proposal,omitempty"`
+	PrevLeaseProposal *github_com_cockroachdb_cockroach_pkg_util_hlc.ClockTimestamp `protobuf:"bytes,20,opt,name=prev_lease_proposal,json=prevLeaseProposal,proto3,casttype=github.com/semistrict/ratel/pkg/util/hlc.ClockTimestamp" json:"prev_lease_proposal,omitempty"`
 	// PriorReadSummary is a summary of the reads that have been served on the
 	// range prior to this proposal, which must be a lease change (request or
 	// transfer) if the field is set. The read summary is used to update the new
@@ -568,7 +568,7 @@ type RaftCommand struct {
 	// - the command applies on replica 1
 	// - replica 2 serves anomalous reads which don't see the write
 	// - the command applies on replica 2
-	ProposerLeaseSequence github_com_cockroachdb_cockroach_pkg_roachpb.LeaseSequence `protobuf:"varint,6,opt,name=proposer_lease_sequence,json=proposerLeaseSequence,proto3,casttype=github.com/cockroachdb/cockroach/pkg/roachpb.LeaseSequence" json:"proposer_lease_sequence,omitempty"`
+	ProposerLeaseSequence github_com_cockroachdb_cockroach_pkg_roachpb.LeaseSequence `protobuf:"varint,6,opt,name=proposer_lease_sequence,json=proposerLeaseSequence,proto3,casttype=github.com/semistrict/ratel/pkg/roachpb.LeaseSequence" json:"proposer_lease_sequence,omitempty"`
 	// deprecated_proposer_lease served the same purpose as proposer_lease_seq.
 	// As of VersionLeaseSequence, it is no longer in use.
 	//

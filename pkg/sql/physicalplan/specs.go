@@ -17,8 +17,8 @@ package physicalplan
 import (
 	"sync"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/sql/execinfrapb"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/sql/execinfrapb"
 )
 
 var flowSpecPool = sync.Pool{

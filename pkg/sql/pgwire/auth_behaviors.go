@@ -17,8 +17,8 @@ package pgwire
 import (
 	"context"
 
-	"github.com/cockroachdb/cockroach/pkg/security"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/security"
 )
 
 // AuthBehaviors encapsulates the per-connection behaviors that may be

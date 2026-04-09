@@ -24,11 +24,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/exit"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/cli/exit"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/protoutil"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -632,7 +632,7 @@ func TestResetAndRefreshHLCUpperBound(t *testing.T) {
 }
 
 func TestLateStartForwardClockJump(t *testing.T) {
-	// Regression test for https://github.com/cockroachdb/cockroach/issues/28367
+	// Regression test for https://github.com/semistrict/ratel/issues/28367
 	//
 	// Previously, if the clock offset monitor were started a long time
 	// after the last call to hlc.Clock.Now, that time would register as

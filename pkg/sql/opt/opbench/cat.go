@@ -14,7 +14,7 @@
 
 package opbench
 
-import "github.com/cockroachdb/cockroach/pkg/sql/opt/testutils/testcat"
+import "github.com/semistrict/ratel/pkg/sql/opt/testutils/testcat"
 
 // TODO(justin): pull schema definitions like this into a file that can be
 // imported here as well as in the data-driven tests.

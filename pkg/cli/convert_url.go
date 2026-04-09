@@ -17,11 +17,11 @@ package cli
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/cli/clierrorplus"
-	"github.com/cockroachdb/cockroach/pkg/security"
-	"github.com/cockroachdb/cockroach/pkg/server/pgurl"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catalogkeys"
 	"github.com/cockroachdb/ttycolor"
+	"github.com/semistrict/ratel/pkg/cli/clierrorplus"
+	"github.com/semistrict/ratel/pkg/security"
+	"github.com/semistrict/ratel/pkg/server/pgurl"
+	"github.com/semistrict/ratel/pkg/sql/catalog/catalogkeys"
 	"github.com/spf13/cobra"
 )
 

@@ -2,11 +2,11 @@
 - Status: in-progress
 - Start Date: 2020-07-20
 - Authors: knz
-- RFC PR: [#51599](https://github.com/cockroachdb/cockroach/pull/51599)
+- RFC PR: [#51599](https://github.com/semistrict/ratel/pull/51599)
 - Cockroach Issue:
-  [#51601](https://github.com/cockroachdb/cockroach/issues/51601)
-  [#50757](https://github.com/cockroachdb/cockroach/issues/50757)
-  [#42519](https://github.com/cockroachdb/cockroach/issues/42519)
+  [#51601](https://github.com/semistrict/ratel/issues/51601)
+  [#50757](https://github.com/semistrict/ratel/issues/50757)
+  [#42519](https://github.com/semistrict/ratel/issues/42519)
 
 
 # Summary

@@ -17,8 +17,8 @@ package spanconfig
 import (
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/testutils"
 )
 
 // TestRecordSystemTargetValidation checks that a Record with SystemTarget is

@@ -17,8 +17,8 @@ package rpc
 import (
 	"bytes"
 
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // ConnectionClass is the identifier of a group of RPC client sessions that are

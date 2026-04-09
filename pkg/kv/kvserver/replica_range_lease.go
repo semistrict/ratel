@@ -51,20 +51,20 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/constraint"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverpb"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/liveness"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
-	"github.com/cockroachdb/cockroach/pkg/util/stop"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
-	"github.com/cockroachdb/cockroach/pkg/util/tracing"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/logtags"
 	"github.com/cockroachdb/redact"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/constraint"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverpb"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/liveness"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/semistrict/ratel/pkg/util/stop"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/util/tracing"
 	"go.etcd.io/etcd/raft/v3"
 )
 
@@ -473,7 +473,7 @@ func (p *pendingLeaseRequest) requestLease(
 				// ErrEpochAlreadyIncremented is not an unusual situation,
 				// so we don't log it as an error.
 				//
-				// https://github.com/cockroachdb/cockroach/issues/35986
+				// https://github.com/semistrict/ratel/issues/35986
 				if !errors.Is(err, liveness.ErrEpochAlreadyIncremented) {
 					log.Errorf(ctx, "failed to increment leaseholder's epoch: %s", err)
 				}
@@ -496,7 +496,7 @@ func (p *pendingLeaseRequest) requestLease(
 	// here before asking for the lease could provide an alternative, simpler
 	// solution to the below issue:
 	//
-	// https://github.com/cockroachdb/cockroach/issues/37906
+	// https://github.com/semistrict/ratel/issues/37906
 	ba := roachpb.BatchRequest{}
 	ba.Timestamp = p.repl.store.Clock().Now()
 	ba.RangeID = p.repl.RangeID
@@ -691,7 +691,7 @@ func (r *Replica) leaseStatus(
 	// weaker reasons why the lease may be considered invalid. For example,
 	// EXPIRED or PROSCRIBED must take precedence over UNUSABLE, because some
 	// callers consider UNUSABLE as valid. For an example issue that this ordering
-	// may cause, see https://github.com/cockroachdb/cockroach/issues/100101.
+	// may cause, see https://github.com/semistrict/ratel/issues/100101.
 	if expiration.LessEq(now.ToTimestamp()) {
 		status.State = kvserverpb.LeaseState_EXPIRED
 	} else if ownedLocally && lease.ProposedTS != nil && lease.ProposedTS.Less(minProposedTS) {

@@ -17,7 +17,7 @@ import (
 	"bytes"
 	"regexp"
 
-	"github.com/cockroachdb/cockroach/pkg/col/coldata"
+	"github.com/semistrict/ratel/pkg/col/coldata"
 )
 
 type selPrefixBytesBytesConstOp struct {

@@ -19,8 +19,8 @@ import (
 	gosql "database/sql"
 	"testing"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
-	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
+	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/testutils/serverutils"
 )
 
 var reg = NewRegistry(1 /* numNodes */, MakeClusterConstructor(func(

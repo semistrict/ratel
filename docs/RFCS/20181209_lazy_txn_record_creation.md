@@ -9,13 +9,13 @@
 
 Remove transaction record creation from serving as the first step of every non-1PC transaction. Defer transaction record creation as late as possible in the lifetime of a transaction, often skipping a transaction record with the `PENDING` state entirely.
 
-This will provide a performance improvement, simplify the transaction model, and pave the way for the implementation of the more ambitious [parallel commits RFC](https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20180324_parallel_commit.md).
+This will provide a performance improvement, simplify the transaction model, and pave the way for the implementation of the more ambitious [parallel commits RFC](https://github.com/semistrict/ratel/blob/master/docs/RFCS/20180324_parallel_commit.md).
 
 # Motivation
 
 There are a few motivations for this change with varying levels of urgency.
 
-The most important reason to make this change is that the [parallel commits RFC](https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20180324_parallel_commit.md) doesn't work without it. Eager creation of transaction records causes a latching stall that forces the commit of a transaction record to wait on the replication of its creation (i.e. `EndTransaction` waits on `BeginTransaction`). We could try to address this through some kind of below-latch manager pipelining (previously referred to as "below CommandQueue pipelining"), but we don't currently understand how to make that work in practice. Instead, this RFC proposes that we allow "fast-enough" transactions (those that never need a heartbeat) to skip the `PENDING` state entirely. This avoids the latching stall and allows parallel commits to achieve single-round trip transactions.
+The most important reason to make this change is that the [parallel commits RFC](https://github.com/semistrict/ratel/blob/master/docs/RFCS/20180324_parallel_commit.md) doesn't work without it. Eager creation of transaction records causes a latching stall that forces the commit of a transaction record to wait on the replication of its creation (i.e. `EndTransaction` waits on `BeginTransaction`). We could try to address this through some kind of below-latch manager pipelining (previously referred to as "below CommandQueue pipelining"), but we don't currently understand how to make that work in practice. Instead, this RFC proposes that we allow "fast-enough" transactions (those that never need a heartbeat) to skip the `PENDING` state entirely. This avoids the latching stall and allows parallel commits to achieve single-round trip transactions.
 
 The other reason to make this change is that it avoids a sizable key-value write during the first writing operation in a transaction. Writing the transaction record is always piggy-backed on to another Raft consensus round, but the extra write does increase the size of the corresponding Raft entry and results in an extra RocksDB write. Eliminating this should provide a noticeable improvement in performance of write-heavy workloads that perform explicit transactions.
 
@@ -54,7 +54,7 @@ Transaction records serve three different roles in the CockroachDB transaction m
 2. they serve as the source of truth for the liveness of a transaction. Transaction coordinators heartbeat their transaction record and concurrent transactions observe the state of a transaction's record to learn about its disposition. This role interacts with the `HeartbeatTxn`, `PushTxn`, and `QueryTxn` request types.
 3. they perform bookkeeping on the resources held by finalized (`COMMITTED` or `ABORTED`) transactions. A `COMMITTED` and sometimes an `ABORTED` transaction record will point at each of the transaction's key spans, allowing both the original transaction coordinator and other transactions to resolve and later garbage-collect the intents. This role interacts with the `ResolveIntent`, `ResolveIntentRange`, and `GC` request types.
 
-Interestingly, there are alternative means of achieving each of these goals that give transaction records a smaller or larger role in the transaction model. For instance, the [parallel commits RFC](https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20180324_parallel_commit.md) proposes a new linearization point for transactions. Another example is that transaction liveness checks could circumvent the transaction record entirely by talking to transaction coordinators directly.
+Interestingly, there are alternative means of achieving each of these goals that give transaction records a smaller or larger role in the transaction model. For instance, the [parallel commits RFC](https://github.com/semistrict/ratel/blob/master/docs/RFCS/20180324_parallel_commit.md) proposes a new linearization point for transactions. Another example is that transaction liveness checks could circumvent the transaction record entirely by talking to transaction coordinators directly.
 
 This RFC does not make any changes to the roles that a transaction record plays in the transaction model.
 
@@ -127,7 +127,7 @@ This is a rare operation, so there is little concern of it adding strain to the 
 There are a number of interesting cases around transaction record cleanup that arise once we allow lazily creating transaction records. Before discussing them, let's first review the current mechanics of transaction record garbage collection:
 - transaction records can be GCed by two sources: `EndTransaction` requests and the GC queue. 
 - transaction records can be GCed if they are `COMMITTED` or `ABORTED`. If a transaction record is `PENDING` and processed by the GC queue, it will first be aborted before being GCed.
-- `EndTransaction` requests can only be issued by the transaction's own coordinator, not by concurrent transactions. This property is held [even in the parallel commits RFC](https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20180324_parallel_commit.md#transaction-record-recreation). This means that any `EndTransaction` request that GCs a transaction record was known to the transaction's coordinator.
+- `EndTransaction` requests can only be issued by the transaction's own coordinator, not by concurrent transactions. This property is held [even in the parallel commits RFC](https://github.com/semistrict/ratel/blob/master/docs/RFCS/20180324_parallel_commit.md#transaction-record-recreation). This means that any `EndTransaction` request that GCs a transaction record was known to the transaction's coordinator.
 - `COMMITTED` transaction records are only GCed after resolving all intents.
 - For committing `EndTransaction` requests, this takes two paths, depending on whether all intents are resolved synchronously or not.
 - The GC queue atomically bumps the `TxnSpanGCThreshold` while garbage collecting transaction records equal to or beneath that timestamp.
@@ -171,7 +171,7 @@ However, if we wanted to, we could do more. We can use MVCC to enforce this repl
 
 #### Replica-Side WriteTooOld Avoidance
 
-Unfortunately, this currently breaks down because we have an optimization that avoids blocking transaction commit on WriteTooOld errors in two places. The first is during [1PC transaction evaluation](https://github.com/cockroachdb/cockroach/blob/8f30db0f07e940667bc34314ec6a446491a29790/pkg/storage/replica.go#L6036) and the second is during [EndTransaction evaluation](https://github.com/cockroachdb/cockroach/blob/8f30db0f07e940667bc34314ec6a446491a29790/pkg/storage/batcheval/cmd_end_transaction.go#L401). These cases allow a transaction to commit through a WriteTooOld error even without client-side approval. This breaks our ability to use MVCC to provide replay protection. It's unclear how important this optimization is as it's only applicable to heavily contended transactions with no refresh spans (i.e. blind writes). Blind writes from SQL are not very common and the optimization only saves a single round-trip to the client, who will never need an actual transaction retry because it can be trivially refreshed.
+Unfortunately, this currently breaks down because we have an optimization that avoids blocking transaction commit on WriteTooOld errors in two places. The first is during [1PC transaction evaluation](https://github.com/semistrict/ratel/blob/8f30db0f07e940667bc34314ec6a446491a29790/pkg/storage/replica.go#L6036) and the second is during [EndTransaction evaluation](https://github.com/semistrict/ratel/blob/8f30db0f07e940667bc34314ec6a446491a29790/pkg/storage/batcheval/cmd_end_transaction.go#L401). These cases allow a transaction to commit through a WriteTooOld error even without client-side approval. This breaks our ability to use MVCC to provide replay protection. It's unclear how important this optimization is as it's only applicable to heavily contended transactions with no refresh spans (i.e. blind writes). Blind writes from SQL are not very common and the optimization only saves a single round-trip to the client, who will never need an actual transaction retry because it can be trivially refreshed.
 
 #### Commit Triggers
 
@@ -193,7 +193,7 @@ A workable approach would be to only increment the transaction's sequence number
 
 Now that intent timestamps are being used to determine the last time that a client was definitely active, we need to make sure that it tracks that information. Luckily, `intent.Txn.Timestamp` gives us exactly this! For an intent to have a certain timestamp, the client must have been alive at that timestamp to instruct the intent to be written.
 
-A concern here is that intents can be pushed by other transactions to higher timestamps. Conveniently, when an intent is pushed, only the `MVCCMetadata.Timestamp` and the provisional timestamped key-value are changed. The Timestamp in the TxnMeta struct (`MVCCMetadata.Txn.Timestamp`) itself is [left unchanged](https://github.com/cockroachdb/cockroach/blob/fd28ed991385b446028f870d0049122fcabc94e3/pkg/storage/engine/mvcc.go#L2142-L2147).
+A concern here is that intents can be pushed by other transactions to higher timestamps. Conveniently, when an intent is pushed, only the `MVCCMetadata.Timestamp` and the provisional timestamped key-value are changed. The Timestamp in the TxnMeta struct (`MVCCMetadata.Txn.Timestamp`) itself is [left unchanged](https://github.com/semistrict/ratel/blob/fd28ed991385b446028f870d0049122fcabc94e3/pkg/storage/engine/mvcc.go#L2142-L2147).
 
 ## Drawbacks
 

@@ -5,9 +5,9 @@ package descpb
 
 import (
 	fmt "fmt"
-	types "github.com/cockroachdb/cockroach/pkg/sql/types"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	types "github.com/semistrict/ratel/pkg/sql/types"
 	io "io"
 	math "math"
 	math_bits "math/bits"

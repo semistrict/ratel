@@ -2,8 +2,8 @@
 - Status: completed
 - Start Date: 2017-10-03
 - Authors: Richard Wu
-- RFC PR: [#19028](https://github.com/cockroachdb/cockroach/pull/19028)
-- Cockroach Issue: [#18948](https://github.com/cockroachdb/cockroach/issues/18948)
+- RFC PR: [#19028](https://github.com/semistrict/ratel/pull/19028)
+- Cockroach Issue: [#18948](https://github.com/semistrict/ratel/issues/18948)
 
 # Table of contents
 
@@ -56,7 +56,7 @@ tables](https://cloud.google.com/spanner/docs/schema-and-data-model#creating_int
 and was meant to be an optimization the user could opt in for tables that are
 often queried in a parent-child relationship (i.e. one-to-one, one-to-many).
 Refer to the [RFC on interleaved
-tables](https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20160624_sql_interleaved_tables.md)
+tables](https://github.com/semistrict/ratel/blob/master/docs/RFCS/20160624_sql_interleaved_tables.md)
 for more details.
 
 Beyond co-locating the child's key-value (kv) pairs with the parent's kv pairs
@@ -75,7 +75,7 @@ both the number of scans - interleaved parent and child tables are
 scanned simultaneously instead of in two separate scans - and the volume of
 inter-node gRPC traffic for the join - rows routed by [the hash on their
 join
-columns](https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20160421_distributed_sql.md#processors)
+columns](https://github.com/semistrict/ratel/blob/master/docs/RFCS/20160421_distributed_sql.md#processors)
 cross the network to their respective join processor.
 
 This RFC identifies two implementation phases for interleaved table joins:
@@ -138,7 +138,7 @@ post](https://www.cockroachlabs.com/blog/sql-in-cockroachdb-mapping-table-data-t
   concretely represented as a (logical) plan tree (tree of `planNode`s) in
   CockroachDB.
 - **physical plan**: what [the distributed execution
-  engine](https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20160421_distributed_sql.md)
+  engine](https://github.com/semistrict/ratel/blob/master/docs/RFCS/20160421_distributed_sql.md)
   transforms the logical plan into. It is employed to generate and schedule
   flows which are composed of processors which are the functional units that
   defer computation to the data nodes.
@@ -195,7 +195,7 @@ with respect to interleaved tables.
 For CockroachDB contributors and developers, changes to the codebase are mapped
 to their respective phases. Firstly, it is important to understand how the
 interleaved indexes are mapped in storage. Refer to the [RFC on interleaved
-tables](https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20160624_sql_interleaved_tables.md).
+tables](https://github.com/semistrict/ratel/blob/master/docs/RFCS/20160624_sql_interleaved_tables.md).
 
 As for how each phase of this feature affects the codebase:
 1. The Processors implementation phase will introduce a new processor, the
@@ -360,7 +360,7 @@ RowFetcher --> RowFetcher.NextKey --> RowFetcher.ReadIndexKey --> DecodeIndexKey
 ```
 it doesn't seem like `RowFetcher` is very permissive when it comes to allow
 1-pass through on an interleaved hierarchy. Specifically, [`DecodeIndexKey` in
-`table.go`](https://github.com/cockroachdb/cockroach/blob/de7337dc5ca5b4e5ee17e812c817e4bba5a449ca/pkg/sql/sqlbase/table.go#L778L780)
+`table.go`](https://github.com/semistrict/ratel/blob/de7337dc5ca5b4e5ee17e812c817e4bba5a449ca/pkg/sql/sqlbase/table.go#L778L780)
  will need to be refactored so that it returns `true` for KV pairs if
 it matches either the target `parent` index or `child2` index. This is
 generalized to a set membership problem with a set of `N` `(tableID, indexID)` tuples if we
@@ -387,7 +387,7 @@ The refactor necessary is as follows:
   can eventually merge `RowFetcher` into `RowFetcher` after it is
   determined the overhead is marginal for the 1 table case.
 
-The [outstanding PR for `RowFetcher`](https://github.com/cockroachdb/cockroach/pull/19228)
+The [outstanding PR for `RowFetcher`](https://github.com/semistrict/ratel/pull/19228)
 has the full implementation details.
 
 #### Joining component
@@ -399,10 +399,10 @@ interleave prefix.  If the `InterleaveReaderJoiner` observes a `parent` row, it
 can start a new join batch since each unique interleave prefix is a primary key
 on `parent` which is also unique. It memoizes this `parent` row. If a `child2`
 row is retrieved, it joins it with the most recent `parent` with
-[`joinerBase.render`](https://github.com/cockroachdb/cockroach/blob/c86f16f89c154797ed07012f66d4aa49b1947624/pkg/sql/distsqlrun/joinerbase.go#L175#L193).
+[`joinerBase.render`](https://github.com/semistrict/ratel/blob/c86f16f89c154797ed07012f66d4aa49b1947624/pkg/sql/distsqlrun/joinerbase.go#L175#L193).
 This implies that `InterleaveReaderJoiner` will need to [nest `joinerBase`
 similar to
-`mergeJoiner`](https://github.com/cockroachdb/cockroach/blob/c86f16f89c154797ed07012f66d4aa49b1947624/pkg/sql/distsqlrun/mergejoiner.go#L33).
+`mergeJoiner`](https://github.com/semistrict/ratel/blob/c86f16f89c154797ed07012f66d4aa49b1947624/pkg/sql/distsqlrun/mergejoiner.go#L33).
 
 The joining logic becomes more complicated on joins not on the full interleave prefix
 as detailed for [prefix joins](#3b-prefix-joins) and [subset joins](#3c-subset-joins).
@@ -421,7 +421,7 @@ Annotating `joinNode`s can be accomplished after a logical plan has been
 created and during optimization (since one can consider identifying interleaved
 table joins an optimization; by precedent, we did this in the `optimizePlan`
 stage of the planner [for merge
-joins](https://github.com/cockroachdb/cockroach/pull/17214/files)). We
+joins](https://github.com/semistrict/ratel/pull/17214/files)). We
 introduce a general `algorithmHint` field on `joinNode`s to annotate.
 
 Annotation can be accomplished when we `expandPlan` (within `optimizePlan`) and do type
@@ -430,7 +430,7 @@ peek into the left and right sources to see if they satisfy the conditions
 for an interleaved join. This is already being done for identifying merge
 joins and merge join order: in fact this can be a cookie cutter derivative
 of the [planning changes in the DistSQL merge join
-PR](https://github.com/cockroachdb/cockroach/pull/17214/files#diff-03ffd4efde59eae13665287cc1193d9a).
+PR](https://github.com/semistrict/ratel/pull/17214/files#diff-03ffd4efde59eae13665287cc1193d9a).
 
 The conditions for an interleaved join in this first iteration are:
 1. Each of the `scanNode`s correspond to a scan of the parent and child tables
@@ -468,10 +468,10 @@ engine](#2-logical-planning--physical-planning) is out of this RFC's scope.
 
 The bulk of the logic that will setup the interleave
 join will be in
-[`createPlanForJoin`](https://github.com/cockroachdb/cockroach/blob/10e3751071c3b80540486d4a2f11c2d322501d42/pkg/sql/distsql_physical_planner.go#L1851).
+[`createPlanForJoin`](https://github.com/semistrict/ratel/blob/10e3751071c3b80540486d4a2f11c2d322501d42/pkg/sql/distsql_physical_planner.go#L1851).
 If the interleave join algorithm has been selected by the logical planner, it
 will skip [creating the individual
-plans](https://github.com/cockroachdb/cockroach/blob/10e3751071c3b80540486d4a2f11c2d322501d42/pkg/sql/distsql_physical_planner.go#L1874L1878)
+plans](https://github.com/semistrict/ratel/blob/10e3751071c3b80540486d4a2f11c2d322501d42/pkg/sql/distsql_physical_planner.go#L1874L1878)
 for the `left` and `right` `scanNode`s and invoking `MergePlans`. Instead, the
 descriptors on the `scanNode`s  will be used to construct the
 `InterleaveReaderJoiner` processor.
@@ -483,15 +483,15 @@ The final physical plan for a three-node cluster looks something like
 ![image](https://user-images.githubusercontent.com/10563314/31895522-610041a0-b7df-11e7-809a-73e1f17c99d4.png)
 
 First the union of the spans from the two `scanNode`s (by invoking
-[`MergeSpans`](https://github.com/cockroachdb/cockroach/blob/master/pkg/roachpb/merge_spans.go#L42))
+[`MergeSpans`](https://github.com/semistrict/ratel/blob/master/pkg/roachpb/merge_spans.go#L42))
 are passed into
-[`PartitionSpans`](https://github.com/cockroachdb/cockroach/blob/62b7495302a8e06b4be3780e349d10d31e378bd7/pkg/sql/distsql_physical_planner.go#L488).
+[`PartitionSpans`](https://github.com/semistrict/ratel/blob/62b7495302a8e06b4be3780e349d10d31e378bd7/pkg/sql/distsql_physical_planner.go#L488).
 This will return a slice of `SpanPartition`s of length `n`, which corresponds
 to the number of data nodes.  We will eventually spawn `n`
 `InterleaveReaderJoiner`s, one for each node (`n = 3` in the diagram above).
 Side note: any scan over an interleaved index will always [default to
 the span of the root table in the interleaved
-hierarchy](https://github.com/cockroachdb/cockroach/blob/de7337dc5ca5b4e5ee17e812c817e4bba5a449ca/pkg/sql/sqlbase/table.go#L239L243) so
+hierarchy](https://github.com/semistrict/ratel/blob/de7337dc5ca5b4e5ee17e812c817e4bba5a449ca/pkg/sql/sqlbase/table.go#L239L243) so
 it's not strictly necessary to take the union. For future-proofing's sake,
 we do this since it's a trivial performance impact to do a union over a set of spans during planning.
 
@@ -537,7 +537,7 @@ where the `- 1` is to not include the last `<interleave sentinel>`.
 If the above "fixing" happens too often, it begs the question of avoiding
 splits inside interleaves as much as possible. This [was mentioned briefly in
 the initial RFC of interleaved
-tables](https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20160624_sql_interleaved_tables.md).
+tables](https://github.com/semistrict/ratel/blob/master/docs/RFCS/20160624_sql_interleaved_tables.md).
 See [Avoiding splits inside interleaves](#8-avoiding-splits-inside-interleaves)
 for more detail.
 
@@ -582,11 +582,11 @@ how we do the reading component of `InterleaveReaderJoiner` (and `RowFetcher`):
      between `2` and `42` might look up the span `parent@primary /2-/43`. This
      scan at the `KVFetcher` level iterates through all `child` rows and
      [decodes their index
-     keys](https://github.com/cockroachdb/cockroach/blob/62b7495302a8e06b4be3780e349d10d31e378bd7/pkg/sql/sqlbase/rowfetcher.go#L154#L155)
+     keys](https://github.com/semistrict/ratel/blob/62b7495302a8e06b4be3780e349d10d31e378bd7/pkg/sql/sqlbase/rowfetcher.go#L154#L155)
      with interleave prefix also between `2` and `42`. It then decides whether
      or not the `child` row is a `parent` row via a [comparison on its
      `TableID` and
-     `IndexID`](https://github.com/cockroachdb/cockroach/blob/62b7495302a8e06b4be3780e349d10d31e378bd7/pkg/sql/sqlbase/table.go#L778L780).
+     `IndexID`](https://github.com/semistrict/ratel/blob/62b7495302a8e06b4be3780e349d10d31e378bd7/pkg/sql/sqlbase/table.go#L778L780).
    - One key observation by @jordanlewis is that a secondary index can
      be scanned and index joined with the primary rows of the parent and/or
      child table to obtain a scan of each table.
@@ -623,7 +623,7 @@ pathways.
 
 This decision to annotate logical plans to allow for more efficient joins [has
 precedent when we added ordering information for merge joins to
-`joinNode`s](https://github.com/cockroachdb/cockroach/pull/17214) for the
+`joinNode`s](https://github.com/semistrict/ratel/pull/17214) for the
 distributed execution engine.
 
 ### [3] Generalizing planning
@@ -830,7 +830,7 @@ example](#canonical-prefix-join-example), a join on `(pk1, pk3)` would involve
 some disjoint cross joins which is hard to optimize in a general way. We could
 of course use a hybrid merge-hash join for a join on `(pk1, pk3)`: we'd perform
 a hash-join (hashed on `pk3`) on all rows for each `pk1` (see [this
-issue for more details](https://github.com/cockroachdb/cockroach/issues/16580)).
+issue for more details](https://github.com/semistrict/ratel/issues/16580)).
 
 ### [4] Multi-table joins
 
@@ -875,7 +875,7 @@ the rows from `InterleaveReader` can be piped to `MergeJoiner`.
 
 In fact, the [prefix](#3b-prefix-joins) and [subset joins](#3c-subset-joins)
 are general cases for `MergeJoiner` that is current being tracked by [this
-issue](https://github.com/cockroachdb/cockroach/issues/16580).
+issue](https://github.com/semistrict/ratel/issues/16580).
 
 This alternative architecture would look something like
 
@@ -901,10 +901,10 @@ permits multiple input streams).
 rows to each of its streams. Since `InterleaveReader` "owns" its `N` output
 streams (rather than letting some `Router` message-broker direct the output), a
 similar buffer logic will be [required to prevent
-deadlocks](https://github.com/cockroachdb/cockroach/issues/17097). The deadlock happens
+deadlocks](https://github.com/semistrict/ratel/issues/17097). The deadlock happens
 when `MergeJoiner` (`streamMerger` to be precise) tries to [batch all rows from both sides with the
 current join column
-values](https://github.com/cockroachdb/cockroach/blob/70c96175bb5b60bf6d531ab3bcebd2bb723d0bc7/pkg/sql/distsqlrun/stream_merger.go#L37#L45).
+values](https://github.com/semistrict/ratel/blob/70c96175bb5b60bf6d531ab3bcebd2bb723d0bc7/pkg/sql/distsqlrun/stream_merger.go#L37#L45).
 It will try to retrieve parent rows until it sees that the values for the join
 columns increase (in order to form a batch of parent rows with the same join
 column values). However, this would not be possible if the next row after the
@@ -930,7 +930,7 @@ thus we will need to buffer the child rows in order to retrieve all the parent
 rows for a given batch.
 
 This buffering logic needs to be [abstracted from
-`routerBase`](https://github.com/cockroachdb/cockroach/blob/de7337dc5ca5b4e5ee17e812c817e4bba5a449ca/pkg/sql/distsqlrun/routers.go#L160L164)
+`routerBase`](https://github.com/semistrict/ratel/blob/de7337dc5ca5b4e5ee17e812c817e4bba5a449ca/pkg/sql/distsqlrun/routers.go#L160L164)
 and imported into `InterleaveReader`.
 
 #### Joining component
@@ -992,14 +992,14 @@ and the planning implementation will be symmetric to that of `joinNode`s.
 
 ### [8] Avoiding splits inside interleaves
 
-We would like to refactor [`MVCCFindSplitKey`](https://github.com/cockroachdb/cockroach/blob/424a396a7681b048439c940207027d9eb7976a85/pkg/storage/engine/mvcc.go#L2269#L2297)
+We would like to refactor [`MVCCFindSplitKey`](https://github.com/semistrict/ratel/blob/424a396a7681b048439c940207027d9eb7976a85/pkg/storage/engine/mvcc.go#L2269#L2297)
 such that it avoids splitting inside interleaves (i.e. a split between two
 children rows that are nested under the same parent row).
 
 We have [similar logic for avoiding splits in between
-rows](https://github.com/cockroachdb/cockroach/blob/424a396a7681b048439c940207027d9eb7976a85/pkg/storage/engine/mvcc.go#L2296)
+rows](https://github.com/semistrict/ratel/blob/424a396a7681b048439c940207027d9eb7976a85/pkg/storage/engine/mvcc.go#L2296)
 where they may be multiple family kv pairs. In short,
-[`EnsureSafeSplitKey`](https://github.com/cockroachdb/cockroach/blob/424a396a7681b048439c940207027d9eb7976a85/pkg/keys/keys.go#L668)
+[`EnsureSafeSplitKey`](https://github.com/semistrict/ratel/blob/424a396a7681b048439c940207027d9eb7976a85/pkg/keys/keys.go#L668)
 simply truncates the split key obtained from the call to `MVCCFindSplitKey` in
 `libroach/db.cc` to the row prefix. For example, if the given key is chosen as
 the split key
@@ -1031,7 +1031,7 @@ To check whether the row belongs to an interleave table, we can either check
 for `<interleave sentinel>`s or plumb a flag from above.
 
 There is an [outstanding
-issue](https://github.com/cockroachdb/cockroach/issues/19296) with ranges
+issue](https://github.com/semistrict/ratel/issues/19296) with ranges
 failing to split since `EnsureSafeSplitKey` would naively default to the
 beginning of the row (which may be the first key in the range), where there may
 be a better split point at the end of the row. The fix @a-robinson will

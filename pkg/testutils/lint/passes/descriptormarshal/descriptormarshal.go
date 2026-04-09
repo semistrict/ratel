@@ -14,7 +14,7 @@
 
 package descriptormarshal
 
-import "github.com/cockroachdb/cockroach/pkg/testutils/lint/passes/forbiddenmethod"
+import "github.com/semistrict/ratel/pkg/testutils/lint/passes/forbiddenmethod"
 
 // Analyzer checks for correct unmarshaling of descpb descriptors by
 // disallowing calls to (descpb.Descriptor).GetTable() et al.

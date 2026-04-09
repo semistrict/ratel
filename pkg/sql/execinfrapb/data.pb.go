@@ -10,19 +10,19 @@ package execinfrapb
 import (
 	encoding_binary "encoding/binary"
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_base "github.com/cockroachdb/cockroach/pkg/base"
-	_ "github.com/cockroachdb/cockroach/pkg/jobs/jobspb"
-	roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	descpb "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	_ "github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
-	types "github.com/cockroachdb/cockroach/pkg/sql/types"
-	_ "github.com/cockroachdb/cockroach/pkg/util/hlc"
-	tracingpb "github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb"
 	errorspb "github.com/cockroachdb/errors/errorspb"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
 	types1 "github.com/gogo/protobuf/types"
+	github_com_cockroachdb_cockroach_pkg_base "github.com/semistrict/ratel/pkg/base"
+	_ "github.com/semistrict/ratel/pkg/jobs/jobspb"
+	roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	descpb "github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	_ "github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
+	types "github.com/semistrict/ratel/pkg/sql/types"
+	_ "github.com/semistrict/ratel/pkg/util/hlc"
+	tracingpb "github.com/semistrict/ratel/pkg/util/tracing/tracingpb"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -379,9 +379,9 @@ type StreamEndpointSpec struct {
 	// For SYNC_RESPONSE streams, the ID is unused.
 	StreamID StreamID `protobuf:"varint,2,opt,name=stream_id,json=streamId,casttype=StreamID" json:"stream_id"`
 	// SQLInstanceID of the target host, only used for outgoing REMOTE streams.
-	TargetNodeID github_com_cockroachdb_cockroach_pkg_base.SQLInstanceID `protobuf:"varint,4,opt,name=target_node_id,json=targetNodeId,casttype=github.com/cockroachdb/cockroach/pkg/base.SQLInstanceID" json:"target_node_id"`
+	TargetNodeID github_com_cockroachdb_cockroach_pkg_base.SQLInstanceID `protobuf:"varint,4,opt,name=target_node_id,json=targetNodeId,casttype=github.com/semistrict/ratel/pkg/base.SQLInstanceID" json:"target_node_id"`
 	// SQLInstanceID of the origin node, only used for REMOTE streams.
-	OriginNodeID github_com_cockroachdb_cockroach_pkg_base.SQLInstanceID `protobuf:"varint,5,opt,name=origin_node_id,json=originNodeId,casttype=github.com/cockroachdb/cockroach/pkg/base.SQLInstanceID" json:"origin_node_id"`
+	OriginNodeID github_com_cockroachdb_cockroach_pkg_base.SQLInstanceID `protobuf:"varint,5,opt,name=origin_node_id,json=originNodeId,casttype=github.com/semistrict/ratel/pkg/base.SQLInstanceID" json:"origin_node_id"`
 }
 
 func (m *StreamEndpointSpec) Reset()         { *m = StreamEndpointSpec{} }

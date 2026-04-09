@@ -17,8 +17,8 @@ package log
 import (
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
+	"github.com/semistrict/ratel/pkg/util"
+	"github.com/semistrict/ratel/pkg/util/timeutil"
 )
 
 // EveryN provides a way to rate limit spammy log messages. It tracks how

@@ -17,9 +17,9 @@ package descpb
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	types "github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	types "github.com/semistrict/ratel/pkg/sql/types"
 )
 
 // IsSharded returns whether the index is hash sharded or not.

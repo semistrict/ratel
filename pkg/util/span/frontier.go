@@ -20,10 +20,10 @@ import (
 	"strings"
 
 	// Needed for roachpb.Span.String().
-	_ "github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/interval"
+	_ "github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/util/hlc"
+	"github.com/semistrict/ratel/pkg/util/interval"
 )
 
 // frontierEntry represents a timestamped span. It is used as the nodes in both

@@ -17,8 +17,8 @@ package tree
 import (
 	"sync"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/sqltelemetry"
 	"github.com/lib/pq/oid"
+	"github.com/semistrict/ratel/pkg/sql/sqltelemetry"
 )
 
 // FunctionDefinition implements a reference to the (possibly several)

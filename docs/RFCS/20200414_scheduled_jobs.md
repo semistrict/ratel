@@ -324,7 +324,7 @@ However, the use of protocol buffers directly in the database proved to be diffi
 from the UI perspective (the operator may want to view the schedule) as well as
 debug-ability.  If the native protobuf support improves, we may replace some
 of the `system.scheduled_jobs` fields with protocol messages.
-See [#47534](https://github.com/cockroachdb/cockroach/issues/47534)
+See [#47534](https://github.com/semistrict/ratel/issues/47534)
 
 ## Scheduled Job Daemon
 Each node in the cluster runs a scheduled job execution daemon responsible
@@ -353,7 +353,7 @@ decide to limit the number of jobs that can be started by any particular user.  
 above, the default scheduling policy will prevent more jobs from being scheduled.
 
 The load balancing in `system.jobs`  has not been implemented yet 
-([#48825](https://github.com/cockroachdb/cockroach/issues/48825)).
+([#48825](https://github.com/semistrict/ratel/issues/48825)).
  
 
 #### Scheduled Job Execution
@@ -385,7 +385,7 @@ inside the transaction (at least for the initial version), the actual
 statement must complete fairly quickly.  To that end, we plan on 
 modifying relevant statements (`BACKUP`, `IMPORT`, etc) to add a variant of these
 statements to only queue a job in their transaction 
-([#47539)[https://github.com/cockroachdb/cockroach/issues/47539])
+([#47539)[https://github.com/semistrict/ratel/issues/47539])
 
 
 #### Scheduled Job Executors
@@ -509,7 +509,7 @@ we provide visibility into the health of those jobs.
 The schedule changes are reflected in the `system.scheduled_jobs.schedule_changes`
 column.  However, once the work is handed off to the system jobs framework, the
 logging and visibility into the actual job will be the responsibility of that system
-(see [#47212](https://github.com/cockroachdb/cockroach/issues/47212)).
+(see [#47212](https://github.com/semistrict/ratel/issues/47212)).
 
 The full details of the monitoring integration are outside the scope
 of this document, however, at the very least, we will export the following

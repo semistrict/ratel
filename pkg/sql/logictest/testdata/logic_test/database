@@ -320,7 +320,7 @@ CREATE DATABASE d WITH OWNER testuser2
 
 user root
 
-# Fix for https://github.com/cockroachdb/cockroach/issues/97938.
+# Fix for https://github.com/semistrict/ratel/issues/97938.
 subtest if_not_exists_with_owner
 
 statement ok

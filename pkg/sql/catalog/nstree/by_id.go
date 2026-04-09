@@ -17,8 +17,8 @@ package nstree
 import (
 	"sync"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	"github.com/google/btree"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
 )
 
 func (t byIDMap) len() int {

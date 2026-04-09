@@ -7,23 +7,23 @@ import (
 	bytes "bytes"
 	encoding_binary "encoding/binary"
 	fmt "fmt"
-	github_com_cockroachdb_cockroach_pkg_base "github.com/cockroachdb/cockroach/pkg/base"
-	clusterversion "github.com/cockroachdb/cockroach/pkg/clusterversion"
-	roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
-	github_com_cockroachdb_cockroach_pkg_security "github.com/cockroachdb/cockroach/pkg/security"
-	github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb "github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb"
-	descpb "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	github_com_cockroachdb_cockroach_pkg_sql_sem_tree "github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	hlc "github.com/cockroachdb/cockroach/pkg/util/hlc"
-	github_com_cockroachdb_cockroach_pkg_util_tracing_tracingpb "github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb"
-	github_com_cockroachdb_cockroach_pkg_util_uuid "github.com/cockroachdb/cockroach/pkg/util/uuid"
 	errorspb "github.com/cockroachdb/errors/errorspb"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
 	_ "github.com/gogo/protobuf/types"
 	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
+	github_com_cockroachdb_cockroach_pkg_base "github.com/semistrict/ratel/pkg/base"
+	clusterversion "github.com/semistrict/ratel/pkg/clusterversion"
+	roachpb "github.com/semistrict/ratel/pkg/roachpb"
+	github_com_cockroachdb_cockroach_pkg_security "github.com/semistrict/ratel/pkg/security"
+	github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb "github.com/semistrict/ratel/pkg/sql/catalog/catpb"
+	descpb "github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb "github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	github_com_cockroachdb_cockroach_pkg_sql_sem_tree "github.com/semistrict/ratel/pkg/sql/sem/tree"
+	hlc "github.com/semistrict/ratel/pkg/util/hlc"
+	github_com_cockroachdb_cockroach_pkg_util_tracing_tracingpb "github.com/semistrict/ratel/pkg/util/tracing/tracingpb"
+	github_com_cockroachdb_cockroach_pkg_util_uuid "github.com/semistrict/ratel/pkg/util/uuid"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -588,7 +588,7 @@ type StreamReplicationDetails struct {
 	// Key spans we are replicating
 	Spans []*roachpb.Span `protobuf:"bytes,1,rep,name=spans,proto3" json:"spans,omitempty"`
 	// ID of the protected timestamp record that protects the above spans
-	ProtectedTimestampRecord *github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,2,opt,name=protected_timestamp_record,json=protectedTimestampRecord,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/uuid.UUID" json:"protected_timestamp_record,omitempty"`
+	ProtectedTimestampRecord *github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,2,opt,name=protected_timestamp_record,json=protectedTimestampRecord,proto3,customtype=github.com/semistrict/ratel/pkg/util/uuid.UUID" json:"protected_timestamp_record,omitempty"`
 }
 
 func (m *StreamReplicationDetails) Reset()         { *m = StreamReplicationDetails{} }
@@ -655,7 +655,7 @@ func (m *StreamReplicationProgress) XXX_DiscardUnknown() {
 var xxx_messageInfo_StreamReplicationProgress proto.InternalMessageInfo
 
 type SchedulePTSChainingRecord struct {
-	ProtectedTimestampRecord *github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,1,opt,name=protected_timestamp_record,json=protectedTimestampRecord,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/uuid.UUID" json:"protected_timestamp_record,omitempty"`
+	ProtectedTimestampRecord *github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,1,opt,name=protected_timestamp_record,json=protectedTimestampRecord,proto3,customtype=github.com/semistrict/ratel/pkg/util/uuid.UUID" json:"protected_timestamp_record,omitempty"`
 	Action                   SchedulePTSChainingRecord_PTSAction                  `protobuf:"varint,2,opt,name=action,proto3,enum=cockroach.sql.jobs.jobspb.SchedulePTSChainingRecord_PTSAction" json:"action,omitempty"`
 }
 
@@ -708,7 +708,7 @@ type BackupDetails struct {
 	// when it enters a terminal state, there may be cases where it cannot or
 	// does not run the code to do so. To deal with this there is a background
 	// reconciliation loop to ensure that protected timestamps are cleaned up.
-	ProtectedTimestampRecord *github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,7,opt,name=protected_timestamp_record,json=protectedTimestampRecord,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/uuid.UUID" json:"protected_timestamp_record,omitempty"`
+	ProtectedTimestampRecord *github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,7,opt,name=protected_timestamp_record,json=protectedTimestampRecord,proto3,customtype=github.com/semistrict/ratel/pkg/util/uuid.UUID" json:"protected_timestamp_record,omitempty"`
 	// CollectionURI is the path to the collection into which this backup is being
 	// written, i.e. the URI the user provided before a chosen suffix was appended
 	// to its path.
@@ -728,7 +728,7 @@ type BackupDetails struct {
 	ResolvedTargets []descpb.Descriptor `protobuf:"bytes,17,rep,name=resolved_targets,json=resolvedTargets,proto3" json:"resolved_targets"`
 	// ResolvedCompleteDbs contains the DBs in ResolvedTargets that are "complete"
 	// as discussed in backup and restore planning checks.
-	ResolvedCompleteDbs []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,18,rep,packed,name=resolved_complete_dbs,json=resolvedCompleteDbs,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"resolved_complete_dbs,omitempty"`
+	ResolvedCompleteDbs []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,18,rep,packed,name=resolved_complete_dbs,json=resolvedCompleteDbs,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"resolved_complete_dbs,omitempty"`
 	// RequestedTargets contains descriptors resolved from any explicit targets
 	// (and is empty for full-cluster backups, which have no explicit targets).
 	// This is different from ResolvedTargets in that it contains exactly one
@@ -858,9 +858,9 @@ var xxx_messageInfo_BackupProgress proto.InternalMessageInfo
 // use in rewritting descriptors themselves or things that reference them such
 // as is done during RESTORE or IMPORT.
 type DescriptorRewrite struct {
-	ID             github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,1,opt,name=id,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"id,omitempty"`
-	ParentID       github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,2,opt,name=parent_id,json=parentId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"parent_id,omitempty"`
-	ParentSchemaID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,5,opt,name=parent_schema_id,json=parentSchemaId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"parent_schema_id,omitempty"`
+	ID             github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,1,opt,name=id,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"id,omitempty"`
+	ParentID       github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,2,opt,name=parent_id,json=parentId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"parent_id,omitempty"`
+	ParentSchemaID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,5,opt,name=parent_schema_id,json=parentSchemaId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"parent_schema_id,omitempty"`
 	// ToExisting represents whether this descriptor is being remapped to a
 	// descriptor that already exists in the cluster.
 	ToExisting bool `protobuf:"varint,3,opt,name=to_existing,json=toExisting,proto3" json:"to_existing,omitempty"`
@@ -899,7 +899,7 @@ var xxx_messageInfo_DescriptorRewrite proto.InternalMessageInfo
 
 type RestoreDetails struct {
 	EndTime            hlc.Timestamp                                                                     `protobuf:"bytes,4,opt,name=end_time,json=endTime,proto3" json:"end_time"`
-	DescriptorRewrites map[github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID]*DescriptorRewrite `protobuf:"bytes,2,rep,name=descriptor_rewrites,json=descriptorRewrites,proto3,castkey=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"descriptor_rewrites,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	DescriptorRewrites map[github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID]*DescriptorRewrite `protobuf:"bytes,2,rep,name=descriptor_rewrites,json=descriptorRewrites,proto3,castkey=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"descriptor_rewrites,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// URIs contains one URI for each backup (full or incremental) corresponding
 	// to the location of the main BACKUP manifest. For partitioned backups, each
 	// backup may also have files in other stores.
@@ -933,12 +933,12 @@ type RestoreDetails struct {
 	// DescriptorsPublished indicates whether or not the descriptors written in
 	// the job have been transactionally updated after the data was restored.
 	DescriptorsPublished bool                                                                 `protobuf:"varint,10,opt,name=descriptors_published,json=descriptorsPublished,proto3" json:"descriptors_published,omitempty"`
-	DescriptorCoverage   github_com_cockroachdb_cockroach_pkg_sql_sem_tree.DescriptorCoverage `protobuf:"varint,11,opt,name=descriptor_coverage,json=descriptorCoverage,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/sem/tree.DescriptorCoverage" json:"descriptor_coverage,omitempty"`
+	DescriptorCoverage   github_com_cockroachdb_cockroach_pkg_sql_sem_tree.DescriptorCoverage `protobuf:"varint,11,opt,name=descriptor_coverage,json=descriptorCoverage,proto3,casttype=github.com/semistrict/ratel/pkg/sql/sem/tree.DescriptorCoverage" json:"descriptor_coverage,omitempty"`
 	Encryption           *BackupEncryptionOptions                                             `protobuf:"bytes,12,opt,name=encryption,proto3" json:"encryption,omitempty"`
 	RevalidateIndexes    []RestoreDetails_RevalidateIndex                                     `protobuf:"bytes,18,rep,name=revalidate_indexes,json=revalidateIndexes,proto3" json:"revalidate_indexes"`
 	// DatabaseModifiers contains extra modifications to make to the databases
 	// being restored.
-	DatabaseModifiers map[github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID]*RestoreDetails_DatabaseModifier `protobuf:"bytes,19,rep,name=database_modifiers,json=databaseModifiers,proto3,castkey=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"database_modifiers,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	DatabaseModifiers map[github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID]*RestoreDetails_DatabaseModifier `protobuf:"bytes,19,rep,name=database_modifiers,json=databaseModifiers,proto3,castkey=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"database_modifiers,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// DebugPauseOn describes the events that the job should pause itself on for debugging purposes.
 	DebugPauseOn       string `protobuf:"bytes,20,opt,name=debug_pause_on,json=debugPauseOn,proto3" json:"debug_pause_on,omitempty"`
 	RestoreSystemUsers bool   `protobuf:"varint,22,opt,name=restore_system_users,json=restoreSystemUsers,proto3" json:"restore_system_users,omitempty"`
@@ -1013,8 +1013,8 @@ func (m *RestoreDetails_BackupLocalityInfo) XXX_DiscardUnknown() {
 var xxx_messageInfo_RestoreDetails_BackupLocalityInfo proto.InternalMessageInfo
 
 type RestoreDetails_RevalidateIndex struct {
-	TableID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID      `protobuf:"varint,1,opt,name=id,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"id,omitempty"`
-	IndexID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.IndexID `protobuf:"varint,2,opt,name=parent_id,json=parentId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.IndexID" json:"parent_id,omitempty"`
+	TableID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID      `protobuf:"varint,1,opt,name=id,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"id,omitempty"`
+	IndexID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.IndexID `protobuf:"varint,2,opt,name=parent_id,json=parentId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.IndexID" json:"parent_id,omitempty"`
 }
 
 func (m *RestoreDetails_RevalidateIndex) Reset()         { *m = RestoreDetails_RevalidateIndex{} }
@@ -1128,7 +1128,7 @@ type ImportDetails struct {
 	SkipFKs    bool                   `protobuf:"varint,10,opt,name=skip_fks,json=skipFks,proto3" json:"skip_fks,omitempty"`
 	// walltime is the time at which an import job will write KVs.
 	Walltime   int64                                                      `protobuf:"varint,5,opt,name=walltime,proto3" json:"walltime,omitempty"`
-	ParentID   github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,6,opt,name=parent_id,json=parentId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"parent_id,omitempty"`
+	ParentID   github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,6,opt,name=parent_id,json=parentId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"parent_id,omitempty"`
 	BackupPath string                                                     `protobuf:"bytes,7,opt,name=backup_path,json=backupPath,proto3" json:"backup_path,omitempty"`
 	// samples is a sampling of cockroach KV keys generated from the input data.
 	// It is populated with the sampling phase's results. These must be
@@ -1149,14 +1149,14 @@ type ImportDetails struct {
 	// when it enters a terminal state, there may be cases where it cannot or
 	// does not run the code to do so. To deal with this there is a background
 	// reconciliation loop to ensure that protected timestamps are cleaned up.
-	ProtectedTimestampRecord *github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,22,opt,name=protected_timestamp_record,json=protectedTimestampRecord,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/uuid.UUID" json:"protected_timestamp_record,omitempty"`
+	ProtectedTimestampRecord *github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,22,opt,name=protected_timestamp_record,json=protectedTimestampRecord,proto3,customtype=github.com/semistrict/ratel/pkg/util/uuid.UUID" json:"protected_timestamp_record,omitempty"`
 	// DefaultIntSize is the integer type that a "naked" int will be resolved
 	// to during the import. This is set based on the session variable DefaultIntSize
 	// when the import is planned.
 	DefaultIntSize int32 `protobuf:"varint,25,opt,name=default_int_size,json=defaultIntSize,proto3" json:"default_int_size,omitempty"`
 	// If the database being imported into is a multi-region database, then this
 	// field stores the databases' primary region.
-	DatabasePrimaryRegion github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.RegionName `protobuf:"bytes,27,opt,name=database_primary_region,json=databasePrimaryRegion,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb.RegionName" json:"database_primary_region,omitempty"`
+	DatabasePrimaryRegion github_com_cockroachdb_cockroach_pkg_sql_catalog_catpb.RegionName `protobuf:"bytes,27,opt,name=database_primary_region,json=databasePrimaryRegion,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/catpb.RegionName" json:"database_primary_region,omitempty"`
 }
 
 func (m *ImportDetails) Reset()         { *m = ImportDetails{} }
@@ -1454,7 +1454,7 @@ var xxx_messageInfo_ImportProgress proto.InternalMessageInfo
 
 // TypeSchemaChangeDetails is the job detail information for a type schema change job.
 type TypeSchemaChangeDetails struct {
-	TypeID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,1,opt,name=type_id,json=typeId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"type_id,omitempty"`
+	TypeID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,1,opt,name=type_id,json=typeId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"type_id,omitempty"`
 	// TransitioningMembers is a list of enum members, represented by their
 	// physical representation, that are transitioning in the current job. This
 	// is used to group transitions together and ensure that rollback is limited
@@ -1568,14 +1568,14 @@ var xxx_messageInfo_NewSchemaChangeDetails proto.InternalMessageInfo
 // schema changer.
 type BackfillProgress struct {
 	// ID is the ID of the descriptor to which this checkpoint corresponds.
-	TableID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,1,opt,name=id,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"id,omitempty"`
+	TableID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,1,opt,name=id,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"id,omitempty"`
 	// SourceIndexID is the ID of the source index for the backfill.
 	// This could be a primary index or it could be a temporary index for
 	// a merge.
-	SourceIndexID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.IndexID `protobuf:"varint,2,opt,name=source_index_id,json=sourceIndexId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.IndexID" json:"source_index_id,omitempty"`
+	SourceIndexID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.IndexID `protobuf:"varint,2,opt,name=source_index_id,json=sourceIndexId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.IndexID" json:"source_index_id,omitempty"`
 	// DestIndexIDs is the set of IDs which are being backfilled from the
 	// SourceIndexID.
-	DestIndexIDs []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.IndexID `protobuf:"varint,3,rep,packed,name=dest_index_ids,json=destIndexIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.IndexID" json:"dest_index_ids,omitempty"`
+	DestIndexIDs []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.IndexID `protobuf:"varint,3,rep,packed,name=dest_index_ids,json=destIndexIds,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.IndexID" json:"dest_index_ids,omitempty"`
 	// MinimumWriteTimestamp is the timestamp at which a backfill may want to
 	// write, e.g. a time that has been identified via a scan as safe for
 	// writing.
@@ -1752,7 +1752,7 @@ var xxx_messageInfo_ResumeSpanList proto.InternalMessageInfo
 
 type DroppedTableDetails struct {
 	Name   string                                                     `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	ID     github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,2,opt,name=ID,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"ID,omitempty"`
+	ID     github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,2,opt,name=ID,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"ID,omitempty"`
 	Status Status                                                     `protobuf:"varint,3,opt,name=status,proto3,enum=cockroach.sql.jobs.jobspb.Status" json:"status,omitempty"`
 }
 
@@ -1810,7 +1810,7 @@ type SchemaChangeGCDetails struct {
 	Tables []SchemaChangeGCDetails_DroppedID `protobuf:"bytes,2,rep,name=tables,proto3" json:"tables"`
 	// If dropping indexes, the table ID which has those indexes. If dropping a
 	// database, the database ID.
-	ParentID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,3,opt,name=parent_id,json=parentId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"parent_id,omitempty"`
+	ParentID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,3,opt,name=parent_id,json=parentId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"parent_id,omitempty"`
 	// Tenant to GC.
 	Tenant *SchemaChangeGCDetails_DroppedTenant `protobuf:"bytes,6,opt,name=tenant,proto3" json:"tenant,omitempty"`
 }
@@ -1845,7 +1845,7 @@ func (m *SchemaChangeGCDetails) XXX_DiscardUnknown() {
 var xxx_messageInfo_SchemaChangeGCDetails proto.InternalMessageInfo
 
 type SchemaChangeGCDetails_DroppedIndex struct {
-	IndexID  github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.IndexID `protobuf:"varint,1,opt,name=index_id,json=indexId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.IndexID" json:"index_id,omitempty"`
+	IndexID  github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.IndexID `protobuf:"varint,1,opt,name=index_id,json=indexId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.IndexID" json:"index_id,omitempty"`
 	DropTime int64                                                           `protobuf:"varint,2,opt,name=drop_time,json=dropTime,proto3" json:"drop_time,omitempty"`
 }
 
@@ -1879,7 +1879,7 @@ func (m *SchemaChangeGCDetails_DroppedIndex) XXX_DiscardUnknown() {
 var xxx_messageInfo_SchemaChangeGCDetails_DroppedIndex proto.InternalMessageInfo
 
 type SchemaChangeGCDetails_DroppedID struct {
-	ID       github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,1,opt,name=id,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"id,omitempty"`
+	ID       github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,1,opt,name=id,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"id,omitempty"`
 	DropTime int64                                                      `protobuf:"varint,2,opt,name=drop_time,json=dropTime,proto3" json:"drop_time,omitempty"`
 }
 
@@ -1958,22 +1958,22 @@ type SchemaChangeDetails struct {
 	// dropped_types holds the set of types to drop as part of a DROP DATABASE
 	// statement. We collect the types here rather than creating individual DROP
 	// TYPE jobs for each dropped type.
-	DroppedTypes []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,8,rep,packed,name=dropped_types,json=droppedTypes,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"dropped_types,omitempty"`
+	DroppedTypes []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,8,rep,packed,name=dropped_types,json=droppedTypes,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"dropped_types,omitempty"`
 	// dropped_schemas holds the set of schemas to drop as part of a DROP SCHEMA
 	// or DROP DATABASE cascade statement.
-	DroppedSchemas []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,9,rep,packed,name=dropped_schemas,json=droppedSchemas,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"dropped_schemas,omitempty"`
+	DroppedSchemas []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,9,rep,packed,name=dropped_schemas,json=droppedSchemas,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"dropped_schemas,omitempty"`
 	// The descriptor ID of the dropped database which created this job.
-	DroppedDatabaseID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,4,opt,name=dropped_database_id,json=droppedDatabaseId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"dropped_database_id,omitempty"`
+	DroppedDatabaseID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,4,opt,name=dropped_database_id,json=droppedDatabaseId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"dropped_database_id,omitempty"`
 	// desc_id is the target descriptor for this schema change. Note that this ID
 	// is not always a table ID! We allow referencing any descriptor here to allow
 	// generic schema changes on descriptors whose schema change process involves
 	// only draining names and existing leases. This allows us to implement the
 	// simple schema changes on SchemaDescriptors and DatabaseDescriptors without
 	// implementing a new job for each.
-	DescID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,5,opt,name=desc_id,json=descId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"desc_id,omitempty"`
+	DescID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,5,opt,name=desc_id,json=descId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"desc_id,omitempty"`
 	// table_mutation_id is the mutation ID that the schema changer is to process. It is
 	// only set when desc_id references a TableDescriptor.
-	TableMutationID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.MutationID `protobuf:"varint,6,opt,name=table_mutation_id,json=tableMutationId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.MutationID" json:"table_mutation_id,omitempty"`
+	TableMutationID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.MutationID `protobuf:"varint,6,opt,name=table_mutation_id,json=tableMutationId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.MutationID" json:"table_mutation_id,omitempty"`
 	// The format version of the schema change job details. This is used to
 	// distinguish between jobs as they existed in 19.2 and earlier versions
 	// (controlled and updated by a SchemaChanger) and jobs as they exist in 20.1
@@ -2087,7 +2087,7 @@ func (m *SchemaChangeGCProgress) XXX_DiscardUnknown() {
 var xxx_messageInfo_SchemaChangeGCProgress proto.InternalMessageInfo
 
 type SchemaChangeGCProgress_IndexProgress struct {
-	IndexID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.IndexID `protobuf:"varint,1,opt,name=index_id,json=indexId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.IndexID" json:"index_id,omitempty"`
+	IndexID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.IndexID `protobuf:"varint,1,opt,name=index_id,json=indexId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.IndexID" json:"index_id,omitempty"`
 	Status  SchemaChangeGCProgress_Status                                   `protobuf:"varint,2,opt,name=status,proto3,enum=cockroach.sql.jobs.jobspb.SchemaChangeGCProgress_Status" json:"status,omitempty"`
 }
 
@@ -2121,7 +2121,7 @@ func (m *SchemaChangeGCProgress_IndexProgress) XXX_DiscardUnknown() {
 var xxx_messageInfo_SchemaChangeGCProgress_IndexProgress proto.InternalMessageInfo
 
 type SchemaChangeGCProgress_TableProgress struct {
-	ID     github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,1,opt,name=id,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"id,omitempty"`
+	ID     github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,1,opt,name=id,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"id,omitempty"`
 	Status SchemaChangeGCProgress_Status                              `protobuf:"varint,2,opt,name=status,proto3,enum=cockroach.sql.jobs.jobspb.SchemaChangeGCProgress_Status" json:"status,omitempty"`
 }
 
@@ -2222,7 +2222,7 @@ var xxx_messageInfo_ChangefeedTargetTable proto.InternalMessageInfo
 
 type ChangefeedTargetSpecification struct {
 	Type              ChangefeedTargetSpecification_TargetType                   `protobuf:"varint,1,opt,name=type,proto3,enum=cockroach.sql.jobs.jobspb.ChangefeedTargetSpecification_TargetType" json:"type,omitempty"`
-	TableID           github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,2,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"table_id,omitempty"`
+	TableID           github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,2,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"table_id,omitempty"`
 	FamilyName        string                                                     `protobuf:"bytes,3,opt,name=family_name,json=familyName,proto3" json:"family_name,omitempty"`
 	StatementTimeName string                                                     `protobuf:"bytes,4,opt,name=statement_time_name,json=statementTimeName,proto3" json:"statement_time_name,omitempty"`
 }
@@ -2262,7 +2262,7 @@ type ChangefeedDetails struct {
 	// The names at resolution time are included so that table and database
 	// renames can be tolerated and derived topic names remain immutable.
 	//
-	Tables  ChangefeedTargets `protobuf:"bytes,6,rep,name=tables,proto3,casttype=ChangefeedTargets,castkey=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"tables" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	Tables  ChangefeedTargets `protobuf:"bytes,6,rep,name=tables,proto3,casttype=ChangefeedTargets,castkey=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"tables" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	SinkURI string            `protobuf:"bytes,3,opt,name=sink_uri,json=sinkUri,proto3" json:"sink_uri,omitempty"`
 	Opts    map[string]string `protobuf:"bytes,4,rep,name=opts,proto3" json:"opts,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// TODO(sherman): Now that we update the statement time in some situations
@@ -2418,7 +2418,7 @@ type ChangefeedProgress struct {
 	// A record is created with the job if the job requires an initial backfill.
 	// Furthermore, once subsequent backfills begin, record will be created and
 	// released accordingly.
-	ProtectedTimestampRecord github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,3,opt,name=protected_timestamp_record,json=protectedTimestampRecord,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/uuid.UUID" json:"protected_timestamp_record"`
+	ProtectedTimestampRecord github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,3,opt,name=protected_timestamp_record,json=protectedTimestampRecord,proto3,customtype=github.com/semistrict/ratel/pkg/util/uuid.UUID" json:"protected_timestamp_record"`
 }
 
 func (m *ChangefeedProgress) Reset()         { *m = ChangefeedProgress{} }
@@ -2533,7 +2533,7 @@ func (m *CreateStatsDetails) XXX_DiscardUnknown() {
 var xxx_messageInfo_CreateStatsDetails proto.InternalMessageInfo
 
 type CreateStatsDetails_ColStat struct {
-	ColumnIDs []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ColumnID `protobuf:"varint,1,rep,packed,name=column_ids,json=columnIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ColumnID" json:"column_ids,omitempty"`
+	ColumnIDs []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ColumnID `protobuf:"varint,1,rep,packed,name=column_ids,json=columnIds,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ColumnID" json:"column_ids,omitempty"`
 	// Indicates whether this column stat should include a histogram.
 	HasHistogram bool `protobuf:"varint,2,opt,name=has_histogram,json=hasHistogram,proto3" json:"has_histogram,omitempty"`
 	// Indicates whether this column stat is over an inverted index.
@@ -2736,7 +2736,7 @@ func (m *AutoSQLStatsCompactionProgress) XXX_DiscardUnknown() {
 var xxx_messageInfo_AutoSQLStatsCompactionProgress proto.InternalMessageInfo
 
 type RowLevelTTLDetails struct {
-	TableID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"table_id,omitempty"`
+	TableID github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,1,opt,name=table_id,json=tableId,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"table_id,omitempty"`
 	Cutoff  time.Time                                                  `protobuf:"bytes,2,opt,name=cutoff,proto3,stdtime" json:"cutoff"`
 }
 
@@ -2805,13 +2805,13 @@ type Payload struct {
 	Description string `protobuf:"bytes,1,opt,name=description,proto3" json:"description,omitempty"`
 	// If empty, the description is assumed to be the statement.
 	Statement     []string                                                       `protobuf:"bytes,16,rep,name=statement,proto3" json:"statement,omitempty"`
-	UsernameProto github_com_cockroachdb_cockroach_pkg_security.SQLUsernameProto `protobuf:"bytes,2,opt,name=username_proto,json=usernameProto,proto3,casttype=github.com/cockroachdb/cockroach/pkg/security.SQLUsernameProto" json:"username_proto,omitempty"`
+	UsernameProto github_com_cockroachdb_cockroach_pkg_security.SQLUsernameProto `protobuf:"bytes,2,opt,name=username_proto,json=usernameProto,proto3,casttype=github.com/semistrict/ratel/pkg/security.SQLUsernameProto" json:"username_proto,omitempty"`
 	// For consistency with the SQL timestamp type, which has microsecond
 	// precision, we avoid the timestamp.Timestamp WKT, which has nanosecond
 	// precision, and use microsecond integers directly.
 	StartedMicros  int64                                                        `protobuf:"varint,3,opt,name=started_micros,json=startedMicros,proto3" json:"started_micros,omitempty"`
 	FinishedMicros int64                                                        `protobuf:"varint,4,opt,name=finished_micros,json=finishedMicros,proto3" json:"finished_micros,omitempty"`
-	DescriptorIDs  []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,6,rep,packed,name=descriptor_ids,json=descriptorIds,proto3,casttype=github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.ID" json:"descriptor_ids,omitempty"`
+	DescriptorIDs  []github_com_cockroachdb_cockroach_pkg_sql_catalog_descpb.ID `protobuf:"varint,6,rep,packed,name=descriptor_ids,json=descriptorIds,proto3,casttype=github.com/semistrict/ratel/pkg/sql/catalog/descpb.ID" json:"descriptor_ids,omitempty"`
 	// TODO (lucy): Deprecate the string error field and move to using the encoded
 	// errors everywhere.
 	Error         string                   `protobuf:"bytes,8,opt,name=error,proto3" json:"error,omitempty"`
@@ -2855,7 +2855,7 @@ type Payload struct {
 	// job resuming later, needs to use this information, e.g. to determine if it
 	// has been restored into a different cluster, which might mean it should
 	// terminate, pause or update some other state.
-	CreationClusterID github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,35,opt,name=creation_cluster_id,json=creationClusterId,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/uuid.UUID" json:"creation_cluster_id"`
+	CreationClusterID github_com_cockroachdb_cockroach_pkg_util_uuid.UUID `protobuf:"bytes,35,opt,name=creation_cluster_id,json=creationClusterId,proto3,customtype=github.com/semistrict/ratel/pkg/util/uuid.UUID" json:"creation_cluster_id"`
 	// CreationClusterVersion is populated at creation time with the then-active
 	// cluster version, in case a job resuming later needs to use this information
 	// to migrate or update the job.
@@ -3129,7 +3129,7 @@ type Progress struct {
 	//	*Progress_StreamReplication
 	//	*Progress_RowLevelTTL
 	Details isProgress_Details                                                  `protobuf_oneof:"details"`
-	TraceID github_com_cockroachdb_cockroach_pkg_util_tracing_tracingpb.TraceID `protobuf:"varint,21,opt,name=trace_id,json=traceId,proto3,customtype=github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb.TraceID" json:"trace_id"`
+	TraceID github_com_cockroachdb_cockroach_pkg_util_tracing_tracingpb.TraceID `protobuf:"varint,21,opt,name=trace_id,json=traceId,proto3,customtype=github.com/semistrict/ratel/pkg/util/tracing/tracingpb.TraceID" json:"trace_id"`
 }
 
 func (m *Progress) Reset()         { *m = Progress{} }
@@ -3444,7 +3444,7 @@ type RetriableExecutionFailure struct {
 	// ExecutionEndMicros is the timestamp at which this execution concluded.
 	ExecutionEndMicros int64 `protobuf:"varint,3,opt,name=execution_end_micros,json=executionEndMicros,proto3" json:"execution_end_micros,omitempty"`
 	// InstanceID is the instance which coordinated the execution.
-	InstanceID github_com_cockroachdb_cockroach_pkg_base.SQLInstanceID `protobuf:"varint,4,opt,name=instance_id,json=instanceId,proto3,customtype=github.com/cockroachdb/cockroach/pkg/base.SQLInstanceID" json:"instance_id"`
+	InstanceID github_com_cockroachdb_cockroach_pkg_base.SQLInstanceID `protobuf:"varint,4,opt,name=instance_id,json=instanceId,proto3,customtype=github.com/semistrict/ratel/pkg/base.SQLInstanceID" json:"instance_id"`
 	// Error stores the structured error which occurred. It might be nil if it
 	// was too large. In that case, the TruncatedError will be populated.
 	Error *errorspb.EncodedError `protobuf:"bytes,5,opt,name=error,proto3" json:"error,omitempty"`

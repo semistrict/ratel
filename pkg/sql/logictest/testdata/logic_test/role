@@ -1454,7 +1454,7 @@ SELECT 'CRDB-BCRYPT$'||'2a$'||'10$'||'vcmoIBvgeHjgScVHWRMWI.Z3v03WMixAw2bBS6qZih
 statement ok
 CREATE USER hash1 WITH PASSWORD '$bcrypt_pw'
 
-# Refers to https://github.com/cockroachdb/cockroach/issues/73337
+# Refers to https://github.com/semistrict/ratel/issues/73337
 statement error pgcode 0A000 hash scheme "md5" is not supported.*\nHINT.*\n.*73337
 CREATE USER hash2 WITH PASSWORD 'md5aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
 

@@ -1,8 +1,8 @@
 - Feature Name: Jobs Monitoring
-- Status: completed ([#16733](https://github.com/cockroachdb/cockroach/pull/16733))
+- Status: completed ([#16733](https://github.com/semistrict/ratel/pull/16733))
 - Start Date: 2017-06-22
 - Author: Julian Gilyadov
-- RFC PR: [#16688](https://github.com/cockroachdb/cockroach/pull/16688)
+- RFC PR: [#16688](https://github.com/semistrict/ratel/pull/16688)
 - Cockroach Issue: None
 
 # Motivation
@@ -135,5 +135,5 @@ public API for the v1.1 release.
 
 None.
 
-[#15590]: https://github.com/cockroachdb/cockroach/pull/15590
-[#16733]: https://github.com/cockroachdb/cockroach/pull/16733
+[#15590]: https://github.com/semistrict/ratel/pull/15590
+[#16733]: https://github.com/semistrict/ratel/pull/16733

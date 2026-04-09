@@ -5,9 +5,9 @@ package ptstorage
 
 import (
 	fmt "fmt"
-	roachpb "github.com/cockroachdb/cockroach/pkg/roachpb"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	roachpb "github.com/semistrict/ratel/pkg/roachpb"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	io "io"
 	math "math"

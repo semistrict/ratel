@@ -15,8 +15,8 @@
 package sqlstatsutil
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/util/encoding"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/util/encoding"
 )
 
 // DatumToUint64 Convert a bytes datum to uint64.

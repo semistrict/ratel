@@ -16,7 +16,7 @@
 
 package execinfra
 
-import "github.com/cockroachdb/cockroach/pkg/sql/execinfrapb"
+import "github.com/semistrict/ratel/pkg/sql/execinfrapb"
 
 // Version identifies the distsql protocol version.
 //
@@ -285,7 +285,7 @@ Please add new entries at the top.
 
 - Version: 22 (MinAcceptedVersion: 21)
     - Change date math to better align with PostgreSQL:
-      https://github.com/cockroachdb/cockroach/pull/31146
+      https://github.com/semistrict/ratel/pull/31146
 
 - MinAcceptedVersion: 21
     - Bump in preparation for the 2.1 release. A large amount of changes

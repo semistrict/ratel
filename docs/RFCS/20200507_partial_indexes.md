@@ -2,8 +2,8 @@
 - Status: completed
 - Start Date: 2020-05-07
 - Authors: mgartner
-- RFC PR: [#48557](https://github.com/cockroachdb/cockroach/pull/48557)
-- Cockroach Issue: [#9683](https://github.com/cockroachdb/cockroach/issues/9683)
+- RFC PR: [#48557](https://github.com/semistrict/ratel/pull/48557)
+- Cockroach Issue: [#9683](https://github.com/semistrict/ratel/issues/9683)
 
 # Summary
 

@@ -296,7 +296,7 @@ describe("selectCommissionedNodeStatuses", function() {
 describe("sumNodeStats", function() {
   // Each of these nodes only has half of its capacity "usable" for cockroach data.
   // See diagram for what these stats mean:
-  // https://github.com/cockroachdb/cockroach/blob/31e4299ab73a43f539b1ba63ed86be5ee18685f6/pkg/storage/metrics.go#L145-L153
+  // https://github.com/semistrict/ratel/blob/31e4299ab73a43f539b1ba63ed86be5ee18685f6/pkg/storage/metrics.go#L145-L153
   const nodeStatuses: INodeStatus[] = [
     {
       desc: { node_id: 1 },

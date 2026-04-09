@@ -19,7 +19,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/sql/types"
 )
 
 const countAggTmpl = "pkg/sql/colexec/colexecagg/count_agg_tmpl.go"

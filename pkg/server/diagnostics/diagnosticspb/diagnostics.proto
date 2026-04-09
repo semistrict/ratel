@@ -46,7 +46,7 @@ message DiagnosticReport {
 // will be set to its empty value (e.g. NodeID = 0) when the report is generated
 // by a SQL-only instance.
 message NodeInfo {
-  int32 node_id = 1 [(gogoproto.customname) = "NodeID", (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.NodeID"];
+  int32 node_id = 1 [(gogoproto.customname) = "NodeID", (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.NodeID"];
   int64 bytes = 2;
   int64 key_count = 3;
   int64 range_count = 4;
@@ -66,8 +66,8 @@ message NodeInfo {
 }
 
 message StoreInfo {
-  int32 node_id = 1 [(gogoproto.customname) = "NodeID", (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.NodeID"];
-  int32 store_id = 2 [(gogoproto.customname) = "StoreID", (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/roachpb.StoreID"];
+  int32 node_id = 1 [(gogoproto.customname) = "NodeID", (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.NodeID"];
+  int32 store_id = 2 [(gogoproto.customname) = "StoreID", (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/roachpb.StoreID"];
   int64 bytes = 3;
   int64 key_count = 4;
   int64 range_count = 5;
@@ -87,7 +87,7 @@ message SQLInstanceInfo {
   // SQLInstanceID is the ephemeral identifier for the SQL instance which is
   // reporting diagnostics. This is unique across all running SQL instances in
   // the cluster (physical or tenant).
-  int32 sql_instance_id = 1 [(gogoproto.customname) = "SQLInstanceID", (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/base.SQLInstanceID"];
+  int32 sql_instance_id = 1 [(gogoproto.customname) = "SQLInstanceID", (gogoproto.casttype) = "github.com/semistrict/ratel/pkg/base.SQLInstanceID"];
   // Uptime is the number of seconds since the SQL instance was started.
   int64 uptime = 2;
 }

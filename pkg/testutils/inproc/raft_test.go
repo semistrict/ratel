@@ -18,6 +18,7 @@ import (
 	"context"
 	"testing"
 	"testing/synctest"
+	"time"
 
 	"github.com/semistrict/ratel/pkg/base"
 	"github.com/semistrict/ratel/pkg/keys"
@@ -170,6 +171,11 @@ func TestSyncLeaseTransfer(t *testing.T) {
 		leaseholderIdx := int(lease.Replica.NodeID) - 1
 		t.Logf("leaseholder is node %d, stopping it", leaseholderIdx+1)
 		c.StopNode(leaseholderIdx)
+
+		// Advance fake time so node liveness and lease re-acquisition can settle
+		// before the read below. Waiting on the read itself is much less stable
+		// under synctest+race.
+		time.Sleep(15 * time.Second)
 
 		// Read from a live node — lease should transfer.
 		liveIdx := (leaseholderIdx + 1) % 3

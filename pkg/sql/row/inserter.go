@@ -167,23 +167,25 @@ func (ri *Inserter) InsertRow(
 		return err
 	}
 
-	// Add the new values.
-	ri.valueBuf, err = prepareInsertOrUpdateBatch(ctx, b,
-		&ri.Helper, primaryIndexKey, ri.InsertCols,
-		values, ri.InsertColIDtoRowIndex,
-		ri.marshaled, ri.InsertColIDtoRowIndex,
-		&ri.key, &ri.value, ri.valueBuf, putFn, overwrite, traceKV)
-	if err != nil {
-		return err
-	}
-
-	// Write subordinate keys for array columns.
 	subEntries, err := ri.Helper.encodeSubordinateKeys(
 		primaryIndexKey, ri.InsertColIDtoRowIndex, values,
 	)
 	if err != nil {
 		return err
 	}
+
+	// Add the new values.
+	ri.valueBuf, err = prepareInsertOrUpdateBatch(ctx, b,
+		&ri.Helper, primaryIndexKey, ri.InsertCols,
+		values, ri.InsertColIDtoRowIndex,
+		ri.marshaled, ri.InsertColIDtoRowIndex,
+		subEntries,
+		&ri.key, &ri.value, ri.valueBuf, putFn, overwrite, traceKV)
+	if err != nil {
+		return err
+	}
+
+	// Write subordinate keys for array columns.
 	for i := range subEntries {
 		e := &subEntries[i]
 		putFn(ctx, b, &e.Key, &e.Value, traceKV)

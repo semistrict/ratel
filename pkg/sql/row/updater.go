@@ -371,11 +371,19 @@ func (ru *Updater) UpdateRow(
 		return ru.newValues, nil
 	}
 
+	newSubEntries, err := ru.Helper.encodeSubordinateKeys(
+		primaryIndexKey, ru.FetchColIDtoRowIndex, ru.newValues,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	// Add the new values.
 	ru.valueBuf, err = prepareInsertOrUpdateBatch(ctx, batch,
 		&ru.Helper, primaryIndexKey, ru.FetchCols,
 		ru.newValues, ru.FetchColIDtoRowIndex,
 		ru.marshaled, ru.UpdateColIDtoRowIndex,
+		newSubEntries,
 		&ru.key, &ru.value, ru.valueBuf, insertPutFn, true /* overwrite */, traceKV)
 	if err != nil {
 		return nil, err
@@ -384,12 +392,6 @@ func (ru *Updater) UpdateRow(
 	// Update subordinate keys for array columns. Put all new entries
 	// (overwrites any existing values at the same indices), then delete
 	// entries for indices that no longer exist (array shrunk).
-	newSubEntries, err := ru.Helper.encodeSubordinateKeys(
-		primaryIndexKey, ru.FetchColIDtoRowIndex, ru.newValues,
-	)
-	if err != nil {
-		return nil, err
-	}
 	for i := range newSubEntries {
 		e := &newSubEntries[i]
 		insertPutFn(ctx, batch, &e.Key, &e.Value, traceKV)

@@ -158,6 +158,25 @@ func newTableReader(
 	); err != nil {
 		return nil, err
 	}
+	if spec.ArrayEqualsAnyFilter != nil {
+		leftExpr := spec.ArrayEqualsAnyFilter.Left.LocalExpr
+		if leftExpr == nil {
+			var err error
+			leftExpr, err = execinfrapb.DeserializeExpr(
+				spec.ArrayEqualsAnyFilter.Left.Expr, &tr.SemaCtx, tr.EvalCtx, &tree.IndexedVarHelper{},
+			)
+			if err != nil {
+				return nil, err
+			}
+		}
+		leftDatum, err := leftExpr.Eval(tr.EvalCtx)
+		if err != nil {
+			return nil, err
+		}
+		fetcher.ConfigureArrayEqualsAnyFilter(
+			tr.EvalCtx, int(spec.ArrayEqualsAnyFilter.ArrayColIdx), leftDatum, false, /* materialize */
+		)
+	}
 
 	tr.Spans = spec.Spans
 	if !tr.ignoreMisplannedRanges {
@@ -280,6 +299,9 @@ func (tr *tableReader) Next() (rowenc.EncDatumRow, *execinfrapb.ProducerMetadata
 		// case can avoid tracking of the stall time which gives a noticeable
 		// performance hit.
 		tr.rowsRead++
+		if !tr.fetcher.RowPassesArrayEqualsAnyFilter() {
+			continue
+		}
 		if outRow := tr.ProcessRowHelper(row); outRow != nil {
 			return outRow, nil
 		}

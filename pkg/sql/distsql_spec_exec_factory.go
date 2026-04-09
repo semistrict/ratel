@@ -48,6 +48,7 @@ type distSQLSpecExecFactory struct {
 }
 
 var _ exec.Factory = &distSQLSpecExecFactory{}
+var _ exec.ArrayAnyScanFilterCapable = &distSQLSpecExecFactory{}
 
 // distSQLPlanningMode indicates the planning mode in which
 // distSQLSpecExecFactory is operating.
@@ -79,6 +80,10 @@ func newDistSQLSpecExecFactory(p *planner, planningMode distSQLPlanningMode) exe
 	e.planCtx = e.dsp.NewPlanningCtx(evalCtx.Context, evalCtx, e.planner,
 		e.planner.txn, distribute)
 	return e
+}
+
+func (*distSQLSpecExecFactory) SupportsArrayAnyScanFilter() bool {
+	return true
 }
 
 func (e *distSQLSpecExecFactory) getPlanCtx(recommendation distRecommendation) *PlanningCtx {
@@ -204,9 +209,20 @@ func (e *distSQLSpecExecFactory) ConstructScan(
 	var sb span.Builder
 	sb.Init(e.planner.EvalContext(), e.planner.ExecCfg().Codec, tabDesc, idx)
 
-	cols := make([]catalog.Column, 0, params.NeededCols.Len())
+	cols := make([]catalog.Column, 0, params.NeededCols.Len()+params.ExtraNeededCols.Len())
 	allCols := tabDesc.AllColumns()
+	var arrayFilterFetchIdx int
+	arrayFilterFetchIdx = -1
 	for ord, ok := params.NeededCols.Next(0); ok; ord, ok = params.NeededCols.Next(ord + 1) {
+		cols = append(cols, allCols[ord])
+	}
+	for ord, ok := params.ExtraNeededCols.Next(0); ok; ord, ok = params.ExtraNeededCols.Next(ord + 1) {
+		if params.NeededCols.Contains(ord) {
+			continue
+		}
+		if params.ArrayAnyFilter != nil && ord == int(params.ArrayAnyFilter.ArrayCol) {
+			arrayFilterFetchIdx = len(cols)
+		}
 		cols = append(cols, allCols[ord])
 	}
 	columnIDs := make([]descpb.ColumnID, len(cols))
@@ -272,10 +288,30 @@ func (e *distSQLSpecExecFactory) ConstructScan(
 	// don't know yet whether we will have it. ConstructFilter is responsible
 	// for pushing the filter down into the post-processing stage of this scan.
 	post := execinfrapb.PostProcessSpec{}
+	if params.ExtraNeededCols.Len() > 0 {
+		post.Projection = true
+		post.OutputColumns = make([]uint32, 0, params.NeededCols.Len())
+		for i := 0; i < params.NeededCols.Len(); i++ {
+			post.OutputColumns = append(post.OutputColumns, uint32(i))
+		}
+	}
 	if params.HardLimit != 0 {
 		post.Limit = uint64(params.HardLimit)
 	} else if params.SoftLimit != 0 {
 		trSpec.LimitHint = params.SoftLimit
+	}
+	if params.ArrayAnyFilter != nil {
+		if arrayFilterFetchIdx == -1 {
+			return nil, errors.AssertionFailedf("array filter column %d was not added to fetched columns", params.ArrayAnyFilter.ArrayCol)
+		}
+		leftExpr, err := physicalplan.MakeExpression(params.ArrayAnyFilter.Left, e.getPlanCtx(recommendation), nil /* indexVarMap */)
+		if err != nil {
+			return nil, err
+		}
+		trSpec.ArrayEqualsAnyFilter = &execinfrapb.ArrayEqualsAnyFilterSpec{
+			ArrayColIdx: uint32(arrayFilterFetchIdx),
+			Left:        leftExpr,
+		}
 	}
 
 	err = e.dsp.planTableReaders(

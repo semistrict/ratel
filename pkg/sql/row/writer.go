@@ -21,6 +21,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
+	"github.com/cockroachdb/cockroach/pkg/sql/rowenc"
 	"github.com/cockroachdb/cockroach/pkg/sql/rowenc/valueside"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/util"
@@ -102,6 +103,7 @@ func prepareInsertOrUpdateBatch(
 	valColIDMapping catalog.TableColMap,
 	marshaledValues []roachpb.Value,
 	marshaledColIDMapping catalog.TableColMap,
+	subordinateEntries []rowenc.IndexEntry,
 	kvKey *roachpb.Key,
 	kvValue *roachpb.Value,
 	rawValueBuf []byte,
@@ -145,7 +147,7 @@ func prepareInsertOrUpdateBatch(
 	}
 
 	kvValue.SetTuple(rawValueBuf)
-	if err := helper.checkRowSize(ctx, kvKey, kvValue, rowGroup.ID); err != nil {
+	if err := helper.checkRowSizeWithSubordinates(ctx, kvKey, kvValue, rowGroup.ID, subordinateEntries); err != nil {
 		return nil, err
 	}
 	putFn(ctx, batch, kvKey, kvValue, traceKV)

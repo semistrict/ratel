@@ -195,6 +195,16 @@ type Fetcher struct {
 	// Cleared when starting a new row; finalized in finalizeRow.
 	subordinateArrays map[int]*tree.DArray
 
+	// arrayEqualsAnyFilter, when set, evaluates a filter of the form
+	//   left = ANY(array_col)
+	// as array elements are scanned. This is only used when the array column is
+	// fetched for scan-local filtering rather than output materialization.
+	arrayEqualsAnyFilter *arrayEqualsAnyFilterState
+
+	// lastRowPassesArrayEqualsAnyFilter records the filter result for the most
+	// recently finalized row. It is true when no scan-local array filter is set.
+	lastRowPassesArrayEqualsAnyFilter bool
+
 	// The current key/value, unless kvEnd is true.
 	kv                roachpb.KeyValue
 	keyRemainingBytes []byte
@@ -212,6 +222,17 @@ type Fetcher struct {
 	kvFetcherMemAcc *mon.BoundAccount
 }
 
+type arrayEqualsAnyFilterState struct {
+	evalCtx     *tree.EvalContext
+	colIdx      int
+	left        tree.Datum
+	materialize bool
+
+	matched        bool
+	sawNull        bool
+	sawSubordinate bool
+}
+
 // Reset resets this Fetcher, preserving the memory capacity that was used
 // for the tables slice, and the slices within each of the tableInfo objects
 // within tables. This permits reuse of this objects without forcing total
@@ -220,6 +241,28 @@ func (rf *Fetcher) Reset() {
 	*rf = Fetcher{
 		table: rf.table,
 	}
+}
+
+// ConfigureArrayEqualsAnyFilter enables scan-local evaluation of
+//   left = ANY(array_col)
+// for the fetched column at colIdx.
+func (rf *Fetcher) ConfigureArrayEqualsAnyFilter(
+	evalCtx *tree.EvalContext, colIdx int, left tree.Datum, materialize bool,
+) {
+	rf.arrayEqualsAnyFilter = &arrayEqualsAnyFilterState{
+		evalCtx:     evalCtx,
+		colIdx:      colIdx,
+		left:        left,
+		materialize: materialize,
+	}
+	rf.lastRowPassesArrayEqualsAnyFilter = true
+}
+
+// RowPassesArrayEqualsAnyFilter reports whether the most recently returned row
+// satisfied the configured scan-local array filter. It returns true when no
+// such filter is configured.
+func (rf *Fetcher) RowPassesArrayEqualsAnyFilter() bool {
+	return rf.lastRowPassesArrayEqualsAnyFilter
 }
 
 // Close releases resources held by this fetcher.
@@ -680,6 +723,12 @@ func (rf *Fetcher) processKV(
 		for k := range rf.subordinateArrays {
 			delete(rf.subordinateArrays, k)
 		}
+		if rf.arrayEqualsAnyFilter != nil {
+			rf.arrayEqualsAnyFilter.matched = false
+			rf.arrayEqualsAnyFilter.sawNull = false
+			rf.arrayEqualsAnyFilter.sawSubordinate = false
+			rf.lastRowPassesArrayEqualsAnyFilter = true
+		}
 
 		// Fill in the column values that are part of the index key.
 		for i := range table.keyVals {
@@ -993,6 +1042,26 @@ func (rf *Fetcher) processSubordinateKV(
 		}
 	}
 
+	filterCol := rf.arrayEqualsAnyFilter != nil && rf.arrayEqualsAnyFilter.colIdx == idx
+	if filterCol {
+		rf.arrayEqualsAnyFilter.sawSubordinate = true
+		if value == tree.DNull || rf.arrayEqualsAnyFilter.left == tree.DNull {
+			rf.arrayEqualsAnyFilter.sawNull = true
+		} else if rf.arrayEqualsAnyFilter.left.Compare(rf.arrayEqualsAnyFilter.evalCtx, value) == 0 {
+			rf.arrayEqualsAnyFilter.matched = true
+		}
+		if !rf.arrayEqualsAnyFilter.materialize {
+			if rf.traceKV {
+				prettyKey = fmt.Sprintf("%s/%s[*]", prettyKey, colSpec.Name)
+				prettyValue = value.String()
+			}
+			if DebugRowFetch {
+				log.Infof(ctx, "Scan %s -> subordinate predicate %s = %v", kv.Key, colSpec.Name, value)
+			}
+			return prettyKey, prettyValue, nil
+		}
+	}
+
 	// Accumulate into the DArray for this column.
 	if rf.subordinateArrays == nil {
 		rf.subordinateArrays = make(map[int]*tree.DArray)
@@ -1159,6 +1228,41 @@ func (rf *Fetcher) RowIsDeleted() bool {
 	return rf.table.rowIsDeleted
 }
 
+func (rf *Fetcher) finishArrayEqualsAnyFilter() error {
+	if rf.arrayEqualsAnyFilter == nil {
+		rf.lastRowPassesArrayEqualsAnyFilter = true
+		return nil
+	}
+	f := rf.arrayEqualsAnyFilter
+	if !f.sawSubordinate {
+		encDatum := rf.table.row[f.colIdx]
+		if encDatum.IsUnset() {
+			rf.lastRowPassesArrayEqualsAnyFilter = false
+			return nil
+		}
+		if err := encDatum.EnsureDecoded(rf.table.spec.FetchedColumns[f.colIdx].Type, rf.alloc); err != nil {
+			return err
+		}
+		d := encDatum.Datum
+		if d == tree.DNull || f.left == tree.DNull {
+			f.sawNull = true
+		} else if arr, ok := tree.AsDArray(d); ok {
+			for _, elem := range arr.Array {
+				if elem == tree.DNull || f.left == tree.DNull {
+					f.sawNull = true
+					continue
+				}
+				if f.left.Compare(f.evalCtx, elem) == 0 {
+					f.matched = true
+					break
+				}
+			}
+		}
+	}
+	rf.lastRowPassesArrayEqualsAnyFilter = f.matched
+	return nil
+}
+
 func (rf *Fetcher) finalizeRow() error {
 	table := &rf.table
 
@@ -1166,6 +1270,9 @@ func (rf *Fetcher) finalizeRow() error {
 	for idx, arr := range rf.subordinateArrays {
 		table.row[idx] = rowenc.EncDatum{Datum: arr}
 		rf.valueColsFound++
+	}
+	if err := rf.finishArrayEqualsAnyFilter(); err != nil {
+		return err
 	}
 
 	// Fill in any system columns if requested.
@@ -1188,6 +1295,11 @@ func (rf *Fetcher) finalizeRow() error {
 			return nil
 		}
 		if table.row[i].IsUnset() {
+			if rf.arrayEqualsAnyFilter != nil &&
+				rf.arrayEqualsAnyFilter.colIdx == i &&
+				!rf.arrayEqualsAnyFilter.materialize {
+				continue
+			}
 			// If the row was deleted, we'll be missing any non-primary key
 			// columns, including nullable ones, but this is expected. If the column
 			// is not yet active, we can also expect NULLs.

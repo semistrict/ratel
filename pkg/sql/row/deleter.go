@@ -143,19 +143,15 @@ func (rd *Deleter) DeleteRow(
 	if err != nil {
 		return err
 	}
-	// Delete subordinate keys for array columns.
-	subEntries, err := rd.Helper.encodeSubordinateKeys(
-		primaryIndexKey, rd.FetchColIDtoRowIndex, values,
-	)
-	if err != nil {
-		return err
+	// Delete all subordinate keys stored between the row sentinel and row group
+	// 1. This removes current array-element entries as well as orphaned entries
+	// left behind by dropped array columns.
+	subordinateStart := rowenc.SubordinateKeysForColumn(primaryIndexKey, 0, 1)[0]
+	subordinateEnd := keys.MakeFamilyKey(primaryIndexKey[:len(primaryIndexKey):len(primaryIndexKey)], 1)
+	if traceKV {
+		log.VEventf(ctx, 2, "DelRange %s - %s", subordinateStart, subordinateEnd)
 	}
-	for _, e := range subEntries {
-		if traceKV {
-			log.VEventf(ctx, 2, "Del %s", e.Key)
-		}
-		b.Del(e.Key)
-	}
+	b.DelRange(subordinateStart, subordinateEnd, false /* returnKeys */)
 
 	// Delete the row.
 	rd.key = keys.MakeFamilyKey(primaryIndexKey, 0)

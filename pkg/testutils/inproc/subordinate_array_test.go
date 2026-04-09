@@ -16,6 +16,7 @@ package inproc_test
 
 import (
 	"context"
+	"regexp"
 	"testing"
 
 	"github.com/cockroachdb/cockroach/pkg/testutils/inproc"
@@ -185,6 +186,59 @@ func TestSubordinateArrayLarge(t *testing.T) {
 	for i := 0; i < n; i++ {
 		require.Equal(t, int64(i+1), vals[i])
 	}
+}
+
+// TestSubordinateArrayReverseScanOrder verifies that reverse scans preserve the
+// logical element order inside each array datum.
+func TestSubordinateArrayReverseScanOrder(t *testing.T) {
+	c := inproc.StartCluster(t, 1)
+	defer c.Stop()
+
+	ctx := context.Background()
+	db := c.ServerConn(0)
+
+	_, err := db.ExecContext(ctx, `CREATE TABLE t (id INT PRIMARY KEY, vals INT[])`)
+	require.NoError(t, err)
+
+	_, err = db.ExecContext(ctx, `INSERT INTO t VALUES (1, ARRAY[10, 20, 30]), (2, ARRAY[40, 50])`)
+	require.NoError(t, err)
+
+	rows, err := db.QueryContext(ctx, `SELECT vals FROM t ORDER BY id DESC`)
+	require.NoError(t, err)
+	defer rows.Close()
+
+	var got [][]int64
+	for rows.Next() {
+		var vals []int64
+		require.NoError(t, rows.Scan(pq.Array(&vals)))
+		got = append(got, vals)
+	}
+	require.NoError(t, rows.Err())
+	require.Equal(t, [][]int64{{40, 50}, {10, 20, 30}}, got)
+}
+
+// TestSubordinateArrayRespectsMaxRowSize verifies that arrays encoded as
+// subordinate KV entries are still subject to row-size guardrails.
+func TestSubordinateArrayRespectsMaxRowSize(t *testing.T) {
+	c := inproc.StartCluster(t, 1)
+	defer c.Stop()
+
+	ctx := context.Background()
+	db := c.ServerConn(0)
+
+	_, err := db.ExecContext(ctx, `SET CLUSTER SETTING sql.guardrails.max_row_size_err = '1KiB'`)
+	require.NoError(t, err)
+	defer func() {
+		_, resetErr := db.ExecContext(ctx, `SET CLUSTER SETTING sql.guardrails.max_row_size_err = DEFAULT`)
+		require.NoError(t, resetErr)
+	}()
+
+	_, err = db.ExecContext(ctx, `CREATE TABLE t (id INT PRIMARY KEY, vals INT[])`)
+	require.NoError(t, err)
+
+	_, err = db.ExecContext(ctx, `INSERT INTO t SELECT 1, array_agg(g) FROM generate_series(1, 500) AS g`)
+	require.Error(t, err)
+	require.Regexp(t, regexp.MustCompile(`row larger than max row size`), err.Error())
 }
 
 // TestSubordinateArrayMixedColumns verifies that a table with both scalar

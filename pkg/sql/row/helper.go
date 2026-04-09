@@ -296,7 +296,23 @@ func (rh *rowHelper) encodeSubordinateKeys(
 func (rh *rowHelper) checkRowSize(
 	ctx context.Context, key *roachpb.Key, value *roachpb.Value, rowGroup descpb.RowGroupID,
 ) error {
+	return rh.checkRowSizeWithSubordinates(ctx, key, value, rowGroup, nil /* subordinateEntries */)
+}
+
+// checkRowSizeWithSubordinates compares the size of a logical row against the
+// max_row_size limits. subordinateEntries, when present, are included in the
+// total to account for array elements stored in subordinate KVs.
+func (rh *rowHelper) checkRowSizeWithSubordinates(
+	ctx context.Context,
+	key *roachpb.Key,
+	value *roachpb.Value,
+	rowGroup descpb.RowGroupID,
+	subordinateEntries []rowenc.IndexEntry,
+) error {
 	size := uint32(len(*key)) + uint32(len(value.RawBytes))
+	for i := range subordinateEntries {
+		size += uint32(len(subordinateEntries[i].Key)) + uint32(len(subordinateEntries[i].Value.RawBytes))
+	}
 	shouldLog := rh.maxRowSizeLog != 0 && size > rh.maxRowSizeLog
 	shouldErr := rh.maxRowSizeErr != 0 && size > rh.maxRowSizeErr
 	if !shouldLog && !shouldErr {

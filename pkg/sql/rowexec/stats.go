@@ -153,6 +153,11 @@ func (c *rowFetcherStatCollector) NextRow(ctx context.Context) (rowenc.EncDatumR
 	return row, err
 }
 
+// RowPassesArrayEqualsAnyFilter is part of the rowFetcher interface.
+func (c *rowFetcherStatCollector) RowPassesArrayEqualsAnyFilter() bool {
+	return c.fetcher.RowPassesArrayEqualsAnyFilter()
+}
+
 // NextRowInto is part of the rowFetcher interface.
 func (c *rowFetcherStatCollector) NextRowInto(
 	ctx context.Context, destination rowenc.EncDatumRow, colIdxMap catalog.TableColMap,

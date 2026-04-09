@@ -812,6 +812,12 @@ func (b *Builder) buildPlaceholderScan(scan *memo.PlaceholderScanExpr) (execPlan
 }
 
 func (b *Builder) buildSelect(sel *memo.SelectExpr) (execPlan, error) {
+	if fastPath, ok, err := b.tryBuildScanWithArrayAnyFilter(sel); err != nil {
+		return execPlan{}, err
+	} else if ok {
+		return fastPath, nil
+	}
+
 	input, err := b.buildRelational(sel.Input)
 	if err != nil {
 		return execPlan{}, err
@@ -828,6 +834,97 @@ func (b *Builder) buildSelect(sel *memo.SelectExpr) (execPlan, error) {
 		return execPlan{}, err
 	}
 	return res, nil
+}
+
+func (b *Builder) tryBuildScanWithArrayAnyFilter(sel *memo.SelectExpr) (execPlan, bool, error) {
+	capableFactory, ok := b.factory.(exec.ArrayAnyScanFilterCapable)
+	if !ok || !capableFactory.SupportsArrayAnyScanFilter() {
+		return execPlan{}, false, nil
+	}
+	if len(sel.Filters) != 1 {
+		return execPlan{}, false, nil
+	}
+	scan, ok := sel.Input.(*memo.ScanExpr)
+	if !ok {
+		return execPlan{}, false, nil
+	}
+
+	arrayFilter, ok, err := b.extractArrayAnyScanFilter(sel, scan, sel.Filters[0].Condition)
+	if err != nil || !ok {
+		return execPlan{}, ok, err
+	}
+
+	md := b.mem.Metadata()
+	tab := md.Table(scan.Table)
+	private := scan.ScanPrivate
+	private.Cols = sel.Relational().OutputCols
+
+	params, outputCols, err := b.scanParams(tab, &private, sel.Relational(), sel.RequiredPhysical())
+	if err != nil {
+		return execPlan{}, false, err
+	}
+	params.ExtraNeededCols.Add(int(arrayFilter.ArrayCol))
+	params.ArrayAnyFilter = arrayFilter
+
+	res := execPlan{outputCols: outputCols}
+	root, err := b.factory.ConstructScan(
+		tab,
+		tab.Index(scan.Index),
+		params,
+		res.reqOrdering(sel),
+	)
+	if err != nil {
+		return execPlan{}, false, err
+	}
+	res.root = root
+	return res, true, nil
+}
+
+func (b *Builder) extractArrayAnyScanFilter(
+	sel *memo.SelectExpr, scan *memo.ScanExpr, scalar opt.ScalarExpr,
+) (*exec.ArrayAnyFilter, bool, error) {
+	any, ok := scalar.(*memo.AnyScalarExpr)
+	if !ok || any.Cmp != opt.EqOp {
+		return nil, false, nil
+	}
+	if !supportsScanArrayAnyLeftExpr(any.Left) {
+		return nil, false, nil
+	}
+
+	arrayVar, ok := any.Right.(*memo.VariableExpr)
+	if !ok || arrayVar.Typ.Family() != types.ArrayFamily {
+		return nil, false, nil
+	}
+	if sel.Relational().OutputCols.Contains(arrayVar.Col) {
+		return nil, false, nil
+	}
+
+	leftExpr, err := b.buildScalarWithMap(opt.ColMap{}, any.Left)
+	if err != nil {
+		return nil, false, err
+	}
+
+	md := b.mem.Metadata()
+	tableID := md.ColumnMeta(arrayVar.Col).Table
+	if tableID != scan.Table {
+		return nil, false, nil
+	}
+
+	return &exec.ArrayAnyFilter{
+		ArrayCol: exec.TableColumnOrdinal(tableID.ColumnOrdinal(arrayVar.Col)),
+		Left:     leftExpr,
+	}, true, nil
+}
+
+func supportsScanArrayAnyLeftExpr(scalar opt.ScalarExpr) bool {
+	switch t := scalar.(type) {
+	case *memo.ConstExpr, *memo.NullExpr, *memo.PlaceholderExpr:
+		return true
+	case *memo.CastExpr:
+		return supportsScanArrayAnyLeftExpr(t.Input)
+	default:
+		return false
+	}
 }
 
 func (b *Builder) buildInvertedFilter(invFilter *memo.InvertedFilterExpr) (execPlan, error) {

@@ -530,10 +530,19 @@ func MachineTypeToCPUs(s string) int {
 		if _, err := fmt.Sscanf(s, "n1-standard-%d", &v); err == nil {
 			return v
 		}
+		if _, err := fmt.Sscanf(s, "e2-standard-%d", &v); err == nil {
+			return v
+		}
 		if _, err := fmt.Sscanf(s, "n1-highcpu-%d", &v); err == nil {
 			return v
 		}
+		if _, err := fmt.Sscanf(s, "e2-highcpu-%d", &v); err == nil {
+			return v
+		}
 		if _, err := fmt.Sscanf(s, "n1-highmem-%d", &v); err == nil {
+			return v
+		}
+		if _, err := fmt.Sscanf(s, "e2-highmem-%d", &v); err == nil {
 			return v
 		}
 	}

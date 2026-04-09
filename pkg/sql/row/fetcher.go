@@ -193,7 +193,7 @@ type Fetcher struct {
 	// subordinateArrays accumulates array elements from subordinate keys
 	// during row assembly. Keyed by index into spec.FetchedColumns.
 	// Cleared when starting a new row; finalized in finalizeRow.
-	subordinateArrays map[int]*tree.DArray
+	subordinateArrays map[int]*subordinateArrayBuilder
 
 	// arrayEqualsAnyFilter, when set, evaluates a filter of the form
 	//   left = ANY(array_col)
@@ -231,6 +231,37 @@ type arrayEqualsAnyFilterState struct {
 	matched        bool
 	sawNull        bool
 	sawSubordinate bool
+}
+
+type subordinateArrayBuilder struct {
+	elemType *types.T
+	elems    tree.Datums
+}
+
+func newSubordinateArrayBuilder(elemType *types.T) *subordinateArrayBuilder {
+	return &subordinateArrayBuilder{elemType: elemType}
+}
+
+func (b *subordinateArrayBuilder) Set(elemIdx int, value tree.Datum) {
+	if elemIdx >= len(b.elems) {
+		elems := make(tree.Datums, elemIdx+1)
+		copy(elems, b.elems)
+		b.elems = elems
+	}
+	b.elems[elemIdx] = value
+}
+
+func (b *subordinateArrayBuilder) Materialize() (*tree.DArray, error) {
+	arr := tree.NewDArray(b.elemType)
+	for i, elem := range b.elems {
+		if elem == nil {
+			return nil, errors.AssertionFailedf("missing subordinate array element %d", i)
+		}
+		if err := arr.Append(elem); err != nil {
+			return nil, err
+		}
+	}
+	return arr, nil
 }
 
 // Reset resets this Fetcher, preserving the memory capacity that was used
@@ -1013,11 +1044,13 @@ func (rf *Fetcher) processSubordinateKV(
 	}
 	colID := descpb.ColumnID(colID64)
 
-	// Decode elem_idx (consumed but not used for placement — we append in order).
-	_, _, err = encoding.DecodeUvarintAscending(remaining)
+	// Decode elem_idx so reverse scans can still reconstruct the array in
+	// logical order.
+	_, elemIdx64, err := encoding.DecodeUvarintAscending(remaining)
 	if err != nil {
 		return "", "", errors.Wrap(err, "decoding subordinate key element index")
 	}
+	elemIdx := int(elemIdx64)
 
 	// Look up the column.
 	idx, ok := table.colIdxMap.Get(colID)
@@ -1066,23 +1099,21 @@ func (rf *Fetcher) processSubordinateKV(
 
 	// Accumulate into the DArray for this column.
 	if rf.subordinateArrays == nil {
-		rf.subordinateArrays = make(map[int]*tree.DArray)
+		rf.subordinateArrays = make(map[int]*subordinateArrayBuilder)
 	}
 	arr, exists := rf.subordinateArrays[idx]
 	if !exists {
-		arr = tree.NewDArray(elemType)
+		arr = newSubordinateArrayBuilder(elemType)
 		rf.subordinateArrays[idx] = arr
 	}
-	if err := arr.Append(value); err != nil {
-		return "", "", err
-	}
+	arr.Set(elemIdx, value)
 
 	if rf.traceKV {
-		prettyKey = fmt.Sprintf("%s/%s[%d]", prettyKey, colSpec.Name, arr.Len()-1)
+		prettyKey = fmt.Sprintf("%s/%s[%d]", prettyKey, colSpec.Name, elemIdx)
 		prettyValue = value.String()
 	}
 	if DebugRowFetch {
-		log.Infof(ctx, "Scan %s -> subordinate %s[%d] = %v", kv.Key, colSpec.Name, arr.Len()-1, value)
+		log.Infof(ctx, "Scan %s -> subordinate %s[%d] = %v", kv.Key, colSpec.Name, elemIdx, value)
 	}
 	return prettyKey, prettyValue, nil
 }
@@ -1249,15 +1280,13 @@ func (rf *Fetcher) finishArrayEqualsAnyFilter() error {
 		if d == tree.DNull || f.left == tree.DNull {
 			f.sawNull = true
 		} else if arr, ok := tree.AsDArray(d); ok {
-			for _, elem := range arr.Array {
-				if elem == tree.DNull || f.left == tree.DNull {
-					f.sawNull = true
-					continue
-				}
-				if f.left.Compare(f.evalCtx, elem) == 0 {
-					f.matched = true
-					break
-				}
+			// Non-empty arrays must be reconstructed from subordinate keys.
+			// Inline arrays are only valid for the empty-array sentinel.
+			if arr.Len() > 0 {
+				return errors.AssertionFailedf(
+					"non-empty inline array encountered in array filter fallback for column %q",
+					rf.table.spec.FetchedColumns[f.colIdx].Name,
+				)
 			}
 		}
 	}
@@ -1269,7 +1298,11 @@ func (rf *Fetcher) finalizeRow() error {
 	table := &rf.table
 
 	// Finalize subordinate arrays: convert accumulated DArrays into EncDatums.
-	for idx, arr := range rf.subordinateArrays {
+	for idx, arrBuilder := range rf.subordinateArrays {
+		arr, err := arrBuilder.Materialize()
+		if err != nil {
+			return err
+		}
 		table.row[idx] = rowenc.EncDatum{Datum: arr}
 		rf.valueColsFound++
 	}

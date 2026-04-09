@@ -17,7 +17,7 @@
 // — is derived from a single storage URL.
 package main
 
-import "github.com/cockroachdb/cockroach/pkg/cli"
+import "github.com/semistrict/ratel/pkg/cli"
 
 func main() {
 	cli.RatelMain()

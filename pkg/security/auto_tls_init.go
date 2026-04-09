@@ -213,9 +213,9 @@ func CreateServiceCertAndKey(
 	for _, hostname := range hostnames {
 		ip := net.ParseIP(hostname)
 		if ip != nil {
-			serviceCert.IPAddresses = []net.IP{ip}
+			serviceCert.IPAddresses = append(serviceCert.IPAddresses, ip)
 		} else {
-			serviceCert.DNSNames = []string{hostname}
+			serviceCert.DNSNames = append(serviceCert.DNSNames, hostname)
 		}
 	}
 

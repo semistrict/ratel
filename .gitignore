@@ -47,3 +47,5 @@ build/Railroad.jar
 
 # Temporary directories during gomock generate
 **/gomock_reflect_*
+ratel
+fly-cluster

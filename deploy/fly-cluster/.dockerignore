@@ -1,0 +1,11 @@
+.git
+lib/build
+c-deps/jemalloc-build
+c-deps/geos-build
+c-deps/proj-build
+cockroach-short
+cockroach-oss
+cockroach
+ratel
+bin/
+artifacts/

@@ -368,10 +368,16 @@ func NewServer(cfg Config, stopper *stop.Stopper) (*Server, error) {
 	for i := range metrics {
 		registry.AddMetricStruct(metrics[i])
 	}
-	cbID := goschedstats.RegisterRunnableCountCallback(gcoords.Regular.CPULoad)
-	stopper.AddCloser(stop.CloserFn(func() {
-		goschedstats.UnregisterRunnableCountCallback(cbID)
-	}))
+	disableRunnableCountCallbacks := false
+	if cfg.TestingKnobs.Server != nil {
+		disableRunnableCountCallbacks = cfg.TestingKnobs.Server.(*TestingKnobs).DisableRunnableCountCallbacks
+	}
+	if !disableRunnableCountCallbacks {
+		cbID := goschedstats.RegisterRunnableCountCallback(gcoords.Regular.CPULoad)
+		stopper.AddCloser(stop.CloserFn(func() {
+			goschedstats.UnregisterRunnableCountCallback(cbID)
+		}))
+	}
 	stopper.AddCloser(gcoords)
 
 	dbCtx := kv.DefaultDBContext(stopper)

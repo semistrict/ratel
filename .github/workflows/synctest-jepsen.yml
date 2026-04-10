@@ -2,6 +2,8 @@ name: synctest-jepsen
 
 on:
   push:
+    branches:
+      - main
   pull_request:
 
 concurrency:
@@ -16,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           submodules: true
       - uses: actions/setup-go@v5
         with:
@@ -29,7 +31,10 @@ jobs:
         run: make -j$(nproc) c-deps
       - name: Synctest Jepsen
         run: |
-          make test \
-            PKG=./pkg/testutils/inproc \
-            TESTS='^(TestSyncRestartThenFreshBubble|TestSyncJepsen|TestJepsen)$' \
-            TESTFLAGS="-v -count=3 -timeout 60s"
+          set -euo pipefail
+          regex='^(TestSyncRestartThenFreshBubble|TestSyncJepsen.*|TestJepsen.*|TestRegistry(PartitionGrudgeClosesSpecifiedLinks|HealAllLinksPreservesBlockedNodes)|Test(RandomHalvesGrudge|MajoritiesRingGrudge))$'
+          tests=$(go test -mod=vendor ./pkg/testutils/inproc -list "$regex" | grep '^Test')
+          while IFS= read -r test; do
+            [ -n "$test" ] || continue
+            go test -mod=vendor ./pkg/testutils/inproc -run "^${test}$" -count=3 -timeout 60s -v
+          done <<< "$tests"

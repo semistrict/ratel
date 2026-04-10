@@ -76,6 +76,36 @@ func TestSyncJepsenSetsRestart(t *testing.T) {
 	})
 }
 
+func TestSyncJepsenSetsParts(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runJepsenSetsWorkload(t, runJepsenSetsPartsNemesis)
+	})
+}
+
+func TestSyncJepsenSetsMajorityRing(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runJepsenSetsWorkload(t, runJepsenSetsMajorityRingNemesis)
+	})
+}
+
+func TestSyncJepsenSetsPartsRestart(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runJepsenSetsWorkload(t, composeJepsenBankNemeses(
+			runJepsenSetsPartsNemesis,
+			runJepsenSetsRestartNemesis,
+		))
+	})
+}
+
+func TestSyncJepsenSetsMajorityRingRestart(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runJepsenSetsWorkload(t, composeJepsenBankNemeses(
+			runJepsenSetsMajorityRingNemesis,
+			runJepsenSetsRestartNemesis,
+		))
+	})
+}
+
 func runJepsenSetsWorkload(t *testing.T, nemesis jepsenBankNemesisFunc) {
 	t.Helper()
 
@@ -245,6 +275,33 @@ func runJepsenSetsRestartNemesis(
 			_ = c.RestartNodeE(2)
 		}
 	}
+}
+
+func runJepsenSetsPartsNemesis(
+	ctx context.Context,
+	stopCh <-chan struct{},
+	c *inproc.Cluster,
+	_ *gosql.DB,
+	_ *jepsenBankHistory,
+	_ *jepsenKeyTracker,
+) {
+	rng := rand.New(rand.NewSource(299))
+	runTimedLinkPartitionNemesis(stopCh, c, nil, func() {
+		c.PartitionRandomHalves([]int{0, 1, 2}, rng)
+	})
+}
+
+func runJepsenSetsMajorityRingNemesis(
+	ctx context.Context,
+	stopCh <-chan struct{},
+	c *inproc.Cluster,
+	_ *gosql.DB,
+	_ *jepsenBankHistory,
+	_ *jepsenKeyTracker,
+) {
+	runTimedLinkPartitionNemesis(stopCh, c, nil, func() {
+		c.PartitionMajoritiesRing([]int{0, 1, 2})
+	})
 }
 
 func readJepsenSetsValues(ctx context.Context, db *gosql.DB) ([]int64, error) {

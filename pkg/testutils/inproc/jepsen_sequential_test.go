@@ -78,6 +78,28 @@ type jepsenSequentialKeyTracker struct {
 	keys map[jepsenSequentialTrackedKey]struct{}
 }
 
+func composeJepsenSequentialNemeses(
+	nemeses ...func(context.Context, <-chan struct{}, *inproc.Cluster, *gosql.DB, *jepsenSequentialKeyTracker),
+) func(context.Context, <-chan struct{}, *inproc.Cluster, *gosql.DB, *jepsenSequentialKeyTracker) {
+	return func(
+		ctx context.Context,
+		stopCh <-chan struct{},
+		c *inproc.Cluster,
+		db *gosql.DB,
+		keys *jepsenSequentialKeyTracker,
+	) {
+		var wg sync.WaitGroup
+		for _, nemesis := range nemeses {
+			wg.Add(1)
+			go func(n func(context.Context, <-chan struct{}, *inproc.Cluster, *gosql.DB, *jepsenSequentialKeyTracker)) {
+				defer wg.Done()
+				n(ctx, stopCh, c, db, keys)
+			}(nemesis)
+		}
+		wg.Wait()
+	}
+}
+
 func newJepsenSequentialKeyTracker() *jepsenSequentialKeyTracker {
 	return &jepsenSequentialKeyTracker{keys: make(map[jepsenSequentialTrackedKey]struct{})}
 }
@@ -116,6 +138,36 @@ func TestSyncJepsenSequentialSplit(t *testing.T) {
 func TestSyncJepsenSequentialRestart(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		runJepsenSequentialWorkload(t, runJepsenSequentialRestartNemesis)
+	})
+}
+
+func TestSyncJepsenSequentialParts(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runJepsenSequentialWorkload(t, runJepsenSequentialPartsNemesis)
+	})
+}
+
+func TestSyncJepsenSequentialMajorityRing(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runJepsenSequentialWorkload(t, runJepsenSequentialMajorityRingNemesis)
+	})
+}
+
+func TestSyncJepsenSequentialPartsRestart(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runJepsenSequentialWorkload(t, composeJepsenSequentialNemeses(
+			runJepsenSequentialPartsNemesis,
+			runJepsenSequentialRestartNemesis,
+		))
+	})
+}
+
+func TestSyncJepsenSequentialMajorityRingRestart(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runJepsenSequentialWorkload(t, composeJepsenSequentialNemeses(
+			runJepsenSequentialMajorityRingNemesis,
+			runJepsenSequentialRestartNemesis,
+		))
 	})
 }
 
@@ -353,6 +405,31 @@ func runJepsenSequentialRestartNemesis(
 			_ = c.RestartNodeE(2)
 		}
 	}
+}
+
+func runJepsenSequentialPartsNemesis(
+	ctx context.Context,
+	stopCh <-chan struct{},
+	c *inproc.Cluster,
+	_ *gosql.DB,
+	_ *jepsenSequentialKeyTracker,
+) {
+	rng := rand.New(rand.NewSource(1701))
+	runTimedLinkPartitionNemesis(stopCh, c, nil, func() {
+		c.PartitionRandomHalves([]int{0, 1, 2}, rng)
+	})
+}
+
+func runJepsenSequentialMajorityRingNemesis(
+	ctx context.Context,
+	stopCh <-chan struct{},
+	c *inproc.Cluster,
+	_ *gosql.DB,
+	_ *jepsenSequentialKeyTracker,
+) {
+	runTimedLinkPartitionNemesis(stopCh, c, nil, func() {
+		c.PartitionMajoritiesRing([]int{0, 1, 2})
+	})
 }
 
 func jepsenSequentialTableNames() []string {

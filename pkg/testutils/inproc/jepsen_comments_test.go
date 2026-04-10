@@ -51,6 +51,24 @@ type jepsenCommentsHistory struct {
 	ops []jepsenCommentsOp
 }
 
+func composeJepsenCommentsNemeses(
+	nemeses ...func(context.Context, <-chan struct{}, *inproc.Cluster, *gosql.DB, *jepsenKeyTracker),
+) func(context.Context, <-chan struct{}, *inproc.Cluster, *gosql.DB, *jepsenKeyTracker) {
+	return func(
+		ctx context.Context, stopCh <-chan struct{}, c *inproc.Cluster, db *gosql.DB, keys *jepsenKeyTracker,
+	) {
+		var wg sync.WaitGroup
+		for _, nemesis := range nemeses {
+			wg.Add(1)
+			go func(n func(context.Context, <-chan struct{}, *inproc.Cluster, *gosql.DB, *jepsenKeyTracker)) {
+				defer wg.Done()
+				n(ctx, stopCh, c, db, keys)
+			}(nemesis)
+		}
+		wg.Wait()
+	}
+}
+
 func (h *jepsenCommentsHistory) Add(op jepsenCommentsOp) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -74,6 +92,36 @@ func TestSyncJepsenCommentsSplit(t *testing.T) {
 func TestSyncJepsenCommentsRestart(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		runJepsenCommentsWorkload(t, runJepsenCommentsRestartNemesis)
+	})
+}
+
+func TestSyncJepsenCommentsParts(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runJepsenCommentsWorkload(t, runJepsenCommentsPartsNemesis)
+	})
+}
+
+func TestSyncJepsenCommentsMajorityRing(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runJepsenCommentsWorkload(t, runJepsenCommentsMajorityRingNemesis)
+	})
+}
+
+func TestSyncJepsenCommentsPartsRestart(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runJepsenCommentsWorkload(t, composeJepsenCommentsNemeses(
+			runJepsenCommentsPartsNemesis,
+			runJepsenCommentsRestartNemesis,
+		))
+	})
+}
+
+func TestSyncJepsenCommentsMajorityRingRestart(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runJepsenCommentsWorkload(t, composeJepsenCommentsNemeses(
+			runJepsenCommentsMajorityRingNemesis,
+			runJepsenCommentsRestartNemesis,
+		))
 	})
 }
 
@@ -305,6 +353,23 @@ func runJepsenCommentsRestartNemesis(
 			_ = c.RestartNodeE(2)
 		}
 	}
+}
+
+func runJepsenCommentsPartsNemesis(
+	ctx context.Context, stopCh <-chan struct{}, c *inproc.Cluster, _ *gosql.DB, _ *jepsenKeyTracker,
+) {
+	rng := rand.New(rand.NewSource(1337))
+	runTimedLinkPartitionNemesis(stopCh, c, nil, func() {
+		c.PartitionRandomHalves([]int{0, 1, 2}, rng)
+	})
+}
+
+func runJepsenCommentsMajorityRingNemesis(
+	ctx context.Context, stopCh <-chan struct{}, c *inproc.Cluster, _ *gosql.DB, _ *jepsenKeyTracker,
+) {
+	runTimedLinkPartitionNemesis(stopCh, c, nil, func() {
+		c.PartitionMajoritiesRing([]int{0, 1, 2})
+	})
 }
 
 func jepsenCommentsTableNames() []string {

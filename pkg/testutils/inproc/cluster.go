@@ -17,6 +17,7 @@ package inproc
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"sync/atomic"
 	"testing"
 
@@ -135,6 +136,7 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 		tk.DisableEnvironmentSample = true
 		tk.DisableReplicationReporter = true
 		tk.DisableProtectedTSProvider = true
+		tk.DisableRunnableCountCallbacks = true
 		tk.ContextTestingKnobs.DialerFunc = registry.DialerFuncFor(rpcAddr)
 		args.Knobs.Server = tk
 
@@ -192,6 +194,45 @@ func (c *Cluster) PartitionLink(srcNodeIdx, dstNodeIdx int) {
 // HealLink restores a previously blocked directed link.
 func (c *Cluster) HealLink(srcNodeIdx, dstNodeIdx int) {
 	c.Registry.UnblockLink(c.addrs[srcNodeIdx], c.addrs[dstNodeIdx])
+}
+
+// PartitionNodeGroups blocks all directed traffic between distinct groups while
+// preserving connectivity within each group.
+func (c *Cluster) PartitionNodeGroups(groups [][]int) {
+	addrs := make([][]string, len(groups))
+	for i := range groups {
+		addrs[i] = make([]string, len(groups[i]))
+		for j, nodeIdx := range groups[i] {
+			addrs[i][j] = c.addrs[nodeIdx]
+		}
+	}
+	c.Registry.PartitionGroups(addrs)
+}
+
+// PartitionRandomHalves applies the Jepsen "parts" topology to the selected
+// nodes using the provided RNG.
+func (c *Cluster) PartitionRandomHalves(nodeIdxs []int, rng *rand.Rand) {
+	c.Registry.PartitionGrudge(RandomHalvesGrudge(c.nodeAddrs(nodeIdxs), rng))
+}
+
+// PartitionMajoritiesRing applies the Jepsen "majority-ring" topology to the
+// selected nodes in the order provided.
+func (c *Cluster) PartitionMajoritiesRing(nodeIdxs []int) {
+	c.Registry.PartitionGrudge(MajoritiesRingGrudge(c.nodeAddrs(nodeIdxs)))
+}
+
+// HealAllLinks removes all directed link partitions while leaving whole-node
+// partitions untouched.
+func (c *Cluster) HealAllLinks() {
+	c.Registry.HealAllLinks()
+}
+
+func (c *Cluster) nodeAddrs(nodeIdxs []int) []string {
+	addrs := make([]string, len(nodeIdxs))
+	for i, nodeIdx := range nodeIdxs {
+		addrs[i] = c.addrs[nodeIdx]
+	}
+	return addrs
 }
 
 // NodeAddr returns the in-memory address for the given node index.

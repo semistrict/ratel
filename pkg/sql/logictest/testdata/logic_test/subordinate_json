@@ -207,3 +207,38 @@ DROP TABLE u
 
 statement ok
 DROP TABLE t
+
+subtest update_rewrite_vectorized
+
+statement ok
+CREATE TABLE t (id INT PRIMARY KEY, j JSONB)
+
+statement ok
+INSERT INTO t VALUES
+  (1, '{"a": {"b": [10, 20]}, "z": 7}'),
+  (2, '{"a": {"b": [30]}, "z": 8}'),
+  (3, '{"q": "r"}')
+
+statement ok
+UPDATE t SET j = '{"a": {"b": [40, 50]}, "z": 9}' WHERE id = 1
+
+statement ok
+UPDATE t SET j = 'null' WHERE id = 2
+
+statement ok
+UPDATE t SET j = NULL WHERE id = 3
+
+query ITT
+SELECT
+  id,
+  coalesce(j#>>'{a,b,-1}', 'NULL'),
+  coalesce((j ? 'a')::STRING, 'NULL')
+FROM t
+ORDER BY id
+----
+1 50   true
+2 NULL false
+3 NULL NULL
+
+statement ok
+DROP TABLE t

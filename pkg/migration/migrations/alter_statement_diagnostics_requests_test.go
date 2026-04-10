@@ -121,14 +121,14 @@ func getDeprecatedStmtDiagReqsDescriptor() *descpb.TableDescriptor {
 			{Name: "requested_at", ID: 5, Type: types.TimestampTZ, Nullable: false},
 		},
 		NextColumnID: 6,
-		Families: []descpb.ColumnFamilyDescriptor{
+		RowGroups: []descpb.RowGroupDescriptor{
 			{
 				Name:        "primary",
 				ColumnNames: []string{"id", "completed", "statement_fingerprint", "statement_diagnostics_id", "requested_at"},
 				ColumnIDs:   []descpb.ColumnID{1, 2, 3, 4, 5},
 			},
 		},
-		NextFamilyID: 1,
+		NextRowGroupID: 1,
 		PrimaryIndex: descpb.IndexDescriptor{
 			Name:                tabledesc.PrimaryKeyIndexName("statement_diagnostics_requests"),
 			ID:                  1,

@@ -57,6 +57,12 @@ func (hs healthServer) Check(
 	return nil, errors.New("no one should see this")
 }
 
+func (hs healthServer) List(
+	context.Context, *healthpb.HealthListRequest,
+) (*healthpb.HealthListResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "not implemented")
+}
+
 func (hs healthServer) Watch(*healthpb.HealthCheckRequest, healthpb.Health_WatchServer) error {
 	panic("not implemented")
 }

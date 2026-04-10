@@ -62,8 +62,8 @@ func TestAlterSystemTableStatisticsTable(t *testing.T) {
 	var (
 		validationSchemas = []migrations.Schema{
 			{Name: "avgSize", ValidationFn: migrations.HasColumn},
-			{Name: "fam_0_tableID_statisticID_name_columnIDs_createdAt_rowCount_distinctCount_nullCount_histogram",
-				ValidationFn: migrations.HasColumnFamily},
+			{Name: "primary",
+				ValidationFn: migrations.HasRowGroup},
 		}
 	)
 
@@ -128,7 +128,7 @@ func getDeprecatedTableStatisticsDescriptor() *descpb.TableDescriptor {
 			{Name: "histogram", ID: 9, Type: types.Bytes, Nullable: true},
 		},
 		NextColumnID: 10,
-		Families: []descpb.ColumnFamilyDescriptor{
+		RowGroups: []descpb.RowGroupDescriptor{
 			{
 				Name: "fam_0_tableID_statisticID_name_columnIDs_createdAt_rowCount_distinctCount_nullCount_histogram",
 				ID:   0,
@@ -146,7 +146,7 @@ func getDeprecatedTableStatisticsDescriptor() *descpb.TableDescriptor {
 				ColumnIDs: []descpb.ColumnID{1, 2, 3, 4, 5, 6, 7, 8, 9},
 			},
 		},
-		NextFamilyID: 1,
+		NextRowGroupID: 1,
 		PrimaryIndex: descpb.IndexDescriptor{
 			Name:                "primary",
 			ID:                  1,

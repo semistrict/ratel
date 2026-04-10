@@ -123,14 +123,14 @@ func getDeprecatedProtectedTimestampRecordsDescriptor() *descpb.TableDescriptor 
 			{Name: "verified", ID: 7, Type: types.Bool, DefaultExpr: &falseBoolString},
 		},
 		NextColumnID: 8,
-		Families: []descpb.ColumnFamilyDescriptor{
+		RowGroups: []descpb.RowGroupDescriptor{
 			{
 				Name:        "primary",
 				ColumnNames: []string{"id", "ts", "meta_type", "meta", "num_spans", "spans", "verified"},
 				ColumnIDs:   []descpb.ColumnID{1, 2, 3, 4, 5, 6, 7},
 			},
 		},
-		NextFamilyID: 1,
+		NextRowGroupID: 1,
 		PrimaryIndex: descpb.IndexDescriptor{
 			Name:           "primary",
 			ID:             1,

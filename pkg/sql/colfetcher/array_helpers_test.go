@@ -62,8 +62,8 @@ func makeSingleColumnCFetcherWithOutputs(
 	batch := coldata.NewMemBatchWithCapacity(allTyps, 1, factory)
 	batch.SetLength(1)
 
-	var colIdxMap catalog.TableColMap
-	colIdxMap.Set(colID, 0)
+	var colMap catalog.TableColMap
+	colMap.Set(colID, 0)
 
 	cf := &cFetcher{
 		table: &cTableInfo{
@@ -75,8 +75,12 @@ func makeSingleColumnCFetcherWithOutputs(
 						Type:     typ,
 					}},
 				},
-				ColIdxMap: colIdxMap,
+				ColIdxMap: colMap,
 				typs:      allTyps,
+			},
+			orderedColIdxMap: &colIdxMap{
+				vals: []descpb.ColumnID{colID},
+				ords: []int{0},
 			},
 		},
 	}
@@ -1034,6 +1038,36 @@ func TestProcessValueSingleRejectsArrayEncoding(t *testing.T) {
 	_, _, err := cf.processValueSingle(context.Background(), cf.table, 2, "/tbl/1/0")
 	require.Error(t, err)
 	require.Regexp(t, "incompatible data layout", err.Error())
+}
+
+func TestProcessValueSingleRejectsJSONEncoding(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	cf := makeJSONCFetcher()
+	j, err := jsonutil.ParseJSON(`{"a":1}`)
+	require.NoError(t, err)
+	cf.machine.nextKV.Value, err = valueside.MarshalLegacy(types.Jsonb, tree.NewDJSON(j))
+	require.NoError(t, err)
+
+	_, _, err = cf.processValueSingle(context.Background(), cf.table, 3, "/tbl/1/0")
+	require.Error(t, err)
+	require.Regexp(t, "incompatible data layout", err.Error())
+}
+
+func TestProcessValueBytesRejectsJSONEncoding(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	cf := makeJSONCFetcher()
+	j, err := jsonutil.ParseJSON(`{"a":1}`)
+	require.NoError(t, err)
+
+	var buf []byte
+	buf, err = valueside.Encode(buf, valueside.MakeColumnIDDelta(0, 3), tree.NewDJSON(j), nil)
+	require.NoError(t, err)
+
+	_, _, err = cf.processValueBytes(context.Background(), cf.table, buf, "/tbl/1/0")
+	require.Error(t, err)
+	require.Regexp(t, "JSON type encoded inline in the row value", err.Error())
 }
 
 func TestProcessValueSingleSkipsUnknownColumn(t *testing.T) {

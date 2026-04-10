@@ -114,6 +114,9 @@ type rowHelper struct {
 	// arrayColIDs is the set of column IDs with array types. Computed lazily.
 	arrayColIDs     catalog.TableColSet
 	arrayColIDsInit bool
+	// jsonColIDs is the set of column IDs with JSON types. Computed lazily.
+	jsonColIDs     catalog.TableColSet
+	jsonColIDsInit bool
 
 	// Used to check row size.
 	maxRowSizeLog, maxRowSizeErr uint32
@@ -281,9 +284,23 @@ func (rh *rowHelper) isArrayColumn(colID descpb.ColumnID) bool {
 	return rh.arrayColIDs.Contains(colID)
 }
 
-// encodeSubordinateKeys returns subordinate key entries for all array columns
-// in the given row values. The primaryIndexKey is the PK prefix before row-group
-// encoding.
+// isJSONColumn returns true if the given column ID is a JSON column. The set
+// of JSON columns is computed lazily on first call.
+func (rh *rowHelper) isJSONColumn(colID descpb.ColumnID) bool {
+	if !rh.jsonColIDsInit {
+		for _, col := range rh.TableDesc.PublicColumns() {
+			if col.GetType().Family() == types.JsonFamily {
+				rh.jsonColIDs.Add(col.GetID())
+			}
+		}
+		rh.jsonColIDsInit = true
+	}
+	return rh.jsonColIDs.Contains(colID)
+}
+
+// encodeSubordinateKeys returns subordinate key entries for all columns that
+// use subordinate storage in the given row values. The primaryIndexKey is the
+// PK prefix before row-group encoding.
 func (rh *rowHelper) encodeSubordinateKeys(
 	primaryIndexKey []byte,
 	colIDtoRowIndex catalog.TableColMap,

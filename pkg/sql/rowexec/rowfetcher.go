@@ -60,6 +60,10 @@ type rowFetcher interface {
 		ctx context.Context, destination rowenc.EncDatumRow, colIdxMap catalog.TableColMap,
 	) (ok bool, err error)
 	RowPassesArrayEqualsAnyFilter() bool
+	RowPassesJSONExistsFilter() bool
+	RowPassesJSONPathCompareFilter() bool
+	RowPassesJSONContainsFilter() bool
+	JSONAccessProgramResults() []tree.Datum
 
 	// PartialKey is not stat-related but needs to be supported.
 	PartialKey(nCols int) (roachpb.Key, error)

@@ -16,6 +16,57 @@ package json
 
 import "sort"
 
+// ContainsPattern is a reusable containment matcher for a constant right-hand
+// JSON value. It avoids re-preprocessing the constant operand for every
+// containment check.
+type ContainsPattern struct {
+	original JSON
+	pre      containsable
+}
+
+// NewContainsPattern preprocesses a JSON value for repeated containment
+// checks.
+func NewContainsPattern(j JSON) (ContainsPattern, error) {
+	pre, err := j.preprocessForContains()
+	if err != nil {
+		return ContainsPattern{}, err
+	}
+	return ContainsPattern{original: j, pre: pre}, nil
+}
+
+// Contains reports whether a preprocessed constant JSON value contains other.
+func (p ContainsPattern) Contains(other JSON) (bool, error) {
+	if p.original.Type() == ArrayJSONType && other.isScalar() {
+		decoded, err := p.original.tryDecode()
+		if err != nil {
+			return false, err
+		}
+		return checkArrayContainsScalar(decoded.(jsonArray), other)
+	}
+	preOther, err := other.preprocessForContains()
+	if err != nil {
+		return false, err
+	}
+	return p.pre.contains(preOther)
+}
+
+// ContainsWithPattern reports whether left contains the preprocessed constant
+// pattern.
+func ContainsWithPattern(left JSON, pattern ContainsPattern) (bool, error) {
+	if left.Type() == ArrayJSONType && pattern.original.isScalar() {
+		decoded, err := left.tryDecode()
+		if err != nil {
+			return false, err
+		}
+		return checkArrayContainsScalar(decoded.(jsonArray), pattern.original)
+	}
+	preLeft, err := left.preprocessForContains()
+	if err != nil {
+		return false, err
+	}
+	return preLeft.contains(pattern.pre)
+}
+
 // Contains returns true if a contains b. This implements the @>, <@ operators.
 // See the Postgres docs for the expected semantics of Contains.
 // https://www.postgresql.org/docs/10/static/datatype-json.html#JSON-CONTAINMENT
@@ -39,16 +90,11 @@ func Contains(a, b JSON) (bool, error) {
 		ary := decoded.(jsonArray)
 		return checkArrayContainsScalar(ary, b)
 	}
-
-	preA, err := a.preprocessForContains()
+	pattern, err := NewContainsPattern(b)
 	if err != nil {
 		return false, err
 	}
-	preB, err := b.preprocessForContains()
-	if err != nil {
-		return false, err
-	}
-	return preA.contains(preB)
+	return ContainsWithPattern(a, pattern)
 }
 
 // checkArrayContainsScalar performs a unique case of contains (and is

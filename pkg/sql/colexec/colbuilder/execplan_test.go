@@ -164,6 +164,57 @@ func TestNewColOperatorExpectedTypeSchema(t *testing.T) {
 	require.Equal(t, numRows, rowIdx)
 }
 
+func TestSupportedNativelyRejectsScanLocalArrayTableReader(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	spec := &execinfrapb.ProcessorSpec{
+		Core: execinfrapb.ProcessorCoreUnion{
+			TableReader: &execinfrapb.TableReaderSpec{
+				ArrayEqualsAnyFilter: &execinfrapb.ArrayEqualsAnyFilterSpec{
+					ArrayColIdx: 0,
+				},
+			},
+		},
+	}
+
+	require.ErrorIs(t, supportedNatively(spec), errTableReaderScanLocalWrap)
+}
+
+func TestSupportedNativelyAcceptsScanLocalJSONTableReader(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	spec := &execinfrapb.ProcessorSpec{
+		Core: execinfrapb.ProcessorCoreUnion{
+			TableReader: &execinfrapb.TableReaderSpec{
+				JsonExistsFilter: &execinfrapb.JSONExistsFilterSpec{
+					SourceColIdx: 0,
+					Kind:         1,
+					Key:          "a",
+				},
+				JsonPathCompareFilter: &execinfrapb.JSONPathCompareFilterSpec{
+					SourceColIdx: 0,
+					Kind:         4,
+					Path:         []string{`p:"a"`},
+					Mode:         1,
+				},
+				JsonContainsFilter: &execinfrapb.JSONContainsFilterSpec{
+					SourceColIdx: 0,
+					Kind:         4,
+					Path:         []string{`p:"a"`},
+					Right:        execinfrapb.Expression{Expr: `'{"b":[1]}'::JSONB`},
+				},
+				JsonAccesses: []execinfrapb.JSONAccessSpec{{
+					SourceColIdx: 0,
+					Kind:         5,
+					Path:         []string{`p:"a"`},
+				}},
+			},
+		},
+	}
+
+	require.NoError(t, supportedNatively(spec))
+}
+
 // BenchmarkRenderPlanning benchmarks how long it takes to run a query with many
 // render expressions inside. With small number of rows to read, the overhead of
 // allocating the initial vectors for the projection operators dominates.

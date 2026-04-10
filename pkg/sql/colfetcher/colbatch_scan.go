@@ -27,7 +27,10 @@ import (
 	"github.com/semistrict/ratel/pkg/sql/colmem"
 	"github.com/semistrict/ratel/pkg/sql/execinfra"
 	"github.com/semistrict/ratel/pkg/sql/execinfrapb"
+	"github.com/semistrict/ratel/pkg/sql/opt/exec"
+	"github.com/semistrict/ratel/pkg/sql/row"
 	"github.com/semistrict/ratel/pkg/sql/rowinfra"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 	"github.com/semistrict/ratel/pkg/sql/types"
 	"github.com/semistrict/ratel/pkg/util/mon"
 	"github.com/semistrict/ratel/pkg/util/syncutil"
@@ -80,6 +83,36 @@ type ScanOperator interface {
 }
 
 var _ ScanOperator = &ColBatchScan{}
+
+func postProcessOutputsFetchedColumn(
+	post *execinfrapb.PostProcessSpec, fetchedCols int, fetchedColIdx int,
+) bool {
+	if fetchedColIdx < 0 || fetchedColIdx >= fetchedCols {
+		return false
+	}
+	if !post.Projection {
+		return true
+	}
+	for _, outCol := range post.OutputColumns {
+		if int(outCol) == fetchedColIdx {
+			return true
+		}
+	}
+	return false
+}
+
+func jsonAccessResultType(kind row.JSONAccessKind) (*types.T, error) {
+	switch kind {
+	case row.JSONAccessExists, row.JSONAccessExistsAny, row.JSONAccessExistsAll:
+		return types.Bool, nil
+	case row.JSONAccessFetchJSONPath:
+		return types.Jsonb, nil
+	case row.JSONAccessFetchTextPath:
+		return types.String, nil
+	default:
+		return nil, errors.AssertionFailedf("unknown JSON access kind %d", kind)
+	}
+}
 
 // Init initializes a ColBatchScan.
 func (s *ColBatchScan) Init(ctx context.Context) {
@@ -196,6 +229,16 @@ func NewColBatchScan(
 	if err != nil {
 		return nil, err
 	}
+	fetchedCols := len(spec.FetchSpec.FetchedColumns)
+	if len(spec.JsonAccesses) > 0 {
+		for i := range spec.JsonAccesses {
+			typ, err := jsonAccessResultType(row.JSONAccessKind(spec.JsonAccesses[i].Kind))
+			if err != nil {
+				return nil, err
+			}
+			tableArgs.typs = append(tableArgs.typs, typ)
+		}
+	}
 
 	fetcher := cFetcherPool.Get().(*cFetcher)
 	fetcher.cFetcherArgs = cFetcherArgs{
@@ -211,6 +254,100 @@ func NewColBatchScan(
 	if err = fetcher.Init(allocator, kvFetcherMemAcc, tableArgs); err != nil {
 		fetcher.Release()
 		return nil, err
+	}
+	if spec.JsonExistsFilter != nil {
+		if err := fetcher.ConfigureJSONExistsFilter(
+			int(spec.JsonExistsFilter.SourceColIdx),
+			row.JSONAccessKind(spec.JsonExistsFilter.Kind),
+			spec.JsonExistsFilter.Key,
+			append([]string(nil), spec.JsonExistsFilter.Keys...),
+			postProcessOutputsFetchedColumn(post, fetchedCols, int(spec.JsonExistsFilter.SourceColIdx)),
+		); err != nil {
+			fetcher.Release()
+			return nil, err
+		}
+	}
+	if spec.JsonPathCompareFilter != nil {
+		var rightDatum tree.Datum
+		mode := exec.JSONPathFilterMode(spec.JsonPathCompareFilter.Mode)
+		if mode != exec.JSONPathFilterIsNull && mode != exec.JSONPathFilterIsNotNull {
+			rightExpr := spec.JsonPathCompareFilter.Right.LocalExpr
+			if rightExpr == nil {
+				rightExpr, err = execinfrapb.DeserializeExpr(
+					spec.JsonPathCompareFilter.Right.Expr, flowCtx.NewSemaContext(flowCtx.Txn), flowCtx.EvalCtx, &tree.IndexedVarHelper{},
+				)
+				if err != nil {
+					fetcher.Release()
+					return nil, err
+				}
+			}
+			rightDatum, err = rightExpr.Eval(flowCtx.EvalCtx)
+			if err != nil {
+				fetcher.Release()
+				return nil, err
+			}
+		}
+		if err := fetcher.ConfigureJSONPathCompareFilter(
+			flowCtx.EvalCtx,
+			int(spec.JsonPathCompareFilter.SourceColIdx),
+			row.JSONAccessKind(spec.JsonPathCompareFilter.Kind),
+			append([]string(nil), spec.JsonPathCompareFilter.Path...),
+			mode,
+			rightDatum,
+			postProcessOutputsFetchedColumn(post, fetchedCols, int(spec.JsonPathCompareFilter.SourceColIdx)),
+		); err != nil {
+			fetcher.Release()
+			return nil, err
+		}
+	}
+	if spec.JsonContainsFilter != nil {
+		rightExpr := spec.JsonContainsFilter.Right.LocalExpr
+		if rightExpr == nil {
+			rightExpr, err = execinfrapb.DeserializeExpr(
+				spec.JsonContainsFilter.Right.Expr, flowCtx.NewSemaContext(flowCtx.Txn), flowCtx.EvalCtx, &tree.IndexedVarHelper{},
+			)
+			if err != nil {
+				fetcher.Release()
+				return nil, err
+			}
+		}
+		rightDatum, err := rightExpr.Eval(flowCtx.EvalCtx)
+		if err != nil {
+			fetcher.Release()
+			return nil, err
+		}
+		rightJSON, ok := rightDatum.(*tree.DJSON)
+		if !ok {
+			fetcher.Release()
+			return nil, errors.AssertionFailedf("JSON contains filter right datum has type %T", rightDatum)
+		}
+		if err := fetcher.ConfigureJSONContainsFilter(
+			int(spec.JsonContainsFilter.SourceColIdx),
+			append([]string(nil), spec.JsonContainsFilter.Path...),
+			spec.JsonContainsFilter.ContainedBy,
+			rightJSON.JSON,
+			postProcessOutputsFetchedColumn(post, fetchedCols, int(spec.JsonContainsFilter.SourceColIdx)),
+		); err != nil {
+			fetcher.Release()
+			return nil, err
+		}
+	}
+	if len(spec.JsonAccesses) > 0 {
+		programs := make([]row.JSONAccessSpec, len(spec.JsonAccesses))
+		for i := range spec.JsonAccesses {
+			programs[i] = row.JSONAccessSpec{
+				ColIdx:      int(spec.JsonAccesses[i].SourceColIdx),
+				Kind:        row.JSONAccessKind(spec.JsonAccesses[i].Kind),
+				Key:         spec.JsonAccesses[i].Key,
+				Keys:        append([]string(nil), spec.JsonAccesses[i].Keys...),
+				Path:        append([]string(nil), spec.JsonAccesses[i].Path...),
+				Materialize: postProcessOutputsFetchedColumn(post, fetchedCols, int(spec.JsonAccesses[i].SourceColIdx)),
+			}
+		}
+		if err := fetcher.ConfigureJSONAccessPrograms(programs, fetchedCols); err != nil {
+			fetcher.Release()
+			return nil, err
+		}
 	}
 
 	var bsHeader *roachpb.BoundedStalenessHeader

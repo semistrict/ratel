@@ -179,6 +179,9 @@ func supportedNatively(spec *execinfrapb.ProcessorSpec) error {
 		return nil
 
 	case spec.Core.TableReader != nil:
+		if tr := spec.Core.TableReader; tr.ArrayEqualsAnyFilter != nil {
+			return errTableReaderScanLocalWrap
+		}
 		return nil
 
 	case spec.Core.JoinReader != nil:
@@ -256,6 +259,7 @@ var (
 	errExporterWrap                   = errors.New("core.Exporter is not supported (not an execinfra.RowSource)")
 	errSamplerWrap                    = errors.New("core.Sampler is not supported (not an execinfra.RowSource)")
 	errSampleAggregatorWrap           = errors.New("core.SampleAggregator is not supported (not an execinfra.RowSource)")
+	errTableReaderScanLocalWrap       = errors.New("table reader scan-local array/json execution is not supported in vectorized")
 	errExperimentalWrappingProhibited = errors.New("wrapping for non-JoinReader and non-LocalPlanNode cores is prohibited in vectorize=experimental_always")
 	errWrappedCast                    = errors.New("mismatched types in NewColOperator and unsupported casts")
 	errLookupJoinUnsupported          = errors.New("lookup join reader is unsupported in vectorized")

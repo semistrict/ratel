@@ -38,6 +38,7 @@ import (
 	"github.com/semistrict/ratel/pkg/sql/colmem"
 	"github.com/semistrict/ratel/pkg/sql/execinfra"
 	"github.com/semistrict/ratel/pkg/sql/kvstreamer"
+	"github.com/semistrict/ratel/pkg/sql/opt/exec"
 	"github.com/semistrict/ratel/pkg/sql/row"
 	"github.com/semistrict/ratel/pkg/sql/rowenc"
 	"github.com/semistrict/ratel/pkg/sql/rowenc/valueside"
@@ -48,6 +49,7 @@ import (
 	"github.com/semistrict/ratel/pkg/util"
 	"github.com/semistrict/ratel/pkg/util/encoding"
 	"github.com/semistrict/ratel/pkg/util/hlc"
+	jsonutil "github.com/semistrict/ratel/pkg/util/json"
 	"github.com/semistrict/ratel/pkg/util/log"
 	"github.com/semistrict/ratel/pkg/util/mon"
 )
@@ -116,35 +118,156 @@ func newCTableInfo() *cTableInfo {
 	return cTableInfoPool.Get().(*cTableInfo)
 }
 
-type subordinateArrayBuilder struct {
-	elemType *types.T
-	elems    tree.Datums
-}
+type subordinateArrayBuilder = row.SubordinateArrayBuilder
+
+type subordinateJSONNodeKind = row.SubordinateJSONNodeKind
+
+const (
+	subordinateJSONNodeScalar = row.SubordinateJSONNodeScalar
+	subordinateJSONNodeObject = row.SubordinateJSONNodeObject
+	subordinateJSONNodeArray  = row.SubordinateJSONNodeArray
+)
+
+type subordinateJSONBuilder = row.SubordinateJSONBuilder
 
 func newSubordinateArrayBuilder(elemType *types.T) *subordinateArrayBuilder {
-	return &subordinateArrayBuilder{elemType: elemType}
+	return row.NewSubordinateArrayBuilder(elemType)
 }
 
-func (b *subordinateArrayBuilder) Set(elemIdx int, value tree.Datum) {
-	if elemIdx >= len(b.elems) {
-		elems := make(tree.Datums, elemIdx+1)
-		copy(elems, b.elems)
-		b.elems = elems
+func (cf *cFetcher) registerJSONAccessProgram(
+	spec row.JSONAccessSpec,
+) (*cSharedJSONAccessProgramState, error) {
+	key := row.SharedJSONAccessProgramKey(spec)
+	for _, shared := range cf.jsonSharedAccessPrograms {
+		if shared.key != key {
+			continue
+		}
+		shared.materialize = shared.materialize || spec.Materialize
+		return shared, nil
 	}
-	b.elems[elemIdx] = value
+	prog, err := row.NewJSONAccessProgram(spec)
+	if err != nil {
+		return nil, err
+	}
+	shared := &cSharedJSONAccessProgramState{
+		key:         key,
+		colIdx:      spec.ColIdx,
+		materialize: spec.Materialize,
+		program:     prog,
+	}
+	if spec.Kind == row.JSONAccessFetchJSONPath || spec.Kind == row.JSONAccessFetchTextPath {
+		selected := cf.registerJSONSelectedPath(spec.ColIdx, spec.Path)
+		selected.materialize = selected.materialize || spec.Materialize
+		selected.access = append(selected.access, shared)
+		shared.selected = selected
+	}
+	cf.jsonSharedAccessPrograms = append(cf.jsonSharedAccessPrograms, shared)
+	if cf.jsonSharedAccessByCol == nil {
+		cf.jsonSharedAccessByCol = make(map[int][]*cSharedJSONAccessProgramState)
+	}
+	cf.jsonSharedAccessByCol[spec.ColIdx] = append(cf.jsonSharedAccessByCol[spec.ColIdx], shared)
+	return shared, nil
 }
 
-func (b *subordinateArrayBuilder) Materialize() (*tree.DArray, error) {
-	arr := tree.NewDArray(b.elemType)
-	for i, elem := range b.elems {
-		if elem == nil {
-			return nil, errors.AssertionFailedf("missing subordinate array element %d", i)
-		}
-		if err := arr.Append(elem); err != nil {
-			return nil, err
+func (cf *cFetcher) registerJSONSelectedPath(
+	colIdx int, path []string,
+) *cSharedJSONSelectedPathState {
+	key := row.SharedJSONSelectedPathKey(colIdx, path)
+	for _, shared := range cf.jsonSharedSelectedPaths {
+		if shared.key == key {
+			return shared
 		}
 	}
-	return arr, nil
+	shared := &cSharedJSONSelectedPathState{
+		key:      key,
+		colIdx:   colIdx,
+		selector: row.NewJSONSelectedPathState(path),
+	}
+	cf.jsonSharedSelectedPaths = append(cf.jsonSharedSelectedPaths, shared)
+	if cf.jsonSharedSelectedByCol == nil {
+		cf.jsonSharedSelectedByCol = make(map[int][]*cSharedJSONSelectedPathState)
+	}
+	cf.jsonSharedSelectedByCol[colIdx] = append(cf.jsonSharedSelectedByCol[colIdx], shared)
+	return shared
+}
+
+func (s *cSharedJSONAccessProgramState) reset() {
+	s.sawSubordinate = false
+	s.program.Reset()
+	if s.selected != nil {
+		return
+	}
+	s.cachedResult = nil
+	s.haveCached = false
+}
+
+func (s *cSharedJSONAccessProgramState) observe(
+	path []keys.SubordinatePathSegment,
+	kind rowenc.SubordinateJSONNodeKind,
+	childCount int,
+	j jsonutil.JSON,
+) error {
+	s.sawSubordinate = true
+	return s.program.Observe(path, kind, childCount, j)
+}
+
+func (s *cSharedJSONAccessProgramState) resultDatum(kind row.JSONAccessKind) (tree.Datum, error) {
+	if s.selected != nil {
+		return s.selected.resultDatum(kind)
+	}
+	if s.haveCached {
+		return s.cachedResult, nil
+	}
+	d, err := s.program.ResultDatumForKind(kind)
+	if err != nil {
+		return nil, err
+	}
+	s.cachedResult = d
+	s.haveCached = true
+	return d, nil
+}
+
+func (s *cSharedJSONSelectedPathState) reset() {
+	s.selector.Reset()
+	s.builder = nil
+	s.cache.Reset()
+}
+
+func (s *cSharedJSONSelectedPathState) observe(
+	path []keys.SubordinatePathSegment,
+	kind rowenc.SubordinateJSONNodeKind,
+	childCount int,
+	j jsonutil.JSON,
+) error {
+	relPath, ok, err := s.selector.Select(path, kind, childCount, j)
+	if err != nil || !ok {
+		return err
+	}
+	if len(s.access) > 0 {
+		nodeKind, err := row.SubordinateJSONNodeKindFromEncoded(kind)
+		if err != nil {
+			return err
+		}
+		if s.builder == nil {
+			s.builder = &subordinateJSONBuilder{}
+		}
+		if err := s.builder.Set(relPath, nodeKind, j); err != nil {
+			return err
+		}
+	}
+	for _, access := range s.access {
+		access.sawSubordinate = true
+	}
+	for _, contains := range s.contains {
+		if err := contains.program.ObserveSelected(relPath, kind, childCount, j); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *cSharedJSONSelectedPathState) resultDatum(kind row.JSONAccessKind) (tree.Datum, error) {
+	return s.cache.ResultDatum(s.builder, kind)
 }
 
 // Release implements the execinfra.Releasable interface.
@@ -316,8 +439,28 @@ type cFetcher struct {
 	// row assembly. Keyed by fetched-column ordinal.
 	subordinateArrays map[int]*subordinateArrayBuilder
 
-	// hasArrayColumns indicates that subordinate keys may be present.
-	hasArrayColumns bool
+	// subordinateJSONBuilders accumulates recursive JSON nodes from subordinate
+	// keys during row assembly. Keyed by fetched-column ordinal.
+	subordinateJSONBuilders map[int]*subordinateJSONBuilder
+
+	jsonExistsFilter              *cJSONExistsFilterState
+	lastRowPassesJSONExistsFilter bool
+
+	jsonPathCompareFilter              *cJSONPathCompareFilterState
+	lastRowPassesJSONPathCompareFilter bool
+
+	jsonContainsFilter              *cJSONContainsFilterState
+	lastRowPassesJSONContainsFilter bool
+
+	jsonAccessPrograms              []cJSONAccessProgramState
+	lastRowJSONAccessProgramResults []tree.Datum
+	jsonSharedAccessPrograms        []*cSharedJSONAccessProgramState
+	jsonSharedAccessByCol           map[int][]*cSharedJSONAccessProgramState
+	jsonSharedSelectedPaths         []*cSharedJSONSelectedPathState
+	jsonSharedSelectedByCol         map[int][]*cSharedJSONSelectedPathState
+
+	// hasSubordinateColumns indicates that subordinate keys may be present.
+	hasSubordinateColumns bool
 
 	// scratch is a scratch space used when decoding bytes-like and decimal
 	// keys.
@@ -328,6 +471,55 @@ type cFetcher struct {
 	// kvFetcherMemAcc is a memory account that will be used by the underlying
 	// KV fetcher.
 	kvFetcherMemAcc *mon.BoundAccount
+}
+
+type cJSONExistsFilterState struct {
+	kind   row.JSONAccessKind
+	shared *cSharedJSONAccessProgramState
+}
+
+type cJSONPathCompareFilterState struct {
+	evalCtx *tree.EvalContext
+	kind    row.JSONAccessKind
+	mode    exec.JSONPathFilterMode
+	right   tree.Datum
+	shared  *cSharedJSONAccessProgramState
+}
+
+type cJSONContainsFilterState struct {
+	colIdx      int
+	materialize bool
+	containedBy bool
+	program     *row.JSONContainsProgram
+	selected    *cSharedJSONSelectedPathState
+}
+
+type cJSONAccessProgramState struct {
+	outputIdx int
+	kind      row.JSONAccessKind
+	shared    *cSharedJSONAccessProgramState
+}
+
+type cSharedJSONAccessProgramState struct {
+	key            string
+	colIdx         int
+	materialize    bool
+	sawSubordinate bool
+	program        *row.JSONAccessProgram
+	selected       *cSharedJSONSelectedPathState
+	cachedResult   tree.Datum
+	haveCached     bool
+}
+
+type cSharedJSONSelectedPathState struct {
+	key         string
+	colIdx      int
+	materialize bool
+	selector    *row.JSONSelectedPathState
+	builder     *subordinateJSONBuilder
+	cache       row.JSONSelectedPathResultCache
+	access      []*cSharedJSONAccessProgramState
+	contains    []*cJSONContainsFilterState
 }
 
 func (cf *cFetcher) resetBatch() {
@@ -512,13 +704,128 @@ func (cf *cFetcher) Init(
 	cf.table = table
 	cf.accountingHelper.Init(allocator, cf.memoryLimit, cf.table.typs)
 	for i := range tableArgs.spec.FetchedColumns {
-		if tableArgs.spec.FetchedColumns[i].Type.Family() == types.ArrayFamily {
-			cf.hasArrayColumns = true
+		switch tableArgs.spec.FetchedColumns[i].Type.Family() {
+		case types.ArrayFamily, types.JsonFamily:
+			cf.hasSubordinateColumns = true
 			break
 		}
 	}
 
 	return nil
+}
+
+func (cf *cFetcher) ConfigureJSONExistsFilter(
+	colIdx int, kind row.JSONAccessKind, key string, keys []string, materialize bool,
+) error {
+	shared, err := cf.registerJSONAccessProgram(row.JSONAccessSpec{
+		ColIdx:      colIdx,
+		Kind:        kind,
+		Key:         key,
+		Keys:        keys,
+		Materialize: materialize,
+	})
+	if err != nil {
+		return err
+	}
+	cf.jsonExistsFilter = &cJSONExistsFilterState{
+		kind:   kind,
+		shared: shared,
+	}
+	cf.lastRowPassesJSONExistsFilter = true
+	return nil
+}
+
+func (cf *cFetcher) ConfigureJSONPathCompareFilter(
+	evalCtx *tree.EvalContext,
+	colIdx int,
+	kind row.JSONAccessKind,
+	path []string,
+	mode exec.JSONPathFilterMode,
+	right tree.Datum,
+	materialize bool,
+) error {
+	shared, err := cf.registerJSONAccessProgram(row.JSONAccessSpec{
+		ColIdx:      colIdx,
+		Kind:        kind,
+		Path:        path,
+		Materialize: materialize,
+	})
+	if err != nil {
+		return err
+	}
+	cf.jsonPathCompareFilter = &cJSONPathCompareFilterState{
+		evalCtx: evalCtx,
+		kind:    kind,
+		mode:    mode,
+		right:   right,
+		shared:  shared,
+	}
+	cf.lastRowPassesJSONPathCompareFilter = true
+	return nil
+}
+
+func (cf *cFetcher) ConfigureJSONContainsFilter(
+	colIdx int, path []string, containedBy bool, right jsonutil.JSON, materialize bool,
+) error {
+	prog, err := row.NewJSONContainsProgram(path, right, containedBy)
+	if err != nil {
+		return err
+	}
+	cf.jsonContainsFilter = &cJSONContainsFilterState{
+		colIdx:      colIdx,
+		materialize: materialize,
+		containedBy: containedBy,
+		program:     prog,
+	}
+	selected := cf.registerJSONSelectedPath(colIdx, path)
+	selected.materialize = selected.materialize || materialize
+	selected.contains = append(selected.contains, cf.jsonContainsFilter)
+	cf.jsonContainsFilter.selected = selected
+	cf.lastRowPassesJSONContainsFilter = true
+	return nil
+}
+
+func (cf *cFetcher) ConfigureJSONAccessPrograms(specs []row.JSONAccessSpec, outputStartIdx int) error {
+	cf.jsonAccessPrograms = cf.jsonAccessPrograms[:0]
+	cf.lastRowJSONAccessProgramResults = cf.lastRowJSONAccessProgramResults[:0]
+	if len(specs) == 0 {
+		return nil
+	}
+	for i, spec := range specs {
+		shared, err := cf.registerJSONAccessProgram(spec)
+		if err != nil {
+			return err
+		}
+		cf.jsonAccessPrograms = append(cf.jsonAccessPrograms, cJSONAccessProgramState{
+			outputIdx: outputStartIdx + i,
+			kind:      spec.Kind,
+			shared:    shared,
+		})
+		cf.lastRowJSONAccessProgramResults = append(cf.lastRowJSONAccessProgramResults, nil)
+	}
+	return nil
+}
+
+func (cf *cFetcher) resetJSONProgramsForRow() {
+	if cf.jsonExistsFilter != nil {
+		cf.lastRowPassesJSONExistsFilter = true
+	}
+	if cf.jsonPathCompareFilter != nil {
+		cf.lastRowPassesJSONPathCompareFilter = true
+	}
+	for i := range cf.jsonSharedAccessPrograms {
+		cf.jsonSharedAccessPrograms[i].reset()
+	}
+	for i := range cf.jsonSharedSelectedPaths {
+		cf.jsonSharedSelectedPaths[i].reset()
+	}
+	if cf.jsonContainsFilter != nil {
+		cf.jsonContainsFilter.program.Reset()
+		cf.lastRowPassesJSONContainsFilter = true
+	}
+	for i := range cf.jsonAccessPrograms {
+		cf.lastRowJSONAccessProgramResults[i] = nil
+	}
 }
 
 //gcassert:inline
@@ -560,8 +867,8 @@ func (cf *cFetcher) StartScan(
 	// a very restrictive filter and actually have to retrieve a lot of rows).
 	firstBatchLimit := rowinfra.KeyLimit(limitHint)
 	if firstBatchLimit != 0 {
-		if cf.hasArrayColumns || cf.table.spec.MaxKeysPerRow == 0 {
-			// Array subordinate keys make the number of KVs per row unbounded.
+		if cf.hasSubordinateColumns || cf.table.spec.MaxKeysPerRow == 0 {
+			// Subordinate keys make the number of KVs per row unbounded.
 			firstBatchLimit = 0
 		} else {
 			firstBatchLimit = rowinfra.KeyLimit(int(limitHint) * int(cf.table.spec.MaxKeysPerRow))
@@ -641,7 +948,7 @@ const (
 	stateDecodeFirstKVOfRow
 
 	// stateFetchNextKVWithUnfinishedRow continues consuming KVs that share the
-	// current row prefix. This is needed for subordinate array keys.
+	// current row prefix. This is needed for subordinate keys.
 	stateFetchNextKVWithUnfinishedRow
 
 	// stateFinalizeRow is the state of finalizing a row. It assumes that no more
@@ -747,6 +1054,7 @@ func (cf *cFetcher) NextBatch(ctx context.Context) (coldata.Batch, error) {
 		case stateDecodeFirstKVOfRow:
 			// Reset MVCC metadata for the table, since this is the first KV of a row.
 			cf.table.rowLastModified = hlc.Timestamp{}
+			cf.resetJSONProgramsForRow()
 
 			if cf.mustDecodeIndexKey {
 				if debugState {
@@ -789,7 +1097,7 @@ func (cf *cFetcher) NextBatch(ctx context.Context) (coldata.Batch, error) {
 			if cf.table.rowLastModified.Less(cf.machine.nextKV.Value.Timestamp) {
 				cf.table.rowLastModified = cf.machine.nextKV.Value.Timestamp
 			}
-			if cf.table.spec.MaxKeysPerRow == 1 && !cf.hasArrayColumns {
+			if cf.table.spec.MaxKeysPerRow == 1 && !cf.hasSubordinateColumns {
 				cf.machine.state[0] = stateFinalizeRow
 				cf.machine.state[1] = stateInitFetch
 				continue
@@ -821,7 +1129,24 @@ func (cf *cFetcher) NextBatch(ctx context.Context) (coldata.Batch, error) {
 			cf.machine.state[0] = stateFetchNextKVWithUnfinishedRow
 
 		case stateFinalizeRow:
-			if err := cf.finalizeSubordinateArrays(); err != nil {
+			if err := cf.finishJSONExistsFilter(); err != nil {
+				return nil, err
+			}
+			if err := cf.finishJSONPathCompareFilter(); err != nil {
+				return nil, err
+			}
+			if err := cf.finishJSONContainsFilter(); err != nil {
+				return nil, err
+			}
+			if !cf.lastRowPassesJSONExistsFilter || !cf.lastRowPassesJSONPathCompareFilter || !cf.lastRowPassesJSONContainsFilter {
+				cf.clearSubordinateBuilders()
+				cf.shiftState()
+				continue
+			}
+			if err := cf.finalizeSubordinateValues(); err != nil {
+				return nil, err
+			}
+			if err := cf.finalizeJSONAccessPrograms(); err != nil {
 				return nil, err
 			}
 			// Populate the timestamp system column if needed. We have to do it
@@ -1068,9 +1393,9 @@ func (cf *cFetcher) processValueSingle(
 			return prettyKey, "", nil
 		}
 		typ := cf.table.spec.FetchedColumns[idx].Type
-		if typ.Family() == types.ArrayFamily {
+		if typ.Family() == types.ArrayFamily || typ.Family() == types.JsonFamily {
 			return "", "", errors.AssertionFailedf(
-				"column %q (id=%d) has array type encoded as single-column row-group value; incompatible data layout",
+				"column %q (id=%d) has subordinate-encoded type stored as single-column row-group value; incompatible data layout",
 				cf.table.spec.FetchedColumns[idx].Name, colID,
 			)
 		}
@@ -1099,8 +1424,91 @@ func (cf *cFetcher) processValueSingle(
 	return prettyKey, prettyValue, nil
 }
 
-// processSubordinateValue handles a subordinate key holding a single array
-// element. remaining is the key suffix after the family-0 sentinel.
+func (cf *cFetcher) finishJSONExistsFilter() error {
+	if cf.jsonExistsFilter == nil {
+		cf.lastRowPassesJSONExistsFilter = true
+		return nil
+	}
+	f := cf.jsonExistsFilter
+	d, err := f.shared.resultDatum(f.kind)
+	if err != nil {
+		return err
+	}
+	cf.lastRowPassesJSONExistsFilter = d == tree.DBoolTrue
+	return nil
+}
+
+func (cf *cFetcher) finishJSONPathCompareFilter() error {
+	if cf.jsonPathCompareFilter == nil {
+		cf.lastRowPassesJSONPathCompareFilter = true
+		return nil
+	}
+	f := cf.jsonPathCompareFilter
+	d, err := f.shared.resultDatum(f.kind)
+	if err != nil {
+		return err
+	}
+	cf.lastRowPassesJSONPathCompareFilter, err = row.EvalJSONPathFilterDatum(f.evalCtx, f.mode, d, f.right)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (cf *cFetcher) finishJSONContainsFilter() error {
+	if cf.jsonContainsFilter == nil {
+		cf.lastRowPassesJSONContainsFilter = true
+		return nil
+	}
+	f := cf.jsonContainsFilter
+	contains, err := f.program.Passes()
+	if err != nil {
+		return err
+	}
+	cf.lastRowPassesJSONContainsFilter = contains
+	return nil
+}
+
+func (cf *cFetcher) finalizeJSONAccessPrograms() error {
+	for i := range cf.jsonAccessPrograms {
+		prog := &cf.jsonAccessPrograms[i]
+		d, err := prog.shared.resultDatum(prog.kind)
+		if err != nil {
+			return err
+		}
+		cf.lastRowJSONAccessProgramResults[i] = d
+		if d == tree.DNull {
+			cf.machine.colvecs.Nulls[prog.outputIdx].SetNull(cf.machine.rowIdx)
+			continue
+		}
+		switch v := d.(type) {
+		case *tree.DBool:
+			cf.machine.colvecs.BoolCols[cf.machine.colvecs.ColsMap[prog.outputIdx]][cf.machine.rowIdx] = bool(*v)
+			cf.machine.colvecs.Nulls[prog.outputIdx].UnsetNull(cf.machine.rowIdx)
+		case *tree.DString:
+			cf.machine.colvecs.BytesCols[cf.machine.colvecs.ColsMap[prog.outputIdx]].Set(cf.machine.rowIdx, []byte(string(*v)))
+			cf.machine.colvecs.Nulls[prog.outputIdx].UnsetNull(cf.machine.rowIdx)
+		case *tree.DJSON:
+			cf.machine.colvecs.Vecs[prog.outputIdx].JSON().Set(cf.machine.rowIdx, v.JSON)
+			cf.machine.colvecs.Nulls[prog.outputIdx].UnsetNull(cf.machine.rowIdx)
+		default:
+			return errors.AssertionFailedf("unexpected JSON access program result type %T", d)
+		}
+	}
+	return nil
+}
+
+func (cf *cFetcher) clearSubordinateBuilders() {
+	for k := range cf.subordinateArrays {
+		delete(cf.subordinateArrays, k)
+	}
+	for k := range cf.subordinateJSONBuilders {
+		delete(cf.subordinateJSONBuilders, k)
+	}
+}
+
+// processSubordinateValue handles a subordinate key stored under the row's
+// family-0 sentinel.
 func (cf *cFetcher) processSubordinateValue(
 	ctx context.Context,
 	table *cTableInfo,
@@ -1108,17 +1516,13 @@ func (cf *cFetcher) processSubordinateValue(
 	prettyKeyPrefix string,
 ) (prettyKey string, prettyValue string, err error) {
 	prettyKey = prettyKeyPrefix
+	_ = remaining
 
-	remaining, colID64, err := encoding.DecodeUvarintAscending(remaining)
+	_, colID64, path, err := keys.DecodeSubordinatePathKey(cf.machine.nextKV.Key)
 	if err != nil {
-		return "", "", errors.Wrap(err, "decoding subordinate key column ID")
+		return "", "", err
 	}
 	colID := descpb.ColumnID(colID64)
-	_, elemIdx64, err := encoding.DecodeUvarintAscending(remaining)
-	if err != nil {
-		return "", "", errors.Wrap(err, "decoding subordinate key element index")
-	}
-	elemIdx := int(elemIdx64)
 
 	idx, ok := table.ColIdxMap.Get(colID)
 	if !ok {
@@ -1126,32 +1530,135 @@ func (cf *cFetcher) processSubordinateValue(
 	}
 
 	colSpec := &table.spec.FetchedColumns[idx]
-	elemType := colSpec.Type.ArrayContents()
-	val := cf.machine.nextKV.Value
-	var value tree.Datum
-	if rowenc.IsSubordinateNull(val) {
-		value = tree.DNull
-	} else {
-		value, err = valueside.UnmarshalLegacy(&table.da, elemType, val)
-		if err != nil {
-			return "", "", errors.Wrapf(err, "decoding subordinate value for column %d", colID)
+	switch colSpec.Type.Family() {
+	case types.ArrayFamily:
+		if len(path) != 1 || path[0].Kind != keys.SubordinatePathArrayIndex {
+			return "", "", errors.AssertionFailedf(
+				"invalid subordinate array path for column %q: %+v",
+				colSpec.Name, path,
+			)
 		}
-	}
+		elemIdx := int(path[0].ArrayIdx)
+		elemType := colSpec.Type.ArrayContents()
+		val := cf.machine.nextKV.Value
+		var value tree.Datum
+		if rowenc.IsSubordinateNull(val) {
+			value = tree.DNull
+		} else {
+			value, err = valueside.UnmarshalLegacy(&table.da, elemType, val)
+			if err != nil {
+				return "", "", errors.Wrapf(err, "decoding subordinate value for column %d", colID)
+			}
+		}
 
-	if cf.subordinateArrays == nil {
-		cf.subordinateArrays = make(map[int]*subordinateArrayBuilder)
+		if cf.subordinateArrays == nil {
+			cf.subordinateArrays = make(map[int]*subordinateArrayBuilder)
+		}
+		arr, exists := cf.subordinateArrays[idx]
+		if !exists {
+			arr = newSubordinateArrayBuilder(elemType)
+			cf.subordinateArrays[idx] = arr
+		}
+		arr.Set(elemIdx, value)
+		if cf.traceKV {
+			prettyKey = fmt.Sprintf("%s/%s[%d]", prettyKey, colSpec.Name, elemIdx)
+			prettyValue = value.String()
+		}
+		return prettyKey, prettyValue, nil
+
+	case types.JsonFamily:
+		nodeKind, childCount, j, err := rowenc.DecodeSubordinateJSONValueWithCardinality(cf.machine.nextKV.Value)
+		if err != nil {
+			return "", "", errors.Wrapf(err, "decoding subordinate JSON value for column %d", colID)
+		}
+		kind, err := row.SubordinateJSONNodeKindFromEncoded(nodeKind)
+		if err != nil {
+			return "", "", err
+		}
+
+		needMaterialize := false
+		if cf.jsonExistsFilter != nil && cf.jsonExistsFilter.shared.colIdx == idx {
+			needMaterialize = needMaterialize || cf.jsonExistsFilter.shared.materialize
+		}
+		if cf.jsonPathCompareFilter != nil && cf.jsonPathCompareFilter.shared.colIdx == idx {
+			needMaterialize = needMaterialize || cf.jsonPathCompareFilter.shared.materialize
+		}
+		if cf.jsonContainsFilter != nil && cf.jsonContainsFilter.colIdx == idx && cf.jsonContainsFilter.selected == nil {
+			if err := cf.jsonContainsFilter.program.Observe(path, nodeKind, childCount, j); err != nil {
+				return "", "", err
+			}
+			needMaterialize = needMaterialize || cf.jsonContainsFilter.materialize
+		}
+		sawSelectedPathProgram := false
+		for _, shared := range cf.jsonSharedSelectedByCol[idx] {
+			sawSelectedPathProgram = true
+			if err := shared.observe(path, nodeKind, childCount, j); err != nil {
+				return "", "", err
+			}
+			needMaterialize = needMaterialize || shared.materialize
+		}
+		sawJSONProgram := false
+		for _, shared := range cf.jsonSharedAccessByCol[idx] {
+			if shared.selected != nil {
+				continue
+			}
+			if err := shared.observe(path, nodeKind, childCount, j); err != nil {
+				return "", "", err
+			}
+			sawJSONProgram = true
+			needMaterialize = needMaterialize || shared.materialize
+		}
+		if (cf.jsonExistsFilter != nil && cf.jsonExistsFilter.shared.colIdx == idx) ||
+			(cf.jsonPathCompareFilter != nil && cf.jsonPathCompareFilter.shared.colIdx == idx) ||
+			(cf.jsonContainsFilter != nil && cf.jsonContainsFilter.colIdx == idx) ||
+			sawJSONProgram ||
+			sawSelectedPathProgram {
+			if !needMaterialize {
+				if cf.traceKV {
+					prettyKey = fmt.Sprintf("%s/%s", prettyKey, colSpec.Name)
+					if j != nil {
+						prettyValue = j.String()
+					}
+				}
+				return prettyKey, prettyValue, nil
+			}
+		}
+
+		if cf.subordinateJSONBuilders == nil {
+			cf.subordinateJSONBuilders = make(map[int]*subordinateJSONBuilder)
+		}
+		builder := cf.subordinateJSONBuilders[idx]
+		if builder == nil {
+			builder = &subordinateJSONBuilder{}
+			cf.subordinateJSONBuilders[idx] = builder
+		}
+		if err := builder.Set(path, kind, j); err != nil {
+			return "", "", err
+		}
+		if cf.traceKV {
+			prettyKey = fmt.Sprintf("%s/%s", prettyKey, colSpec.Name)
+			if len(path) > 1 {
+				for _, seg := range path[1:] {
+					switch seg.Kind {
+					case keys.SubordinatePathObjectKey:
+						prettyKey = fmt.Sprintf("%s.%s", prettyKey, seg.ObjectKey)
+					case keys.SubordinatePathArrayIndex:
+						prettyKey = fmt.Sprintf("%s[%d]", prettyKey, seg.ArrayIdx)
+					}
+				}
+			}
+			if j != nil {
+				prettyValue = j.String()
+			}
+		}
+		return prettyKey, prettyValue, nil
+
+	default:
+		return "", "", errors.AssertionFailedf(
+			"column %q has unsupported subordinate-encoded type %s",
+			colSpec.Name, colSpec.Type.Family(),
+		)
 	}
-	arr, exists := cf.subordinateArrays[idx]
-	if !exists {
-		arr = newSubordinateArrayBuilder(elemType)
-		cf.subordinateArrays[idx] = arr
-	}
-	arr.Set(elemIdx, value)
-	if cf.traceKV {
-		prettyKey = fmt.Sprintf("%s/%s[%d]", prettyKey, colSpec.Name, elemIdx)
-		prettyValue = value.String()
-	}
-	return prettyKey, prettyValue, nil
 }
 
 func (cf *cFetcher) processValueBytes(
@@ -1219,6 +1726,12 @@ func (cf *cFetcher) processValueBytes(
 		if cf.traceKV {
 			prettyKey = fmt.Sprintf("%s/%s", prettyKey, table.spec.FetchedColumns[vecIdx].Name)
 		}
+		if table.spec.FetchedColumns[vecIdx].Type.Family() == types.JsonFamily {
+			return "", "", errors.AssertionFailedf(
+				"column %q (id=%d) has JSON type encoded inline in the row value; incompatible data layout",
+				table.spec.FetchedColumns[vecIdx].Name, colID,
+			)
+		}
 
 		valueBytes, err = colencoding.DecodeTableValueToCol(
 			&table.da, &cf.machine.colvecs, vecIdx, cf.machine.rowIdx, typ,
@@ -1241,9 +1754,9 @@ func (cf *cFetcher) processValueBytes(
 	return prettyKey, prettyValue, nil
 }
 
-// finalizeSubordinateArrays writes accumulated array datums into the current
-// output row and clears the per-row accumulator.
-func (cf *cFetcher) finalizeSubordinateArrays() error {
+// finalizeSubordinateValues writes accumulated subordinate datums into the
+// current output row and clears the per-row accumulators.
+func (cf *cFetcher) finalizeSubordinateValues() error {
 	for idx, arrBuilder := range cf.subordinateArrays {
 		arr, err := arrBuilder.Materialize()
 		if err != nil {
@@ -1253,9 +1766,16 @@ func (cf *cFetcher) finalizeSubordinateArrays() error {
 		cf.machine.colvecs.Nulls[idx].UnsetNull(cf.machine.rowIdx)
 		cf.machine.remainingValueColsByIdx.Remove(idx)
 	}
-	for k := range cf.subordinateArrays {
-		delete(cf.subordinateArrays, k)
+	for idx, jsonBuilder := range cf.subordinateJSONBuilders {
+		j, err := jsonBuilder.Materialize()
+		if err != nil {
+			return err
+		}
+		cf.machine.colvecs.Vecs[idx].JSON().Set(cf.machine.rowIdx, j.JSON)
+		cf.machine.colvecs.Nulls[idx].UnsetNull(cf.machine.rowIdx)
+		cf.machine.remainingValueColsByIdx.Remove(idx)
 	}
+	cf.clearSubordinateBuilders()
 	return nil
 }
 

@@ -144,10 +144,8 @@ func (rd *Deleter) DeleteRow(
 		return err
 	}
 	// Delete all subordinate keys stored between the row sentinel and row group
-	// 1. This removes current array-element entries as well as orphaned entries
-	// left behind by dropped array columns.
-	subordinateStart := rowenc.SubordinateKeysForColumn(primaryIndexKey, 0, 1)[0]
-	subordinateEnd := keys.MakeFamilyKey(primaryIndexKey[:len(primaryIndexKey):len(primaryIndexKey)], 1)
+	// 1. This removes array, JSON, and orphaned subordinate entries.
+	subordinateStart, subordinateEnd := rowenc.SubordinateRowRange(primaryIndexKey)
 	if traceKV {
 		log.VEventf(ctx, 2, "DelRange %s - %s", subordinateStart, subordinateEnd)
 	}

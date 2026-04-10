@@ -49,6 +49,8 @@ type distSQLSpecExecFactory struct {
 
 var _ exec.Factory = &distSQLSpecExecFactory{}
 var _ exec.ArrayAnyScanFilterCapable = &distSQLSpecExecFactory{}
+var _ exec.JSONScanAccessCapable = &distSQLSpecExecFactory{}
+var _ exec.JSONPathCompareScanFilterCapable = &distSQLSpecExecFactory{}
 
 // distSQLPlanningMode indicates the planning mode in which
 // distSQLSpecExecFactory is operating.
@@ -83,6 +85,18 @@ func newDistSQLSpecExecFactory(p *planner, planningMode distSQLPlanningMode) exe
 }
 
 func (*distSQLSpecExecFactory) SupportsArrayAnyScanFilter() bool {
+	return true
+}
+
+func (*distSQLSpecExecFactory) SupportsJSONExistsScanFilter() bool {
+	return true
+}
+
+func (*distSQLSpecExecFactory) SupportsJSONScanAccessPrograms() bool {
+	return true
+}
+
+func (*distSQLSpecExecFactory) SupportsJSONPathCompareScanFilter() bool {
 	return true
 }
 
@@ -213,7 +227,15 @@ func (e *distSQLSpecExecFactory) ConstructScan(
 	allCols := tabDesc.AllColumns()
 	var arrayFilterFetchIdx int
 	arrayFilterFetchIdx = -1
+	var jsonExistsFilterFetchIdx int
+	jsonExistsFilterFetchIdx = -1
+	var jsonPathCompareFilterFetchIdx int
+	jsonPathCompareFilterFetchIdx = -1
+	var jsonContainsFilterFetchIdx int
+	jsonContainsFilterFetchIdx = -1
+	fetchIdxByTableOrd := make(map[int]int, params.NeededCols.Len()+params.ExtraNeededCols.Len())
 	for ord, ok := params.NeededCols.Next(0); ok; ord, ok = params.NeededCols.Next(ord + 1) {
+		fetchIdxByTableOrd[ord] = len(cols)
 		cols = append(cols, allCols[ord])
 	}
 	for ord, ok := params.ExtraNeededCols.Next(0); ok; ord, ok = params.ExtraNeededCols.Next(ord + 1) {
@@ -223,6 +245,16 @@ func (e *distSQLSpecExecFactory) ConstructScan(
 		if params.ArrayAnyFilter != nil && ord == int(params.ArrayAnyFilter.ArrayCol) {
 			arrayFilterFetchIdx = len(cols)
 		}
+		if params.JSONExistsFilter != nil && ord == int(params.JSONExistsFilter.SourceCol) {
+			jsonExistsFilterFetchIdx = len(cols)
+		}
+		if params.JSONPathCompareFilter != nil && ord == int(params.JSONPathCompareFilter.Access.SourceCol) {
+			jsonPathCompareFilterFetchIdx = len(cols)
+		}
+		if params.JSONContainsFilter != nil && ord == int(params.JSONContainsFilter.Access.SourceCol) {
+			jsonContainsFilterFetchIdx = len(cols)
+		}
+		fetchIdxByTableOrd[ord] = len(cols)
 		cols = append(cols, allCols[ord])
 	}
 	columnIDs := make([]descpb.ColumnID, len(cols))
@@ -230,7 +262,8 @@ func (e *distSQLSpecExecFactory) ConstructScan(
 		columnIDs[i] = cols[i].GetID()
 	}
 
-	p.ResultColumns = colinfo.ResultColumnsFromColumns(tabDesc.GetID(), cols)
+	fetchedResultCols := colinfo.ResultColumnsFromColumns(tabDesc.GetID(), cols)
+	p.ResultColumns = fetchedResultCols
 
 	if params.IndexConstraint != nil && params.IndexConstraint.IsContradiction() {
 		// Note that empty rows argument is handled by ConstructValues first -
@@ -288,11 +321,14 @@ func (e *distSQLSpecExecFactory) ConstructScan(
 	// don't know yet whether we will have it. ConstructFilter is responsible
 	// for pushing the filter down into the post-processing stage of this scan.
 	post := execinfrapb.PostProcessSpec{}
-	if params.ExtraNeededCols.Len() > 0 {
+	if params.ExtraNeededCols.Len() > 0 || len(params.JSONAccesses) > 0 {
 		post.Projection = true
-		post.OutputColumns = make([]uint32, 0, params.NeededCols.Len())
+		post.OutputColumns = make([]uint32, 0, params.NeededCols.Len()+len(params.JSONAccesses))
 		for i := 0; i < params.NeededCols.Len(); i++ {
 			post.OutputColumns = append(post.OutputColumns, uint32(i))
+		}
+		for i := range params.JSONAccesses {
+			post.OutputColumns = append(post.OutputColumns, uint32(len(cols)+i))
 		}
 	}
 	if params.HardLimit != 0 {
@@ -312,6 +348,86 @@ func (e *distSQLSpecExecFactory) ConstructScan(
 			ArrayColIdx: uint32(arrayFilterFetchIdx),
 			Left:        leftExpr,
 		}
+	}
+	if params.JSONExistsFilter != nil {
+		if jsonExistsFilterFetchIdx == -1 {
+			return nil, errors.AssertionFailedf(
+				"JSON exists filter column %d was not added to fetched columns", params.JSONExistsFilter.SourceCol,
+			)
+		}
+		trSpec.JsonExistsFilter = &execinfrapb.JSONExistsFilterSpec{
+			SourceColIdx: uint32(jsonExistsFilterFetchIdx),
+			Kind:         uint32(params.JSONExistsFilter.Kind),
+			Key:          params.JSONExistsFilter.Key,
+			Keys:         append([]string(nil), params.JSONExistsFilter.Keys...),
+		}
+	}
+	if params.JSONPathCompareFilter != nil {
+		if jsonPathCompareFilterFetchIdx == -1 {
+			return nil, errors.AssertionFailedf(
+				"JSON path compare filter column %d was not added to fetched columns", params.JSONPathCompareFilter.Access.SourceCol,
+			)
+		}
+		var rightExpr execinfrapb.Expression
+		if params.JSONPathCompareFilter.Right != nil {
+			var err error
+			rightExpr, err = physicalplan.MakeExpression(params.JSONPathCompareFilter.Right, e.getPlanCtx(recommendation), nil /* indexVarMap */)
+			if err != nil {
+				return nil, err
+			}
+		}
+		trSpec.JsonPathCompareFilter = &execinfrapb.JSONPathCompareFilterSpec{
+			SourceColIdx: uint32(jsonPathCompareFilterFetchIdx),
+			Kind:         uint32(params.JSONPathCompareFilter.Access.Kind),
+			Path:         append([]string(nil), params.JSONPathCompareFilter.Access.Path...),
+			Mode:         uint32(params.JSONPathCompareFilter.Mode),
+			Right:        rightExpr,
+		}
+	}
+	if params.JSONContainsFilter != nil {
+		if jsonContainsFilterFetchIdx == -1 {
+			return nil, errors.AssertionFailedf(
+				"JSON contains filter column %d was not added to fetched columns", params.JSONContainsFilter.Access.SourceCol,
+			)
+		}
+		rightExpr, err := physicalplan.MakeExpression(params.JSONContainsFilter.Right, e.getPlanCtx(recommendation), nil /* indexVarMap */)
+		if err != nil {
+			return nil, err
+		}
+		trSpec.JsonContainsFilter = &execinfrapb.JSONContainsFilterSpec{
+			SourceColIdx: uint32(jsonContainsFilterFetchIdx),
+			Kind:         uint32(params.JSONContainsFilter.Access.Kind),
+			Path:         append([]string(nil), params.JSONContainsFilter.Access.Path...),
+			ContainedBy:  params.JSONContainsFilter.ContainedBy,
+			Right:        rightExpr,
+		}
+	}
+	if len(params.JSONAccesses) > 0 {
+		p.ResultColumns = make(colinfo.ResultColumns, 0, params.NeededCols.Len()+len(params.JSONAccesses))
+		p.ResultColumns = append(p.ResultColumns, fetchedResultCols[:params.NeededCols.Len()]...)
+		trSpec.JsonAccesses = make([]execinfrapb.JSONAccessSpec, len(params.JSONAccesses))
+		for i := range params.JSONAccesses {
+			prog := params.JSONAccesses[i]
+			fetchIdx, ok := fetchIdxByTableOrd[int(prog.SourceCol)]
+			if !ok {
+				return nil, errors.AssertionFailedf(
+					"JSON access source column %d was not added to fetched columns", prog.SourceCol,
+				)
+			}
+			trSpec.JsonAccesses[i] = execinfrapb.JSONAccessSpec{
+				SourceColIdx: uint32(fetchIdx),
+				Kind:         uint32(prog.Kind),
+				Key:          prog.Key,
+				Keys:         append([]string(nil), prog.Keys...),
+				Path:         append([]string(nil), prog.Path...),
+			}
+			p.ResultColumns = append(p.ResultColumns, colinfo.ResultColumn{
+				Name: prog.ResultName,
+				Typ:  prog.ResultType,
+			})
+		}
+	} else if params.ExtraNeededCols.Len() > 0 {
+		p.ResultColumns = fetchedResultCols[:params.NeededCols.Len()]
 	}
 
 	err = e.dsp.planTableReaders(

@@ -27,6 +27,7 @@ import (
 	"github.com/semistrict/ratel/pkg/sql/row"
 	"github.com/semistrict/ratel/pkg/sql/rowenc"
 	"github.com/semistrict/ratel/pkg/sql/rowinfra"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 	"github.com/semistrict/ratel/pkg/sql/sessiondatapb"
 	"github.com/semistrict/ratel/pkg/util/hlc"
 	"github.com/semistrict/ratel/pkg/util/timeutil"
@@ -156,6 +157,26 @@ func (c *rowFetcherStatCollector) NextRow(ctx context.Context) (rowenc.EncDatumR
 // RowPassesArrayEqualsAnyFilter is part of the rowFetcher interface.
 func (c *rowFetcherStatCollector) RowPassesArrayEqualsAnyFilter() bool {
 	return c.fetcher.RowPassesArrayEqualsAnyFilter()
+}
+
+// RowPassesJSONExistsFilter is part of the rowFetcher interface.
+func (c *rowFetcherStatCollector) RowPassesJSONExistsFilter() bool {
+	return c.fetcher.RowPassesJSONExistsFilter()
+}
+
+// RowPassesJSONPathCompareFilter is part of the rowFetcher interface.
+func (c *rowFetcherStatCollector) RowPassesJSONPathCompareFilter() bool {
+	return c.fetcher.RowPassesJSONPathCompareFilter()
+}
+
+// RowPassesJSONContainsFilter is part of the rowFetcher interface.
+func (c *rowFetcherStatCollector) RowPassesJSONContainsFilter() bool {
+	return c.fetcher.RowPassesJSONContainsFilter()
+}
+
+// JSONAccessProgramResults is part of the rowFetcher interface.
+func (c *rowFetcherStatCollector) JSONAccessProgramResults() []tree.Datum {
+	return c.fetcher.JSONAccessProgramResults()
 }
 
 // NextRowInto is part of the rowFetcher interface.

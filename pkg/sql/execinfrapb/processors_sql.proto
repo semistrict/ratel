@@ -67,6 +67,80 @@ message ArrayEqualsAnyFilterSpec {
   optional Expression left = 2 [(gogoproto.nullable) = false];
 }
 
+message JSONExistsFilterSpec {
+  // source_col_idx is the ordinal of the source JSON column within
+  // TableReaderSpec.fetch_spec.fetched_columns.
+  optional uint32 source_col_idx = 1 [(gogoproto.nullable) = false];
+
+  // kind is a row.JSONAccessKind value for ?, ?|, and ?&.
+  optional uint32 kind = 2 [(gogoproto.nullable) = false];
+
+  // key is used by JSONAccessExists.
+  optional string key = 3 [(gogoproto.nullable) = false];
+
+  // keys is used by JSONAccessExistsAny / JSONAccessExistsAll.
+  repeated string keys = 4;
+}
+
+message JSONAccessSpec {
+  // source_col_idx is the ordinal of the source JSON column within
+  // TableReaderSpec.fetch_spec.fetched_columns.
+  optional uint32 source_col_idx = 1 [(gogoproto.nullable) = false];
+
+  // kind is a row.JSONAccessKind value.
+  optional uint32 kind = 2 [(gogoproto.nullable) = false];
+
+  // key is used by JSONAccessExists.
+  optional string key = 3 [(gogoproto.nullable) = false];
+
+  // keys is used by JSONAccessExistsAny / JSONAccessExistsAll.
+  repeated string keys = 4;
+
+  // path is used by JSONAccessFetchJSONPath / JSONAccessFetchTextPath.
+  repeated string path = 5;
+
+  // materialize keeps the source JSON column materialized in the row if true.
+  optional bool materialize = 6 [(gogoproto.nullable) = false];
+}
+
+message JSONPathCompareFilterSpec {
+  // source_col_idx is the ordinal of the source JSON column within
+  // TableReaderSpec.fetch_spec.fetched_columns.
+  optional uint32 source_col_idx = 1 [(gogoproto.nullable) = false];
+
+  // kind is a row.JSONAccessKind value for fetch-path operations.
+  optional uint32 kind = 2 [(gogoproto.nullable) = false];
+
+  // path is used by JSONAccessFetchJSONPath / JSONAccessFetchTextPath.
+  repeated string path = 3;
+
+  // mode is an exec.JSONPathFilterMode value.
+  optional uint32 mode = 4 [(gogoproto.nullable) = false];
+
+  // right is a row-independent scalar expression to compare against the
+  // fetched JSON path result.
+  optional Expression right = 5 [(gogoproto.nullable) = false];
+}
+
+message JSONContainsFilterSpec {
+  // source_col_idx is the ordinal of the source JSON column within
+  // TableReaderSpec.fetch_spec.fetched_columns.
+  optional uint32 source_col_idx = 1 [(gogoproto.nullable) = false];
+
+  // kind is a row.JSONAccessKind value for fetch-json-path operations.
+  optional uint32 kind = 2 [(gogoproto.nullable) = false];
+
+  // path is used by JSONAccessFetchJSONPath.
+  repeated string path = 3;
+
+  // contained_by indicates whether the predicate is <@ instead of @>.
+  optional bool contained_by = 4 [(gogoproto.nullable) = false];
+
+  // right is a row-independent JSON expression to compare against the
+  // accessed JSON subtree.
+  optional Expression right = 5 [(gogoproto.nullable) = false];
+}
+
 message TableReaderSpec {
   optional sqlbase.IndexFetchSpec fetch_spec = 20 [(gogoproto.nullable) = false];
 
@@ -140,6 +214,29 @@ message TableReaderSpec {
   // during row scanning. The array column may be fetched as an internal-only
   // column and projected away by the table reader's PostProcessSpec.
   optional ArrayEqualsAnyFilterSpec array_equals_any_filter = 22;
+
+  // json_exists_filter, when set, evaluates a filter of the form
+  //   json_col ? 'key'
+  // directly from recursive subordinate JSON storage during row scanning.
+  optional JSONExistsFilterSpec json_exists_filter = 23;
+
+  // json_accesses, when set, compute derived values directly from recursive
+  // subordinate JSON storage during row scanning. Source JSON columns may be
+  // fetched as internal-only columns and projected away by the table reader's
+  // PostProcessSpec.
+  repeated JSONAccessSpec json_accesses = 24 [(gogoproto.nullable) = false];
+
+  // json_path_compare_filter, when set, evaluates a filter of the form
+  //   json_col->... = <right>
+  // directly from recursive subordinate JSON storage during row scanning.
+  optional JSONPathCompareFilterSpec json_path_compare_filter = 25;
+
+  // json_contains_filter, when set, evaluates a filter of the form
+  //   json_col @> <right>
+  //   json_col <@ <right>
+  //   json_col->... @> <right>
+  // directly from recursive subordinate JSON storage during row scanning.
+  optional JSONContainsFilterSpec json_contains_filter = 26;
 
   reserved 1, 2, 4, 6, 7, 8, 13, 14, 15, 16, 19;
 }

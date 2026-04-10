@@ -133,6 +133,10 @@ func prepareInsertOrUpdateBatch(
 				continue
 			}
 		}
+		// JSON values are always stored via recursive subordinate keys.
+		if helper.isJSONColumn(colID) {
+			continue
+		}
 		col := fetchedCols[idx]
 		if lastColID > col.GetID() {
 			return nil, errors.AssertionFailedf("cannot write column id %d after %d", col.GetID(), lastColID)

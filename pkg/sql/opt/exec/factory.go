@@ -53,6 +53,35 @@ type ScanParams struct {
 	// internal-only column.
 	ArrayAnyFilter *ArrayAnyFilter
 
+	// JSONExistsFilter, when set, evaluates a filter of the form
+	//   json_col ? 'key'
+	// while scanning. This is only used when json_col is fetched as an
+	// internal-only column.
+	JSONExistsFilter *JSONExistsFilter
+
+	// JSONPathCompareFilter, when set, evaluates a filter of the form
+	//   json_col->... = <right>
+	//   json_col#>... = <right>
+	// while scanning. This is only used when json_col is fetched as an
+	// internal-only column.
+	JSONPathCompareFilter *JSONPathCompareFilter
+
+	// JSONContainsFilter, when set, evaluates a filter of the form
+	//   json_col @> <right>
+	//   json_col <@ <right>
+	//   json_col->... @> <right>
+	// while scanning. This is only used when the source JSON column is fetched
+	// as an internal-only column.
+	JSONContainsFilter *JSONContainsFilter
+
+	// JSONAccesses contains scan-local JSON access programs that can compute
+	// derived results directly from recursive subordinate JSON storage.
+	//
+	// These are intended for operators such as ?, ?|, ?&, ->, ->>, #>, and #>>.
+	// Source columns referenced by these programs must be included in
+	// ExtraNeededCols when they are not part of the scan output schema.
+	JSONAccesses []JSONAccessProgram
+
 	// At most one of IndexConstraint or InvertedConstraint is non-nil, depending
 	// on the index type.
 	IndexConstraint    *constraint.Constraint
@@ -93,10 +122,122 @@ type ArrayAnyFilter struct {
 	Left     tree.TypedExpr
 }
 
+// JSONExistsFilter describes a scan-local filter of the form
+//
+//	json_col ? 'key'
+//	json_col ?| array['k1', ...]
+//	json_col ?& array['k1', ...]
+//
+// where the key inputs do not depend on scanned row values.
+type JSONExistsFilter struct {
+	SourceCol TableColumnOrdinal
+	Kind      JSONAccessKind
+	Key       string
+	Keys      []string
+}
+
+// JSONPathCompareFilter describes a scan-local comparison filter over a JSON
+// path access whose right side does not depend on scanned row values.
+type JSONPathCompareFilter struct {
+	Access JSONAccessProgram
+	Mode   JSONPathFilterMode
+	Right  tree.TypedExpr
+}
+
+// JSONContainsFilter describes a scan-local containment filter over a JSON
+// source column or JSON path access whose right side does not depend on
+// scanned row values.
+type JSONContainsFilter struct {
+	Access      JSONAccessProgram
+	ContainedBy bool
+	Right       tree.TypedExpr
+}
+
+// JSONPathFilterMode identifies the boolean predicate applied to a scan-local
+// JSON path result.
+type JSONPathFilterMode uint8
+
+const (
+	JSONPathFilterEq JSONPathFilterMode = iota + 1
+	JSONPathFilterNe
+	JSONPathFilterLt
+	JSONPathFilterLe
+	JSONPathFilterGt
+	JSONPathFilterGe
+	JSONPathFilterIsNull
+	JSONPathFilterIsNotNull
+)
+
+// JSONAccessKind identifies a scan-local JSON access operation.
+type JSONAccessKind uint8
+
+const (
+	JSONAccessExists JSONAccessKind = iota + 1
+	JSONAccessExistsAny
+	JSONAccessExistsAll
+	JSONAccessFetchJSONPath
+	JSONAccessFetchTextPath
+)
+
+// JSONAccessProgram describes a scan-local access against a JSON column.
+//
+// Each program produces one derived output value for the current row.
+// Exactly one of Key, Keys, or Path is used depending on Kind.
+type JSONAccessProgram struct {
+	SourceCol TableColumnOrdinal
+	Kind      JSONAccessKind
+
+	// ResultType is the SQL type produced by this program.
+	ResultType *types.T
+
+	// ResultName is the output column name for this derived value.
+	ResultName string
+
+	// OutputOrdinal is the ordinal of the derived result within the scan's
+	// logical output schema.
+	OutputOrdinal NodeColumnOrdinal
+
+	// Key is used by JSONAccessExists.
+	Key string
+
+	// Keys is used by JSONAccessExistsAny / JSONAccessExistsAll.
+	Keys []string
+
+	// Path is used by JSONAccessFetchJSONPath / JSONAccessFetchTextPath.
+	Path []string
+}
+
 // ArrayAnyScanFilterCapable is an optional interface implemented by factories
 // that can execute filter-only `= ANY(array_col)` predicates inside scan nodes.
 type ArrayAnyScanFilterCapable interface {
 	SupportsArrayAnyScanFilter() bool
+}
+
+// JSONExistsScanFilterCapable is an optional interface implemented by
+// factories that can execute filter-only `json_col ? 'key'` predicates inside
+// scan nodes.
+type JSONExistsScanFilterCapable interface {
+	SupportsJSONExistsScanFilter() bool
+}
+
+// JSONPathCompareScanFilterCapable is an optional interface implemented by
+// factories that can execute filter-only JSON path equality predicates inside
+// scan nodes.
+type JSONPathCompareScanFilterCapable interface {
+	SupportsJSONPathCompareScanFilter() bool
+}
+
+// JSONContainsScanFilterCapable is an optional interface implemented by
+// factories that can execute scan-local JSON containment predicates inside
+// scan nodes.
+type JSONContainsScanFilterCapable interface {
+	SupportsJSONContainsScanFilter() bool
+}
+
+// JSONScanAccessCapable is an optional interface implemented by factories that
+// can execute scan-local JSON access programs inside scan nodes.
+type JSONScanAccessCapable interface {
+	SupportsJSONScanAccessPrograms() bool
 }
 
 // OutputOrdering indicates the required output ordering on a Node that is being

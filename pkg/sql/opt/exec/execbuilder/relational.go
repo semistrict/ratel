@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
@@ -49,6 +50,12 @@ import (
 	"github.com/semistrict/ratel/pkg/util/errorutil/unimplemented"
 	"github.com/semistrict/ratel/pkg/util/log"
 	"github.com/semistrict/ratel/pkg/util/timeutil"
+)
+
+const (
+	jsonPathStepKeyPrefix        = "k:"
+	jsonPathStepIndexPrefix      = "i:"
+	jsonPathStepKeyOrIndexPrefix = "p:"
 )
 
 type execPlan struct {
@@ -817,6 +824,21 @@ func (b *Builder) buildSelect(sel *memo.SelectExpr) (execPlan, error) {
 	} else if ok {
 		return fastPath, nil
 	}
+	if fastPath, ok, err := b.tryBuildScanWithJSONContainsFilter(sel); err != nil {
+		return execPlan{}, err
+	} else if ok {
+		return fastPath, nil
+	}
+	if fastPath, ok, err := b.tryBuildScanWithJSONPathCompareFilter(sel); err != nil {
+		return execPlan{}, err
+	} else if ok {
+		return fastPath, nil
+	}
+	if fastPath, ok, err := b.tryBuildScanWithJSONExistsFilter(sel); err != nil {
+		return execPlan{}, err
+	} else if ok {
+		return fastPath, nil
+	}
 
 	input, err := b.buildRelational(sel.Input)
 	if err != nil {
@@ -927,6 +949,533 @@ func supportsScanArrayAnyLeftExpr(scalar opt.ScalarExpr) bool {
 	}
 }
 
+func (b *Builder) tryBuildScanWithJSONExistsFilter(sel *memo.SelectExpr) (execPlan, bool, error) {
+	capableFactory, ok := b.factory.(exec.JSONExistsScanFilterCapable)
+	if !ok || !capableFactory.SupportsJSONExistsScanFilter() {
+		return execPlan{}, false, nil
+	}
+	scan, ok := sel.Input.(*memo.ScanExpr)
+	if !ok {
+		return execPlan{}, false, nil
+	}
+
+	var (
+		jsonFilter *exec.JSONExistsFilter
+		filterIdx  = -1
+		err        error
+	)
+	for i := range sel.Filters {
+		jsonFilter, ok, err = b.extractJSONExistsScanFilter(sel, scan, sel.Filters[i].Condition)
+		if err != nil {
+			return execPlan{}, false, err
+		}
+		if ok {
+			filterIdx = i
+			break
+		}
+	}
+	if filterIdx == -1 {
+		return execPlan{}, false, nil
+	}
+
+	md := b.mem.Metadata()
+	tab := md.Table(scan.Table)
+	private := scan.ScanPrivate
+	private.Cols = sel.Relational().OutputCols
+
+	params, outputCols, err := b.scanParams(tab, &private, sel.Relational(), sel.RequiredPhysical())
+	if err != nil {
+		return execPlan{}, false, err
+	}
+	params.ExtraNeededCols.Add(int(jsonFilter.SourceCol))
+	params.JSONExistsFilter = jsonFilter
+
+	res := execPlan{outputCols: outputCols}
+	root, err := b.factory.ConstructScan(
+		tab,
+		tab.Index(scan.Index),
+		params,
+		res.reqOrdering(sel),
+	)
+	if err != nil {
+		return execPlan{}, false, err
+	}
+	res.root = root
+	if len(sel.Filters) > 1 {
+		var residual memo.FiltersExpr
+		residual = append(residual, sel.Filters[:filterIdx]...)
+		residual = append(residual, sel.Filters[filterIdx+1:]...)
+		filter, err := b.buildScalarWithMap(res.outputCols, &residual)
+		if err != nil {
+			return execPlan{}, false, err
+		}
+		res.root, err = b.factory.ConstructFilter(res.root, filter, res.reqOrdering(sel))
+		if err != nil {
+			return execPlan{}, false, err
+		}
+	}
+	return res, true, nil
+}
+
+func (b *Builder) tryBuildScanWithJSONPathCompareFilter(sel *memo.SelectExpr) (execPlan, bool, error) {
+	capableFactory, ok := b.factory.(exec.JSONPathCompareScanFilterCapable)
+	if !ok || !capableFactory.SupportsJSONPathCompareScanFilter() {
+		return execPlan{}, false, nil
+	}
+	scan, ok := sel.Input.(*memo.ScanExpr)
+	if !ok {
+		return execPlan{}, false, nil
+	}
+
+	var (
+		jsonFilter *exec.JSONPathCompareFilter
+		filterIdx  = -1
+		err        error
+	)
+	for i := range sel.Filters {
+		jsonFilter, ok, err = b.extractJSONPathCompareScanFilter(sel, scan, sel.Filters[i].Condition)
+		if err != nil {
+			return execPlan{}, false, err
+		}
+		if ok {
+			filterIdx = i
+			break
+		}
+	}
+	if filterIdx == -1 {
+		return execPlan{}, false, nil
+	}
+
+	md := b.mem.Metadata()
+	tab := md.Table(scan.Table)
+	private := scan.ScanPrivate
+	private.Cols = sel.Relational().OutputCols
+
+	params, outputCols, err := b.scanParams(tab, &private, sel.Relational(), sel.RequiredPhysical())
+	if err != nil {
+		return execPlan{}, false, err
+	}
+	params.ExtraNeededCols.Add(int(jsonFilter.Access.SourceCol))
+	params.JSONPathCompareFilter = jsonFilter
+
+	res := execPlan{outputCols: outputCols}
+	root, err := b.factory.ConstructScan(
+		tab,
+		tab.Index(scan.Index),
+		params,
+		res.reqOrdering(sel),
+	)
+	if err != nil {
+		return execPlan{}, false, err
+	}
+	res.root = root
+	if len(sel.Filters) > 1 {
+		var residual memo.FiltersExpr
+		residual = append(residual, sel.Filters[:filterIdx]...)
+		residual = append(residual, sel.Filters[filterIdx+1:]...)
+		filter, err := b.buildScalarWithMap(res.outputCols, &residual)
+		if err != nil {
+			return execPlan{}, false, err
+		}
+		res.root, err = b.factory.ConstructFilter(res.root, filter, res.reqOrdering(sel))
+		if err != nil {
+			return execPlan{}, false, err
+		}
+	}
+	return res, true, nil
+}
+
+func (b *Builder) tryBuildScanWithJSONContainsFilter(sel *memo.SelectExpr) (execPlan, bool, error) {
+	capableFactory, ok := b.factory.(exec.JSONContainsScanFilterCapable)
+	if !ok || !capableFactory.SupportsJSONContainsScanFilter() {
+		return execPlan{}, false, nil
+	}
+	scan, ok := sel.Input.(*memo.ScanExpr)
+	if !ok {
+		return execPlan{}, false, nil
+	}
+
+	var (
+		jsonFilter *exec.JSONContainsFilter
+		filterIdx  = -1
+		err        error
+	)
+	for i := range sel.Filters {
+		jsonFilter, ok, err = b.extractJSONContainsScanFilter(sel, scan, sel.Filters[i].Condition)
+		if err != nil {
+			return execPlan{}, false, err
+		}
+		if ok {
+			filterIdx = i
+			break
+		}
+	}
+	if filterIdx == -1 {
+		return execPlan{}, false, nil
+	}
+
+	md := b.mem.Metadata()
+	tab := md.Table(scan.Table)
+	private := scan.ScanPrivate
+	private.Cols = sel.Relational().OutputCols
+
+	params, outputCols, err := b.scanParams(tab, &private, sel.Relational(), sel.RequiredPhysical())
+	if err != nil {
+		return execPlan{}, false, err
+	}
+	params.ExtraNeededCols.Add(int(jsonFilter.Access.SourceCol))
+	params.JSONContainsFilter = jsonFilter
+
+	res := execPlan{outputCols: outputCols}
+	root, err := b.factory.ConstructScan(
+		tab,
+		tab.Index(scan.Index),
+		params,
+		res.reqOrdering(sel),
+	)
+	if err != nil {
+		return execPlan{}, false, err
+	}
+	res.root = root
+	if len(sel.Filters) > 1 {
+		var residual memo.FiltersExpr
+		residual = append(residual, sel.Filters[:filterIdx]...)
+		residual = append(residual, sel.Filters[filterIdx+1:]...)
+		filter, err := b.buildScalarWithMap(res.outputCols, &residual)
+		if err != nil {
+			return execPlan{}, false, err
+		}
+		res.root, err = b.factory.ConstructFilter(res.root, filter, res.reqOrdering(sel))
+		if err != nil {
+			return execPlan{}, false, err
+		}
+	}
+	return res, true, nil
+}
+
+func (b *Builder) extractJSONExistsScanFilter(
+	sel *memo.SelectExpr, scan *memo.ScanExpr, scalar opt.ScalarExpr,
+) (*exec.JSONExistsFilter, bool, error) {
+	var (
+		left opt.ScalarExpr
+		kind exec.JSONAccessKind
+		key  string
+		keys []string
+		ok   bool
+		err  error
+	)
+	switch t := scalar.(type) {
+	case *memo.JsonExistsExpr:
+		left = t.Left
+		kind = exec.JSONAccessExists
+		keyDatum, ok, err := b.evalRowIndependentDatum(t.Right)
+		if err != nil || !ok || keyDatum == tree.DNull {
+			return nil, ok, err
+		}
+		keyStr, ok := keyDatum.(*tree.DString)
+		if !ok {
+			return nil, false, nil
+		}
+		key = string(*keyStr)
+	case *memo.JsonSomeExistsExpr:
+		left = t.Left
+		kind = exec.JSONAccessExistsAny
+		keys, ok, err = b.extractJSONStringArray(t.Right)
+		if err != nil || !ok {
+			return nil, ok, err
+		}
+	case *memo.JsonAllExistsExpr:
+		left = t.Left
+		kind = exec.JSONAccessExistsAll
+		keys, ok, err = b.extractJSONStringArray(t.Right)
+		if err != nil || !ok {
+			return nil, ok, err
+		}
+	default:
+		return nil, false, nil
+	}
+
+	jsonVar, ok := left.(*memo.VariableExpr)
+	if !ok || jsonVar.Typ.Family() != types.JsonFamily {
+		return nil, false, nil
+	}
+	md := b.mem.Metadata()
+	tableID := md.ColumnMeta(jsonVar.Col).Table
+	if tableID != scan.Table {
+		return nil, false, nil
+	}
+
+	return &exec.JSONExistsFilter{
+		SourceCol: exec.TableColumnOrdinal(tableID.ColumnOrdinal(jsonVar.Col)),
+		Kind:      kind,
+		Key:       key,
+		Keys:      keys,
+	}, true, nil
+}
+
+func (b *Builder) extractJSONPathCompareScanFilter(
+	sel *memo.SelectExpr, scan *memo.ScanExpr, scalar opt.ScalarExpr,
+) (*exec.JSONPathCompareFilter, bool, error) {
+	switch t := scalar.(type) {
+	case *memo.EqExpr:
+		access, ok, err := b.extractJSONPathCompareScanFilterSide(sel, scan, t.Left, t.Right, exec.JSONPathFilterEq)
+		if err != nil || ok {
+			return access, ok, err
+		}
+		return b.extractJSONPathCompareScanFilterSide(sel, scan, t.Right, t.Left, exec.JSONPathFilterEq)
+	case *memo.NeExpr:
+		access, ok, err := b.extractJSONPathCompareScanFilterSide(sel, scan, t.Left, t.Right, exec.JSONPathFilterNe)
+		if err != nil || ok {
+			return access, ok, err
+		}
+		return b.extractJSONPathCompareScanFilterSide(sel, scan, t.Right, t.Left, exec.JSONPathFilterNe)
+	case *memo.LtExpr:
+		access, ok, err := b.extractJSONPathCompareScanFilterSide(sel, scan, t.Left, t.Right, exec.JSONPathFilterLt)
+		if err != nil || ok {
+			return access, ok, err
+		}
+		return b.extractJSONPathCompareScanFilterSide(sel, scan, t.Right, t.Left, exec.JSONPathFilterGt)
+	case *memo.LeExpr:
+		access, ok, err := b.extractJSONPathCompareScanFilterSide(sel, scan, t.Left, t.Right, exec.JSONPathFilterLe)
+		if err != nil || ok {
+			return access, ok, err
+		}
+		return b.extractJSONPathCompareScanFilterSide(sel, scan, t.Right, t.Left, exec.JSONPathFilterGe)
+	case *memo.GtExpr:
+		access, ok, err := b.extractJSONPathCompareScanFilterSide(sel, scan, t.Left, t.Right, exec.JSONPathFilterGt)
+		if err != nil || ok {
+			return access, ok, err
+		}
+		return b.extractJSONPathCompareScanFilterSide(sel, scan, t.Right, t.Left, exec.JSONPathFilterLt)
+	case *memo.GeExpr:
+		access, ok, err := b.extractJSONPathCompareScanFilterSide(sel, scan, t.Left, t.Right, exec.JSONPathFilterGe)
+		if err != nil || ok {
+			return access, ok, err
+		}
+		return b.extractJSONPathCompareScanFilterSide(sel, scan, t.Right, t.Left, exec.JSONPathFilterLe)
+	case *memo.IsExpr:
+		if _, ok := t.Right.(*memo.NullExpr); ok {
+			return b.extractJSONPathCompareScanFilterSide(sel, scan, t.Left, nil, exec.JSONPathFilterIsNull)
+		}
+		if _, ok := t.Left.(*memo.NullExpr); ok {
+			return b.extractJSONPathCompareScanFilterSide(sel, scan, t.Right, nil, exec.JSONPathFilterIsNull)
+		}
+	case *memo.IsNotExpr:
+		if _, ok := t.Right.(*memo.NullExpr); ok {
+			return b.extractJSONPathCompareScanFilterSide(sel, scan, t.Left, nil, exec.JSONPathFilterIsNotNull)
+		}
+		if _, ok := t.Left.(*memo.NullExpr); ok {
+			return b.extractJSONPathCompareScanFilterSide(sel, scan, t.Right, nil, exec.JSONPathFilterIsNotNull)
+		}
+	}
+	return nil, false, nil
+}
+
+func (b *Builder) extractJSONContainsScanFilter(
+	sel *memo.SelectExpr, scan *memo.ScanExpr, scalar opt.ScalarExpr,
+) (*exec.JSONContainsFilter, bool, error) {
+	switch t := scalar.(type) {
+	case *memo.ContainsExpr:
+		filter, ok, err := b.extractJSONContainsScanFilterSide(sel, scan, t.Left, t.Right, false /* containedBy */)
+		if err != nil || ok {
+			return filter, ok, err
+		}
+		return b.extractJSONContainsScanFilterSide(sel, scan, t.Right, t.Left, true /* containedBy */)
+	case *memo.ContainedByExpr:
+		filter, ok, err := b.extractJSONContainsScanFilterSide(sel, scan, t.Left, t.Right, true /* containedBy */)
+		if err != nil || ok {
+			return filter, ok, err
+		}
+		return b.extractJSONContainsScanFilterSide(sel, scan, t.Right, t.Left, false /* containedBy */)
+	default:
+		return nil, false, nil
+	}
+}
+
+func (b *Builder) extractJSONContainsScanFilterSide(
+	_ *memo.SelectExpr,
+	scan *memo.ScanExpr,
+	accessExpr opt.ScalarExpr,
+	rightScalar opt.ScalarExpr,
+	containedBy bool,
+) (*exec.JSONContainsFilter, bool, error) {
+	access, ok, err := b.extractJSONContainsAccess(scan, accessExpr)
+	if err != nil || !ok {
+		return nil, ok, err
+	}
+	rightExpr, rightDatum, ok, err := b.extractRowIndependentJSONExpr(rightScalar)
+	if err != nil || !ok {
+		return nil, ok, err
+	}
+	if rightDatum == tree.DNull {
+		return nil, false, nil
+	}
+	if _, ok := rightDatum.(*tree.DJSON); !ok {
+		return nil, false, nil
+	}
+	return &exec.JSONContainsFilter{
+		Access:      *access,
+		ContainedBy: containedBy,
+		Right:       rightExpr,
+	}, true, nil
+}
+
+func (b *Builder) extractJSONPathCompareScanFilterSide(
+	sel *memo.SelectExpr,
+	scan *memo.ScanExpr,
+	accessExpr opt.ScalarExpr,
+	rightScalar opt.ScalarExpr,
+	mode exec.JSONPathFilterMode,
+) (*exec.JSONPathCompareFilter, bool, error) {
+	access, ok, err := b.extractJSONPathCompareAccess(scan, accessExpr)
+	if err != nil || !ok {
+		return nil, ok, err
+	}
+	if modeRequiresJSONPathCompareRightExpr(mode) && !supportsScanJSONPathCompareRightExpr(rightScalar) {
+		return nil, false, nil
+	}
+	var rightExpr tree.TypedExpr
+	if modeRequiresJSONPathCompareRightExpr(mode) {
+		rightExpr, err = b.buildScalarWithMap(opt.ColMap{}, rightScalar)
+		if err != nil {
+			return nil, false, err
+		}
+	}
+	return &exec.JSONPathCompareFilter{
+		Access: *access,
+		Mode:   mode,
+		Right:  rightExpr,
+	}, true, nil
+}
+
+func modeRequiresJSONPathCompareRightExpr(mode exec.JSONPathFilterMode) bool {
+	switch mode {
+	case exec.JSONPathFilterEq,
+		exec.JSONPathFilterNe,
+		exec.JSONPathFilterLt,
+		exec.JSONPathFilterLe,
+		exec.JSONPathFilterGt,
+		exec.JSONPathFilterGe:
+		return true
+	case exec.JSONPathFilterIsNull, exec.JSONPathFilterIsNotNull:
+		return false
+	default:
+		return false
+	}
+}
+
+func supportsScanJSONPathCompareRightExpr(scalar opt.ScalarExpr) bool {
+	switch t := scalar.(type) {
+	case *memo.ConstExpr, *memo.NullExpr, *memo.PlaceholderExpr:
+		return true
+	case *memo.CastExpr:
+		return supportsScanJSONPathCompareRightExpr(t.Input)
+	case *memo.AssignmentCastExpr:
+		return supportsScanJSONPathCompareRightExpr(t.Input)
+	default:
+		return false
+	}
+}
+
+func stripTransparentScalarCasts(scalar opt.ScalarExpr) opt.ScalarExpr {
+	for {
+		switch t := scalar.(type) {
+		case *memo.CastExpr:
+			if t.Input.DataType().Family() != t.Typ.Family() {
+				return scalar
+			}
+			scalar = t.Input
+		case *memo.AssignmentCastExpr:
+			if t.Input.DataType().Family() != t.Typ.Family() {
+				return scalar
+			}
+			scalar = t.Input
+		default:
+			return scalar
+		}
+	}
+}
+
+func (b *Builder) extractJSONPathCompareAccess(
+	scan *memo.ScanExpr, scalar opt.ScalarExpr,
+) (*exec.JSONAccessProgram, bool, error) {
+	scalar = stripTransparentScalarCasts(scalar)
+	switch t := scalar.(type) {
+	case *memo.FetchValExpr:
+		return b.extractJSONFetchCompareAccess(scan, t.Json, t.Index, false)
+	case *memo.FetchTextExpr:
+		return b.extractJSONFetchCompareAccess(scan, t.Json, t.Index, true)
+	case *memo.FetchValPathExpr:
+		return b.extractJSONFetchPathCompareAccess(scan, t.Json, t.Path, false)
+	case *memo.FetchTextPathExpr:
+		return b.extractJSONFetchPathCompareAccess(scan, t.Json, t.Path, true)
+	default:
+		return nil, false, nil
+	}
+}
+
+func (b *Builder) extractJSONContainsAccess(
+	scan *memo.ScanExpr, scalar opt.ScalarExpr,
+) (*exec.JSONAccessProgram, bool, error) {
+	scalar = stripTransparentScalarCasts(scalar)
+	source, path, ok, err := b.extractJSONSourceAndPath(scan, scalar)
+	if err != nil || !ok {
+		return nil, ok, err
+	}
+	return &exec.JSONAccessProgram{
+		SourceCol:  source,
+		Kind:       exec.JSONAccessFetchJSONPath,
+		ResultType: types.Jsonb,
+		Path:       append([]string(nil), path...),
+	}, true, nil
+}
+
+func (b *Builder) extractJSONFetchCompareAccess(
+	scan *memo.ScanExpr, jsonExpr opt.ScalarExpr, indexExpr opt.ScalarExpr, asText bool,
+) (*exec.JSONAccessProgram, bool, error) {
+	source, path, ok, err := b.extractJSONSourceAndPath(scan, jsonExpr)
+	if err != nil || !ok {
+		return nil, ok, err
+	}
+	step, ok, err := b.extractJSONFetchOperandPathStep(indexExpr)
+	if err != nil || !ok {
+		return nil, ok, err
+	}
+	path = append(path, step)
+	return makeJSONCompareAccessProgram(source, path, asText), true, nil
+}
+
+func (b *Builder) extractJSONFetchPathCompareAccess(
+	scan *memo.ScanExpr, jsonExpr opt.ScalarExpr, pathExpr opt.ScalarExpr, asText bool,
+) (*exec.JSONAccessProgram, bool, error) {
+	source, pathPrefix, ok, err := b.extractJSONSourceAndPath(scan, jsonExpr)
+	if err != nil || !ok {
+		return nil, ok, err
+	}
+	suffix, ok, err := b.extractJSONPath(pathExpr)
+	if err != nil || !ok {
+		return nil, ok, err
+	}
+	return makeJSONCompareAccessProgram(source, append(pathPrefix, suffix...), asText), true, nil
+}
+
+func makeJSONCompareAccessProgram(
+	sourceCol exec.TableColumnOrdinal, path []string, asText bool,
+) *exec.JSONAccessProgram {
+	prog := &exec.JSONAccessProgram{
+		SourceCol: sourceCol,
+		Path:      append([]string(nil), path...),
+	}
+	if asText {
+		prog.Kind = exec.JSONAccessFetchTextPath
+		prog.ResultType = types.String
+	} else {
+		prog.Kind = exec.JSONAccessFetchJSONPath
+		prog.ResultType = types.Jsonb
+	}
+	return prog
+}
+
 func (b *Builder) buildInvertedFilter(invFilter *memo.InvertedFilterExpr) (execPlan, error) {
 	input, err := b.buildRelational(invFilter.Input)
 	if err != nil {
@@ -989,6 +1538,17 @@ func (b *Builder) applySimpleProject(
 }
 
 func (b *Builder) buildProject(prj *memo.ProjectExpr) (execPlan, error) {
+	if fastPath, ok, err := b.tryBuildScanWithJSONFilterAndAccessProject(prj); err != nil {
+		return execPlan{}, err
+	} else if ok {
+		return fastPath, nil
+	}
+	if fastPath, ok, err := b.tryBuildScanWithJSONAccessProject(prj); err != nil {
+		return execPlan{}, err
+	} else if ok {
+		return fastPath, nil
+	}
+
 	md := b.mem.Metadata()
 	input, err := b.buildRelational(prj.Input)
 	if err != nil {
@@ -1034,6 +1594,492 @@ func (b *Builder) buildProject(prj *memo.ProjectExpr) (execPlan, error) {
 		return execPlan{}, err
 	}
 	return res, nil
+}
+
+func (b *Builder) tryBuildScanWithJSONFilterAndAccessProject(prj *memo.ProjectExpr) (execPlan, bool, error) {
+	capableFactory, ok := b.factory.(exec.JSONScanAccessCapable)
+	if !ok || !capableFactory.SupportsJSONScanAccessPrograms() {
+		return execPlan{}, false, nil
+	}
+	sel, ok := prj.Input.(*memo.SelectExpr)
+	if !ok || !jsonProjectOrderingSupported(prj) {
+		return execPlan{}, false, nil
+	}
+	scan, ok := sel.Input.(*memo.ScanExpr)
+	if !ok {
+		return execPlan{}, false, nil
+	}
+
+	var (
+		existsFilter      *exec.JSONExistsFilter
+		pathCompareFilter *exec.JSONPathCompareFilter
+		containsFilter    *exec.JSONContainsFilter
+		residual          memo.FiltersExpr
+	)
+	for i := range sel.Filters {
+		filter := sel.Filters[i].Condition
+		if f, matched, err := b.extractJSONContainsScanFilter(sel, scan, filter); err != nil {
+			return execPlan{}, false, err
+		} else if matched {
+			if containsFilter != nil {
+				residual = append(residual, sel.Filters[i])
+				continue
+			}
+			containsFilter = f
+			continue
+		}
+		if f, matched, err := b.extractJSONPathCompareScanFilter(sel, scan, filter); err != nil {
+			return execPlan{}, false, err
+		} else if matched {
+			if pathCompareFilter != nil {
+				residual = append(residual, sel.Filters[i])
+				continue
+			}
+			pathCompareFilter = f
+			continue
+		}
+		if f, matched, err := b.extractJSONExistsScanFilter(sel, scan, filter); err != nil {
+			return execPlan{}, false, err
+		} else if matched {
+			if existsFilter != nil {
+				residual = append(residual, sel.Filters[i])
+				continue
+			}
+			existsFilter = f
+			continue
+		}
+		residual = append(residual, sel.Filters[i])
+	}
+	if existsFilter == nil && pathCompareFilter == nil && containsFilter == nil {
+		return execPlan{}, false, nil
+	}
+
+	md := b.mem.Metadata()
+	tab := md.Table(scan.Table)
+	private := scan.ScanPrivate
+	private.Cols = sel.Relational().OutputCols
+
+	params, outputCols, err := b.scanParams(tab, &private, sel.Relational(), sel.RequiredPhysical())
+	if err != nil {
+		return execPlan{}, false, err
+	}
+	params.JSONExistsFilter = existsFilter
+	params.JSONPathCompareFilter = pathCompareFilter
+	params.JSONContainsFilter = containsFilter
+	if existsFilter != nil {
+		params.ExtraNeededCols.Add(int(existsFilter.SourceCol))
+	}
+	if pathCompareFilter != nil {
+		params.ExtraNeededCols.Add(int(pathCompareFilter.Access.SourceCol))
+	}
+	if containsFilter != nil {
+		params.ExtraNeededCols.Add(int(containsFilter.Access.SourceCol))
+	}
+
+	res := execPlan{outputCols: outputCols}
+	nextOrd := params.NeededCols.Len()
+	params.JSONAccesses = make([]exec.JSONAccessProgram, 0, len(prj.Projections))
+	for i := range prj.Projections {
+		item := &prj.Projections[i]
+		prog, ok, err := b.extractJSONScanAccessProgram(scan, item.Element, item.Col)
+		if err != nil {
+			return execPlan{}, false, err
+		}
+		if !ok {
+			return execPlan{}, false, nil
+		}
+		prog.OutputOrdinal = exec.NodeColumnOrdinal(nextOrd)
+		nextOrd++
+		params.JSONAccesses = append(params.JSONAccesses, *prog)
+		params.ExtraNeededCols.Add(int(prog.SourceCol))
+		res.outputCols.Set(int(item.Col), int(prog.OutputOrdinal))
+	}
+
+	root, err := b.factory.ConstructScan(
+		tab,
+		tab.Index(scan.Index),
+		params,
+		res.reqOrdering(sel),
+	)
+	if err != nil {
+		return execPlan{}, false, err
+	}
+	res.root = root
+
+	if len(residual) > 0 {
+		filter, err := b.buildScalarWithMap(res.outputCols, &residual)
+		if err != nil {
+			return execPlan{}, false, err
+		}
+		res.root, err = b.factory.ConstructFilter(res.root, filter, res.reqOrdering(sel))
+		if err != nil {
+			return execPlan{}, false, err
+		}
+	}
+
+	colList := make([]exec.NodeColumnOrdinal, 0, len(prj.Projections)+prj.Passthrough.Len())
+	var final execPlan
+	for i := range prj.Projections {
+		colID := prj.Projections[i].Col
+		final.outputCols.Set(int(colID), len(colList))
+		colList = append(colList, res.getNodeColumnOrdinal(colID))
+	}
+	prj.Passthrough.ForEach(func(colID opt.ColumnID) {
+		final.outputCols.Set(int(colID), len(colList))
+		colList = append(colList, res.getNodeColumnOrdinal(colID))
+	})
+	final.root, err = b.factory.ConstructSimpleProject(
+		res.root, colList, exec.OutputOrdering(final.sqlOrdering(prj.ProvidedPhysical().Ordering)),
+	)
+	if err != nil {
+		return execPlan{}, false, err
+	}
+	return final, true, nil
+}
+
+func (b *Builder) tryBuildScanWithJSONAccessProject(prj *memo.ProjectExpr) (execPlan, bool, error) {
+	capableFactory, ok := b.factory.(exec.JSONScanAccessCapable)
+	if !ok || !capableFactory.SupportsJSONScanAccessPrograms() {
+		return execPlan{}, false, nil
+	}
+	scan, ok := prj.Input.(*memo.ScanExpr)
+	if !ok || !jsonProjectOrderingSupported(prj) {
+		return execPlan{}, false, nil
+	}
+
+	md := b.mem.Metadata()
+	tab := md.Table(scan.Table)
+	private := scan.ScanPrivate
+	private.Cols = prj.Passthrough
+
+	params, outputCols, err := b.scanParams(tab, &private, scan.Relational(), scan.RequiredPhysical())
+	if err != nil {
+		return execPlan{}, false, err
+	}
+
+	res := execPlan{outputCols: outputCols}
+	nextOrd := params.NeededCols.Len()
+	params.JSONAccesses = make([]exec.JSONAccessProgram, 0, len(prj.Projections))
+	for i := range prj.Projections {
+		item := &prj.Projections[i]
+		prog, ok, err := b.extractJSONScanAccessProgram(scan, item.Element, item.Col)
+		if err != nil {
+			return execPlan{}, false, err
+		}
+		if !ok {
+			return execPlan{}, false, nil
+		}
+		prog.OutputOrdinal = exec.NodeColumnOrdinal(nextOrd)
+		nextOrd++
+		params.JSONAccesses = append(params.JSONAccesses, *prog)
+		params.ExtraNeededCols.Add(int(prog.SourceCol))
+		res.outputCols.Set(int(item.Col), int(prog.OutputOrdinal))
+	}
+
+	root, err := b.factory.ConstructScan(
+		tab,
+		tab.Index(scan.Index),
+		params,
+		res.reqOrdering(prj),
+	)
+	if err != nil {
+		return execPlan{}, false, err
+	}
+	res.root = root
+	return res, true, nil
+}
+
+func jsonProjectOrderingSupported(prj *memo.ProjectExpr) bool {
+	return prj.RequiredPhysical().Ordering.CanProjectCols(prj.Passthrough)
+}
+
+func (b *Builder) extractJSONScanAccessProgram(
+	scan *memo.ScanExpr, scalar opt.ScalarExpr, outCol opt.ColumnID,
+) (*exec.JSONAccessProgram, bool, error) {
+	md := b.mem.Metadata()
+	scalar = stripTransparentScalarCasts(scalar)
+
+	switch t := scalar.(type) {
+	case *memo.JsonExistsExpr:
+		source, pathPrefix, ok, err := b.extractJSONSourceAndPath(scan, t.Left)
+		if err != nil || !ok || len(pathPrefix) != 0 {
+			return nil, ok && len(pathPrefix) == 0, err
+		}
+		key, ok, err := b.extractJSONStringKey(t.Right)
+		if err != nil || !ok {
+			return nil, ok, err
+		}
+		return &exec.JSONAccessProgram{
+			SourceCol:  exec.TableColumnOrdinal(source),
+			Kind:       exec.JSONAccessExists,
+			ResultType: types.Bool,
+			ResultName: md.ColumnMeta(outCol).Alias,
+			Key:        key,
+		}, true, nil
+
+	case *memo.JsonSomeExistsExpr:
+		source, pathPrefix, ok, err := b.extractJSONSourceAndPath(scan, t.Left)
+		if err != nil || !ok || len(pathPrefix) != 0 {
+			return nil, ok && len(pathPrefix) == 0, err
+		}
+		keys, ok, err := b.extractJSONStringArray(t.Right)
+		if err != nil || !ok {
+			return nil, ok, err
+		}
+		return &exec.JSONAccessProgram{
+			SourceCol:  exec.TableColumnOrdinal(source),
+			Kind:       exec.JSONAccessExistsAny,
+			ResultType: types.Bool,
+			ResultName: md.ColumnMeta(outCol).Alias,
+			Keys:       keys,
+		}, true, nil
+
+	case *memo.JsonAllExistsExpr:
+		source, pathPrefix, ok, err := b.extractJSONSourceAndPath(scan, t.Left)
+		if err != nil || !ok || len(pathPrefix) != 0 {
+			return nil, ok && len(pathPrefix) == 0, err
+		}
+		keys, ok, err := b.extractJSONStringArray(t.Right)
+		if err != nil || !ok {
+			return nil, ok, err
+		}
+		return &exec.JSONAccessProgram{
+			SourceCol:  exec.TableColumnOrdinal(source),
+			Kind:       exec.JSONAccessExistsAll,
+			ResultType: types.Bool,
+			ResultName: md.ColumnMeta(outCol).Alias,
+			Keys:       keys,
+		}, true, nil
+
+	case *memo.FetchValExpr:
+		return b.extractJSONFetchProgram(scan, t.Json, t.Index, false, outCol)
+	case *memo.FetchTextExpr:
+		return b.extractJSONFetchProgram(scan, t.Json, t.Index, true, outCol)
+	case *memo.FetchValPathExpr:
+		return b.extractJSONFetchPathProgram(scan, t.Json, t.Path, false, outCol)
+	case *memo.FetchTextPathExpr:
+		return b.extractJSONFetchPathProgram(scan, t.Json, t.Path, true, outCol)
+	default:
+		return nil, false, nil
+	}
+}
+
+func (b *Builder) extractJSONFetchProgram(
+	scan *memo.ScanExpr, jsonExpr opt.ScalarExpr, indexExpr opt.ScalarExpr, asText bool, outCol opt.ColumnID,
+) (*exec.JSONAccessProgram, bool, error) {
+	source, path, ok, err := b.extractJSONSourceAndPath(scan, jsonExpr)
+	if err != nil || !ok {
+		return nil, ok, err
+	}
+	step, ok, err := b.extractJSONFetchOperandPathStep(indexExpr)
+	if err != nil || !ok {
+		return nil, ok, err
+	}
+	path = append(path, step)
+	return b.makeJSONFetchProgram(source, path, asText, outCol), true, nil
+}
+
+func (b *Builder) extractJSONFetchPathProgram(
+	scan *memo.ScanExpr, jsonExpr opt.ScalarExpr, pathExpr opt.ScalarExpr, asText bool, outCol opt.ColumnID,
+) (*exec.JSONAccessProgram, bool, error) {
+	source, pathPrefix, ok, err := b.extractJSONSourceAndPath(scan, jsonExpr)
+	if err != nil || !ok {
+		return nil, ok, err
+	}
+	suffix, ok, err := b.extractJSONPath(pathExpr)
+	if err != nil || !ok {
+		return nil, ok, err
+	}
+	path := append(pathPrefix, suffix...)
+	return b.makeJSONFetchProgram(source, path, asText, outCol), true, nil
+}
+
+func (b *Builder) makeJSONFetchProgram(
+	sourceCol exec.TableColumnOrdinal, path []string, asText bool, outCol opt.ColumnID,
+) *exec.JSONAccessProgram {
+	md := b.mem.Metadata()
+	prog := &exec.JSONAccessProgram{
+		SourceCol:  sourceCol,
+		ResultName: md.ColumnMeta(outCol).Alias,
+		Path:       append([]string(nil), path...),
+	}
+	if asText {
+		prog.Kind = exec.JSONAccessFetchTextPath
+		prog.ResultType = types.String
+	} else {
+		prog.Kind = exec.JSONAccessFetchJSONPath
+		prog.ResultType = types.Jsonb
+	}
+	return prog
+}
+
+func (b *Builder) extractJSONSourceAndPath(
+	scan *memo.ScanExpr, scalar opt.ScalarExpr,
+) (exec.TableColumnOrdinal, []string, bool, error) {
+	scalar = stripTransparentScalarCasts(scalar)
+	switch t := scalar.(type) {
+	case *memo.VariableExpr:
+		if t.Col == 0 {
+			return 0, nil, false, nil
+		}
+		tableID := b.mem.Metadata().ColumnMeta(t.Col).Table
+		if tableID != scan.Table || t.Typ.Family() != types.JsonFamily {
+			return 0, nil, false, nil
+		}
+		return exec.TableColumnOrdinal(tableID.ColumnOrdinal(t.Col)), nil, true, nil
+
+	case *memo.FetchValExpr:
+		source, path, ok, err := b.extractJSONSourceAndPath(scan, t.Json)
+		if err != nil || !ok {
+			return 0, nil, ok, err
+		}
+		step, ok, err := b.extractJSONFetchOperandPathStep(t.Index)
+		if err != nil || !ok {
+			return 0, nil, ok, err
+		}
+		return source, append(path, step), true, nil
+
+	case *memo.FetchValPathExpr:
+		source, path, ok, err := b.extractJSONSourceAndPath(scan, t.Json)
+		if err != nil || !ok {
+			return 0, nil, ok, err
+		}
+		suffix, ok, err := b.extractJSONPath(t.Path)
+		if err != nil || !ok {
+			return 0, nil, ok, err
+		}
+		return source, append(path, suffix...), true, nil
+
+	default:
+		return 0, nil, false, nil
+	}
+}
+
+func (b *Builder) extractJSONStringKey(scalar opt.ScalarExpr) (string, bool, error) {
+	scalar = stripTransparentScalarCasts(scalar)
+	d, ok, err := b.evalRowIndependentDatum(scalar)
+	if err != nil || !ok || d == tree.DNull {
+		return "", ok, err
+	}
+	s, ok := d.(*tree.DString)
+	if !ok {
+		return "", false, nil
+	}
+	return string(*s), true, nil
+}
+
+func (b *Builder) extractRowIndependentJSONExpr(
+	scalar opt.ScalarExpr,
+) (tree.TypedExpr, tree.Datum, bool, error) {
+	d, ok, err := b.evalRowIndependentDatum(scalar)
+	if err != nil || !ok {
+		return nil, nil, ok, err
+	}
+	if d == tree.DNull {
+		return nil, d, true, nil
+	}
+	if _, ok := d.(*tree.DJSON); !ok {
+		return nil, nil, false, nil
+	}
+	expr, err := b.buildScalarWithMap(opt.ColMap{}, scalar)
+	if err != nil {
+		return nil, nil, false, err
+	}
+	return expr, d, true, nil
+}
+
+func (b *Builder) extractJSONFetchOperandPathStep(scalar opt.ScalarExpr) (string, bool, error) {
+	scalar = stripTransparentScalarCasts(scalar)
+	d, ok, err := b.evalRowIndependentDatum(scalar)
+	if err != nil || !ok || d == tree.DNull {
+		return "", ok, err
+	}
+	switch t := d.(type) {
+	case *tree.DString:
+		return encodeJSONPathKeyStep(string(*t)), true, nil
+	case *tree.DInt:
+		return encodeJSONPathIndexStep(int64(*t)), true, nil
+	default:
+		return "", false, nil
+	}
+}
+
+func (b *Builder) extractJSONPath(scalar opt.ScalarExpr) ([]string, bool, error) {
+	scalar = stripTransparentScalarCasts(scalar)
+	d, ok, err := b.evalRowIndependentDatum(scalar)
+	if err != nil || !ok || d == tree.DNull {
+		return nil, ok, err
+	}
+	arr, ok := tree.AsDArray(d)
+	if !ok {
+		return nil, false, nil
+	}
+	path := make([]string, 0, arr.Len())
+	for i := 0; i < arr.Len(); i++ {
+		step, ok, err := datumToJSONPathStep(arr.Array[i])
+		if err != nil || !ok {
+			return nil, ok, err
+		}
+		path = append(path, step)
+	}
+	return path, true, nil
+}
+
+func (b *Builder) extractJSONStringArray(scalar opt.ScalarExpr) ([]string, bool, error) {
+	scalar = stripTransparentScalarCasts(scalar)
+	d, ok, err := b.evalRowIndependentDatum(scalar)
+	if err != nil || !ok || d == tree.DNull {
+		return nil, ok, err
+	}
+	arr, ok := tree.AsDArray(d)
+	if !ok {
+		return nil, false, nil
+	}
+	keys := make([]string, 0, arr.Len())
+	for i := 0; i < arr.Len(); i++ {
+		if arr.Array[i] == tree.DNull {
+			continue
+		}
+		s, ok := arr.Array[i].(*tree.DString)
+		if !ok {
+			return nil, false, nil
+		}
+		keys = append(keys, string(*s))
+	}
+	return keys, true, nil
+}
+
+func datumToJSONPathStep(d tree.Datum) (string, bool, error) {
+	switch t := d.(type) {
+	case *tree.DString:
+		return encodeJSONPathKeyOrIndexStep(string(*t)), true, nil
+	default:
+		return "", false, nil
+	}
+}
+
+func encodeJSONPathKeyStep(step string) string {
+	return jsonPathStepKeyPrefix + strconv.Quote(step)
+}
+
+func encodeJSONPathIndexStep(idx int64) string {
+	return jsonPathStepIndexPrefix + strconv.FormatInt(idx, 10)
+}
+
+func encodeJSONPathKeyOrIndexStep(step string) string {
+	return jsonPathStepKeyOrIndexPrefix + strconv.Quote(step)
+}
+
+func (b *Builder) evalRowIndependentDatum(scalar opt.ScalarExpr) (tree.Datum, bool, error) {
+	expr, err := b.buildScalarWithMap(opt.ColMap{}, scalar)
+	if err != nil {
+		return nil, false, err
+	}
+	d, err := expr.Eval(b.evalCtx)
+	if err != nil {
+		return nil, false, err
+	}
+	return d, true, nil
 }
 
 func (b *Builder) buildApplyJoin(join memo.RelExpr) (execPlan, error) {

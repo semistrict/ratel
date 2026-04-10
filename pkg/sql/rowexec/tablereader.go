@@ -23,6 +23,7 @@ import (
 	"github.com/semistrict/ratel/pkg/sql/catalog/typedesc"
 	"github.com/semistrict/ratel/pkg/sql/execinfra"
 	"github.com/semistrict/ratel/pkg/sql/execinfrapb"
+	"github.com/semistrict/ratel/pkg/sql/opt/exec"
 	"github.com/semistrict/ratel/pkg/sql/row"
 	"github.com/semistrict/ratel/pkg/sql/rowenc"
 	"github.com/semistrict/ratel/pkg/sql/rowinfra"
@@ -60,6 +61,25 @@ type tableReader struct {
 
 	// rowsRead is the number of rows read and is tracked unconditionally.
 	rowsRead int64
+
+	numJSONAccesses int
+}
+
+func postProcessOutputsFetchedColumn(
+	post *execinfrapb.PostProcessSpec, fetchedCols int, fetchedColIdx int,
+) bool {
+	if fetchedColIdx < 0 || fetchedColIdx >= fetchedCols {
+		return false
+	}
+	if !post.Projection {
+		return true
+	}
+	for _, outCol := range post.OutputColumns {
+		if int(outCol) == fetchedColIdx {
+			return true
+		}
+	}
+	return false
 }
 
 var _ execinfra.Processor = &tableReader{}
@@ -119,9 +139,25 @@ func newTableReader(
 		}
 	}
 
-	resultTypes := make([]*types.T, len(spec.FetchSpec.FetchedColumns))
-	for i := range resultTypes {
-		resultTypes[i] = spec.FetchSpec.FetchedColumns[i].Type
+	resultTypes := make([]*types.T, 0, len(spec.FetchSpec.FetchedColumns)+len(spec.JsonAccesses))
+	for i := range spec.FetchSpec.FetchedColumns {
+		resultTypes = append(resultTypes, spec.FetchSpec.FetchedColumns[i].Type)
+	}
+	for i := range spec.JsonAccesses {
+		switch row.JSONAccessKind(spec.JsonAccesses[i].Kind) {
+		case row.JSONAccessExists:
+			resultTypes = append(resultTypes, types.Bool)
+		case row.JSONAccessExistsAny:
+			resultTypes = append(resultTypes, types.Bool)
+		case row.JSONAccessExistsAll:
+			resultTypes = append(resultTypes, types.Bool)
+		case row.JSONAccessFetchJSONPath:
+			resultTypes = append(resultTypes, types.Jsonb)
+		case row.JSONAccessFetchTextPath:
+			resultTypes = append(resultTypes, types.String)
+		default:
+			return nil, errors.AssertionFailedf("unknown JSON access kind %d", spec.JsonAccesses[i].Kind)
+		}
 	}
 
 	tr.ignoreMisplannedRanges = flowCtx.Local
@@ -176,6 +212,93 @@ func newTableReader(
 		fetcher.ConfigureArrayEqualsAnyFilter(
 			tr.EvalCtx, int(spec.ArrayEqualsAnyFilter.ArrayColIdx), leftDatum, false, /* materialize */
 		)
+	}
+	if spec.JsonExistsFilter != nil {
+		if err := fetcher.ConfigureJSONExistsFilter(
+			int(spec.JsonExistsFilter.SourceColIdx),
+			row.JSONAccessKind(spec.JsonExistsFilter.Kind),
+			spec.JsonExistsFilter.Key,
+			append([]string(nil), spec.JsonExistsFilter.Keys...),
+			postProcessOutputsFetchedColumn(post, len(spec.FetchSpec.FetchedColumns), int(spec.JsonExistsFilter.SourceColIdx)),
+		); err != nil {
+			return nil, err
+		}
+	}
+	if spec.JsonPathCompareFilter != nil {
+		var rightDatum tree.Datum
+		if mode := exec.JSONPathFilterMode(spec.JsonPathCompareFilter.Mode); mode != exec.JSONPathFilterIsNull && mode != exec.JSONPathFilterIsNotNull {
+			rightExpr := spec.JsonPathCompareFilter.Right.LocalExpr
+			if rightExpr == nil {
+				var err error
+				rightExpr, err = execinfrapb.DeserializeExpr(
+					spec.JsonPathCompareFilter.Right.Expr, &tr.SemaCtx, tr.EvalCtx, &tree.IndexedVarHelper{},
+				)
+				if err != nil {
+					return nil, err
+				}
+			}
+			var err error
+			rightDatum, err = rightExpr.Eval(tr.EvalCtx)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if err := fetcher.ConfigureJSONPathCompareFilter(
+			tr.EvalCtx,
+			int(spec.JsonPathCompareFilter.SourceColIdx),
+			row.JSONAccessKind(spec.JsonPathCompareFilter.Kind),
+			append([]string(nil), spec.JsonPathCompareFilter.Path...),
+			exec.JSONPathFilterMode(spec.JsonPathCompareFilter.Mode),
+			rightDatum,
+			postProcessOutputsFetchedColumn(post, len(spec.FetchSpec.FetchedColumns), int(spec.JsonPathCompareFilter.SourceColIdx)),
+		); err != nil {
+			return nil, err
+		}
+	}
+	if spec.JsonContainsFilter != nil {
+		rightExpr := spec.JsonContainsFilter.Right.LocalExpr
+		if rightExpr == nil {
+			var err error
+			rightExpr, err = execinfrapb.DeserializeExpr(
+				spec.JsonContainsFilter.Right.Expr, &tr.SemaCtx, tr.EvalCtx, &tree.IndexedVarHelper{},
+			)
+			if err != nil {
+				return nil, err
+			}
+		}
+		rightDatum, err := rightExpr.Eval(tr.EvalCtx)
+		if err != nil {
+			return nil, err
+		}
+		rightJSON, ok := rightDatum.(*tree.DJSON)
+		if !ok {
+			return nil, errors.AssertionFailedf("JSON contains filter right datum has type %T", rightDatum)
+		}
+		if err := fetcher.ConfigureJSONContainsFilter(
+			int(spec.JsonContainsFilter.SourceColIdx),
+			append([]string(nil), spec.JsonContainsFilter.Path...),
+			spec.JsonContainsFilter.ContainedBy,
+			rightJSON.JSON,
+			postProcessOutputsFetchedColumn(post, len(spec.FetchSpec.FetchedColumns), int(spec.JsonContainsFilter.SourceColIdx)),
+		); err != nil {
+			return nil, err
+		}
+	}
+	if len(spec.JsonAccesses) > 0 {
+		programs := make([]row.JSONAccessSpec, len(spec.JsonAccesses))
+		for i := range spec.JsonAccesses {
+			programs[i] = row.JSONAccessSpec{
+				ColIdx: int(spec.JsonAccesses[i].SourceColIdx),
+				Kind:   row.JSONAccessKind(spec.JsonAccesses[i].Kind),
+				Key:    spec.JsonAccesses[i].Key,
+				Keys:   append([]string(nil), spec.JsonAccesses[i].Keys...),
+				Path:   append([]string(nil), spec.JsonAccesses[i].Path...),
+			}
+		}
+		if err := fetcher.ConfigureJSONAccessPrograms(programs); err != nil {
+			return nil, err
+		}
+		tr.numJSONAccesses = len(programs)
 	}
 
 	tr.Spans = spec.Spans
@@ -301,6 +424,24 @@ func (tr *tableReader) Next() (rowenc.EncDatumRow, *execinfrapb.ProducerMetadata
 		tr.rowsRead++
 		if !tr.fetcher.RowPassesArrayEqualsAnyFilter() {
 			continue
+		}
+		if !tr.fetcher.RowPassesJSONExistsFilter() {
+			continue
+		}
+		if !tr.fetcher.RowPassesJSONPathCompareFilter() {
+			continue
+		}
+		if !tr.fetcher.RowPassesJSONContainsFilter() {
+			continue
+		}
+		if tr.numJSONAccesses > 0 {
+			results := tr.fetcher.JSONAccessProgramResults()
+			augmented := make(rowenc.EncDatumRow, len(row)+len(results))
+			copy(augmented, row)
+			for i := range results {
+				augmented[len(row)+i] = rowenc.EncDatum{Datum: results[i]}
+			}
+			row = augmented
 		}
 		if outRow := tr.ProcessRowHelper(row); outRow != nil {
 			return outRow, nil

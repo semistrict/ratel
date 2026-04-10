@@ -59,6 +59,39 @@ func TestSubordinateKeyRoundTrip(t *testing.T) {
 	}
 }
 
+func TestSubordinatePathKeyRoundTrip(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	codec := SystemSQLCodec
+	pkPrefix := encoding.EncodeUvarintAscending(codec.IndexPrefix(42, 1), 7)
+	rowKey := MakeFamilyKey(pkPrefix, 0)
+
+	tests := []struct {
+		name string
+		path []SubordinatePathSegment
+	}{
+		{"header", []SubordinatePathSegment{{Kind: SubordinatePathHeader}}},
+		{"array", []SubordinatePathSegment{{Kind: SubordinatePathArrayIndex, ArrayIdx: 17}}},
+		{"object", []SubordinatePathSegment{{Kind: SubordinatePathObjectKey, ObjectKey: "foo"}}},
+		{"nested", []SubordinatePathSegment{
+			{Kind: SubordinatePathObjectKey, ObjectKey: "outer"},
+			{Kind: SubordinatePathArrayIndex, ArrayIdx: 3},
+			{Kind: SubordinatePathObjectKey, ObjectKey: "inner"},
+		}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			subKey := MakeSubordinatePathKey(rowKey, 5, tt.path)
+			rowPrefix, gotColID, gotPath, err := DecodeSubordinatePathKey(subKey)
+			require.NoError(t, err)
+			require.Equal(t, uint32(5), gotColID)
+			require.True(t, bytes.Equal(pkPrefix, rowPrefix))
+			require.Equal(t, tt.path, gotPath)
+		})
+	}
+}
+
 func TestSubordinateKeySortOrder(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 
@@ -96,6 +129,37 @@ func TestSubordinateKeySortOrder(t *testing.T) {
 		family2,
 	}
 
+	for i := 0; i < len(ordered)-1; i++ {
+		require.True(t, bytes.Compare(ordered[i], ordered[i+1]) < 0,
+			"expected %x < %x (index %d vs %d)", ordered[i], ordered[i+1], i, i+1)
+	}
+}
+
+func TestSubordinatePathKeySortOrder(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	codec := SystemSQLCodec
+	pkPrefix := encoding.EncodeUvarintAscending(codec.IndexPrefix(42, 1), 7)
+	pkPrefix = pkPrefix[:len(pkPrefix):len(pkPrefix)]
+	rowKey := MakeFamilyKey(pkPrefix, 0)
+
+	sentinel := append(roachpb.Key(nil), rowKey...)
+	header := MakeSubordinatePathKey(rowKey, 1, []SubordinatePathSegment{{Kind: SubordinatePathHeader}})
+	arr0 := MakeSubordinatePathKey(rowKey, 1, []SubordinatePathSegment{{Kind: SubordinatePathArrayIndex, ArrayIdx: 0}})
+	arr1 := MakeSubordinatePathKey(rowKey, 1, []SubordinatePathSegment{{Kind: SubordinatePathArrayIndex, ArrayIdx: 1}})
+	objA := MakeSubordinatePathKey(rowKey, 1, []SubordinatePathSegment{{Kind: SubordinatePathObjectKey, ObjectKey: "a"}})
+	objB := MakeSubordinatePathKey(rowKey, 1, []SubordinatePathSegment{{Kind: SubordinatePathObjectKey, ObjectKey: "b"}})
+	family1 := MakeFamilyKey(append([]byte(nil), pkPrefix...), 1)
+
+	ordered := []roachpb.Key{
+		sentinel,
+		header,
+		arr0,
+		arr1,
+		objA,
+		objB,
+		family1,
+	}
 	for i := 0; i < len(ordered)-1; i++ {
 		require.True(t, bytes.Compare(ordered[i], ordered[i+1]) < 0,
 			"expected %x < %x (index %d vs %d)", ordered[i], ordered[i+1], i, i+1)

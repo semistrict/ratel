@@ -25,6 +25,7 @@ import (
 	. "github.com/semistrict/ratel/pkg/sql/rowenc"
 	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 	"github.com/semistrict/ratel/pkg/sql/types"
+	jsonutil "github.com/semistrict/ratel/pkg/util/json"
 	"github.com/stretchr/testify/require"
 )
 
@@ -164,4 +165,84 @@ func TestSubordinateKeysForColumn(t *testing.T) {
 		require.Equal(t, uint32(2), colID)
 		require.Equal(t, uint32(i), elemIdx)
 	}
+}
+
+func TestEncodeSubordinateKeysRecursiveJSON(t *testing.T) {
+	columns := []descpb.ColumnDescriptor{
+		{ID: 1, Name: "pk", Type: types.Int},
+		{ID: 2, Name: "doc", Type: types.Jsonb},
+	}
+	var colMap catalog.TableColMap
+	colMap.Set(1, 0)
+	colMap.Set(2, 1)
+
+	td := descpb.TableDescriptor{
+		ID:      84,
+		Columns: columns,
+		PrimaryIndex: descpb.IndexDescriptor{
+			ID:                  1,
+			KeyColumnIDs:        []descpb.ColumnID{1},
+			KeyColumnDirections: []descpb.IndexDescriptor_Direction{descpb.IndexDescriptor_ASC},
+		},
+		RowGroups: []descpb.RowGroupDescriptor{{
+			Name:            "primary",
+			ID:              0,
+			ColumnNames:     []string{"pk", "doc"},
+			ColumnIDs:       []descpb.ColumnID{1, 2},
+			DefaultColumnID: 1,
+		}},
+	}
+	tableDesc := tabledesc.NewBuilder(&td).BuildImmutableTable()
+	codec := keys.SystemSQLCodec
+
+	j, err := jsonutil.ParseJSON(`{"a":[1,{"b":null}],"c":true}`)
+	require.NoError(t, err)
+	values := []tree.Datum{tree.NewDInt(1), tree.NewDJSON(j)}
+	pkKey := buildPrimaryIndexKey(t, codec, tableDesc, colMap, values)
+
+	entries, err := EncodeSubordinateKeys(tableDesc, pkKey, colMap, values)
+	require.NoError(t, err)
+	require.Len(t, entries, 6)
+
+	type node struct {
+		path string
+		kind SubordinateJSONNodeKind
+		json string
+	}
+	var got []node
+	for _, entry := range entries {
+		rowPrefix, colID, path, err := keys.DecodeSubordinatePathKey(entry.Key)
+		require.NoError(t, err)
+		require.Equal(t, roachpb.Key(pkKey), roachpb.Key(rowPrefix))
+		require.Equal(t, uint32(2), colID)
+
+		kind, j, err := DecodeSubordinateJSONValue(entry.Value)
+		require.NoError(t, err)
+
+		var pathStr string
+		for _, seg := range path {
+			switch seg.Kind {
+			case keys.SubordinatePathHeader:
+				pathStr += "$"
+			case keys.SubordinatePathObjectKey:
+				pathStr += "." + seg.ObjectKey
+			case keys.SubordinatePathArrayIndex:
+				pathStr += "[" + tree.NewDInt(tree.DInt(seg.ArrayIdx)).String() + "]"
+			}
+		}
+		jsonStr := ""
+		if j != nil {
+			jsonStr = j.String()
+		}
+		got = append(got, node{path: pathStr, kind: kind, json: jsonStr})
+	}
+
+	require.ElementsMatch(t, []node{
+		{path: "$", kind: SubordinateJSONObject},
+		{path: "$.a", kind: SubordinateJSONArray},
+		{path: "$.a[0]", kind: SubordinateJSONScalar, json: `1`},
+		{path: "$.a[1]", kind: SubordinateJSONObject},
+		{path: "$.a[1].b", kind: SubordinateJSONScalar, json: `null`},
+		{path: "$.c", kind: SubordinateJSONScalar, json: `true`},
+	}, got)
 }

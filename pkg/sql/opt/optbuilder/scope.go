@@ -971,6 +971,86 @@ func makeUntypedTuple(labels []string, texprs []tree.TypedExpr) *tree.Tuple {
 	return &tree.Tuple{Exprs: exprs, Labels: labels}
 }
 
+func unresolvedNamePartsInNaturalOrder(n *tree.UnresolvedName) ([]string, []string) {
+	parts := make([]string, n.NumParts)
+	rawParts := make([]string, n.NumParts)
+	for i := 0; i < n.NumParts; i++ {
+		reversedIdx := n.NumParts - 1 - i
+		parts[i] = n.Parts[reversedIdx]
+		rawParts[i] = n.RawPart(reversedIdx)
+	}
+	return parts, rawParts
+}
+
+func isUndefinedNameResolutionError(err error) bool {
+	return sqlerrors.IsUndefinedColumnError(err) || sqlerrors.IsUndefinedRelationError(err)
+}
+
+func (s *scope) resolveJSONPathExpr(
+	base tree.Expr, parts []string, rawParts []string,
+) tree.Expr {
+	expr := base
+	for i := range parts {
+		raw := parts[i]
+		if rawParts != nil && i < len(rawParts) && rawParts[i] != "" {
+			raw = rawParts[i]
+		}
+		expr = &tree.ColumnAccessExpr{
+			Expr:       expr,
+			ColName:    tree.Name(parts[i]),
+			RawColName: raw,
+		}
+	}
+	return expr
+}
+
+func (s *scope) maybeResolveJSONDottedPath(n *tree.UnresolvedName) (tree.Expr, bool) {
+	if n.Star || n.NumParts < 2 {
+		return nil, false
+	}
+
+	// Preserve ordinary SQL name resolution whenever the full dotted name
+	// resolves as-is.
+	if n.NumParts <= 4 {
+		vn, err := n.NormalizeVarName()
+		if err != nil {
+			panic(err)
+		}
+		colItem, ok := vn.(*tree.ColumnItem)
+		if !ok {
+			return nil, false
+		}
+		if _, err := colinfo.ResolveColumnItem(s.builder.ctx, s, colItem); err == nil {
+			return nil, false
+		} else if !isUndefinedNameResolutionError(err) {
+			panic(err)
+		}
+	}
+
+	parts, rawParts := unresolvedNamePartsInNaturalOrder(n)
+	for prefixLen := n.NumParts - 1; prefixLen >= 1; prefixLen-- {
+		prefixName := tree.MakeUnresolvedNameWithRawParts(parts[:prefixLen], rawParts[:prefixLen])
+		vn, err := (&prefixName).NormalizeVarName()
+		if err != nil {
+			panic(err)
+		}
+		colItem, ok := vn.(*tree.ColumnItem)
+		if !ok {
+			continue
+		}
+		colRes, err := colinfo.ResolveColumnItem(s.builder.ctx, s, colItem)
+		if err != nil {
+			if isUndefinedNameResolutionError(err) {
+				continue
+			}
+			panic(err)
+		}
+		return s.resolveJSONPathExpr(colRes.(*scopeColumn), parts[prefixLen:], rawParts[prefixLen:]), true
+	}
+
+	return nil, false
+}
+
 // VisitPre is part of the Visitor interface.
 //
 // NB: This code is adapted from sql/select_name_resolution.go and
@@ -997,6 +1077,9 @@ func (s *scope) VisitPre(expr tree.Expr) (recurse bool, newExpr tree.Expr) {
 		return false, makeUntypedTuple(labels, exprs)
 
 	case *tree.UnresolvedName:
+		if expr, ok := s.maybeResolveJSONDottedPath(t); ok {
+			return false, expr
+		}
 		vn, err := t.NormalizeVarName()
 		if err != nil {
 			panic(err)
@@ -1516,7 +1599,7 @@ func (s *scope) replaceCount(
 			e := &tree.FuncExpr{
 				Func: tree.ResolvableFunctionReference{
 					FunctionReference: &tree.UnresolvedName{
-						NumParts: 1, Parts: tree.NameParts{"count_rows"},
+						NumParts: 1, Parts: tree.MakeNameParts("count_rows"),
 					},
 				},
 			}
@@ -1648,7 +1731,7 @@ func columnNameAsTupleStar(colName string) *tree.TupleStar {
 		Expr: &tree.UnresolvedName{
 			Star:     true,
 			NumParts: 2,
-			Parts:    tree.NameParts{"", colName},
+			Parts:    tree.MakeNameParts("", colName),
 		},
 	}
 }

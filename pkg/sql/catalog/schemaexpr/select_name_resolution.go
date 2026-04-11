@@ -23,6 +23,7 @@ import (
 	"github.com/semistrict/ratel/pkg/sql/catalog/colinfo"
 	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 	"github.com/semistrict/ratel/pkg/sql/sessiondata"
+	"github.com/semistrict/ratel/pkg/sql/sqlerrors"
 )
 
 // NameResolutionVisitor is a tree.Visitor implementation used to
@@ -35,6 +36,90 @@ type NameResolutionVisitor struct {
 }
 
 var _ tree.Visitor = &NameResolutionVisitor{}
+
+func unresolvedNamePartsInNaturalOrder(n *tree.UnresolvedName) ([]string, []string) {
+	parts := make([]string, n.NumParts)
+	rawParts := make([]string, n.NumParts)
+	for i := 0; i < n.NumParts; i++ {
+		reversedIdx := n.NumParts - 1 - i
+		parts[i] = n.Parts[reversedIdx]
+		rawParts[i] = n.RawPart(reversedIdx)
+	}
+	return parts, rawParts
+}
+
+func isUndefinedNameResolutionError(err error) bool {
+	return sqlerrors.IsUndefinedColumnError(err) || sqlerrors.IsUndefinedRelationError(err)
+}
+
+func resolveJSONPathExpr(base tree.Expr, parts []string, rawParts []string) tree.Expr {
+	expr := base
+	for i := range parts {
+		raw := parts[i]
+		if rawParts != nil && i < len(rawParts) && rawParts[i] != "" {
+			raw = rawParts[i]
+		}
+		expr = &tree.ColumnAccessExpr{
+			Expr:       expr,
+			ColName:    tree.Name(parts[i]),
+			RawColName: raw,
+		}
+	}
+	return expr
+}
+
+func (v *NameResolutionVisitor) maybeResolveJSONDottedPath(
+	n *tree.UnresolvedName,
+) (tree.Expr, bool) {
+	if n.Star || n.NumParts < 2 {
+		return nil, false
+	}
+
+	if n.NumParts <= 4 {
+		vn, err := n.NormalizeVarName()
+		if err != nil {
+			v.err = err
+			return nil, false
+		}
+		colItem, ok := vn.(*tree.ColumnItem)
+		if !ok {
+			return nil, false
+		}
+		if _, err := colinfo.ResolveColumnItem(context.TODO(), &v.resolver, colItem); err == nil {
+			return nil, false
+		} else if !isUndefinedNameResolutionError(err) {
+			v.err = err
+			return nil, false
+		}
+	}
+
+	parts, rawParts := unresolvedNamePartsInNaturalOrder(n)
+	for prefixLen := n.NumParts - 1; prefixLen >= 1; prefixLen-- {
+		prefixName := tree.MakeUnresolvedNameWithRawParts(parts[:prefixLen], rawParts[:prefixLen])
+		vn, err := (&prefixName).NormalizeVarName()
+		if err != nil {
+			v.err = err
+			return nil, false
+		}
+		colItem, ok := vn.(*tree.ColumnItem)
+		if !ok {
+			continue
+		}
+		_, err = colinfo.ResolveColumnItem(context.TODO(), &v.resolver, colItem)
+		if err != nil {
+			if isUndefinedNameResolutionError(err) {
+				continue
+			}
+			v.err = err
+			return nil, false
+		}
+		colIdx := v.resolver.ResolverState.ColIdx
+		ivar := v.iVarHelper.IndexedVar(colIdx)
+		return resolveJSONPathExpr(ivar, parts[prefixLen:], rawParts[prefixLen:]), true
+	}
+
+	return nil, false
+}
 
 // VisitPre implements tree.Visitor.
 func (v *NameResolutionVisitor) VisitPre(expr tree.Expr) (recurse bool, newNode tree.Expr) {
@@ -54,6 +139,12 @@ func (v *NameResolutionVisitor) VisitPre(expr tree.Expr) (recurse bool, newNode 
 		return false, t
 
 	case *tree.UnresolvedName:
+		if expr, ok := v.maybeResolveJSONDottedPath(t); ok {
+			return true, expr
+		}
+		if v.err != nil {
+			return false, expr
+		}
 		vn, err := t.NormalizeVarName()
 		if err != nil {
 			v.err = err

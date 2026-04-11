@@ -655,6 +655,264 @@ func TestUnimplementedSyntax(t *testing.T) {
 	}
 }
 
+func TestParseJSONColumnAccessPreservesRawCase(t *testing.T) {
+	testCases := []struct {
+		expr           string
+		expectedCol    tree.Name
+		expectedRawCol string
+	}{
+		{
+			expr:           `('{"Foo": 1}'::JSONB).Foo`,
+			expectedCol:    tree.Name("foo"),
+			expectedRawCol: "Foo",
+		},
+		{
+			expr:           `('{"Foo": 1}'::JSONB)."Foo"`,
+			expectedCol:    tree.Name("Foo"),
+			expectedRawCol: "Foo",
+		},
+		{
+			expr:           `(('{"Foo": {"Bar": 1}}'::JSONB).Foo).Bar`,
+			expectedCol:    tree.Name("bar"),
+			expectedRawCol: "Bar",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.expr, func(t *testing.T) {
+			expr, err := parser.ParseExpr(tc.expr)
+			require.NoError(t, err)
+			colAccess, ok := expr.(*tree.ColumnAccessExpr)
+			require.True(t, ok, "expected ColumnAccessExpr, got %T", expr)
+			assert.Equal(t, tc.expectedCol, colAccess.ColName)
+			assert.Equal(t, tc.expectedRawCol, colAccess.RawColName)
+		})
+	}
+}
+
+func TestParseJSONDottedPathPreservesRawCase(t *testing.T) {
+	testCases := []struct {
+		expr                  string
+		expectedParts         tree.NameParts
+		expectedRawParts      tree.NameParts
+		expectedNumParts      int
+		expectedAccessSuffix  []string
+		expectedRawAccessPath []string
+	}{
+		{
+			expr:                  `j.Foo`,
+			expectedParts:         tree.NameParts{"foo", "j"},
+			expectedRawParts:      tree.NameParts{"Foo", "j"},
+			expectedNumParts:      2,
+			expectedAccessSuffix:  nil,
+			expectedRawAccessPath: nil,
+		},
+		{
+			expr:                  `t.j.Foo.Bar`,
+			expectedParts:         tree.NameParts{"bar", "foo", "j", "t"},
+			expectedRawParts:      tree.NameParts{"Bar", "Foo", "j", "t"},
+			expectedNumParts:      4,
+			expectedAccessSuffix:  nil,
+			expectedRawAccessPath: nil,
+		},
+		{
+			expr:                  `j."Foo"."Bar"`,
+			expectedParts:         tree.NameParts{"Bar", "Foo", "j"},
+			expectedRawParts:      tree.NameParts{"Bar", "Foo", "j"},
+			expectedNumParts:      3,
+			expectedAccessSuffix:  nil,
+			expectedRawAccessPath: nil,
+		},
+		{
+			expr:                  `j.Foo.Bar.Baz.Quux`,
+			expectedParts:         tree.NameParts{"baz", "bar", "foo", "j"},
+			expectedRawParts:      tree.NameParts{"Baz", "Bar", "Foo", "j"},
+			expectedNumParts:      4,
+			expectedAccessSuffix:  []string{"quux"},
+			expectedRawAccessPath: []string{"Quux"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.expr, func(t *testing.T) {
+			expr, err := parser.ParseExpr(tc.expr)
+			require.NoError(t, err)
+			un, gotParts, gotRawParts := unwrapColumnAccessChain(t, expr)
+			assert.Equal(t, tc.expectedNumParts, un.NumParts)
+			assert.Equal(t, tc.expectedParts, unresolvedPartsPrefix(un))
+			assert.Equal(t, tc.expectedRawParts, unresolvedRawPartsPrefix(un))
+			assert.Equal(t, tc.expectedAccessSuffix, gotParts)
+			assert.Equal(t, tc.expectedRawAccessPath, gotRawParts)
+		})
+	}
+}
+
+func parseSingleSelectExpr(t *testing.T, sql string) tree.Expr {
+	t.Helper()
+	stmt, err := parser.ParseOne(sql)
+	require.NoError(t, err)
+	selectStmt, ok := stmt.AST.(*tree.Select)
+	require.True(t, ok, "expected Select, got %T", stmt.AST)
+	selectClause, ok := selectStmt.Select.(*tree.SelectClause)
+	require.True(t, ok, "expected SelectClause, got %T", selectStmt.Select)
+	require.Len(t, selectClause.Exprs, 1)
+	return selectClause.Exprs[0].Expr
+}
+
+func unresolvedPartsPrefix(n *tree.UnresolvedName) tree.NameParts {
+	return append(tree.NameParts(nil), n.Parts[:n.NumParts]...)
+}
+
+func unresolvedRawPartsPrefix(n *tree.UnresolvedName) tree.NameParts {
+	return append(tree.NameParts(nil), n.RawParts[:n.NumParts]...)
+}
+
+func unwrapColumnAccessChain(t *testing.T, expr tree.Expr) (*tree.UnresolvedName, []string, []string) {
+	t.Helper()
+	var parts []string
+	var rawParts []string
+	for {
+		colAccess, ok := expr.(*tree.ColumnAccessExpr)
+		if !ok {
+			break
+		}
+		parts = append(parts, string(colAccess.ColName))
+		raw := colAccess.RawColName
+		if raw == "" {
+			raw = string(colAccess.ColName)
+		}
+		rawParts = append(rawParts, raw)
+		expr = colAccess.Expr
+	}
+	for i, j := 0, len(parts)-1; i < j; i, j = i+1, j-1 {
+		parts[i], parts[j] = parts[j], parts[i]
+		rawParts[i], rawParts[j] = rawParts[j], rawParts[i]
+	}
+	un, ok := expr.(*tree.UnresolvedName)
+	require.True(t, ok, "expected UnresolvedName base, got %T", expr)
+	return un, parts, rawParts
+}
+
+func TestParseJSONDottedPathSelectEdgeCasesPreservesRawCase(t *testing.T) {
+	testCases := []struct {
+		sql                   string
+		expectedParts         tree.NameParts
+		expectedRawParts      tree.NameParts
+		expectedNumParts      int
+		expectedAccessSuffix  []string
+		expectedRawAccessPath []string
+	}{
+		{
+			sql:                   `SELECT j.Foo FROM t`,
+			expectedParts:         tree.NameParts{"foo", "j"},
+			expectedRawParts:      tree.NameParts{"Foo", "j"},
+			expectedNumParts:      2,
+			expectedAccessSuffix:  nil,
+			expectedRawAccessPath: nil,
+		},
+		{
+			sql:                   `SELECT t.j.Foo FROM t`,
+			expectedParts:         tree.NameParts{"foo", "j", "t"},
+			expectedRawParts:      tree.NameParts{"Foo", "j", "t"},
+			expectedNumParts:      3,
+			expectedAccessSuffix:  nil,
+			expectedRawAccessPath: nil,
+		},
+		{
+			sql:                   `SELECT "Db"."Tbl".j."Foo" FROM t`,
+			expectedParts:         tree.NameParts{"Foo", "j", "Tbl", "Db"},
+			expectedRawParts:      tree.NameParts{"Foo", "j", "Tbl", "Db"},
+			expectedNumParts:      4,
+			expectedAccessSuffix:  nil,
+			expectedRawAccessPath: nil,
+		},
+		{
+			sql:                   `SELECT j."SELECT"."MiXeD" FROM t`,
+			expectedParts:         tree.NameParts{"MiXeD", "SELECT", "j"},
+			expectedRawParts:      tree.NameParts{"MiXeD", "SELECT", "j"},
+			expectedNumParts:      3,
+			expectedAccessSuffix:  nil,
+			expectedRawAccessPath: nil,
+		},
+		{
+			sql:                   `SELECT j.Foo.Bar.Baz.Quux FROM t`,
+			expectedParts:         tree.NameParts{"baz", "bar", "foo", "j"},
+			expectedRawParts:      tree.NameParts{"Baz", "Bar", "Foo", "j"},
+			expectedNumParts:      4,
+			expectedAccessSuffix:  []string{"quux"},
+			expectedRawAccessPath: []string{"Quux"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.sql, func(t *testing.T) {
+			expr := parseSingleSelectExpr(t, tc.sql)
+			un, gotParts, gotRawParts := unwrapColumnAccessChain(t, expr)
+			assert.Equal(t, tc.expectedNumParts, un.NumParts)
+			assert.Equal(t, tc.expectedParts, unresolvedPartsPrefix(un))
+			assert.Equal(t, tc.expectedRawParts, unresolvedRawPartsPrefix(un))
+			assert.Equal(t, tc.expectedAccessSuffix, gotParts)
+			assert.Equal(t, tc.expectedRawAccessPath, gotRawParts)
+			assert.False(t, un.Star)
+		})
+	}
+}
+
+func TestParseJSONDottedPathWithStarPreservesRawCase(t *testing.T) {
+	testCases := []struct {
+		sql              string
+		expectedParts    tree.NameParts
+		expectedRawParts tree.NameParts
+		expectedNumParts int
+	}{
+		{
+			sql:              `SELECT j.* FROM t`,
+			expectedParts:    tree.NameParts{"", "j"},
+			expectedRawParts: tree.NameParts{"", "j"},
+			expectedNumParts: 2,
+		},
+		{
+			sql:              `SELECT t.j.* FROM t`,
+			expectedParts:    tree.NameParts{"", "j", "t"},
+			expectedRawParts: tree.NameParts{"", "j", "t"},
+			expectedNumParts: 3,
+		},
+		{
+			sql:              `SELECT "Db"."Tbl".j.* FROM t`,
+			expectedParts:    tree.NameParts{"", "j", "Tbl", "Db"},
+			expectedRawParts: tree.NameParts{"", "j", "Tbl", "Db"},
+			expectedNumParts: 4,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.sql, func(t *testing.T) {
+			expr := parseSingleSelectExpr(t, tc.sql)
+			un, ok := expr.(*tree.UnresolvedName)
+			require.True(t, ok, "expected UnresolvedName, got %T", expr)
+			assert.Equal(t, tc.expectedNumParts, un.NumParts)
+			assert.Equal(t, tc.expectedParts, unresolvedPartsPrefix(un))
+			assert.Equal(t, tc.expectedRawParts, unresolvedRawPartsPrefix(un))
+			assert.True(t, un.Star)
+		})
+	}
+}
+
+func TestParseQualifiedTableNameBeforeWhere(t *testing.T) {
+	testCases := []string{
+		`SELECT "isRole" FROM system.public.users WHERE username = $1`,
+		`SELECT * FROM system.public.span_configurations WHERE start_key = $1`,
+	}
+
+	for _, sql := range testCases {
+		t.Run(sql, func(t *testing.T) {
+			if _, err := parser.ParseOne(sql); err != nil {
+				t.Fatalf("expected parse to succeed for %q, got %v", sql, err)
+			}
+		})
+	}
+}
+
 // TestParseSQL verifies that Statement.SQL is set correctly.
 func TestParseSQL(t *testing.T) {
 	testData := []struct {

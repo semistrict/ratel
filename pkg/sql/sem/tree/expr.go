@@ -1597,6 +1597,11 @@ type ColumnAccessExpr struct {
 	// set.
 	ColName Name
 
+	// RawColName preserves the original attribute spelling for JSON access.
+	// It is ignored for tuple access, which continues to follow SQL identifier
+	// normalization rules.
+	RawColName string
+
 	// ColIndex indicates the index of the column in the tuple. This is
 	// either:
 	// - set during type checking based on the label in ColName if
@@ -1615,6 +1620,7 @@ func NewTypedColumnAccessExpr(expr TypedExpr, colName Name, colIdx int) *ColumnA
 	return &ColumnAccessExpr{
 		Expr:           expr,
 		ColName:        colName,
+		RawColName:     string(colName),
 		ByIndex:        colName == "",
 		ColIndex:       colIdx,
 		typeAnnotation: typeAnnotation{typ: expr.ResolvedType().TupleContents()[colIdx]},

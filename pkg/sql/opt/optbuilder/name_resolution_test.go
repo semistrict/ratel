@@ -15,12 +15,16 @@
 package optbuilder
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/semistrict/ratel/pkg/sql/catalog/colinfo"
 	"github.com/semistrict/ratel/pkg/sql/catalog/colinfo/colinfotestutils"
+	"github.com/semistrict/ratel/pkg/sql/parser"
 	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/types"
+	"github.com/stretchr/testify/require"
 )
 
 var _ colinfotestutils.ColumnItemResolverTester = &scope{}
@@ -77,4 +81,69 @@ func TestResolveQualifiedStar(t *testing.T) {
 func TestResolveColumnItem(t *testing.T) {
 	s := &scope{}
 	colinfotestutils.RunResolveColumnItemTest(t, s)
+}
+
+func TestResolveJSONDottedPath(t *testing.T) {
+	semaCtx := tree.MakeSemaContext()
+	s := &scope{
+		builder: &Builder{
+			ctx:     context.Background(),
+			semaCtx: &semaCtx,
+		},
+	}
+	s.cols = append(s.cols, scopeColumn{
+		name:       scopeColName("j"),
+		table:      tree.MakeUnqualifiedTableName("t"),
+		typ:        types.Jsonb,
+		visibility: visible,
+	})
+
+	testCases := []struct {
+		expr     string
+		expected string
+	}{
+		{
+			expr:     `j.Foo`,
+			expected: `j->'Foo':::STRING`,
+		},
+		{
+			expr:     `t.j.Foo.Bar`,
+			expected: `(j->'Foo':::STRING)->'Bar':::STRING`,
+		},
+		{
+			expr:     `j.Foo.Bar.Baz.Quux`,
+			expected: `(((j->'Foo':::STRING)->'Bar':::STRING)->'Baz':::STRING)->'Quux':::STRING`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.expr, func(t *testing.T) {
+			expr, err := parser.ParseExpr(tc.expr)
+			require.NoError(t, err)
+			typed := s.resolveType(expr, types.Any)
+			require.Equal(t, tc.expected, tree.Serialize(typed))
+		})
+	}
+}
+
+func TestResolveJSONDottedPathPrefersQualifiedColumn(t *testing.T) {
+	semaCtx := tree.MakeSemaContext()
+	s := &scope{
+		builder: &Builder{
+			ctx:     context.Background(),
+			semaCtx: &semaCtx,
+		},
+	}
+	s.cols = append(s.cols, scopeColumn{
+		name:       scopeColName("foo"),
+		table:      tree.MakeUnqualifiedTableName("j"),
+		typ:        types.Int,
+		visibility: visible,
+	})
+
+	expr, err := parser.ParseExpr(`j.foo`)
+	require.NoError(t, err)
+	typed := s.resolveType(expr, types.Any)
+	require.Equal(t, `foo`, tree.Serialize(typed))
+	require.Equal(t, types.Int, typed.ResolvedType())
 }

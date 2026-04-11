@@ -26,7 +26,7 @@ func MakeHashShardComputeExpr(colNames []string, buckets int) *string {
 		return tree.ResolvableFunctionReference{
 			FunctionReference: &tree.UnresolvedName{
 				NumParts: 1,
-				Parts:    tree.NameParts{funcName},
+				Parts:    tree.MakeNameParts(funcName),
 			},
 		}
 	}

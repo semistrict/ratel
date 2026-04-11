@@ -143,6 +143,68 @@ func TestSubordinateJSONPointLookupFilterOnlyDefaultVectorizedPlan(t *testing.T)
 	planassert.NotContains(t, distsqlPlan, `"Spans: /1/0-/1/1"`)
 }
 
+func TestSubordinateJSONDotAccessCaseSensitiveDistSQL(t *testing.T) {
+	ctx, c, db := startSubordinateJSONCluster(t, "on")
+	defer c.Stop()
+
+	createSubordinateJSONTable(t, ctx, db, `(1, '{"Needle":{"Tiny":"v"},"needle":{"tiny":"w"}}')`)
+
+	var upper sql.NullString
+	var lower sql.NullString
+	require.NoError(t, db.QueryRowContext(ctx, `
+		SELECT j.Needle.Tiny, j.needle.tiny
+		FROM t
+		WHERE id = 1
+	`).Scan(&upper, &lower))
+	require.Equal(t, sql.NullString{String: `"v"`, Valid: true}, upper)
+	require.Equal(t, sql.NullString{String: `"w"`, Valid: true}, lower)
+
+	plan := planassert.VecVerbose(t, ctx, db, `
+		SELECT id
+		FROM t
+		WHERE id = 1 AND j.Needle.Tiny = '"v"'::JSONB
+	`)
+	planassert.UsesColBatchScan(t, plan)
+
+	var id int
+	require.NoError(t, db.QueryRowContext(ctx, `
+		SELECT id
+		FROM t
+		WHERE id = 1 AND j.Needle.Tiny = '"v"'::JSONB
+	`).Scan(&id))
+	require.Equal(t, 1, id)
+}
+
+func TestSubordinateJSONDotAccessLongPathDistSQL(t *testing.T) {
+	ctx, c, db := startSubordinateJSONCluster(t, "on")
+	defer c.Stop()
+
+	createSubordinateJSONTable(t, ctx, db, `(1, '{"Needle":{"Layer":{"Deep":{"Tiny":"v"}}}}')`)
+
+	var val sql.NullString
+	require.NoError(t, db.QueryRowContext(ctx, `
+		SELECT j.Needle.Layer.Deep.Tiny
+		FROM t
+		WHERE id = 1
+	`).Scan(&val))
+	require.Equal(t, sql.NullString{String: `"v"`, Valid: true}, val)
+
+	plan := planassert.VecVerbose(t, ctx, db, `
+		SELECT id
+		FROM t
+		WHERE id = 1 AND j.Needle.Layer.Deep.Tiny = '"v"'::JSONB
+	`)
+	planassert.UsesColBatchScan(t, plan)
+
+	var id int
+	require.NoError(t, db.QueryRowContext(ctx, `
+		SELECT id
+		FROM t
+		WHERE id = 1 AND j.Needle.Layer.Deep.Tiny = '"v"'::JSONB
+	`).Scan(&id))
+	require.Equal(t, 1, id)
+}
+
 func TestSubordinateJSONAccessProjection(t *testing.T) {
 	testSubordinateJSONAccessProjection(t, nil)
 }

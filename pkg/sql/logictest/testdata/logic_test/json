@@ -179,6 +179,24 @@ SELECT bar FROM foo WHERE bar->'a' = '"b"'::JSON
 ----
 {"a": "b"}
 
+query TT
+SELECT j.Foo, j.foo
+FROM (VALUES ('{"Foo": 1, "foo": 2}'::JSONB)) AS t(j)
+----
+1 2
+
+query TT
+SELECT j.Foo.Bar, j.Foo.bar
+FROM (VALUES ('{"Foo": {"Bar": 1, "bar": 2}}'::JSONB)) AS t(j)
+----
+1 2
+
+query T
+SELECT j."Foo"
+FROM (VALUES ('{"Foo": 1, "foo": 2}'::JSONB)) AS t(j)
+----
+1
+
 statement error pgcode 0A000 can't order by column type jsonb.*\nHINT.*\n.*35706
 SELECT bar FROM foo ORDER BY bar
 

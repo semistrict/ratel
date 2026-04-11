@@ -24,6 +24,7 @@ import (
 	"github.com/semistrict/ratel/pkg/server/telemetry"
 	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
 	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree/treebin"
 	"github.com/semistrict/ratel/pkg/sql/sem/tree/treecmp"
 	"github.com/semistrict/ratel/pkg/sql/sessiondata"
 	"github.com/semistrict/ratel/pkg/sql/sqltelemetry"
@@ -748,6 +749,22 @@ func (expr *ColumnAccessExpr) TypeCheck(
 
 	expr.Expr = subExpr
 	resolvedType := subExpr.ResolvedType()
+
+	if resolvedType.Equivalent(types.Jsonb) {
+		if expr.ByIndex {
+			return nil, NewTypeIsNotCompositeError(resolvedType)
+		}
+		key := expr.RawColName
+		if key == "" {
+			key = string(expr.ColName)
+		}
+		return NewTypedBinaryExpr(
+			treebin.MakeBinaryOperator(treebin.JSONFetchVal),
+			subExpr,
+			NewDString(key),
+			types.Jsonb,
+		), nil
+	}
 
 	if resolvedType.Family() != types.TupleFamily {
 		return nil, NewTypeIsNotCompositeError(resolvedType)

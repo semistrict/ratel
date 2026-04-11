@@ -52,6 +52,8 @@ type ScanSymType interface {
 	SetPos(int32)
 	Str() string
 	SetStr(string)
+	RawStr() string
+	SetRawStr(string)
 	UnionVal() interface{}
 	SetUnionVal(interface{})
 }
@@ -125,6 +127,7 @@ func (s *Scanner) Scan(lval ScanSymType) {
 	lval.SetID(0)
 	lval.SetPos(int32(s.pos))
 	lval.SetStr("EOF")
+	lval.SetRawStr("EOF")
 
 	if _, ok := s.skipWhitespace(lval, true); !ok {
 		return
@@ -139,6 +142,7 @@ func (s *Scanner) Scan(lval ScanSymType) {
 	lval.SetID(int32(ch))
 	lval.SetPos(int32(s.pos - 1))
 	lval.SetStr(s.in[lval.Pos():s.pos])
+	lval.SetRawStr(lval.Str())
 
 	switch ch {
 	case '$':
@@ -156,6 +160,7 @@ func (s *Scanner) Scan(lval ScanSymType) {
 		// "[^"]"
 		if s.scanString(lval, identQuote, false /* allowEscapes */, true /* requireUTF8 */) {
 			lval.SetID(lexbase.IDENT)
+			lval.SetRawStr(lval.Str())
 		}
 		return
 
@@ -540,6 +545,7 @@ func (s *Scanner) ScanComment(lval ScanSymType) (present, ok bool) {
 func (s *Scanner) scanIdent(lval ScanSymType) {
 	s.pos--
 	start := s.pos
+	lval.SetRawStr(s.in[start:start])
 	isASCII := true
 	isLower := true
 
@@ -566,6 +572,7 @@ func (s *Scanner) scanIdent(lval ScanSymType) {
 		s.pos++
 	}
 	//fmt.Println("parsed: ", s.in[start:s.pos], isASCII, isLower)
+	lval.SetRawStr(s.in[start:s.pos])
 
 	if isLower && isASCII {
 		// Already lowercased - nothing to do.
@@ -1082,9 +1089,10 @@ func FirstLexicalToken(sql string) (tok int) {
 // fakeSym is a simplified symbol type for use by
 // HasMultipleStatements.
 type fakeSym struct {
-	id  int32
-	pos int32
-	s   string
+	id   int32
+	pos  int32
+	s    string
+	rawS string
 }
 
 var _ ScanSymType = (*fakeSym)(nil)
@@ -1095,5 +1103,7 @@ func (s fakeSym) Pos() int32                { return s.pos }
 func (s *fakeSym) SetPos(p int32)           { s.pos = p }
 func (s fakeSym) Str() string               { return s.s }
 func (s *fakeSym) SetStr(v string)          { s.s = v }
+func (s fakeSym) RawStr() string            { return s.rawS }
+func (s *fakeSym) SetRawStr(v string)       { s.rawS = v }
 func (s fakeSym) UnionVal() interface{}     { return nil }
 func (s fakeSym) SetUnionVal(v interface{}) {}

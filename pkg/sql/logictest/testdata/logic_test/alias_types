@@ -1,9 +1,7 @@
 statement ok
 CREATE TABLE aliases (
     a OID,
-    b NAME,
-    FAMILY "primary" (a, rowid),
-    FAMILY fam_1_b (b)
+    b NAME
 )
 
 query TT colnames
@@ -14,9 +12,7 @@ aliases     CREATE TABLE public.aliases (
               a OID NULL,
               b NAME NULL,
               rowid INT8 NOT VISIBLE NOT NULL DEFAULT unique_rowid(),
-              CONSTRAINT aliases_pkey PRIMARY KEY (rowid ASC),
-              FAMILY "primary" (a, rowid),
-              FAMILY fam_1_b (b)
+              CONSTRAINT aliases_pkey PRIMARY KEY (rowid ASC)
             )
 
 statement ok

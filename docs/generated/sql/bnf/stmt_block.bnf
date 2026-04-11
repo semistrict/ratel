@@ -1890,7 +1890,6 @@ copy_options ::=
 
 db_object_name_component ::=
 	name
-	| type_func_name_crdb_extra_keyword
 	| cockroachdb_extra_reserved_keyword
 
 unrestricted_name ::=
@@ -2286,8 +2285,6 @@ opt_sequence_option_list ::=
 changefeed_target ::=
 	'TABLE' table_name
 	| table_name
-	| 'TABLE' table_name 'FAMILY' family_name
-	| table_name 'FAMILY' family_name
 
 replication_options_list ::=
 	( replication_options ) ( ( ',' replication_options ) )*
@@ -2463,16 +2460,12 @@ table_ref ::=
 	| 'LATERAL' func_table opt_ordinality opt_alias_clause
 	| '[' row_source_extension_stmt ']' opt_ordinality opt_alias_clause
 
-type_func_name_crdb_extra_keyword ::=
-	'FAMILY'
-
 cockroachdb_extra_reserved_keyword ::=
 	'INDEX'
 	| 'NOTHING'
 
 type_func_name_keyword ::=
 	type_func_name_no_crdb_extra_keyword
-	| type_func_name_crdb_extra_keyword
 
 reserved_keyword ::=
 	'ALL'
@@ -2822,9 +2815,6 @@ create_as_table_defs ::=
 
 enum_val_list ::=
 	( 'SCONST' ) ( ( ',' 'SCONST' ) )*
-
-family_name ::=
-	name
 
 replication_options ::=
 	'CURSOR' '=' a_expr

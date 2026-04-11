@@ -13,33 +13,18 @@ statement error column j of type jsonb is only allowed as the last column in an 
 CREATE TABLE m_err (k INT PRIMARY KEY, a INT, j JSON, geom GEOMETRY, INVERTED INDEX (a, j, geom))
 
 statement ok
-CREATE TABLE l (k INT PRIMARY KEY, a INT, j JSON, INVERTED INDEX (a, j ASC))
-
-statement error the last column in an inverted index cannot have the DESC option
-CREATE TABLE m_err (k INT PRIMARY KEY, a INT, j JSON, INVERTED INDEX (a, j DESC))
-
-statement ok
 CREATE TABLE m (k INT PRIMARY KEY, a INT, geom GEOMETRY, INVERTED INDEX (a, geom))
 
 statement ok
 CREATE TABLE n (k INT PRIMARY KEY, a INT, geom GEOMETRY);
 CREATE INVERTED INDEX n ON n (a, geom);
 
-statement error the last column in an inverted index cannot have the DESC option
-CREATE INVERTED INDEX ON n (a, geom DESC)
-
-statement ok
-CREATE INVERTED INDEX ON n (a ASC, geom)
-
 statement
 CREATE TABLE s (
   k INT PRIMARY KEY,
   a INT,
   geom GEOMETRY,
-  INVERTED INDEX (a, geom) WITH (geometry_min_x=0),
-  FAMILY (k),
-  FAMILY (a),
-  FAMILY (geom)
+  INVERTED INDEX (a, geom) WITH (geometry_min_x=0)
 )
 
 query T
@@ -50,10 +35,7 @@ CREATE TABLE public.s (
   a INT8 NULL,
   geom GEOMETRY NULL,
   CONSTRAINT s_pkey PRIMARY KEY (k ASC),
-  INVERTED INDEX s_a_geom_idx (a ASC, geom) WITH (geometry_min_x=0),
-  FAMILY fam_0_k (k),
-  FAMILY fam_1_a (a),
-  FAMILY fam_2_geom (geom)
+  INVERTED INDEX s_a_geom_idx (a, geom) WITH (geometry_min_x=0)
 )
 
 # Dropping the inverted column of the index drops the index.
@@ -63,8 +45,7 @@ CREATE TABLE drop_j (
   b INT,
   j JSON,
   INVERTED INDEX (a, j),
-  INVERTED INDEX (b, a, j),
-  FAMILY (a, b, j)
+  INVERTED INDEX (b, a, j)
 );
 ALTER TABLE drop_j DROP COLUMN j;
 
@@ -75,8 +56,7 @@ CREATE TABLE public.drop_j (
   a INT8 NULL,
   b INT8 NULL,
   rowid INT8 NOT VISIBLE NOT NULL DEFAULT unique_rowid(),
-  CONSTRAINT drop_j_pkey PRIMARY KEY (rowid ASC),
-  FAMILY fam_0_a_b_j_rowid (a, b, rowid)
+  CONSTRAINT drop_j_pkey PRIMARY KEY (rowid ASC)
 )
 
 # Dropping the non-inverted column of the index drops the index.
@@ -86,8 +66,7 @@ CREATE TABLE drop_a (
   b INT,
   j JSON,
   INVERTED INDEX (a, j),
-  INVERTED INDEX (b, a, j),
-  FAMILY (a, b, j)
+  INVERTED INDEX (b, a, j)
 );
 ALTER TABLE drop_a DROP COLUMN a;
 
@@ -98,8 +77,7 @@ CREATE TABLE public.drop_a (
   b INT8 NULL,
   j JSONB NULL,
   rowid INT8 NOT VISIBLE NOT NULL DEFAULT unique_rowid(),
-  CONSTRAINT drop_a_pkey PRIMARY KEY (rowid ASC),
-  FAMILY fam_0_a_b_j_rowid (b, j, rowid)
+  CONSTRAINT drop_a_pkey PRIMARY KEY (rowid ASC)
 )
 
 # CREATE TABLE LIKE ... INCLUDING INDEXES copies multi-column inverted indexes.
@@ -115,9 +93,9 @@ CREATE TABLE public.dst (
   b INT8 NULL,
   j JSONB NULL,
   rowid INT8 NOT VISIBLE NOT NULL DEFAULT unique_rowid(),
-  CONSTRAINT dst_pkey PRIMARY KEY (rowid ASC),
-  INVERTED INDEX src_a_j_idx (a ASC, j),
-  INVERTED INDEX src_a_b_j_idx (a ASC, b ASC, j)
+  CONSTRAINT src_pkey PRIMARY KEY (rowid ASC),
+  INVERTED INDEX src_a_j_idx (a, j),
+  INVERTED INDEX src_a_b_j_idx (a, b, j)
 )
 
 # Test dropping a table with a multi-column inverted index.

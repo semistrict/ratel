@@ -265,9 +265,7 @@ CREATE TABLE abc (
   d CHAR,
   PRIMARY KEY (a, b, c),
   UNIQUE INDEX bc (b, c),
-  INDEX ba (b, a),
-  FAMILY (a, b, c),
-  FAMILY (d)
+  INDEX ba (b, a)
 )
 ----
 

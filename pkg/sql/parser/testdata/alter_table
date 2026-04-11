@@ -70,14 +70,13 @@ ALTER TABLE a RENAME CONSTRAINT c TO d, RENAME COLUMN e TO f -- fully parenthesi
 ALTER TABLE a RENAME CONSTRAINT c TO d, RENAME COLUMN e TO f -- literals removed
 ALTER TABLE _ RENAME CONSTRAINT _ TO _, RENAME COLUMN _ TO _ -- identifiers removed
 
-error
+parse
 ALTER TABLE t RENAME COLUMN x TO family
 ----
-at or near "family": syntax error
-DETAIL: source SQL:
 ALTER TABLE t RENAME COLUMN x TO family
-                                 ^
-HINT: try \h ALTER TABLE
+ALTER TABLE t RENAME COLUMN x TO family -- fully parenthesized
+ALTER TABLE t RENAME COLUMN x TO family -- literals removed
+ALTER TABLE _ RENAME COLUMN _ TO _ -- identifiers removed
 
 error
 ALTER TABLE t RENAME TO t[TRUE]

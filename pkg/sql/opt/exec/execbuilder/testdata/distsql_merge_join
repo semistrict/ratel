@@ -31,18 +31,17 @@
 #################
 
 statement ok
-CREATE TABLE parent1 (pid1 INT PRIMARY KEY, pa1 INT, FAMILY (pid1,pa1))
+CREATE TABLE parent1 (pid1 INT PRIMARY KEY, pa1 INT)
 
 statement ok
-CREATE TABLE parent2 (pid2 INT PRIMARY KEY, pa2 INT, FAMILY (pid2, pa2))
+CREATE TABLE parent2 (pid2 INT PRIMARY KEY, pa2 INT)
 
 statement ok
 CREATE TABLE child1 (
   pid1 INT,
   cid1 INT,
   ca1 INT,
-  PRIMARY KEY(pid1, cid1),
-  FAMILY (pid1,cid1,ca1)
+  PRIMARY KEY(pid1, cid1)
 )
 
 statement ok
@@ -51,8 +50,7 @@ CREATE TABLE child2 (
   cid2 INT,
   cid3 INT,
   ca2 INT,
-  PRIMARY KEY(pid1, cid2, cid3),
-  FAMILY (pid1,cid2,cid3,ca2)
+  PRIMARY KEY(pid1, cid2, cid3)
 )
 
 statement ok
@@ -61,8 +59,7 @@ CREATE TABLE grandchild1 (
   cid1 INT,
   gcid1 INT,
   gca1 INT,
-  PRIMARY KEY(pid1, cid1, gcid1),
-  FAMILY (pid1,cid1,gcid1,gca1)
+  PRIMARY KEY(pid1, cid1, gcid1)
 )
 
 # No foreign key since we are permitting the rows to overflow out of child2
@@ -74,8 +71,7 @@ CREATE TABLE grandchild2 (
   cid3 INT,
   gcid2 INT,
   gca2 INT,
-  PRIMARY KEY(pid1, cid2, cid3, gcid2),
-  FAMILY (pid1, cid2, cid3, gcid2, gca2)
+  PRIMARY KEY(pid1, cid2, cid3, gcid2)
 )
 
 ####################
@@ -717,8 +713,7 @@ Diagram: https://cockroachdb.github.io/distsqlplan/decode.html#eJycklFvmzAQx9_3K
 statement ok
 CREATE TABLE outer_p1 (
   pid1 INT PRIMARY KEY,
-  pa1 INT,
-  FAMILY (pid1, pa1)
+  pa1 INT
 )
 
 statement ok
@@ -727,8 +722,7 @@ CREATE TABLE outer_c1 (
   cid1 INT,
   cid2 INT,
   ca1 INT,
-  PRIMARY KEY (pid1, cid1, cid2),
-  FAMILY (pid1, cid1, cid2)
+  PRIMARY KEY (pid1, cid1, cid2)
 )
 
 statement ok
@@ -738,8 +732,7 @@ CREATE TABLE outer_gc1 (
   cid2 INT,
   gcid1 INT,
   gca1 INT,
-  PRIMARY KEY (pid1, cid1, cid2, gcid1),
-  FAMILY (pid1, cid1, cid2)
+  PRIMARY KEY (pid1, cid1, cid2, gcid1)
 )
 
 statement ok

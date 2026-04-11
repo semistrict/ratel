@@ -134,8 +134,7 @@ CREATE TABLE relatedapp_location (
     id INT8 NOT NULL DEFAULT unique_rowid(),
     "point" GEOMETRY(POINT,4326) NOT NULL,
     CONSTRAINT "primary" PRIMARY KEY (id ASC),
-    INVERTED INDEX relatedapp_location_point_id ("point"),
-    FAMILY "primary" (id, "point")
+    INVERTED INDEX relatedapp_location_point_id ("point")
 )
 
 statement ok
@@ -145,8 +144,7 @@ CREATE TABLE relatedapp_city (
     state VARCHAR(2) NOT NULL,
     location_id INT8 NOT NULL,
     CONSTRAINT "primary" PRIMARY KEY (id ASC),
-    CONSTRAINT relatedapp_city_location_id_ac4f6573_fk_relatedapp_location_id FOREIGN KEY (location_id) REFERENCES relatedapp_location(id),
-    FAMILY "primary" (id, name, state, location_id)
+    CONSTRAINT relatedapp_city_location_id_ac4f6573_fk_relatedapp_location_id FOREIGN KEY (location_id) REFERENCES relatedapp_location(id)
 )
 
 query ITTI

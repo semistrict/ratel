@@ -471,8 +471,7 @@ statement ok
 CREATE TABLE enum_default (
   x INT,
   y greeting DEFAULT 'hello',
-  z BOOL DEFAULT ('hello':::greeting IS OF (greeting, greeting)),
-  FAMILY (x, y, z)
+  z BOOL DEFAULT ('hello':::greeting IS OF (greeting, greeting))
 );
 INSERT INTO enum_default VALUES (1), (2)
 
@@ -507,8 +506,7 @@ enum_default  CREATE TABLE public.enum_default (
                 y test.public.greeting NULL DEFAULT 'hello':::test.public.greeting,
                 z BOOL NULL DEFAULT 'hello':::test.public.greeting IS OF (test.public.greeting, test.public.greeting),
                 rowid INT8 NOT VISIBLE NOT NULL DEFAULT unique_rowid(),
-                CONSTRAINT enum_default_pkey PRIMARY KEY (rowid ASC),
-                FAMILY fam_0_x_y_z_rowid (x, y, z, rowid)
+                CONSTRAINT enum_default_pkey PRIMARY KEY (rowid ASC)
               )
 
 # Test crdb_internal.table_columns.
@@ -545,8 +543,7 @@ CREATE TABLE enum_computed (
   x INT,
   y greeting AS ('hello') STORED,
   z BOOL AS (w = 'howdy') STORED,
-  w greeting,
-  FAMILY (x, y, z)
+  w greeting
 );
 INSERT INTO enum_computed (x, w) VALUES (1, 'hello'), (2, 'hello')
 
@@ -565,8 +562,7 @@ enum_computed  CREATE TABLE public.enum_computed (
                  z BOOL NULL AS (w = 'howdy':::test.public.greeting) STORED,
                  w test.public.greeting NULL,
                  rowid INT8 NOT VISIBLE NOT NULL DEFAULT unique_rowid(),
-                 CONSTRAINT enum_computed_pkey PRIMARY KEY (rowid ASC),
-                 FAMILY fam_0_x_y_z_w_rowid (x, y, z, w, rowid)
+                 CONSTRAINT enum_computed_pkey PRIMARY KEY (rowid ASC)
                )
 
 # Test information_schema.columns. generation_expression should not be
@@ -1517,8 +1513,7 @@ statement ok
 CREATE TABLE arr_t6 (
   i arr_typ[] DEFAULT ARRAY['a'::arr_typ],
   j arr_typ DEFAULT ARRAY['b'::arr_typ][1],
-  k _arr_typ DEFAULT ARRAY['c'::arr_typ]::_arr_typ,
-  FAMILY (i, j, k))
+  k _arr_typ DEFAULT ARRAY['c'::arr_typ]::_arr_typ)
 
 statement ok
 ALTER TYPE arr_typ RENAME TO arr_typ2
@@ -1534,8 +1529,7 @@ arr_t6  CREATE TABLE public.arr_t6 (
           j test_57196.public.arr_typ2 NULL DEFAULT (ARRAY['b':::test_57196.public.arr_typ2]:::test_57196.public.arr_typ2[])[1:::INT8],
           k test_57196.public.arr_typ2[] NULL DEFAULT ARRAY['c':::test_57196.public.arr_typ2]:::test_57196.public.arr_typ2[],
           rowid INT8 NOT VISIBLE NOT NULL DEFAULT unique_rowid(),
-          CONSTRAINT arr_t6_pkey PRIMARY KEY (rowid ASC),
-          FAMILY fam_0_i_j_k_rowid (i, j, k, rowid)
+          CONSTRAINT arr_t6_pkey PRIMARY KEY (rowid ASC)
         )
 
 

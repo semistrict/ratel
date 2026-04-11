@@ -7,9 +7,7 @@ CREATE TABLE t (
   j JSON,
   comp INT AS (a + 10) VIRTUAL,
   INDEX t_a_plus_b_idx ((a + b)),
-  INDEX t_lower_c_a_plus_b_idx (lower(c), (a + b)),
-  INVERTED INDEX t_b_j_a_asc (b DESC, (j->'a') ASC),
-  FAMILY (k, a, b, c, j)
+  INDEX t_lower_c_a_plus_b_idx (lower(c), (a + b))
 )
 
 query T
@@ -24,38 +22,19 @@ CREATE TABLE public.t (
   comp INT8 NULL AS (a + 10:::INT8) VIRTUAL,
   CONSTRAINT t_pkey PRIMARY KEY (k ASC),
   INDEX t_a_plus_b_idx ((a + b) ASC),
-  INDEX t_lower_c_a_plus_b_idx (lower(c) ASC, (a + b) ASC),
-  INVERTED INDEX t_b_j_a_asc (b DESC, (j->'a':::STRING)),
-  FAMILY fam_0_k_a_b_c_j (k, a, b, c, j)
-)
-
-query T
-SELECT create_statement FROM [SHOW CREATE TABLE t WITH REDACT]
-----
-CREATE TABLE public.t (
-  k INT8 NOT NULL,
-  a INT8 NULL,
-  b INT8 NULL,
-  c STRING NULL,
-  j JSONB NULL,
-  comp INT8 NULL AS (a + ‹×›:::INT8) VIRTUAL,
-  CONSTRAINT t_pkey PRIMARY KEY (k ASC),
-  INDEX t_a_plus_b_idx ((a + b) ASC),
-  INDEX t_lower_c_a_plus_b_idx (lower(c) ASC, (a + b) ASC),
-  INVERTED INDEX t_b_j_a_asc (b DESC, (j->‹×›:::STRING)),
-  FAMILY fam_0_k_a_b_c_j (k, a, b, c, j)
+  INDEX t_lower_c_a_plus_b_idx (lower(c) ASC, (a + b) ASC)
 )
 
 query TTBTTTB colnames
 SELECT * FROM [SHOW COLUMNS FROM t] ORDER BY column_name
 ----
-column_name  data_type  is_nullable  column_default  generation_expression  indices                                                     is_hidden
-a            INT8       true         NULL            ·                      {t_pkey}                                                    false
-b            INT8       true         NULL            ·                      {t_b_j_a_asc,t_pkey}                                        false
-c            STRING     true         NULL            ·                      {t_pkey}                                                    false
-comp         INT8       true         NULL            a + 10                 {}                                                          false
-j            JSONB      true         NULL            ·                      {t_pkey}                                                    false
-k            INT8       false        NULL            ·                      {t_a_plus_b_idx,t_b_j_a_asc,t_lower_c_a_plus_b_idx,t_pkey}  false
+column_name  data_type  is_nullable  column_default  generation_expression  indices                                         is_hidden
+a            INT8       true         NULL            ·                      {t_pkey}                                        false
+b            INT8       true         NULL            ·                      {t_pkey}                                        false
+c            STRING     true         NULL            ·                      {t_pkey}                                        false
+comp         INT8       true         NULL            a + 10                 {}                                              false
+j            JSONB      true         NULL            ·                      {t_pkey}                                        false
+k            INT8       false        NULL            ·                      {t_a_plus_b_idx,t_lower_c_a_plus_b_idx,t_pkey}  false
 
 # Referencing an inaccessible column in a CHECK constraint is not allowed.
 statement error column \"crdb_internal_idx_expr\" is inaccessible and cannot be referenced
@@ -96,13 +75,13 @@ SELECT * FROM (
 ----
 {"computeExpr": "a + 10:::INT8", "id": 3, "inaccessible": true, "name": "crdb_internal_idx_expr_1", "nullable": true, "type": {"family": "IntFamily", "oid": 20, "width": 64}, "virtual": true}
 
-statement error random\(\): volatile functions are not allowed in EXPRESSION INDEX ELEMENT
+statement error volatile functions are not allowed in index element
 CREATE TABLE err (a INT, INDEX ((a + random()::INT)))
 
 statement error column \"z\" does not exist
 CREATE TABLE err (a INT, INDEX ((a + z)))
 
-statement error EXPRESSION INDEX ELEMENT expression cannot reference computed columns
+statement error index element expression cannot reference computed columns
 CREATE TABLE err (a INT, comp INT AS (a + 10) STORED, INDEX ((comp + 100)))
 
 statement error type of index element NULL is ambiguous.*\nHINT: consider adding a type cast to the expression
@@ -126,16 +105,13 @@ CREATE TABLE err (a INT, b INT, INVERTED INDEX (a, (a + b)))
 statement error index element \(a, b\) of type record is not allowed as the last column in an inverted index.*\nHINT: see the documentation for more information about inverted indexes: https://www.cockroachlabs.com/docs/.*/inverted-indexes.html
 CREATE TABLE err (a INT, b INT, INVERTED INDEX (a, (row(a, b))))
 
-statement error the last column in an inverted index cannot have the DESC option
-CREATE TABLE err (a INT, j JSON, INVERTED INDEX (a, (j->'a') DESC))
-
-statement error random\(\): volatile functions are not allowed in EXPRESSION INDEX ELEMENT
+statement error volatile functions are not allowed in index element
 CREATE TABLE err (a INT, INDEX ((a + random()::INT)))
 
 statement error column \"z\" does not exist
 CREATE TABLE err (a INT, INDEX ((a + z)))
 
-statement error EXPRESSION INDEX ELEMENT expression cannot reference computed columns
+statement error index element expression cannot reference computed columns
 CREATE TABLE err (a INT, comp INT AS (a + 10) STORED, INDEX ((comp + 10)))
 
 # TODO(mgartner): Postgres does not allow unique constraints with expressions,
@@ -160,8 +136,7 @@ CREATE TABLE t (
   b INT,
   c STRING,
   j JSON,
-  comp INT AS (a + 10) VIRTUAL,
-  FAMILY (k, a, b, c, j)
+  comp INT AS (a + 10) VIRTUAL
 )
 
 statement ok
@@ -193,8 +168,7 @@ CREATE TABLE public.t (
   INDEX t_a_plus_b_idx ((a + b) ASC),
   INDEX t_lower_c_idx (lower(c) ASC),
   INDEX t_lower_c_a_plus_b_idx (lower(c) ASC, (a + b) ASC),
-  INDEX t_a_plus_ten_idx ((a + 10:::INT8) ASC),
-  FAMILY fam_0_k_a_b_c_j (k, a, b, c, j)
+  INDEX t_a_plus_ten_idx ((a + 10:::INT8) ASC)
 )
 
 # Referencing an inaccessible column in a CHECK constraint is not allowed.
@@ -254,17 +228,6 @@ ALTER TABLE t RENAME COLUMN crdb_internal_idx_expr_2 TO err
 statement error column \"crdb_internal_idx_expr_2\" of relation \"t\" already exists
 ALTER TABLE t ADD COLUMN crdb_internal_idx_expr_2 INT
 
-onlyif config local-legacy-schema-changer
-query T
-SELECT * FROM (
-  SELECT json_array_elements(
-    crdb_internal.pb_to_json('cockroach.sql.sqlbase.Descriptor', descriptor, false)->'table'->'columns'
-  ) AS desc FROM system.descriptor WHERE id = 't'::REGCLASS
-) AS cols WHERE cols.desc->'name' = '"crdb_internal_idx_expr_2"'
-----
-{"computeExpr": "a + 10:::INT8", "id": 9, "inaccessible": true, "name": "crdb_internal_idx_expr_2", "nullable": true, "type": {"family": "IntFamily", "oid": 20, "width": 64}, "virtual": true}
-
-skipif config local-legacy-schema-changer
 query T
 SELECT * FROM (
   SELECT json_array_elements(
@@ -280,18 +243,6 @@ DROP INDEX t_lower_c_a_plus_b_idx
 # Verify that the inaccessible columns in t_lower_c_a_plus_b_idx are not dropped
 # because other indexes contain them.
 # exists in the descriptor.
-skipif config local-legacy-schema-changer
-query T
-SELECT * FROM (
-  SELECT json_array_elements(
-    crdb_internal.pb_to_json('cockroach.sql.sqlbase.Descriptor', descriptor, false)->'table'->'columns'
-  ) AS desc FROM system.descriptor WHERE id = 't'::REGCLASS
-) AS cols WHERE cols.desc->>'name' IN ('crdb_internal_idx_expr', 'crdb_internal_idx_expr_1')
-----
-{"computeExpr": "a + b", "id": 7, "inaccessible": true, "name": "crdb_internal_idx_expr", "nullable": true, "type": {"family": "IntFamily", "oid": 20, "width": 64}, "virtual": true}
-{"computeExpr": "lower(c)", "id": 8, "inaccessible": true, "name": "crdb_internal_idx_expr_1", "nullable": true, "type": {"family": "StringFamily", "oid": 25}, "virtual": true}
-
-onlyif config local-legacy-schema-changer
 query T
 SELECT * FROM (
   SELECT json_array_elements(
@@ -323,13 +274,13 @@ ALTER TABLE t ADD COLUMN crdb_internal_idx_expr INT
 statement ok
 ALTER TABLE t DROP COLUMN crdb_internal_idx_expr
 
-statement error random\(\): volatile functions are not allowed in EXPRESSION INDEX ELEMENT
+statement error volatile functions are not allowed in index element
 CREATE INDEX err ON t ((a + random()::INT))
 
 statement error column \"z\" does not exist
 CREATE INDEX err ON t ((a + z))
 
-statement error EXPRESSION INDEX ELEMENT expression cannot reference computed columns
+statement error index element expression cannot reference computed columns
 CREATE INDEX err ON t ((comp + 10))
 
 statement error type of index element NULL is ambiguous.*\nHINT: consider adding a type cast to the expression
@@ -352,12 +303,6 @@ CREATE INVERTED INDEX err ON t (a, (a + b));
 
 statement error index element \(a, b\) of type record is not allowed as the last column in an inverted index.*\nHINT: see the documentation for more information about inverted indexes: https://www.cockroachlabs.com/docs/.*/inverted-indexes.html
 CREATE INVERTED INDEX err ON t (a, (row(a, b)));
-
-statement error the last column in an inverted index cannot have the DESC option
-CREATE INVERTED INDEX err ON t (a, (j->'a') DESC);
-
-statement ok
-CREATE INVERTED INDEX ON t (a, (j->'a') ASC);
 
 statement ok
 CREATE TABLE other (
@@ -475,7 +420,7 @@ CREATE TABLE public.copy_indexes (
   INDEX src_expr_idx ((a + b) ASC),
   INDEX named_idx ((a + 1:::INT8) ASC),
   UNIQUE INDEX src_expr_key ((a + 10:::INT8) ASC),
-  INVERTED INDEX src_expr_expr1_idx ((a + b) ASC, (j->'a':::STRING))
+  INVERTED INDEX src_expr_expr1_idx ((a + b), (j->'a':::STRING))
 )
 
 # Inaccessible expression index columns should be copied if the indexes are
@@ -502,7 +447,7 @@ CREATE TABLE public.copy_all (
   INDEX src_expr_idx ((a + b) ASC),
   INDEX named_idx ((a + 1:::INT8) ASC),
   UNIQUE INDEX src_expr_key ((a + 10:::INT8) ASC),
-  INVERTED INDEX src_expr_expr1_idx ((a + b) ASC, (j->'a':::STRING))
+  INVERTED INDEX src_expr_expr1_idx ((a + b), (j->'a':::STRING))
 )
 
 # Inaccessible expression index columns should be copied if the indexes are
@@ -523,8 +468,7 @@ CREATE TABLE anon (
   k INT PRIMARY KEY,
   a INT,
   b INT,
-  c STRING,
-  FAMILY (k, a, b, c)
+  c STRING
 );
 CREATE INDEX ON anon ((a + b));
 CREATE INDEX ON anon ((a + 10), b);
@@ -545,8 +489,7 @@ CREATE TABLE public.anon (
   INDEX anon_expr_b_idx ((a + 10:::INT8) ASC, b ASC),
   UNIQUE INDEX anon_expr_b_key (lower(c) ASC, b ASC),
   INDEX anon_expr_b_expr1_idx ((a + 10:::INT8) ASC, b ASC, lower(c) ASC),
-  INDEX anon_expr_expr1_expr2_idx ((a + 10:::INT8) ASC, (b + 100:::INT8) ASC, lower(c) ASC),
-  FAMILY fam_0_k_a_b_c (k, a, b, c)
+  INDEX anon_expr_expr1_expr2_idx ((a + 10:::INT8) ASC, (b + 100:::INT8) ASC, lower(c) ASC)
 )
 
 statement ok
@@ -562,8 +505,7 @@ CREATE TABLE anon (
   INDEX ((a + 10), b),
   UNIQUE INDEX (lower(c), b),
   INDEX ((a + 10), b, lower(c)),
-  INDEX ((a + 10), (b + 100), lower(c)),
-  FAMILY (k, a, b, c)
+  INDEX ((a + 10), (b + 100), lower(c))
 )
 
 query T
@@ -579,8 +521,7 @@ CREATE TABLE public.anon (
   INDEX anon_expr_b_idx ((a + 10:::INT8) ASC, b ASC),
   UNIQUE INDEX anon_expr_b_key (lower(c) ASC, b ASC),
   INDEX anon_expr_b_expr1_idx ((a + 10:::INT8) ASC, b ASC, lower(c) ASC),
-  INDEX anon_expr_expr1_expr2_idx ((a + 10:::INT8) ASC, (b + 100:::INT8) ASC, lower(c) ASC),
-  FAMILY fam_0_k_a_b_c (k, a, b, c)
+  INDEX anon_expr_expr1_expr2_idx ((a + 10:::INT8) ASC, (b + 100:::INT8) ASC, lower(c) ASC)
 )
 
 # Querying expression indexes.
@@ -952,12 +893,12 @@ statement ok
 INSERT INTO uniq VALUES (3, 1, 109) ON CONFLICT DO NOTHING
 
 # Expressions as ON CONFLICT targets are not yet allowed.
-# See https://github.com/cockroachdb/cockroach/issues/67893.
+# See https://github.com/semistrict/ratel/issues/67893.
 statement error syntax error
 INSERT INTO uniq VALUES (3, 1, 109) ON CONFLICT ((a + b)) DO NOTHING
 
 # Expressions as ON CONFLICT targets are not yet allowed.
-# See https://github.com/cockroachdb/cockroach/issues/67893.
+# See https://github.com/semistrict/ratel/issues/67893.
 statement error syntax error
 INSERT INTO uniq VALUES (4, 1, 219) ON CONFLICT ((a + b)) DO UPDATE SET b = 90
 
@@ -988,14 +929,14 @@ ALTER TABLE t72012 ALTER COLUMN col DROP NOT NULL;
 statement ok
 INSERT INTO t72012 VALUES (NULL)
 
-statement error (.*validation of CHECK "col IS NOT NULL" failed on row: col=NULL, rowid=\d+|pq: validation of column "col" NOT NULL failed on row: col=NULL, rowid=\d+)
+statement error validation of NOT NULL constraint failed: validation of CHECK "col IS NOT NULL" failed on row: col=NULL, rowid=\d+
 ALTER TABLE t72012 ALTER COLUMN col SET NOT NULL
 
 # Regression test for #74216. Do not allow expressions with mutable casts
 # between string types and reg* types.
 subtest 74216
 
-statement error regtype::string: context-dependent operators are not allowed in EXPRESSION INDEX ELEMENT
+statement error context-dependent operators are not allowed in index element
 CREATE TABLE t74216 (
     a REGTYPE,
     UNIQUE ((a::STRING))

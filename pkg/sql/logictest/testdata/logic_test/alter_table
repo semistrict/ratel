@@ -819,7 +819,7 @@ foo
 
 # Create a table with a computed column that we'll de-compute
 statement ok
-CREATE TABLE decomputed_column (a INT PRIMARY KEY, b INT AS ( a + 1 ) STORED, FAMILY "primary" (a, b))
+CREATE TABLE decomputed_column (a INT PRIMARY KEY, b INT AS ( a + 1 ) STORED)
 
 statement ok
 INSERT INTO decomputed_column VALUES (1), (2)
@@ -1435,7 +1435,7 @@ ALTER TABLE t50069_a ADD COLUMN y INT AS (d.public.t50069_a.x + 1) STORED
 statement ok
 DROP TABLE IF EXISTS parent, child;
 CREATE TABLE parent (p INT PRIMARY KEY);
-CREATE TABLE child (c INT PRIMARY KEY, p INT REFERENCES parent(p), FAMILY (c, p));
+CREATE TABLE child (c INT PRIMARY KEY, p INT REFERENCES parent(p));
 ALTER TABLE child DROP COLUMN p
 
 query TT
@@ -1443,8 +1443,7 @@ SHOW CREATE child
 ----
 child  CREATE TABLE public.child (
          c INT8 NOT NULL,
-         CONSTRAINT child_pkey PRIMARY KEY (c ASC),
-         FAMILY fam_0_c_p (c)
+         CONSTRAINT child_pkey PRIMARY KEY (c ASC)
        )
 
 # Regression test for #52816.
@@ -1950,7 +1949,7 @@ DROP TABLE t;
 subtest regression_67234
 
 statement ok
-CREATE TABLE t67234 (k INT PRIMARY KEY, a INT, b INT, FAMILY (k, a, b));
+CREATE TABLE t67234 (k INT PRIMARY KEY, a INT, b INT);
 
 statement ok
 ALTER TABLE t67234 ADD CONSTRAINT t67234_c1 UNIQUE (a) WHERE b > 0;
@@ -1967,7 +1966,6 @@ CREATE TABLE public.t67234 (
   b INT8 NULL,
   CONSTRAINT t67234_pkey PRIMARY KEY (k ASC),
   UNIQUE INDEX t67234_c1 (a ASC) WHERE b > 0:::INT8,
-  FAMILY fam_0_k_a_b (k, a, b),
   CONSTRAINT t67234_c2 UNIQUE WITHOUT INDEX (b) WHERE a > 0:::INT8
 )
 

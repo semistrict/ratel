@@ -42,7 +42,7 @@ DROP TABLE t
 subtest ManualGeneralChange
 
 statement ok
-CREATE TABLE t (a INT PRIMARY KEY, b STRING, FAMILY "primary" (a, b))
+CREATE TABLE t (a INT PRIMARY KEY, b STRING)
 
 statement ok
 CREATE INDEX idx ON t (b)
@@ -252,9 +252,9 @@ SELECT * FROM t5 ORDER BY x
 2016-01-26 16:10:10.55 +0100 CET
 2016-01-26 16:10:10.556 +0100 CET
 
-# Ensure column families stay the same.
+# Ensure SHOW CREATE stays stable after the type change.
 statement ok
-CREATE TABLE t6(id INT, id2 INT, FAMILY f1 (id), FAMILY f2 (id2));
+CREATE TABLE t6(id INT, id2 INT);
 
 statement ok
 INSERT INTO t6 VALUES (1), (2), (3);
@@ -269,9 +269,7 @@ t6  CREATE TABLE public.t6 (
       id INT8 NULL,
       id2 STRING NULL,
       rowid INT8 NOT VISIBLE NOT NULL DEFAULT unique_rowid(),
-      CONSTRAINT t6_pkey PRIMARY KEY (rowid ASC),
-      FAMILY f1 (id, rowid),
-      FAMILY f2 (id2)
+      CONSTRAINT t6_pkey PRIMARY KEY (rowid ASC)
     )
 
 # Ensure the type of the default column is checked
@@ -374,7 +372,7 @@ Baz
 
 # Ensure ALTER COLUMN TYPE fails if the DEFAULT EXPR cannot be casted to the new type.
 statement ok
-CREATE TABLE t17 (x STRING DEFAULT 'HELLO', y STRING ON UPDATE 'HELLO', FAMILY f1 (x,y));
+CREATE TABLE t17 (x STRING DEFAULT 'HELLO', y STRING ON UPDATE 'HELLO');
 
 statement error default for column "x" cannot be cast automatically to type INT8
 ALTER TABLE t17 ALTER COLUMN x TYPE INT
@@ -390,8 +388,7 @@ t17         CREATE TABLE public.t17 (
               x STRING NULL DEFAULT 'HELLO':::STRING,
               y STRING NULL ON UPDATE 'HELLO':::STRING,
               rowid INT8 NOT VISIBLE NOT NULL DEFAULT unique_rowid(),
-              CONSTRAINT t17_pkey PRIMARY KEY (rowid ASC),
-              FAMILY f1 (x, y, rowid)
+              CONSTRAINT t17_pkey PRIMARY KEY (rowid ASC)
             )
 
 

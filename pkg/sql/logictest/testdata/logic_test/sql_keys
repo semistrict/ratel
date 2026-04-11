@@ -6,7 +6,7 @@
 
 # Create a table and split it up into ranges.
 statement ok
-CREATE TABLE t (x INT PRIMARY KEY, y INT, FAMILY (x, y));
+CREATE TABLE t (x INT PRIMARY KEY, y INT);
 ALTER TABLE t SPLIT AT VALUES (0)
 
 # Get the range that contains this table.

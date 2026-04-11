@@ -5,9 +5,7 @@ statement ok
 CREATE TABLE kv (
   k VARCHAR PRIMARY KEY,
   v VARCHAR,
-  UNIQUE INDEX a (v),
-  FAMILY (k),
-  FAMILY (v)
+  UNIQUE INDEX a (v)
 )
 
 query TT
@@ -470,8 +468,7 @@ CREATE TABLE sw (
  cc VARCHAR COLLATE en,
  dc VARCHAR(3) COLLATE en,
  ec STRING COLLATE en,
- fc STRING(3) COLLATE en,
- FAMILY "primary" (a, b, c, d, e, f, g, ac, bc, cc, dc, ec, fc, rowid)
+ fc STRING(3) COLLATE en
 )
 
 query T
@@ -629,8 +626,7 @@ subtest regression_32759_33012
 
 statement ok
 CREATE TABLE t32759 (
-  x INT, y STRING DEFAULT 'b' NOT NULL, z INT,
-  FAMILY "primary" (x, z, rowid)
+  x INT, y STRING DEFAULT 'b' NOT NULL, z INT
 )
 
 statement ok

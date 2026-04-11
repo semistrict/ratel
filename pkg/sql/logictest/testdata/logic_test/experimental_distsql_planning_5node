@@ -5,9 +5,9 @@
 # deterministic we place the data manually.
 
 statement ok
-CREATE TABLE kv (k INT PRIMARY KEY, v INT, FAMILY (k, v));
+CREATE TABLE kv (k INT PRIMARY KEY, v INT);
 INSERT INTO kv SELECT i, i FROM generate_series(1,5) AS g(i);
-CREATE TABLE kw (k INT PRIMARY KEY, w INT, FAMILY (k, w));
+CREATE TABLE kw (k INT PRIMARY KEY, w INT);
 INSERT INTO kw SELECT i, i FROM generate_series(1,5) AS g(i)
 
 # Split into 5 parts, each row from each table goes to one node.

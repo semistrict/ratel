@@ -4,10 +4,7 @@ CREATE TABLE t (
   b DATE,
   c INTERVAL,
   UNIQUE (b),
-  UNIQUE (c),
-  FAMILY (a),
-  FAMILY (b),
-  FAMILY (c)
+  UNIQUE (c)
 )
 
 statement ok
@@ -1086,8 +1083,7 @@ CREATE TABLE tz (
   a INT PRIMARY KEY,
   b TIMESTAMP,
   c TIMESTAMPTZ,
-  d TIMESTAMPTZ,
-  FAMILY "primary" (a, b, c, d)
+  d TIMESTAMPTZ
 )
 
 query TTBTTTB

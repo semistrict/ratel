@@ -3,8 +3,7 @@
 statement ok
 CREATE TABLE j1 (
   k INT PRIMARY KEY,
-  j JSON,
-  FAMILY (k, j)
+  j JSON
 )
 
 statement ok
@@ -14,8 +13,7 @@ CREATE TABLE j2 (
   s STRING,
   j JSON,
   INVERTED INDEX ij_idx (i, j),
-  INVERTED INDEX isj_idx (i, s, j),
-  FAMILY (k, i, s, j)
+  INVERTED INDEX isj_idx (i, s, j)
 )
 
 statement ok

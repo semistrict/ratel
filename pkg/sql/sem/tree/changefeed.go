@@ -72,18 +72,13 @@ func (node *CreateChangefeed) formatWithPredicates(ctx *FmtCtx) {
 
 // ChangefeedTarget represents a database object to be watched by a changefeed.
 type ChangefeedTarget struct {
-	TableName  TablePattern
-	FamilyName Name
+	TableName TablePattern
 }
 
 // Format implements the NodeFormatter interface.
 func (ct *ChangefeedTarget) Format(ctx *FmtCtx) {
 	ctx.WriteString("TABLE ")
 	ctx.FormatNode(ct.TableName)
-	if ct.FamilyName != "" {
-		ctx.WriteString(" FAMILY ")
-		ctx.FormatNode(&ct.FamilyName)
-	}
 }
 
 // ChangefeedTargets represents a list of database objects to be watched by a changefeed.

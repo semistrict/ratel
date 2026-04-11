@@ -2,7 +2,7 @@
 
 # Create a table, write a row, lock it, then switch users.
 statement ok
-CREATE TABLE t (k STRING PRIMARY KEY, v STRING, FAMILY (k,v))
+CREATE TABLE t (k STRING PRIMARY KEY, v STRING)
 
 statement ok
 GRANT ALL ON t TO testuser
@@ -33,7 +33,7 @@ statement ok
 GRANT ALL ON t TO testuser2
 
 statement ok
-CREATE TABLE t2 (k STRING PRIMARY KEY, v STRING, FAMILY (k,v))
+CREATE TABLE t2 (k STRING PRIMARY KEY, v STRING)
 
 statement ok
 INSERT INTO t2 VALUES ('a', 'val1'), ('b', 'val2')

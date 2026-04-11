@@ -4,9 +4,7 @@ statement ok
 CREATE TABLE kv2 (
   k CHAR PRIMARY KEY,
   v CHAR,
-  UNIQUE INDEX a (v),
-  FAMILY (k),
-  FAMILY (v)
+  UNIQUE INDEX a (v)
 )
 
 statement count 4
@@ -274,9 +272,7 @@ CREATE TABLE pks (
   k2 INT,
   v INT,
   PRIMARY KEY (k1, k2),
-  UNIQUE INDEX i (k2, v),
-  FAMILY (k1, k2),
-  FAMILY (v)
+  UNIQUE INDEX i (k2, v)
 )
 
 statement count 2
@@ -307,8 +303,7 @@ output row: [2 2 3]
 statement ok
 CREATE TABLE kv (
   k INT PRIMARY KEY,
-  v INT,
-  FAMILY (k, v)
+  v INT
 )
 
 query T
@@ -434,7 +429,7 @@ UPDATE t35364 SET x=2.5 RETURNING *
 # Ensure that index hints in UPDATE statements force the choice of a specific index
 # as described in #38799.
 statement ok
-CREATE TABLE t38799 (a INT PRIMARY KEY, b INT, c INT, INDEX foo(b), FAMILY "primary" (a, b, c))
+CREATE TABLE t38799 (a INT PRIMARY KEY, b INT, c INT, INDEX foo(b))
 
 query T
 EXPLAIN (VERBOSE) UPDATE t38799@foo SET c=2 WHERE a=1
@@ -538,8 +533,7 @@ CREATE TABLE kv3 (
   k    INT PRIMARY KEY,
   v    INT,
   meta INT,
-  INDEX (v),
-  FAMILY (k, v, meta)
+  INDEX (v)
 )
 
 query T
@@ -737,11 +731,7 @@ CREATE TABLE computed (
   b INT,
   c INT,
   d INT AS (c+1) STORED,
-  INDEX (b),
-  FAMILY (a),
-  FAMILY (b),
-  FAMILY (c),
-  FAMILY (d)
+  INDEX (b)
 )
 
 # Verify that we don't do an index join to recalculate d (#42482).

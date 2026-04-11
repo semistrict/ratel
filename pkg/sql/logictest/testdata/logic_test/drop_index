@@ -352,7 +352,7 @@ HINT: The reclamation delay can be customized in the zone configuration for the 
 subtest new_uniqueness_constraint_error
 
 statement ok
-CREATE TABLE t (a INT PRIMARY KEY, b DECIMAL(10,1) NOT NULL DEFAULT(0), UNIQUE INDEX t_secondary (b), FAMILY (a, b));
+CREATE TABLE t (a INT PRIMARY KEY, b DECIMAL(10,1) NOT NULL DEFAULT(0), UNIQUE INDEX t_secondary (b));
 INSERT INTO t VALUES (100, 500.5);
 
 statement ok

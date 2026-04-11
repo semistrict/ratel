@@ -9,9 +9,9 @@ CREATE TABLE _ () -- identifiers removed
 parse
 CREATE TABLE FAMILY (x INT)
 ----
-CREATE TABLE "family" (x INT8) -- normalized!
-CREATE TABLE "family" (x INT8) -- fully parenthesized
-CREATE TABLE "family" (x INT8) -- literals removed
+CREATE TABLE family (x INT8) -- normalized!
+CREATE TABLE family (x INT8) -- fully parenthesized
+CREATE TABLE family (x INT8) -- literals removed
 CREATE TABLE _ (_ INT8) -- identifiers removed
 
 parse
@@ -1611,19 +1611,19 @@ CREATE TABLE _ (_ INT8, _ STRING, INDEX (_ ASC, _ DESC) STORING (_)) -- identifi
 error
 CREATE TABLE a (b INT8, FAMILY (b))
 ----
-at or near "family": syntax error
+at or near "(": syntax error
 DETAIL: source SQL:
 CREATE TABLE a (b INT8, FAMILY (b))
-                        ^
+                               ^
 HINT: try \h CREATE TABLE
 
 error
 CREATE TABLE a (b INT8, c STRING, FAMILY foo (b), FAMILY (c))
 ----
-at or near "family": syntax error
+at or near "(": syntax error
 DETAIL: source SQL:
 CREATE TABLE a (b INT8, c STRING, FAMILY foo (b), FAMILY (c))
-                                  ^
+                                             ^
 HINT: try \h CREATE TABLE
 
 parse
@@ -2035,19 +2035,19 @@ CREATE TABLE IF NOT EXISTS _ (_, _, _, PRIMARY KEY (_, _, _)) AS SELECT * FROM _
 error
 CREATE TABLE a (x, FAMILY (x)) AS SELECT * FROM b
 ----
-at or near "family": syntax error
+at or near "(": syntax error
 DETAIL: source SQL:
 CREATE TABLE a (x, FAMILY (x)) AS SELECT * FROM b
-                   ^
+                          ^
 HINT: try \h CREATE TABLE
 
 error
 CREATE TABLE IF NOT EXISTS a (x, FAMILY (x)) AS SELECT * FROM b
 ----
-at or near "family": syntax error
+at or near "(": syntax error
 DETAIL: source SQL:
 CREATE TABLE IF NOT EXISTS a (x, FAMILY (x)) AS SELECT * FROM b
-                                 ^
+                                        ^
 HINT: try \h CREATE TABLE
 
 error

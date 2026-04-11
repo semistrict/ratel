@@ -9,10 +9,6 @@ CREATE TABLE t9 (
   c INT,
   d INT,
   e INT,
-  FAMILY (a),
-  FAMILY (b),
-  FAMILY (c),
-  FAMILY (d, e),
   CHECK (a > b),
   CHECK (d IS NULL)
 )

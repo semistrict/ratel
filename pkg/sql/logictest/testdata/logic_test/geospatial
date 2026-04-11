@@ -3,8 +3,7 @@ CREATE TABLE geo_table(
   id int primary key,
   geog geography(geometry, 4326),
   geom geometry(point),
-  orphan geography,
-  FAMILY f (orphan)
+  orphan geography
 )
 
 statement ok
@@ -807,7 +806,7 @@ NULL                                       NULL                                 
 
 query T
 select st_asgeojson(
-  ('0101000000000000000000F03F000000000000F03F':::GEOMETRY,),
+  ('0101000000000000000000F03F000000000000F03F':::GEOMETRY),
   '':::STRING::STRING,
   2088580099783884006:::INT8::INT8,
   false::BOOL

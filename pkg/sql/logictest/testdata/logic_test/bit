@@ -7,8 +7,7 @@ SELECT B'1000101'::BIT(4)::STRING,
 
 statement ok
 CREATE TABLE bits (
-  a BIT, b BIT(4), c VARBIT, d VARBIT(4),
-  FAMILY "primary" (a, b, c, d, rowid)
+  a BIT, b BIT(4), c VARBIT, d VARBIT(4)
 )
 
 query TT colnames

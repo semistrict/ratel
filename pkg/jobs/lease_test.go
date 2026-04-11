@@ -26,7 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestJobsTableClaimFamily(t *testing.T) {
+func TestJobsTableHasNoClaimFamily(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
 
@@ -42,10 +42,10 @@ func TestJobsTableClaimFamily(t *testing.T) {
 	sqlDB := sqlutils.MakeSQLRunner(db)
 	var table, schema string
 	sqlDB.QueryRow(t, `SHOW CREATE system.jobs`).Scan(&table, &schema)
-	if !strings.Contains(
+	if strings.Contains(
 		schema, `FAMILY claim (claim_session_id, claim_instance_id, num_runs, last_run)`,
 	) {
-		t.Fatalf("expected claim family, got %q", schema)
+		t.Fatalf("unexpected claim family in schema: %q", schema)
 	}
 
 	now := timeutil.Now()

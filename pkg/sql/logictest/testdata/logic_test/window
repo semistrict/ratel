@@ -8,10 +8,7 @@ CREATE TABLE kv (
   d DECIMAL,
   s STRING,
   b BOOL,
-  i INTERVAL,
-  FAMILY (k, v, w, f, b),
-  FAMILY (d),
-  FAMILY (s)
+  i INTERVAL
 )
 
 statement OK

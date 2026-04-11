@@ -9,8 +9,7 @@ subtest json
 statement ok
 CREATE TABLE json_tab (
   a INT PRIMARY KEY,
-  b JSONB,
-  FAMILY (a, b)
+  b JSONB
 )
 
 statement ok
@@ -145,8 +144,7 @@ subtest array
 statement ok
 CREATE TABLE array_tab (
   a INT PRIMARY KEY,
-  b INT[],
-  FAMILY (a, b)
+  b INT[]
 )
 
 statement ok

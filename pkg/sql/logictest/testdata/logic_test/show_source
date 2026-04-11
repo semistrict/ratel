@@ -475,9 +475,7 @@ table_name                create_statement
 system.public.descriptor  CREATE TABLE public.descriptor (
                             id INT8 NOT NULL,
                             descriptor BYTES NULL,
-                            CONSTRAINT "primary" PRIMARY KEY (id ASC),
-                            FAMILY "primary" (id),
-                            FAMILY fam_2_descriptor (descriptor)
+                            CONSTRAINT "primary" PRIMARY KEY (id ASC)
                           )
 
 query TT colnames

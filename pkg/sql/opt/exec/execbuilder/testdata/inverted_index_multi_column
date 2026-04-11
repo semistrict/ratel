@@ -6,7 +6,6 @@ CREATE TABLE t (
     i INT,
     s STRING,
     j JSON,
-    FAMILY (k, i, s, j),
     INVERTED INDEX (i, j),
     INVERTED INDEX (i, s, j)
 )

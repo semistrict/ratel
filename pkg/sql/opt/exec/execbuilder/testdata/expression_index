@@ -4,8 +4,7 @@ statement ok
 CREATE TABLE mn (
   k INT PRIMARY KEY,
   m INT,
-  n STRING,
-  FAMILY (k, m, n)
+  n STRING
 )
 
 statement ok
@@ -13,8 +12,7 @@ CREATE TABLE t (
   k INT PRIMARY KEY,
   a INT,
   b INT,
-  c STRING,
-  FAMILY (k, a, b, c)
+  c STRING
 )
 
 statement ok

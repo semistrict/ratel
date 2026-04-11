@@ -78,8 +78,7 @@ statement ok
 CREATE TABLE bar (
   id INT NOT NULL DEFAULT nextval('foo':::STRING),
   description STRING NULL,
-  CONSTRAINT "primary" PRIMARY KEY (id ASC),
-  FAMILY "primary" (id, description)
+  CONSTRAINT "primary" PRIMARY KEY (id ASC)
 );
 
 statement ok

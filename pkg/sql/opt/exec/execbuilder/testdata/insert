@@ -4,9 +4,7 @@ statement ok
 CREATE TABLE kv (
   k VARCHAR PRIMARY KEY,
   v VARCHAR,
-  UNIQUE INDEX a (v),
-  FAMILY (k),
-  FAMILY (v)
+  UNIQUE INDEX a (v)
 )
 
 statement ok

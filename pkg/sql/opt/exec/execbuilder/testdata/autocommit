@@ -7,7 +7,7 @@
 # with care.
 
 statement ok
-CREATE TABLE ab (a INT PRIMARY KEY, b INT, FAMILY f1 (a, b))
+CREATE TABLE ab (a INT PRIMARY KEY, b INT)
 
 # Get the range id.
 let $rangeid
@@ -653,9 +653,9 @@ SELECT count(*) FROM ab WHERE b=0
 # -----------------------
 
 statement ok
-CREATE TABLE fk_parent (p INT PRIMARY KEY, q INT, FAMILY f1 (p, q));
+CREATE TABLE fk_parent (p INT PRIMARY KEY, q INT);
 INSERT INTO fk_parent VALUES (1, 10), (2, 20), (3, 30);
-CREATE TABLE fk_child (a INT, b INT REFERENCES fk_parent(p), FAMILY f1 (a, b));
+CREATE TABLE fk_child (a INT, b INT REFERENCES fk_parent(p));
 
 # Populate table descriptor cache.
 statement ok
@@ -744,7 +744,7 @@ statement ok
 DROP TABLE fk_child;
 
 statement ok
-CREATE TABLE fk_child (a INT, b INT REFERENCES fk_parent(p) ON DELETE CASCADE, FAMILY f1 (a, b));
+CREATE TABLE fk_child (a INT, b INT REFERENCES fk_parent(p) ON DELETE CASCADE);
 
 statement ok
 INSERT INTO fk_child VALUES (1, 1), (2, 2)

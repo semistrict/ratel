@@ -6,8 +6,7 @@ statement ok
 CREATE TABLE x (
   a INT PRIMARY KEY,
   b INT,
-  INDEX (b),
-  FAMILY "primary" (a, b)
+  INDEX (b)
 )
 
 statement ok
@@ -32,8 +31,7 @@ statement ok
 CREATE TABLE y (
   u INT PRIMARY KEY,
   v INT REFERENCES x,
-  INDEX (v),
-  FAMILY "primary" (u, v)
+  INDEX (v)
 )
 
 query T
@@ -187,8 +185,7 @@ statement ok
 CREATE TABLE z (
   pk INT PRIMARY KEY,
   ref INT,
-  CONSTRAINT fk FOREIGN KEY (ref) REFERENCES y(u),
-  FAMILY "primary" (pk, ref)
+  CONSTRAINT fk FOREIGN KEY (ref) REFERENCES y(u)
 )
 
 query T

@@ -4,13 +4,13 @@
 # data placement.
 
 statement ok
-CREATE TABLE kv (k INT PRIMARY KEY, v INT, FAMILY (k, v))
+CREATE TABLE kv (k INT PRIMARY KEY, v INT)
 
 statement ok
 INSERT INTO kv SELECT i, i FROM generate_series(1,5) AS g(i);
 
 statement ok
-CREATE TABLE kw (k INT PRIMARY KEY, w INT, FAMILY (k, w))
+CREATE TABLE kw (k INT PRIMARY KEY, w INT)
 
 statement ok
 INSERT INTO kw SELECT i, i FROM generate_series(1,5) AS g(i)

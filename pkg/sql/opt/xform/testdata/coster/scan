@@ -233,8 +233,7 @@ exec-ddl
 CREATE TABLE t60493 (
   pk INT8 NOT NULL,
   region STRING NOT NULL,
-  CONSTRAINT "primary" PRIMARY KEY (region ASC, pk ASC),
-  FAMILY "primary" (pk, region)
+  CONSTRAINT "primary" PRIMARY KEY (region ASC, pk ASC)
 ) PARTITION BY LIST (region) (
   PARTITION useast VALUES IN (('useast')),
   PARTITION uswest VALUES IN (('uswest')),

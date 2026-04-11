@@ -130,8 +130,7 @@ CREATE TABLE favorites (
   CONSTRAINT "primary" PRIMARY KEY (id ASC),
   UNIQUE INDEX favorites_idx (resource_type ASC, device_group ASC, resource_key ASC, customerid ASC),
   INDEX favorites_guid_idx (guid_id ASC),
-  INDEX favorites_glob_fav_idx (resource_type ASC, device_group ASC, jurisdiction ASC, brand ASC, locale ASC, resource_key ASC),
-  FAMILY "primary" (id, resource_type, resource_key, device_group, customerid, jurisdiction, brand, created_ts, guid_id, locale)
+  INDEX favorites_glob_fav_idx (resource_type ASC, device_group ASC, jurisdiction ASC, brand ASC, locale ASC, resource_key ASC)
 )
 
 statement ok
@@ -446,11 +445,7 @@ CREATE TABLE noncover (
   c INT,
   d INT,
   INDEX b (b),
-  UNIQUE INDEX c (c),
-  FAMILY (a),
-  FAMILY (b),
-  FAMILY (c),
-  FAMILY (d)
+  UNIQUE INDEX c (c)
 )
 
 statement ok
@@ -527,11 +522,7 @@ CREATE TABLE t2 (
   b INT,
   c INT,
   s STRING,
-  INDEX bc (b, c),
-  FAMILY (a),
-  FAMILY (b),
-  FAMILY (c),
-  FAMILY (s)
+  INDEX bc (b, c)
 )
 
 statement ok
@@ -588,8 +579,7 @@ CREATE TABLE tab1 (
       INDEX idx_tab1_0 (col0 ASC),
       INDEX idx_tab1_1 (col1 ASC),
       INDEX idx_tab1_3 (col3 ASC),
-      INDEX idx_tab1_4 (col4 ASC),
-      FAMILY "primary" (pk, col0, col1, col2, col3, col4, col5)
+      INDEX idx_tab1_4 (col4 ASC)
 )
 
 statement ok
@@ -680,8 +670,7 @@ statement ok
 CREATE TABLE t76289_1 (
   pk1 DECIMAL NOT NULL, pk2 INT8 NOT NULL, c1 INT8, c2 INT8,
   PRIMARY KEY (pk1, pk2),
-  UNIQUE (pk2),
-  FAMILY fam_c1 (c1), FAMILY fam_c2 (pk1, pk2, c2)
+  UNIQUE (pk2)
 );
 INSERT INTO t76289_1 (pk1, pk2, c1) VALUES (1:::DECIMAL, 0:::INT8, 0:::INT8);
 
@@ -694,8 +683,7 @@ statement ok
 CREATE TABLE t76289_2 (
   pk1 DECIMAL NOT NULL, pk2 INT8 NOT NULL, c1 INT8, c2 INT8,
   PRIMARY KEY (pk1, pk2),
-  INDEX (pk2),
-  FAMILY fam_c1 (c1), FAMILY fam_c2 (pk1, pk2, c2)
+  INDEX (pk2)
 );
 INSERT INTO t76289_2 (pk1, pk2, c1) VALUES (1:::DECIMAL, 0:::INT8, 0:::INT8);
 
@@ -710,9 +698,7 @@ NULL
 statement ok
 CREATE TABLE t88110 (
   _i INT8 NOT NULL, _bool BOOL, _int INT8,
-  UNIQUE (_bool) STORING(_int),
-  FAMILY (_bool),
-  FAMILY (_i, _int)
+  UNIQUE (_bool) STORING(_int)
 );
 INSERT INTO t88110 (_i, _bool, _int) VALUES (0, false, NULL);
 

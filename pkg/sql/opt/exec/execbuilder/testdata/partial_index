@@ -5,7 +5,6 @@ CREATE TABLE t (
     a INT PRIMARY KEY,
     b INT,
     c STRING,
-    FAMILY (a, b, c),
     INDEX b_partial (b) WHERE b > 10
 )
 
@@ -14,8 +13,7 @@ CREATE TABLE inv (
     a INT PRIMARY KEY,
     b JSON,
     c STRING,
-    INVERTED INDEX i (b) WHERE c IN ('foo', 'bar'),
-    FAMILY (a, b, c)
+    INVERTED INDEX i (b) WHERE c IN ('foo', 'bar')
 )
 
 # ---------------------------------------------------------

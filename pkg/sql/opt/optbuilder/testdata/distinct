@@ -6,10 +6,7 @@ CREATE TABLE xyz (
   y INT,
   z FLOAT,
   INDEX xy (x, y),
-  INDEX zyx (z, y, x),
-  FAMILY (x),
-  FAMILY (y),
-  FAMILY (z)
+  INDEX zyx (z, y, x)
 )
 ----
 

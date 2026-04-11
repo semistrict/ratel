@@ -59,10 +59,7 @@ exec-ddl
 CREATE TABLE parent_multi (
   pk INT PRIMARY KEY,
   p INT, q INT,
-  UNIQUE (p, q),
-  FAMILY (pk),
-  FAMILY (p),
-  FAMILY (q)
+  UNIQUE (p, q)
 )
 ----
 

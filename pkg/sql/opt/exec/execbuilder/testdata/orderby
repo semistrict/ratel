@@ -4,8 +4,7 @@ statement ok
 CREATE TABLE t (
   a INT PRIMARY KEY,
   b INT,
-  c BOOLEAN,
-  FAMILY "primary" (a, b, c)
+  c BOOLEAN
 )
 
 query T
@@ -284,9 +283,7 @@ CREATE TABLE abc (
   d VARCHAR,
   PRIMARY KEY (a, b, c),
   UNIQUE INDEX bc (b, c),
-  INDEX ba (b, a),
-  FAMILY (a, b, c),
-  FAMILY (d)
+  INDEX ba (b, a)
 )
 
 statement ok

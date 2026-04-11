@@ -1101,7 +1101,19 @@ type jsonArrayGenerator struct {
 	json      tree.DJSON
 	nextIndex int
 	asText    bool
+	jsonDatum tree.DJSON
 	buf       [1]tree.Datum
+}
+
+type contextJSONIndexFetcher interface {
+	FetchValIdxContext(context.Context, int) (json.JSON, error)
+}
+
+type jsonArrayStreamGenerator struct {
+	iter   json.ArrayValueIterator
+	asText bool
+	jsonDatum tree.DJSON
+	buf    [1]tree.Datum
 }
 
 var errJSONCallOnNonArray = pgerror.New(pgcode.InvalidParameterValue,
@@ -1124,6 +1136,14 @@ func makeJSONArrayGenerator(args tree.Datums, asText bool) (tree.ValueGenerator,
 	if target.Type() != json.ArrayJSONType {
 		return nil, errJSONCallOnNonArray
 	}
+	if factory, ok := target.JSON.(json.ArrayValueIteratorFactory); ok {
+		if iter := factory.ArrayValueIterator(); iter != nil {
+			return &jsonArrayStreamGenerator{
+				iter:   iter,
+				asText: asText,
+			}, nil
+		}
+	}
 	return &jsonArrayGenerator{
 		json:   target,
 		asText: asText,
@@ -1141,7 +1161,6 @@ func (g *jsonArrayGenerator) ResolvedType() *types.T {
 // Start implements the tree.ValueGenerator interface.
 func (g *jsonArrayGenerator) Start(_ context.Context, _ *kv.Txn) error {
 	g.nextIndex = -1
-	g.json.JSON = g.json.JSON.MaybeDecode()
 	g.buf[0] = nil
 	return nil
 }
@@ -1150,9 +1169,17 @@ func (g *jsonArrayGenerator) Start(_ context.Context, _ *kv.Txn) error {
 func (g *jsonArrayGenerator) Close(_ context.Context) {}
 
 // Next implements the tree.ValueGenerator interface.
-func (g *jsonArrayGenerator) Next(_ context.Context) (bool, error) {
+func (g *jsonArrayGenerator) Next(ctx context.Context) (bool, error) {
 	g.nextIndex++
-	next, err := g.json.FetchValIdx(g.nextIndex)
+	var (
+		next json.JSON
+		err  error
+	)
+	if fetcher, ok := g.json.JSON.(contextJSONIndexFetcher); ok {
+		next, err = fetcher.FetchValIdxContext(ctx, g.nextIndex)
+	} else {
+		next, err = g.json.FetchValIdx(g.nextIndex)
+	}
 	if err != nil || next == nil {
 		return false, err
 	}
@@ -1161,13 +1188,55 @@ func (g *jsonArrayGenerator) Next(_ context.Context) (bool, error) {
 			return false, err
 		}
 	} else {
-		g.buf[0] = tree.NewDJSON(next)
+		g.jsonDatum.JSON = next
+		g.buf[0] = &g.jsonDatum
 	}
 	return true, nil
 }
 
 // Values implements the tree.ValueGenerator interface.
 func (g *jsonArrayGenerator) Values() (tree.Datums, error) {
+	return g.buf[:], nil
+}
+
+// ResolvedType implements the tree.ValueGenerator interface.
+func (g *jsonArrayStreamGenerator) ResolvedType() *types.T {
+	if g.asText {
+		return jsonArrayTextGeneratorType
+	}
+	return jsonArrayGeneratorType
+}
+
+// Start implements the tree.ValueGenerator interface.
+func (g *jsonArrayStreamGenerator) Start(_ context.Context, _ *kv.Txn) error {
+	g.buf[0] = nil
+	return nil
+}
+
+// Close implements the tree.ValueGenerator interface.
+func (g *jsonArrayStreamGenerator) Close(ctx context.Context) {
+	g.iter.Close(ctx)
+}
+
+// Next implements the tree.ValueGenerator interface.
+func (g *jsonArrayStreamGenerator) Next(ctx context.Context) (bool, error) {
+	next, ok, err := g.iter.NextValue(ctx)
+	if err != nil || !ok {
+		return false, err
+	}
+	if g.asText {
+		if g.buf[0], err = jsonAsText(next); err != nil {
+			return false, err
+		}
+	} else {
+		g.jsonDatum.JSON = next
+		g.buf[0] = &g.jsonDatum
+	}
+	return true, nil
+}
+
+// Values implements the tree.ValueGenerator interface.
+func (g *jsonArrayStreamGenerator) Values() (tree.Datums, error) {
 	return g.buf[:], nil
 }
 

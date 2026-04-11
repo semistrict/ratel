@@ -260,6 +260,7 @@ var (
 	errSamplerWrap                    = errors.New("core.Sampler is not supported (not an execinfra.RowSource)")
 	errSampleAggregatorWrap           = errors.New("core.SampleAggregator is not supported (not an execinfra.RowSource)")
 	errTableReaderScanLocalWrap       = errors.New("table reader scan-local array/json execution is not supported in vectorized")
+	errProjectSetJSONArrayWrap        = errors.New("project set json array expansion is not supported in vectorized")
 	errExperimentalWrappingProhibited = errors.New("wrapping for non-JoinReader and non-LocalPlanNode cores is prohibited in vectorize=experimental_always")
 	errWrappedCast                    = errors.New("mismatched types in NewColOperator and unsupported casts")
 	errLookupJoinUnsupported          = errors.New("lookup join reader is unsupported in vectorized")
@@ -306,6 +307,9 @@ func canWrap(mode sessiondatapb.VectorizeExecMode, spec *execinfrapb.ProcessorSp
 		return errMetadataTestReceiverWrap
 	case spec.Core.ZigzagJoiner != nil:
 	case spec.Core.ProjectSet != nil:
+		if projectSetRequiresRowExecution(spec.Core.ProjectSet) {
+			return errProjectSetJSONArrayWrap
+		}
 	case spec.Core.Windower != nil:
 	case spec.Core.LocalPlanNode != nil:
 	case spec.Core.ChangeAggregator != nil:
@@ -331,6 +335,60 @@ func canWrap(mode sessiondatapb.VectorizeExecMode, spec *execinfrapb.ProcessorSp
 		return errors.AssertionFailedf("unexpected processor core %q", spec.Core)
 	}
 	return nil
+}
+
+func projectSetRequiresRowExecution(spec *execinfrapb.ProjectSetSpec) bool {
+	for i := range spec.Exprs {
+		if exprRequiresRowExecutionForJSONArrayExpansion(spec.Exprs[i]) {
+			return true
+		}
+	}
+	return false
+}
+
+func exprRequiresRowExecutionForJSONArrayExpansion(expr execinfrapb.Expression) bool {
+	if expr.LocalExpr != nil {
+		v := jsonArrayExpansionVisitor{}
+		tree.WalkExprConst(&v, expr.LocalExpr)
+		return v.found
+	}
+	// LocalExpr should normally be set during local planning. Keep a narrow
+	// string fallback so support checks still do the safe thing on serialized
+	// expressions in tests or unusual planning paths.
+	s := strings.ToLower(expr.Expr)
+	return strings.Contains(s, "json_array_elements(") ||
+		strings.Contains(s, "jsonb_array_elements(") ||
+		strings.Contains(s, "json_array_elements_text(") ||
+		strings.Contains(s, "jsonb_array_elements_text(")
+}
+
+type jsonArrayExpansionVisitor struct {
+	found bool
+}
+
+func (v *jsonArrayExpansionVisitor) VisitPre(expr tree.Expr) (recurse bool, newExpr tree.Expr) {
+	if v.found {
+		return false, expr
+	}
+	fn, ok := expr.(*tree.FuncExpr)
+	if !ok {
+		return true, expr
+	}
+	name := strings.ToLower(fn.Func.String())
+	if def, ok := fn.Func.FunctionReference.(*tree.FunctionDefinition); ok {
+		name = strings.ToLower(def.Name)
+	}
+	switch name {
+	case "json_array_elements", "jsonb_array_elements", "json_array_elements_text", "jsonb_array_elements_text":
+		v.found = true
+		return false, expr
+	default:
+		return true, expr
+	}
+}
+
+func (v *jsonArrayExpansionVisitor) VisitPost(expr tree.Expr) tree.Expr {
+	return expr
 }
 
 // createDiskBackedSort creates a new disk-backed operator that sorts the input

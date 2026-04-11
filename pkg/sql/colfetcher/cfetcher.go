@@ -403,6 +403,8 @@ type cFetcher struct {
 	// table is the table that's configured for fetching.
 	table *cTableInfo
 
+	subordinateJSONLazyFetchTxn *kv.Txn
+
 	// True if the index key must be decoded. This is only false if there are no
 	// needed columns.
 	mustDecodeIndexKey bool
@@ -473,6 +475,11 @@ type cFetcher struct {
 	// keys during row assembly. Keyed by fetched-column ordinal.
 	subordinateJSONBuilders map[int]*subordinateJSONBuilder
 
+	// subordinateLazyRootJSON tracks projected root-array JSON values that can
+	// remain lazy and fetch array elements on demand instead of materializing
+	// the whole column during row finalization.
+	subordinateLazyRootJSON map[int]subordinateLazyRootJSONState
+
 	jsonExistsFilter              *cJSONExistsFilterState
 	lastRowPassesJSONExistsFilter bool
 
@@ -502,6 +509,12 @@ type cFetcher struct {
 	// kvFetcherMemAcc is a memory account that will be used by the underlying
 	// KV fetcher.
 	kvFetcherMemAcc *mon.BoundAccount
+}
+
+type subordinateLazyRootJSONState struct {
+	rowKey roachpb.Key
+	colID  descpb.ColumnID
+	length int
 }
 
 type cJSONExistsFilterState struct {
@@ -902,6 +915,7 @@ func (cf *cFetcher) StartScan(
 	if len(spans) == 0 {
 		return errors.AssertionFailedf("no spans")
 	}
+	cf.subordinateJSONLazyFetchTxn = nil
 	if !limitBatches && batchBytesLimit != rowinfra.NoBytesLimit {
 		return errors.AssertionFailedf("batchBytesLimit set without limitBatches")
 	}
@@ -935,6 +949,7 @@ func (cf *cFetcher) StartScan(
 			return err
 		}
 		cf.setFetcher(f, limitHint)
+		cf.subordinateJSONLazyFetchTxn = txn
 		return nil
 	}
 
@@ -956,7 +971,33 @@ func (cf *cFetcher) StartScan(
 		return err
 	}
 	cf.setFetcher(f, limitHint)
+	cf.subordinateJSONLazyFetchTxn = txn
 	return nil
+}
+
+func (cf *cFetcher) canEmitLazyRootJSONArray(colIdx int) bool {
+	if cf.subordinateJSONLazyFetchTxn == nil {
+		return false
+	}
+	if !cf.table.neededValueColsByIdx.Contains(colIdx) {
+		return false
+	}
+	if cf.jsonExistsFilter != nil && cf.jsonExistsFilter.shared.colIdx == colIdx {
+		return false
+	}
+	if cf.jsonPathCompareFilter != nil && cf.jsonPathCompareFilter.shared.colIdx == colIdx {
+		return false
+	}
+	if len(cf.jsonContainsByCol[colIdx]) > 0 {
+		return false
+	}
+	if len(cf.jsonSharedSelectedByCol[colIdx]) > 0 {
+		return false
+	}
+	for range cf.jsonSharedAccessByCol[colIdx] {
+		return false
+	}
+	return true
 }
 
 func (cf *cFetcher) subordinateJSONRowHeadLookupSpecs() ([]row.SubordinateJSONRowLookupSpec, bool, error) {
@@ -1694,6 +1735,9 @@ func (cf *cFetcher) clearSubordinateBuilders() {
 	for k := range cf.subordinateJSONBuilders {
 		delete(cf.subordinateJSONBuilders, k)
 	}
+	for k := range cf.subordinateLazyRootJSON {
+		delete(cf.subordinateLazyRootJSON, k)
+	}
 }
 
 // processSubordinateValue handles a subordinate key stored under the row's
@@ -1851,6 +1895,30 @@ func (cf *cFetcher) processSubordinateValue(
 				return prettyKey, prettyValue, nil
 			}
 		}
+		if cf.canEmitLazyRootJSONArray(idx) {
+			if len(path) == 1 && path[0].Kind == keys.SubordinatePathHeader && nodeKind == rowenc.SubordinateJSONArray {
+				if cf.subordinateLazyRootJSON == nil {
+					cf.subordinateLazyRootJSON = make(map[int]subordinateLazyRootJSONState)
+				}
+				cf.subordinateLazyRootJSON[idx] = subordinateLazyRootJSONState{
+					rowKey: append(roachpb.Key(nil), keys.MakeFamilyKey(cf.machine.lastRowPrefix, 0)...),
+					colID:  colID,
+					length: int(childCount),
+				}
+				if cf.traceKV {
+					prettyKey = fmt.Sprintf("%s/%s", prettyKey, colSpec.Name)
+					prettyValue = "lazy-json-array"
+				}
+				return prettyKey, prettyValue, nil
+			}
+			if _, ok := cf.subordinateLazyRootJSON[idx]; ok {
+				if cf.traceKV {
+					prettyKey = fmt.Sprintf("%s/%s", prettyKey, colSpec.Name)
+					prettyValue = "lazy-json-array-child"
+				}
+				return prettyKey, prettyValue, nil
+			}
+		}
 
 		kind, err := row.SubordinateJSONNodeKindFromEncoded(nodeKind)
 		if err != nil {
@@ -2004,11 +2072,21 @@ func (cf *cFetcher) finalizeSubordinateValues() error {
 		cf.machine.remainingValueColsByIdx.Remove(idx)
 	}
 	for idx, jsonBuilder := range cf.subordinateJSONBuilders {
+		if row.TestingSubordinateJSONFullValueMaterializeHook != nil {
+			row.TestingSubordinateJSONFullValueMaterializeHook()
+		}
 		j, err := jsonBuilder.Materialize()
 		if err != nil {
 			return err
 		}
 		cf.machine.colvecs.Vecs[idx].JSON().Set(cf.machine.rowIdx, j.JSON)
+		cf.machine.colvecs.Nulls[idx].UnsetNull(cf.machine.rowIdx)
+		cf.machine.remainingValueColsByIdx.Remove(idx)
+	}
+	for idx, lazyRoot := range cf.subordinateLazyRootJSON {
+		cf.machine.colvecs.Vecs[idx].JSON().Set(cf.machine.rowIdx, row.MakeLazyRootJSONArray(
+			cf.subordinateJSONLazyFetchTxn, lazyRoot.rowKey, lazyRoot.colID, lazyRoot.length,
+		))
 		cf.machine.colvecs.Nulls[idx].UnsetNull(cf.machine.rowIdx)
 		cf.machine.remainingValueColsByIdx.Remove(idx)
 	}

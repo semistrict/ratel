@@ -151,6 +151,8 @@ type tableInfo struct {
 type Fetcher struct {
 	table tableInfo
 
+	subordinateJSONLazyFetchTxn *kv.Txn
+
 	// reverse denotes whether or not the spans should be read in reverse
 	// or not when StartScan is invoked.
 	reverse bool
@@ -202,6 +204,11 @@ type Fetcher struct {
 	// subordinateJSONBuilders accumulates recursive JSON nodes from subordinate
 	// keys during row assembly. Keyed by index into spec.FetchedColumns.
 	subordinateJSONBuilders map[int]*subordinateJSONBuilder
+
+	// subordinateLazyRootJSON tracks projected root-array JSON values that can
+	// stay lazy and fetch elements on demand instead of materializing the whole
+	// column during row finalization.
+	subordinateLazyRootJSON map[int]subordinateLazyRootJSONState
 
 	// arrayEqualsAnyFilter, when set, evaluates a filter of the form
 	//   left = ANY(array_col)
@@ -277,6 +284,12 @@ type Fetcher struct {
 	// Memory monitor and memory account for the bytes fetched by this fetcher.
 	mon             *mon.BytesMonitor
 	kvFetcherMemAcc *mon.BoundAccount
+}
+
+type subordinateLazyRootJSONState struct {
+	rowKey roachpb.Key
+	colID  descpb.ColumnID
+	length int
 }
 
 type arrayEqualsAnyFilterState struct {
@@ -864,6 +877,7 @@ func (rf *Fetcher) StartScan(
 	if len(spans) == 0 {
 		return errors.AssertionFailedf("no spans")
 	}
+	rf.subordinateJSONLazyFetchTxn = nil
 
 	if lookups, ok, err := rf.subordinateJSONRowHeadLookupSpecs(); err != nil {
 		return err
@@ -880,7 +894,11 @@ func (rf *Fetcher) StartScan(
 		if err != nil {
 			return err
 		}
-		return rf.StartScanFrom(ctx, f, traceKV)
+		if err := rf.StartScanFrom(ctx, f, traceKV); err != nil {
+			return err
+		}
+		rf.subordinateJSONLazyFetchTxn = txn
+		return nil
 	}
 
 	f, err := makeKVBatchFetcher(
@@ -901,7 +919,11 @@ func (rf *Fetcher) StartScan(
 	if err != nil {
 		return err
 	}
-	return rf.StartScanFrom(ctx, &f, traceKV)
+	if err := rf.StartScanFrom(ctx, &f, traceKV); err != nil {
+		return err
+	}
+	rf.subordinateJSONLazyFetchTxn = txn
+	return nil
 }
 
 func (rf *Fetcher) subordinateJSONRowHeadLookupSpecs() ([]SubordinateJSONRowLookupSpec, bool, error) {
@@ -1150,6 +1172,31 @@ func (rf *Fetcher) StartScanFrom(ctx context.Context, f KVBatchFetcher, traceKV 
 	return err
 }
 
+func (rf *Fetcher) canEmitLazyRootJSONArray(colIdx int) bool {
+	if rf.subordinateJSONLazyFetchTxn == nil {
+		return false
+	}
+	if !rf.table.neededValueColsByIdx.Contains(colIdx) {
+		return false
+	}
+	if rf.jsonExistsFilter != nil && rf.jsonExistsFilter.shared.colIdx == colIdx {
+		return false
+	}
+	if rf.jsonPathCompareFilter != nil && rf.jsonPathCompareFilter.shared.colIdx == colIdx {
+		return false
+	}
+	if len(rf.jsonContainsByCol[colIdx]) > 0 {
+		return false
+	}
+	if len(rf.jsonSharedSelectedByCol[colIdx]) > 0 {
+		return false
+	}
+	for range rf.jsonSharedAccessByCol[colIdx] {
+		return false
+	}
+	return true
+}
+
 // setNextKV sets the next KV to process to the input KV. needsCopy, if true,
 // causes the input kv to be deep copied. needsCopy should be set to true if
 // the input KV is pointing to the last KV of a batch, so that the batch can
@@ -1279,6 +1326,9 @@ func (rf *Fetcher) processKV(
 		}
 		for k := range rf.subordinateJSONBuilders {
 			delete(rf.subordinateJSONBuilders, k)
+		}
+		for k := range rf.subordinateLazyRootJSON {
+			delete(rf.subordinateLazyRootJSON, k)
 		}
 		if rf.arrayEqualsAnyFilter != nil {
 			rf.arrayEqualsAnyFilter.matched = false
@@ -1754,6 +1804,30 @@ func (rf *Fetcher) processSubordinateKV(
 			}
 			return prettyKey, prettyValue, nil
 		}
+		if rf.canEmitLazyRootJSONArray(idx) {
+			if len(path) == 1 && path[0].Kind == keys.SubordinatePathHeader && nodeKind == rowenc.SubordinateJSONArray {
+				if rf.subordinateLazyRootJSON == nil {
+					rf.subordinateLazyRootJSON = make(map[int]subordinateLazyRootJSONState)
+				}
+				rf.subordinateLazyRootJSON[idx] = subordinateLazyRootJSONState{
+					rowKey: append(roachpb.Key(nil), keys.MakeFamilyKey(rf.indexKey, 0)...),
+					colID:  colID,
+					length: int(childCount),
+				}
+				if rf.traceKV {
+					prettyKey = fmt.Sprintf("%s/%s", prettyKey, colSpec.Name)
+					prettyValue = "lazy-json-array"
+				}
+				return prettyKey, prettyValue, nil
+			}
+			if _, ok := rf.subordinateLazyRootJSON[idx]; ok {
+				if rf.traceKV {
+					prettyKey = fmt.Sprintf("%s/%s", prettyKey, colSpec.Name)
+					prettyValue = "lazy-json-array-child"
+				}
+				return prettyKey, prettyValue, nil
+			}
+		}
 
 		kind, err := SubordinateJSONNodeKindFromEncoded(nodeKind)
 		if err != nil {
@@ -2130,11 +2204,20 @@ func (rf *Fetcher) finalizeRow() error {
 		rf.valueColsFound++
 	}
 	for idx, jsonBuilder := range rf.subordinateJSONBuilders {
+		if TestingSubordinateJSONFullValueMaterializeHook != nil {
+			TestingSubordinateJSONFullValueMaterializeHook()
+		}
 		dJSON, err := jsonBuilder.Materialize()
 		if err != nil {
 			return err
 		}
 		table.row[idx] = rowenc.EncDatum{Datum: dJSON}
+		rf.valueColsFound++
+	}
+	for idx, lazyRoot := range rf.subordinateLazyRootJSON {
+		table.row[idx] = rowenc.EncDatum{Datum: tree.NewDJSON(MakeLazyRootJSONArray(
+			rf.subordinateJSONLazyFetchTxn, lazyRoot.rowKey, lazyRoot.colID, lazyRoot.length,
+		))}
 		rf.valueColsFound++
 	}
 	if err := rf.finishArrayEqualsAnyFilter(); err != nil {

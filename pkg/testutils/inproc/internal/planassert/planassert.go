@@ -28,6 +28,7 @@ import (
 )
 
 var kvRowsReadRE = regexp.MustCompile(`KV rows read: ([\d,]+)`)
+var maxMemoryUsageRE = regexp.MustCompile(`maximum memory usage: ([\d.]+) ([KMG]?i?B)`)
 
 // VecVerbose returns the EXPLAIN (VEC, VERBOSE) output joined into one string.
 func VecVerbose(t testing.TB, ctx context.Context, db *sql.DB, query string) string {
@@ -137,4 +138,35 @@ func KVRowsRead(t testing.TB, plan string) int {
 func UsesAtMostKVRowsRead(t testing.TB, plan string, max int) {
 	t.Helper()
 	require.LessOrEqual(t, KVRowsRead(t, plan), max, plan)
+}
+
+// MaximumMemoryUsageBytes extracts the EXPLAIN ANALYZE maximum memory usage.
+func MaximumMemoryUsageBytes(t testing.TB, plan string) int64 {
+	t.Helper()
+	matches := maxMemoryUsageRE.FindStringSubmatch(plan)
+	require.Len(t, matches, 3, "missing maximum memory usage in plan:\n%s", plan)
+	value, err := strconv.ParseFloat(matches[1], 64)
+	require.NoError(t, err)
+
+	var multiplier float64 = 1
+	switch matches[2] {
+	case "B":
+		multiplier = 1
+	case "KiB":
+		multiplier = 1 << 10
+	case "MiB":
+		multiplier = 1 << 20
+	case "GiB":
+		multiplier = 1 << 30
+	default:
+		require.FailNowf(t, "unknown memory unit", "unit=%s plan=\n%s", matches[2], plan)
+	}
+	return int64(value * multiplier)
+}
+
+// UsesAtMostMaximumMemoryUsage asserts that EXPLAIN ANALYZE reported bounded
+// maximum memory usage for the statement under test.
+func UsesAtMostMaximumMemoryUsage(t testing.TB, plan string, maxBytes int64) {
+	t.Helper()
+	require.LessOrEqual(t, MaximumMemoryUsageBytes(t, plan), maxBytes, plan)
 }

@@ -50,6 +50,16 @@ type SubordinateJSONBuilder struct {
 	root subordinateJSONNodeBuilder
 }
 
+// TestingSubordinateJSONBuilderMaterializeHook, when non-nil, is invoked
+// whenever a subordinate JSON builder materializes a subtree into a DJSON.
+// This is intended for low-level builder tests.
+var TestingSubordinateJSONBuilderMaterializeHook func()
+
+// TestingSubordinateJSONFullValueMaterializeHook, when non-nil, is invoked
+// whenever fetch finalization materializes an entire subordinate JSON column
+// value for output.
+var TestingSubordinateJSONFullValueMaterializeHook func()
+
 func NewSubordinateArrayBuilder(elemType *types.T) *SubordinateArrayBuilder {
 	return &SubordinateArrayBuilder{elemType: elemType}
 }
@@ -165,6 +175,9 @@ func (n *subordinateJSONNodeBuilder) materialize() (jsonutil.JSON, error) {
 }
 
 func (b *SubordinateJSONBuilder) Materialize() (*tree.DJSON, error) {
+	if TestingSubordinateJSONBuilderMaterializeHook != nil {
+		TestingSubordinateJSONBuilderMaterializeHook()
+	}
 	j, err := b.root.materialize()
 	if err != nil {
 		return nil, err

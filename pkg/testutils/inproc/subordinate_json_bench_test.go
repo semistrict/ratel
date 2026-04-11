@@ -96,6 +96,25 @@ func makeLargeSubordinateJSONBenchRootObjectKeyDoc(targetBytes int) string {
 	return b.String()
 }
 
+func makeLargeSubordinateJSONBenchRootArrayAggregateDoc(targetBytes int) (string, int) {
+	var b strings.Builder
+	b.Grow(targetBytes + targetBytes/8)
+	b.WriteByte('[')
+
+	chunk := strings.Repeat("x", 240)
+	count := 0
+	for b.Len() < targetBytes {
+		if count > 0 {
+			b.WriteByte(',')
+		}
+		fmt.Fprintf(&b, `{"test":1,"junk":"%s","i":%d}`, chunk, count)
+		count++
+	}
+
+	b.WriteByte(']')
+	return b.String(), count
+}
+
 func setupSubordinateJSONBenchTable(
 	b *testing.B, ctx context.Context, db *sql.DB, table string, targetBytes int,
 ) int {
@@ -177,6 +196,9 @@ func benchmarkSubordinateJSONQueryRowStringPeakHeap(
 	b.Helper()
 	b.ReportAllocs()
 	b.SetBytes(bytes)
+	// This is a process-wide HeapAlloc sample taken around the query execution.
+	// It is useful for tracking churn, but it is not the same signal as EXPLAIN
+	// ANALYZE's maximum memory usage, which better captures retained query memory.
 
 	var before runtime.MemStats
 	runtime.GC()
@@ -247,6 +269,9 @@ func benchmarkSubordinateJSONQueryRowIntPeakHeap(
 	b.Helper()
 	b.ReportAllocs()
 	b.SetBytes(bytes)
+	// This is a process-wide HeapAlloc sample taken around the query execution.
+	// It is useful for tracking churn, but it is not the same signal as EXPLAIN
+	// ANALYZE's maximum memory usage, which better captures retained query memory.
 
 	var before runtime.MemStats
 	runtime.GC()
@@ -302,6 +327,8 @@ func benchmarkSubordinateJSONExecPeakHeap(
 	b.Helper()
 	b.ReportAllocs()
 	b.SetBytes(bytes)
+	// This is a process-wide HeapAlloc sample taken around the statement
+	// execution. It is useful for tracking churn, not retained query memory.
 
 	var peak uint64
 	for i := 0; i < b.N; i++ {
@@ -490,6 +517,49 @@ func BenchmarkSubordinateJSONLargeRootArrayIndex(b *testing.B) {
 			b.Run("PathFilterOnlyPeakHeap", func(b *testing.B) {
 				benchmarkSubordinateJSONQueryRowIntPeakHeap(b, pathFilterOnly, 1, int64(docLen))
 			})
+		})
+	}
+}
+
+// BenchmarkSubordinateJSONLargeRootArrayAggregateField tracks aggregation over
+// a huge root JSON array of objects using jsonb_array_elements, i.e. queries of
+// the form SELECT sum((elem.value->'test')::INT) FROM t, LATERAL
+// jsonb_array_elements(j) AS elem(value). The PeakHeap variant samples
+// process-wide HeapAlloc; retained query memory is covered by
+// TestSubordinateJSONLargeRootArrayAggregateFieldAnalyzeMemoryRoughlyConstant.
+func BenchmarkSubordinateJSONLargeRootArrayAggregateField(b *testing.B) {
+	for _, tc := range []struct {
+		name        string
+		targetBytes int
+	}{
+		{name: "1MiB", targetBytes: 1 << 20},
+		{name: "8MiB", targetBytes: 8 << 20},
+	} {
+		b.Run(tc.name, func(b *testing.B) {
+			for _, vectorize := range []string{"on", "off"} {
+				b.Run("vectorize="+vectorize, func(b *testing.B) {
+					c, ctx := benchCluster(b)
+					db := c.ServerConn(0)
+					table := fmt.Sprintf("bench_json_root_array_agg_%d_%s", tc.targetBytes, vectorize)
+					doc, expected := makeLargeSubordinateJSONBenchRootArrayAggregateDoc(tc.targetBytes)
+					docLen := setupSubordinateJSONBenchTableWithDoc(b, ctx, db, table, doc, vectorize)
+
+					sumStmt, err := db.PrepareContext(ctx, fmt.Sprintf(`
+						SELECT COALESCE(sum((elem.value->'test')::INT), 0)::INT
+						FROM %s, LATERAL jsonb_array_elements(j) AS elem(value)
+						WHERE id = 1
+					`, table))
+					require.NoError(b, err)
+					b.Cleanup(func() { _ = sumStmt.Close() })
+
+					b.Run("SumField", func(b *testing.B) {
+						benchmarkSubordinateJSONQueryRowInt(b, sumStmt, expected, int64(docLen))
+					})
+					b.Run("SumFieldPeakHeap", func(b *testing.B) {
+						benchmarkSubordinateJSONQueryRowIntPeakHeap(b, sumStmt, expected, int64(docLen))
+					})
+				})
+			}
 		})
 	}
 }

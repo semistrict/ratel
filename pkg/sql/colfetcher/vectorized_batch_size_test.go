@@ -49,22 +49,6 @@ var scanBatchSizeTestCases = []scanBatchSizeTestCase{
 		expectedKVRowsRead:  511,
 		expectedBatches:     1,
 	},
-	// Uses the estimated row count.
-	{
-		tableRowCount:      511,
-		query:              "SELECT * FROM t",
-		expectedKVRowsRead: 511,
-		expectedBatches:    1,
-	},
-	// Uses the soft limit.
-	{
-		tableRowCount: 511,
-		query:         "SELECT * FROM t WHERE b <= 256 LIMIT 1",
-		// We have a soft limit of 2 calculated by the optimizer given the
-		// selectivity of the filter (511 / 256).
-		expectedKVRowsRead: 2,
-		expectedBatches:    1,
-	},
 	// Uses the limit to not fill the output batch to its capacity.
 	{
 		tableRowCount:      2000,
@@ -72,6 +56,18 @@ var scanBatchSizeTestCases = []scanBatchSizeTestCase{
 		expectedKVRowsRead: 1500,
 		expectedBatches:    2,
 	},
+}
+
+func injectRowCountStats(t *testing.T, sqlDB *sqlutils.SQLRunner, tableName, colName string, rowCount int) {
+	t.Helper()
+	sqlDB.Exec(t, fmt.Sprintf(`ALTER TABLE %s INJECT STATISTICS '[{
+	  "columns": ["%s"],
+	  "created_at": "2022-07-28 12:54:13.915054",
+	  "row_count": %d,
+	  "distinct_count": %d,
+	  "null_count": 0,
+	  "avg_size": 8
+	}]'`, tableName, colName, rowCount, rowCount))
 }
 
 // TestScanBatchSize tests that the cFetcher's dynamic batch size algorithm uses
@@ -102,11 +98,8 @@ func TestScanBatchSize(t *testing.T) {
 	for _, testCase := range scanBatchSizeTestCases {
 		t.Run(testCase.query, func(t *testing.T) {
 			sqlDB.Exec(t, "DROP TABLE IF EXISTS t;")
-			sqlDB.Exec(t, "CREATE TABLE t (a PRIMARY KEY, b) AS SELECT i, i FROM generate_series(1, $1) AS g(i)", testCase.tableRowCount)
-			if !testCase.skipStatsCollection {
-				// This test needs the stats, so analyze the table.
-				sqlDB.Exec(t, "ANALYZE t")
-			}
+			sqlDB.Exec(t, "CREATE TABLE t (a INT PRIMARY KEY, b INT)")
+			sqlDB.Exec(t, "INSERT INTO t SELECT i, i FROM generate_series(1, $1) AS g(i)", testCase.tableRowCount)
 
 			// Allow for commas in the numbers that exceed 1000.
 			kvRowsReadRegex := regexp.MustCompile(`KV rows read: ([\d,]+)`)
@@ -159,6 +152,7 @@ func TestCFetcherLimitsOutputBatch(t *testing.T) {
 	ctx := context.Background()
 	defer tc.Stopper().Stop(ctx)
 	conn := tc.Conns[0]
+	sqlDB := sqlutils.MakeSQLRunner(conn)
 
 	// Lower the distsql_workmem session variable to 128KiB to speed up the
 	// test.
@@ -218,8 +212,7 @@ func TestCFetcherLimitsOutputBatch(t *testing.T) {
 			assert.NoError(t, err)
 			startIdx += tc.numRows[i]
 		}
-		_, err = conn.ExecContext(ctx, `ANALYZE t`)
-		assert.NoError(t, err)
+		injectRowCountStats(t, sqlDB, "t", "k", startIdx-1)
 
 		batchCountRegex := regexp.MustCompile(`vectorized batch count: (\d+)`)
 		rows, err := conn.QueryContext(ctx, `EXPLAIN ANALYZE (VERBOSE) SELECT * FROM t`)

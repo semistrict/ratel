@@ -34,6 +34,7 @@ import (
 	"github.com/semistrict/ratel/pkg/sql/randgen"
 	"github.com/semistrict/ratel/pkg/sql/rowenc"
 	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/sessiondatapb"
 	"github.com/semistrict/ratel/pkg/sql/types"
 	"github.com/semistrict/ratel/pkg/testutils/serverutils"
 	"github.com/semistrict/ratel/pkg/testutils/sqlutils"
@@ -213,6 +214,42 @@ func TestSupportedNativelyAcceptsScanLocalJSONTableReader(t *testing.T) {
 	}
 
 	require.NoError(t, supportedNatively(spec))
+}
+
+func TestProjectSetJSONArrayExpansionRequiresRowExecution(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	spec := &execinfrapb.ProcessorSpec{
+		Core: execinfrapb.ProcessorCoreUnion{
+			ProjectSet: &execinfrapb.ProjectSetSpec{
+				Exprs: []execinfrapb.Expression{
+					{Expr: `jsonb_array_elements(@1)`},
+				},
+			},
+		},
+	}
+
+	require.True(t, projectSetRequiresRowExecution(spec.Core.ProjectSet))
+	require.ErrorIs(t, canWrap(sessiondatapb.VectorizeOn, spec), errProjectSetJSONArrayWrap)
+	require.ErrorIs(t, IsSupported(sessiondatapb.VectorizeOn, spec), errCoreUnsupportedNatively)
+}
+
+func TestProjectSetNonJSONArrayExpansionCanStillWrap(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	spec := &execinfrapb.ProcessorSpec{
+		Core: execinfrapb.ProcessorCoreUnion{
+			ProjectSet: &execinfrapb.ProjectSetSpec{
+				Exprs: []execinfrapb.Expression{
+					{Expr: `generate_series(1, 3)`},
+				},
+			},
+		},
+	}
+
+	require.False(t, projectSetRequiresRowExecution(spec.Core.ProjectSet))
+	require.NoError(t, canWrap(sessiondatapb.VectorizeOn, spec))
+	require.NoError(t, IsSupported(sessiondatapb.VectorizeOn, spec))
 }
 
 // BenchmarkRenderPlanning benchmarks how long it takes to run a query with many

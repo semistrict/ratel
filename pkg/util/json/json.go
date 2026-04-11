@@ -509,14 +509,7 @@ func (j jsonFalse) Compare(other JSON) (int, error) { return cmpJSONTypes(j.Type
 func (j jsonTrue) Compare(other JSON) (int, error)  { return cmpJSONTypes(j.Type(), other.Type()), nil }
 
 func decodeIfNeeded(j JSON) (JSON, error) {
-	if enc, ok := j.(*jsonEncoded); ok {
-		var err error
-		j, err = enc.decode()
-		if err != nil {
-			return nil, err
-		}
-	}
-	return j, nil
+	return j.tryDecode()
 }
 
 func (j jsonNumber) Compare(other JSON) (int, error) {

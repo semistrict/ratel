@@ -85,8 +85,7 @@ CREATE SEQUENCE s
 statement ok
 CREATE TABLE foo (
   i INT NOT NULL DEFAULT nextval('other_db.s'),
-  j INT NOT NULL DEFAULT nextval('s'),
-  FAMILY (i, j)
+  j INT NOT NULL DEFAULT nextval('s')
 )
 
 query TT
@@ -96,8 +95,7 @@ foo  CREATE TABLE public.foo (
        i INT8 NOT NULL DEFAULT nextval('other_db.public.s'::REGCLASS),
        j INT8 NOT NULL DEFAULT nextval('public.s'::REGCLASS),
        rowid INT8 NOT VISIBLE NOT NULL DEFAULT unique_rowid(),
-       CONSTRAINT foo_pkey PRIMARY KEY (rowid ASC),
-       FAMILY fam_0_i_j_rowid (i, j, rowid)
+       CONSTRAINT foo_pkey PRIMARY KEY (rowid ASC)
      )
 
 query TT
@@ -118,8 +116,7 @@ foo  CREATE TABLE public.foo (
        i INT8 NOT NULL,
        j INT8 NOT NULL DEFAULT nextval('public.s'::REGCLASS),
        rowid INT8 NOT VISIBLE NOT NULL DEFAULT unique_rowid(),
-       CONSTRAINT foo_pkey PRIMARY KEY (rowid ASC),
-       FAMILY fam_0_i_j_rowid (i, j, rowid)
+       CONSTRAINT foo_pkey PRIMARY KEY (rowid ASC)
      )
 
 query TT
@@ -144,8 +141,7 @@ CREATE SEQUENCE other_sc.s
 statement ok
 CREATE TABLE bar (
   i INT NOT NULL DEFAULT nextval('other_sc.s'),
-  j INT NOT NULL DEFAULT nextval('s'),
-  FAMILY (i, j)
+  j INT NOT NULL DEFAULT nextval('s')
 )
 
 query TT
@@ -155,8 +151,7 @@ bar  CREATE TABLE public.bar (
        i INT8 NOT NULL DEFAULT nextval('other_sc.s'::REGCLASS),
        j INT8 NOT NULL DEFAULT nextval('public.s'::REGCLASS),
        rowid INT8 NOT VISIBLE NOT NULL DEFAULT unique_rowid(),
-       CONSTRAINT bar_pkey PRIMARY KEY (rowid ASC),
-       FAMILY fam_0_i_j_rowid (i, j, rowid)
+       CONSTRAINT bar_pkey PRIMARY KEY (rowid ASC)
      )
 
 query TT
@@ -177,8 +172,7 @@ bar  CREATE TABLE public.bar (
        i INT8 NOT NULL,
        j INT8 NOT NULL DEFAULT nextval('public.s'::REGCLASS),
        rowid INT8 NOT VISIBLE NOT NULL DEFAULT unique_rowid(),
-       CONSTRAINT bar_pkey PRIMARY KEY (rowid ASC),
-       FAMILY fam_0_i_j_rowid (i, j, rowid)
+       CONSTRAINT bar_pkey PRIMARY KEY (rowid ASC)
      )
 
 query TT

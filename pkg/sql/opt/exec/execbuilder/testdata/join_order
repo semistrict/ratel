@@ -23,8 +23,7 @@ CREATE TABLE abc (
   a INT PRIMARY KEY,
   b INT,
   c INT,
-  d INT,
-  FAMILY (a, b, c, d)
+  d INT
 )
 
 statement ok

@@ -2,7 +2,7 @@
 
 # Create a table with different families.
 statement ok
-CREATE TABLE t (x INT PRIMARY KEY, y INT, z INT, FAMILY (x), FAMILY (y), FAMILY (z))
+CREATE TABLE t (x INT PRIMARY KEY, y INT, z INT)
 
 # When doing a lookup where we could split families, but the MVCC column is
 # requested, we shouldn't split the family.

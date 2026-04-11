@@ -490,8 +490,7 @@ CREATE TABLE delivery (
   shipment int,
   item STRING REFERENCES products (upc),
   FOREIGN KEY ("order", shipment) REFERENCES orders (id, shipment),
-  INDEX (item),
-  FAMILY "primary" (ts, "order", shipment, item, rowid)
+  INDEX (item)
 )
 
 query TT
@@ -816,8 +815,7 @@ CREATE TABLE refpairs (
   b STRING,
   c INT,
   FOREIGN KEY (a, b) REFERENCES pairs (src, dest) ON UPDATE RESTRICT,
-  INDEX (a, b, c),
-  FAMILY "primary" (a, b, c, rowid)
+  INDEX (a, b, c)
 )
 
 query TTBITTBB colnames
@@ -1038,8 +1036,7 @@ statement ok
 CREATE TABLE refers (
   a INT REFERENCES referee,
   b INT,
-  INDEX b_idx (b),
-  FAMILY "primary" (a, b, rowid)
+  INDEX b_idx (b)
 )
 
 # Add some schema changes within the same transaction to verify that a
@@ -2904,8 +2901,6 @@ CREATE TABLE fam (
   c INT,
   d INT,
   e INT,
-  FAMILY (a, b, c),
-  FAMILY (d, e),
   FOREIGN KEY (c, d) REFERENCES two (a, b)
 )
 
@@ -2960,9 +2955,7 @@ statement ok
 CREATE TABLE fam_parent (
   k INT PRIMARY KEY,
   a INT,
-  b INT NOT NULL,
-  FAMILY (k, a),
-  FAMILY (b)
+  b INT NOT NULL
 )
 
 statement ok
@@ -3932,16 +3925,14 @@ CREATE TABLE t65890_p (
   a INT,
   b INT,
   UNIQUE (a),
-  UNIQUE INDEX ba_idx (b, a),
-  FAMILY (k, a, b)
+  UNIQUE INDEX ba_idx (b, a)
 )
 
 statement ok
 CREATE TABLE t65890_c (
   k INT PRIMARY KEY,
   b INT,
-  a INT,
-  FAMILY (k, b, a)
+  a INT
 )
 
 statement ok

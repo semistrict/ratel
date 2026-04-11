@@ -2,9 +2,7 @@ statement ok
 CREATE TABLE t (
   a INT PRIMARY KEY,
   b INT,
-  c INT,
-  FAMILY (a),
-  FAMILY (b)
+  c INT
 )
 
 statement ok
@@ -29,8 +27,7 @@ CREATE TABLE c (
   "bAr" JSON,
   "qUuX" JSON,
   INVERTED INDEX (foo),
-  INVERTED INDEX ("bAr"),
-  FAMILY "primary" (id, foo, "bAr", "qUuX")
+  INVERTED INDEX ("bAr")
 )
 
 query TT
@@ -1095,8 +1092,7 @@ CREATE TABLE c (
   id INT PRIMARY KEY,
   foo INT[],
   bar STRING[],
-  INVERTED INDEX (foo),
-  FAMILY "primary" (id, foo, bar)
+  INVERTED INDEX (foo)
 )
 
 statement ok

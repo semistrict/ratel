@@ -121,10 +121,7 @@ statement ok
 CREATE TABLE t14601a (
   a STRING,
   b BOOL,
-  c INT,
-  FAMILY f1 (a),
-  FAMILY f2 (b),
-  FAMILY f3 (c)
+  c INT
 )
 
 statement ok

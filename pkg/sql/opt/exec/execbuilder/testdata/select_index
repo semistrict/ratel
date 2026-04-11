@@ -9,10 +9,7 @@ CREATE TABLE t (
   PRIMARY KEY (a, b),
   INDEX bc (b, c),
   INDEX dc (d, c),
-  INDEX a_desc (a DESC),
-  FAMILY (a, b),
-  FAMILY (c),
-  FAMILY (d)
+  INDEX a_desc (a DESC)
 )
 
 statement ok
@@ -888,8 +885,7 @@ CREATE TABLE favorites (
   CONSTRAINT "primary" PRIMARY KEY (id ASC),
   UNIQUE INDEX favorites_idx (resource_type ASC, device_group ASC, resource_key ASC, customerid ASC),
   INDEX favorites_guid_idx (guid_id ASC),
-  INDEX favorites_glob_fav_idx (resource_type ASC, device_group ASC, jurisdiction ASC, brand ASC, locale ASC, resource_key ASC),
-  FAMILY "primary" (id, resource_type, resource_key, device_group, customerid, jurisdiction, brand, created_ts, guid_id, locale)
+  INDEX favorites_glob_fav_idx (resource_type ASC, device_group ASC, jurisdiction ASC, brand ASC, locale ASC, resource_key ASC)
 )
 
 statement ok
@@ -1286,11 +1282,7 @@ CREATE TABLE noncover (
   c INT,
   d INT,
   INDEX b (b),
-  UNIQUE INDEX c (c),
-  FAMILY (a),
-  FAMILY (b),
-  FAMILY (c),
-  FAMILY (d)
+  UNIQUE INDEX c (c)
 )
 
 statement ok
@@ -1537,11 +1529,7 @@ CREATE TABLE t2 (
   b INT,
   c INT,
   s STRING,
-  INDEX bc (b, c),
-  FAMILY (a),
-  FAMILY (b),
-  FAMILY (c),
-  FAMILY (s)
+  INDEX bc (b, c)
 )
 
 statement ok
@@ -1776,11 +1764,7 @@ CREATE TABLE t4 (
   c INT,
   d INT,
   e INT,
-  PRIMARY KEY (a, b),
-  FAMILY (a, b),
-  FAMILY (c),
-  FAMILY (d),
-  FAMILY (e)
+  PRIMARY KEY (a, b)
 )
 
 statement ok

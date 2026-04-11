@@ -2,10 +2,7 @@ statement ok
 CREATE TABLE geo_table(
   id int primary key,
   geog geography(geometry, 4326),
-  geom geometry(geometry, 3857),
-  FAMILY fam_0_geog (geog),
-  FAMILY fam_1_geom (geom),
-  FAMILY fam_2_id (id)
+  geom geometry(geometry, 3857)
 )
 
 statement error pgcode 22023 index setting "s2_max_cells" can only be set on GEOMETRY or GEOGRAPHY spatial indexes
@@ -57,10 +54,7 @@ CREATE TABLE public.geo_table (
   INVERTED INDEX geom_idx_3 (geom) WITH (s2_max_level=10),
   INVERTED INDEX geom_idx_4 (geom),
   INVERTED INDEX geog_idx_1 (geog) WITH (s2_level_mod=2),
-  INVERTED INDEX geog_idx_2 (geog),
-  FAMILY fam_0_geog (geog),
-  FAMILY fam_1_geom (geom),
-  FAMILY fam_2_id (id)
+  INVERTED INDEX geog_idx_2 (geog)
 )
 
 let $create_table
@@ -85,8 +79,5 @@ CREATE TABLE public.geo_table (
   INVERTED INDEX geom_idx_3 (geom) WITH (s2_max_level=10),
   INVERTED INDEX geom_idx_4 (geom),
   INVERTED INDEX geog_idx_1 (geog) WITH (s2_level_mod=2),
-  INVERTED INDEX geog_idx_2 (geog),
-  FAMILY fam_0_geog (geog),
-  FAMILY fam_1_geom (geom),
-  FAMILY fam_2_id (id)
+  INVERTED INDEX geog_idx_2 (geog)
 )

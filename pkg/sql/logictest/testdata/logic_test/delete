@@ -286,18 +286,16 @@ DELETE FROM t33361 RETURNING *; COMMIT
 ----
 1 3
 
-# Test that delete works with column families (no indexes, so fast path).
+# Test that delete still works after adding a column in the same transaction.
 statement ok
 CREATE TABLE family (
     x INT PRIMARY KEY,
-    y INT,
-    FAMILY (x),
-    FAMILY (y)
+    y INT
 );
 INSERT INTO family VALUES (1, 1), (2, 2), (3, 3)
 
 statement ok
-BEGIN; ALTER TABLE family ADD COLUMN z INT CREATE FAMILY
+BEGIN; ALTER TABLE family ADD COLUMN z INT
 
 statement ok
 DELETE FROM family WHERE x=2

@@ -4,7 +4,7 @@
 # they should.
 
 statement ok
-CREATE TABLE tu (a INT PRIMARY KEY, b INT, c INT, d INT, FAMILY (a), FAMILY (b), FAMILY (c,d));
+CREATE TABLE tu (a INT PRIMARY KEY, b INT, c INT, d INT);
   INSERT INTO tu VALUES (1, 2, 3, 4)
 
 # Update single column family.

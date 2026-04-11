@@ -8,8 +8,7 @@
 statement
 CREATE TABLE ti (
     a INT PRIMARY KEY,
-    b INT,
-    FAMILY (a, b)
+    b INT
 );
 CREATE UNIQUE INDEX test_index_to_mutate ON ti (b);
 INSERT INTO ti VALUES (1, 1), (2, 2), (4, 4)
@@ -71,7 +70,6 @@ CREATE TABLE tpfp (
     a INT PRIMARY KEY,
     b INT,
     c STRING,
-    FAMILY (a, b, c),
     UNIQUE INDEX partial (c) WHERE a > b AND c IN ('foo', 'foobar')
 )
 ----
@@ -132,7 +130,6 @@ CREATE TABLE tefp (
   k INT PRIMARY KEY,
   a INT,
   b INT,
-  FAMILY (k, a, b),
   UNIQUE INDEX t_a_plus_b_idx ((a + b))
 )
 ----
@@ -165,7 +162,6 @@ statement
 CREATE TABLE tifp (
   a INT PRIMARY KEY,
   b INT[],
-  FAMILY (a,b),
   INVERTED INDEX inverted (b)
  )
 ----
@@ -194,7 +190,6 @@ CREATE TABLE tmfp (
   a INT PRIMARY KEY,
   b INT,
   c JSON,
-  FAMILY (a, b, c),
   INVERTED INDEX inverted (b, c)
 )
 ----

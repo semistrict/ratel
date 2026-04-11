@@ -55,10 +55,7 @@ CREATE TABLE uvwxy (
     w INT,
     x INT,
     y INT,
-    PRIMARY KEY (u,v),
-    FAMILY (u,v,w),
-    FAMILY (x),
-    FAMILY (y)
+    PRIMARY KEY (u,v)
 )
 ----
 
@@ -74,9 +71,6 @@ TABLE uvwxy
  ├── y int
  ├── crdb_internal_mvcc_timestamp decimal [hidden] [system]
  ├── tableoid oid [hidden] [system]
- ├── FAMILY family1 (u, v, w, crdb_internal_mvcc_timestamp, tableoid)
- ├── FAMILY family2 (x)
- ├── FAMILY family3 (y)
  └── PRIMARY INDEX uvwxy_pkey
       ├── u int not null
       └── v int not null

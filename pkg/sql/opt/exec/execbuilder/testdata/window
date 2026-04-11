@@ -8,10 +8,7 @@ CREATE TABLE kv (
   f FLOAT,
   d DECIMAL,
   s STRING,
-  b BOOL,
-  FAMILY (k, v, w, f, b),
-  FAMILY (d),
-  FAMILY (s)
+  b BOOL
 )
 
 statement OK

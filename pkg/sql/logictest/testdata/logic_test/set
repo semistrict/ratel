@@ -448,7 +448,7 @@ SET DATESTYLE = ISO;
 subtest regression_41567_subqueries
 
 statement error subqueries are not allowed in SET
-SET SESSION SCHEMA EXISTS ( TABLE ( ( ( ( ( ( ( ( TABLE error ) ) ) ) ) ) ) ) ORDER BY INDEX FAMILY . IS . MAXVALUE @ OF DESC , INDEX FAMILY . FOR . ident @ ident ASC )
+SET SESSION SCHEMA EXISTS ( TABLE ( ( ( ( ( ( ( ( TABLE error ) ) ) ) ) ) ) ) ORDER BY INDEX NOTHING . IS . MAXVALUE @ OF DESC , INDEX NOTHING . FOR . ident @ ident ASC )
 
 statement error subqueries are not allowed in SET
 USE EXISTS ( TABLE error ) IS NULL

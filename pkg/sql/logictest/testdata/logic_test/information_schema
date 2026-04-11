@@ -2497,8 +2497,7 @@ statement ok
 CREATE TABLE t1 (
   id INT8 NULL,
   name STRING NULL,
-  class STRING NULL,
-  FAMILY "primary" (id, name, rowid)
+  class STRING NULL
 )
 
 query TTTTT colnames

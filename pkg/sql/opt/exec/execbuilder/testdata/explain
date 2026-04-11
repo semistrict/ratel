@@ -745,8 +745,7 @@ vectorized: true
 statement ok
 CREATE TABLE t (
   k INT PRIMARY KEY,
-  v INT,
-  FAMILY "primary" (k, v)
+  v INT
 )
 
 query T
@@ -915,7 +914,7 @@ vectorized: true
               spans: FULL SCAN
 
 statement ok
-CREATE TABLE tc (a INT, b INT, INDEX c(a), FAMILY "primary" (a, b, rowid))
+CREATE TABLE tc (a INT, b INT, INDEX c(a))
 
 query T
 EXPLAIN (VERBOSE) SELECT * FROM tc WHERE a = 10 ORDER BY b
@@ -1283,7 +1282,7 @@ query T
 EXPLAIN (OPT) SELECT 1 AS r
 ----
 values
- └── (1,)
+ └── (1)
 
 query T
 EXPLAIN (OPT,VERBOSE) SELECT 1 AS r
@@ -1297,7 +1296,7 @@ values
  ├── fd: ()-->(1)
  ├── distribution: test
  ├── prune: (1)
- └── (1,)
+ └── (1)
 
 query T
 EXPLAIN (OPT,TYPES) SELECT 1 AS r
@@ -1605,8 +1604,7 @@ statement ok
 CREATE TABLE u (
   k INT PRIMARY KEY,
   v INT,
-  UNIQUE INDEX (v),
-  FAMILY "primary" (k, v)
+  UNIQUE INDEX (v)
 )
 
 query T

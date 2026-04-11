@@ -57,7 +57,6 @@ var reservedKeywords = map[string]struct{}{
 	"extract":                            {},
 	"extract_duration":                   {},
 	"false":                              {},
-	"family":                             {},
 	"fetch":                              {},
 	"float":                              {},
 	"for":                                {},

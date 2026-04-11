@@ -143,7 +143,7 @@ func (expected *expectation) verify(id jobspb.JobID, expectedStatus jobs.Status)
 	return nil
 }
 
-func TestJobsTableProgressFamily(t *testing.T) {
+func TestJobsTableHasNoProgressFamily(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
 
@@ -153,8 +153,8 @@ func TestJobsTableProgressFamily(t *testing.T) {
 
 	var table, schema string
 	sqlutils.MakeSQLRunner(db).QueryRow(t, `SHOW CREATE system.jobs`).Scan(&table, &schema)
-	if !strings.Contains(schema, `FAMILY progress (progress)`) {
-		t.Fatalf("expected progress family, got %q", schema)
+	if strings.Contains(schema, `FAMILY progress (progress)`) {
+		t.Fatalf("unexpected progress family in schema: %q", schema)
 	}
 }
 

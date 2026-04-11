@@ -5,8 +5,7 @@ CREATE TABLE xyz (
   x INT PRIMARY KEY,
   y INT,
   z INT,
-  INDEX foo (z, y),
-  FAMILY "primary" (x, y, z)
+  INDEX foo (z, y)
 )
 
 query T
@@ -35,8 +34,7 @@ CREATE TABLE abcdef (
     c INT DEFAULT (10),
     d INT AS (abcdef.b + c + 1) STORED,
     e INT AS (a) STORED,
-    f INT NOT NULL CHECK (test.abcdef.f > 2),
-    FAMILY "primary" (a, b, c, d, e, f, rowid)
+    f INT NOT NULL CHECK (test.abcdef.f > 2)
 )
 
 query T
@@ -71,10 +69,7 @@ CREATE TABLE uvwxy (
     w INT,
     x INT,
     y INT,
-    PRIMARY KEY (u,v),
-    FAMILY (u,v,w),
-    FAMILY (x),
-    FAMILY (y)
+    PRIMARY KEY (u,v)
 )
 
 query T
@@ -88,9 +83,6 @@ TABLE uvwxy
  ├── y int
  ├── crdb_internal_mvcc_timestamp decimal [hidden] [system]
  ├── tableoid oid [hidden] [system]
- ├── FAMILY fam_0_u_v_w (u, v, w)
- ├── FAMILY fam_1_x (x)
- ├── FAMILY fam_2_y (y)
  └── PRIMARY INDEX uvwxy_pkey
       ├── u int not null
       └── v int not null
@@ -98,15 +90,14 @@ scan uvwxy
 
 # Test foreign keys.
 statement ok
-CREATE TABLE parent (p INT, q INT, r INT, other INT, PRIMARY KEY (p, q, r), FAMILY "primary" (p, q, r, other))
+CREATE TABLE parent (p INT, q INT, r INT, other INT, PRIMARY KEY (p, q, r))
 
 # Simple FK.
 statement ok
 CREATE TABLE child  (
   c INT PRIMARY KEY,
   p INT, q INT, r INT,
-  CONSTRAINT fk FOREIGN KEY (p,q,r) REFERENCES parent(p,q,r),
-  FAMILY "primary" (c, p, q, r)
+  CONSTRAINT fk FOREIGN KEY (p,q,r) REFERENCES parent(p,q,r)
 )
 
 query T
@@ -146,8 +137,7 @@ statement ok
 CREATE TABLE child2  (
   c INT PRIMARY KEY,
   p INT, q INT, r INT,
-  CONSTRAINT fk FOREIGN KEY (p,q,r) REFERENCES parent(p,q,r) MATCH FULL ON DELETE SET NULL ON UPDATE SET DEFAULT,
-  FAMILY "primary" (c, p, q, r)
+  CONSTRAINT fk FOREIGN KEY (p,q,r) REFERENCES parent(p,q,r) MATCH FULL ON DELETE SET NULL ON UPDATE SET DEFAULT
 )
 
 # TODO(radu, justin): we are missing the ON UPDATE part.

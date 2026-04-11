@@ -67,10 +67,7 @@ exec-ddl
 CREATE TABLE parent_multi (
   pk INT PRIMARY KEY,
   p INT, q INT,
-  UNIQUE (p, q),
-  FAMILY (pk),
-  FAMILY (p),
-  FAMILY (q)
+  UNIQUE (p, q)
 )
 ----
 
@@ -1165,10 +1162,7 @@ exec-ddl
 CREATE TABLE parent_multi_partial (
   pk INT PRIMARY KEY,
   p INT, q INT,
-  UNIQUE (p, q),
-  FAMILY (pk),
-  FAMILY (p),
-  FAMILY (q)
+  UNIQUE (p, q)
 )
 ----
 
@@ -1214,8 +1208,8 @@ root
  │         │    │    │    ├── columns: p_default:7 column1:6!null
  │         │    │    │    ├── values
  │         │    │    │    │    ├── columns: column1:6!null
- │         │    │    │    │    ├── (1,)
- │         │    │    │    │    └── (2,)
+ │         │    │    │    │    ├── (1)
+ │         │    │    │    │    └── (2)
  │         │    │    │    └── projections
  │         │    │    │         └── NULL::INT8 [as=p_default:7]
  │         │    │    └── aggregations
@@ -1597,7 +1591,7 @@ root
       │    └── column1:4 => p:1
       └── values
            ├── columns: column1:4!null
-           └── (0,)
+           └── (0)
 
 build-cascades
 INSERT INTO parent_diff_type VALUES (0) ON CONFLICT (p) DO UPDATE SET p = 1
@@ -1626,7 +1620,7 @@ root
  │         │    │    │    ├── grouping columns: column1:4!null
  │         │    │    │    └── values
  │         │    │    │         ├── columns: column1:4!null
- │         │    │    │         └── (0,)
+ │         │    │    │         └── (0)
  │         │    │    ├── scan parent_diff_type
  │         │    │    │    └── columns: p:5!null crdb_internal_mvcc_timestamp:6 tableoid:7
  │         │    │    └── filters

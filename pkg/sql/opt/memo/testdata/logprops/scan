@@ -169,10 +169,7 @@ CREATE TABLE t (
   PRIMARY KEY (a, b),
   INDEX bc (b, c),
   INDEX dc (d, c),
-  INDEX a_desc (a DESC),
-  FAMILY (a, b),
-  FAMILY (c),
-  FAMILY (d)
+  INDEX a_desc (a DESC)
 )
 ----
 

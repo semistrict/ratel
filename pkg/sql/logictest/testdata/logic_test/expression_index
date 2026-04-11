@@ -7,8 +7,7 @@ CREATE TABLE t (
   j JSON,
   comp INT AS (a + 10) VIRTUAL,
   INDEX t_a_plus_b_idx ((a + b)),
-  INDEX t_lower_c_a_plus_b_idx (lower(c), (a + b)),
-  FAMILY (k, a, b, c, j)
+  INDEX t_lower_c_a_plus_b_idx (lower(c), (a + b))
 )
 
 query T
@@ -23,8 +22,7 @@ CREATE TABLE public.t (
   comp INT8 NULL AS (a + 10:::INT8) VIRTUAL,
   CONSTRAINT t_pkey PRIMARY KEY (k ASC),
   INDEX t_a_plus_b_idx ((a + b) ASC),
-  INDEX t_lower_c_a_plus_b_idx (lower(c) ASC, (a + b) ASC),
-  FAMILY fam_0_k_a_b_c_j (k, a, b, c, j)
+  INDEX t_lower_c_a_plus_b_idx (lower(c) ASC, (a + b) ASC)
 )
 
 query TTBTTTB colnames
@@ -138,8 +136,7 @@ CREATE TABLE t (
   b INT,
   c STRING,
   j JSON,
-  comp INT AS (a + 10) VIRTUAL,
-  FAMILY (k, a, b, c, j)
+  comp INT AS (a + 10) VIRTUAL
 )
 
 statement ok
@@ -171,8 +168,7 @@ CREATE TABLE public.t (
   INDEX t_a_plus_b_idx ((a + b) ASC),
   INDEX t_lower_c_idx (lower(c) ASC),
   INDEX t_lower_c_a_plus_b_idx (lower(c) ASC, (a + b) ASC),
-  INDEX t_a_plus_ten_idx ((a + 10:::INT8) ASC),
-  FAMILY fam_0_k_a_b_c_j (k, a, b, c, j)
+  INDEX t_a_plus_ten_idx ((a + 10:::INT8) ASC)
 )
 
 # Referencing an inaccessible column in a CHECK constraint is not allowed.
@@ -472,8 +468,7 @@ CREATE TABLE anon (
   k INT PRIMARY KEY,
   a INT,
   b INT,
-  c STRING,
-  FAMILY (k, a, b, c)
+  c STRING
 );
 CREATE INDEX ON anon ((a + b));
 CREATE INDEX ON anon ((a + 10), b);
@@ -494,8 +489,7 @@ CREATE TABLE public.anon (
   INDEX anon_expr_b_idx ((a + 10:::INT8) ASC, b ASC),
   UNIQUE INDEX anon_expr_b_key (lower(c) ASC, b ASC),
   INDEX anon_expr_b_expr1_idx ((a + 10:::INT8) ASC, b ASC, lower(c) ASC),
-  INDEX anon_expr_expr1_expr2_idx ((a + 10:::INT8) ASC, (b + 100:::INT8) ASC, lower(c) ASC),
-  FAMILY fam_0_k_a_b_c (k, a, b, c)
+  INDEX anon_expr_expr1_expr2_idx ((a + 10:::INT8) ASC, (b + 100:::INT8) ASC, lower(c) ASC)
 )
 
 statement ok
@@ -511,8 +505,7 @@ CREATE TABLE anon (
   INDEX ((a + 10), b),
   UNIQUE INDEX (lower(c), b),
   INDEX ((a + 10), b, lower(c)),
-  INDEX ((a + 10), (b + 100), lower(c)),
-  FAMILY (k, a, b, c)
+  INDEX ((a + 10), (b + 100), lower(c))
 )
 
 query T
@@ -528,8 +521,7 @@ CREATE TABLE public.anon (
   INDEX anon_expr_b_idx ((a + 10:::INT8) ASC, b ASC),
   UNIQUE INDEX anon_expr_b_key (lower(c) ASC, b ASC),
   INDEX anon_expr_b_expr1_idx ((a + 10:::INT8) ASC, b ASC, lower(c) ASC),
-  INDEX anon_expr_expr1_expr2_idx ((a + 10:::INT8) ASC, (b + 100:::INT8) ASC, lower(c) ASC),
-  FAMILY fam_0_k_a_b_c (k, a, b, c)
+  INDEX anon_expr_expr1_expr2_idx ((a + 10:::INT8) ASC, (b + 100:::INT8) ASC, lower(c) ASC)
 )
 
 # Querying expression indexes.

@@ -1,9 +1,7 @@
 statement ok
 CREATE TABLE t (
   a INT PRIMARY KEY,
-  b INT,
-  FAMILY (a),
-  FAMILY (b)
+  b INT
 )
 
 statement ok
@@ -294,7 +292,7 @@ let $spans
                   FROM (SELECT * FROM ROWS FROM (json_each((SELECT span FROM span))))
             ),
        span_new AS (SELECT json_object_agg(key, value) AS span FROM keys),
-       mid_key AS (SELECT crdb_internal.encode_key($tab_id, 1, (100,)) AS k),
+       mid_key AS (SELECT crdb_internal.encode_key($tab_id, 1, (100)) AS k),
        modified_mid_key AS (
                             SELECT IF(
                                     substring(k, 1, 1) = b'\xfe',
@@ -366,8 +364,7 @@ statement ok
 CREATE TABLE t_hash (
   pk INT PRIMARY KEY,
   a INT,
-  b INT,
-  FAMILY fam_0_pk_a_b (pk, a, b)
+  b INT
 );
 
 statement ok
@@ -387,6 +384,5 @@ CREATE TABLE public.t_hash (
   crdb_internal_b_shard_5 INT8 NOT VISIBLE NOT NULL AS (mod(fnv32(crdb_internal.datums_to_bytes(b)), 5:::INT8)) VIRTUAL,
   CONSTRAINT t_hash_pkey PRIMARY KEY (pk ASC),
   INDEX idx_t_hash_a (a ASC) USING HASH WITH (bucket_count=5),
-  UNIQUE INDEX idx_t_hash_b (b ASC) USING HASH WITH (bucket_count=5),
-  FAMILY fam_0_pk_a_b (pk, a, b)
+  UNIQUE INDEX idx_t_hash_b (b ASC) USING HASH WITH (bucket_count=5)
 )

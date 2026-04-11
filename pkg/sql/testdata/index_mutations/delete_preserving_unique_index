@@ -6,7 +6,6 @@ CREATE TABLE ti (
     a INT PRIMARY KEY,
     b INT,
     c INT,
-    FAMILY (a, b, c),
     UNIQUE INDEX index_to_mutate (b, c) WHERE c > b
 );
 ----

@@ -3691,7 +3691,7 @@ CREATE TABLE self_abcd (
   d INT DEFAULT 2,
   INDEX (c),
   INDEX (d),
-  PRIMARY KEY (a), FAMILY (a, b, c, d)
+  PRIMARY KEY (a)
 )
 
 statement ok

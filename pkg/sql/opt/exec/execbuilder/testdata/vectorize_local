@@ -209,7 +209,7 @@ SET tracing=off
 # This test is similar to that in testplannerlogic/select
 statement ok
 CREATE TABLE tpar (
-    a INT PRIMARY KEY, item STRING, price FLOAT, FAMILY (a, item, price),
+    a INT PRIMARY KEY, item STRING, price FLOAT,
     UNIQUE INDEX item (item), UNIQUE INDEX p (price)
 )
 

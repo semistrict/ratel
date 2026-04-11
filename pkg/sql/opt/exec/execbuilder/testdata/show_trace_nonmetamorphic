@@ -58,7 +58,7 @@ sql query               rows affected: 0
 
 # More KV operations.
 statement ok
-SET tracing = on,kv,results; CREATE TABLE t.kv(k INT PRIMARY KEY, v INT, FAMILY "primary" (k, v)); SET tracing = off
+SET tracing = on,kv,results; CREATE TABLE t.kv(k INT PRIMARY KEY, v INT); SET tracing = off
 
 query TT
 $trace_query
@@ -208,7 +208,7 @@ commit sql txn  Del /NamespaceTable/30/1/106/107/"kv"/4/1
 subtest autocommit
 
 statement ok
-CREATE TABLE t.kv3(k INT PRIMARY KEY, v INT, FAMILY "primary" (k, v))
+CREATE TABLE t.kv3(k INT PRIMARY KEY, v INT)
 
 statement ok
 SET tracing = on; INSERT INTO t.kv3 (k, v) VALUES (1,1)
@@ -342,7 +342,7 @@ dist sender send  r45: sending batch 1 EndTxn to (n1,s1):1
 
 # make a table with some big strings in it.
 statement ok
-CREATE TABLE blobs (i INT PRIMARY KEY, j STRING, FAMILY (i, j))
+CREATE TABLE blobs (i INT PRIMARY KEY, j STRING)
 
 # make a table with some big (1mb) strings in it.
 statement ok
@@ -366,7 +366,7 @@ dist sender send  r45: sending batch 6 CPut to (n1,s1):1
 dist sender send  r45: sending batch 1 EndTxn to (n1,s1):1
 
 statement ok
-CREATE TABLE streamer (pk INT PRIMARY KEY, attribute INT, blob TEXT, INDEX(attribute), FAMILY (pk, attribute, blob));
+CREATE TABLE streamer (pk INT PRIMARY KEY, attribute INT, blob TEXT, INDEX(attribute));
 INSERT INTO streamer SELECT i, 1, repeat('a', 10) FROM generate_series(1, 42) AS g(i);
 
 # Get the range id.

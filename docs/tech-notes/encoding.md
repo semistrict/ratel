@@ -169,9 +169,7 @@ dump follows.
     CREATE TABLE accounts (
       id INT PRIMARY KEY,
       owner STRING,
-      balance DECIMAL,
-      FAMILY f0 (id, balance),
-      FAMILY f1 (owner)
+      balance DECIMAL
     );
 
     INSERT INTO accounts VALUES
@@ -487,8 +485,7 @@ Index ID 3 is the non-unique secondary index `i3`.
 CREATE TABLE t (
 	a INT, b INT, c INT, d INT, e INT, f INT,
 	PRIMARY KEY (a, b),
-	UNIQUE INDEX i (d, e) STORING (c, f),
-	FAMILY (a, b, c), FAMILY (d, e), FAMILY (f)
+	UNIQUE INDEX i (d, e) STORING (c, f)
 );
 
 INSERT INTO t VALUES (1, 2, 3, 4, 5, 6);

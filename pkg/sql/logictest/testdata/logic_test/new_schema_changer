@@ -402,16 +402,16 @@ SELECT * FROM foo
 statement ok
 DROP TABLE foo
 
-subtest add_column_families
+subtest add_columns
 
 statement ok
 CREATE TABLE foo (i INT PRIMARY KEY)
 
 statement ok
-ALTER TABLE foo ADD COLUMN j INT CREATE FAMILY f2
+ALTER TABLE foo ADD COLUMN j INT
 
 statement ok
-ALTER TABLE foo ADD COLUMN k INT FAMILY f2
+ALTER TABLE foo ADD COLUMN k INT
 
 statement ok
 INSERT INTO foo VALUES (1, 2, 3)
@@ -1376,7 +1376,7 @@ select $desc_count_pre_drop-$desc_count_post_drop
 
 # Tests for computed column rewrites.
 statement ok
-CREATE TABLE trewrite(k INT PRIMARY KEY, ts TIMESTAMPTZ, FAMILY (k,ts))
+CREATE TABLE trewrite(k INT PRIMARY KEY, ts TIMESTAMPTZ)
 
 statement error context-dependent operators are not allowed in computed column
 ALTER TABLE trewrite ADD COLUMN c STRING AS (ts::STRING) STORED
@@ -1394,17 +1394,14 @@ CREATE TABLE public.trewrite (
   k INT8 NOT NULL,
   ts TIMESTAMPTZ NULL,
   c STRING NULL AS (to_char(timezone('utc':::STRING, ts))) STORED,
-  CONSTRAINT trewrite_pkey PRIMARY KEY (k ASC),
-  FAMILY fam_0_k_ts (k, ts, c)
+  CONSTRAINT trewrite_pkey PRIMARY KEY (k ASC)
 )
 
 subtest create-index
 statement ok
 CREATE TABLE tIndex (
   a INT PRIMARY KEY,
-  b INT,
-  FAMILY (a),
-  FAMILY (b)
+  b INT
 )
 
 statement ok

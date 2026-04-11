@@ -8,7 +8,7 @@
 # the primary key. So we need a table with 3 families: 1 for the PK, 1
 # with just 1 col, and 1 with 2+ cols.
 statement ok
-CREATE TABLE tu (a INT PRIMARY KEY, b INT, c INT, d INT, FAMILY (a), FAMILY (b), FAMILY (c,d));
+CREATE TABLE tu (a INT PRIMARY KEY, b INT, c INT, d INT);
   INSERT INTO tu VALUES (1, 2, 3, 4)
 
 statement ok
@@ -26,7 +26,7 @@ rows affected: 1
 
 # KV operations.
 statement ok
-CREATE DATABASE t; CREATE TABLE t.kv(k INT PRIMARY KEY, v INT, FAMILY "primary" (k, v))
+CREATE DATABASE t; CREATE TABLE t.kv(k INT PRIMARY KEY, v INT)
 
 statement ok
 CREATE UNIQUE INDEX woo ON t.kv(v)

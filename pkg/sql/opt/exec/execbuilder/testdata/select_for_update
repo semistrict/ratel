@@ -1,13 +1,13 @@
 # LogicTest: local
 
 statement ok
-CREATE TABLE t (a INT PRIMARY KEY, b INT, FAMILY (a, b))
+CREATE TABLE t (a INT PRIMARY KEY, b INT)
 
 let $t_id
 SELECT id FROM system.namespace WHERE name='t'
 
 statement ok
-CREATE TABLE u (a INT PRIMARY KEY, c INT, FAMILY (a, c))
+CREATE TABLE u (a INT PRIMARY KEY, c INT)
 
 statement ok
 CREATE VIEW v AS SELECT a FROM t AS t2

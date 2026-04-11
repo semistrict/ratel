@@ -627,9 +627,7 @@ CREATE TABLE abc (
   d CHAR,
   PRIMARY KEY (a, b, c),
   UNIQUE INDEX bc (b, c),
-  INDEX ba (b, a),
-  FAMILY (a, b, c),
-  FAMILY (d)
+  INDEX ba (b, a)
 )
 ----
 
@@ -865,18 +863,18 @@ sort
  ├── ordering: +1
  └── values
       ├── columns: column1:1!null
-      ├── ('a',)
-      ├── ('b',)
-      └── ('c',)
+      ├── ('a')
+      ├── ('b')
+      └── ('c')
 
 build
 SELECT * FROM (SELECT * FROM (VALUES ('a'), ('b'), ('c')) AS c(x) ORDER BY x)
 ----
 values
  ├── columns: x:1!null
- ├── ('a',)
- ├── ('b',)
- └── ('c',)
+ ├── ('a')
+ ├── ('b')
+ └── ('c')
 
 exec-ddl
 CREATE TABLE blocks (

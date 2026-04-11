@@ -36,9 +36,6 @@ CREATE TABLE family (
     c INT,
     d INT,
     e INT,
-    FAMILY (a, b),
-    FAMILY (c, d),
-    FAMILY (e),
     INDEX (d)
 )
 ----
@@ -49,10 +46,6 @@ CREATE TABLE partial_indexes (
     b INT,
     c STRING,
     d INT,
-    FAMILY (a),
-    FAMILY (b),
-    FAMILY (c),
-    FAMILY (d),
     INDEX (c) WHERE b > 1
 )
 ----
@@ -63,10 +56,6 @@ CREATE TABLE multi_col_inv_idx (
     b INT,
     c STRING,
     j JSON,
-    FAMILY (a),
-    FAMILY (b),
-    FAMILY (c),
-    FAMILY (j),
     INVERTED INDEX (b, c, j)
 )
 ----
@@ -79,13 +68,7 @@ CREATE TABLE uniq (
   x INT,
   y INT,
   z INT UNIQUE,
-  UNIQUE WITHOUT INDEX (x, y),
-  FAMILY (k),
-  FAMILY (v),
-  FAMILY (w),
-  FAMILY (x),
-  FAMILY (y),
-  FAMILY (z)
+  UNIQUE WITHOUT INDEX (x, y)
 )
 ----
 
@@ -95,11 +78,7 @@ CREATE TABLE uniq_partial (
   v INT,
   w INT,
   x INT,
-  UNIQUE WITHOUT INDEX (v) WHERE w > 0,
-  FAMILY (k),
-  FAMILY (v),
-  FAMILY (w),
-  FAMILY (x)
+  UNIQUE WITHOUT INDEX (v) WHERE w > 0
 )
 ----
 
@@ -110,11 +89,7 @@ CREATE TABLE uniq_fk_parent (
   b INT,
   c INT,
   d INT,
-  UNIQUE WITHOUT INDEX (b, c),
-  FAMILY (a),
-  FAMILY (b),
-  FAMILY (c),
-  FAMILY (d)
+  UNIQUE WITHOUT INDEX (b, c)
 )
 ----
 
@@ -125,11 +100,7 @@ CREATE TABLE uniq_fk_child (
   c INT,
   d INT,
   FOREIGN KEY (b, c) REFERENCES uniq_fk_parent (b, c) ON UPDATE CASCADE,
-  UNIQUE WITHOUT INDEX (c),
-  FAMILY (a),
-  FAMILY (b),
-  FAMILY (c),
-  FAMILY (d)
+  UNIQUE WITHOUT INDEX (c)
 )
 ----
 
@@ -139,11 +110,7 @@ CREATE TABLE computed (
     b INT,
     c INT,
     d INT AS (c+1) STORED,
-    "x:write-only" INT AS (c+10) STORED,
-    FAMILY (a),
-    FAMILY (b),
-    FAMILY (c),
-    FAMILY (d)
+    "x:write-only" INT AS (c+10) STORED
 )
 ----
 
@@ -151,9 +118,7 @@ exec-ddl
 CREATE TABLE virt (
   a INT PRIMARY KEY,
   b INT,
-  v INT AS (a+b) VIRTUAL,
-  FAMILY (a),
-  FAMILY (b)
+  v INT AS (a+b) VIRTUAL
 )
 ----
 
@@ -163,10 +128,7 @@ CREATE TABLE virt_idx (
   b INT,
   c INT,
   v INT AS (a+b) VIRTUAL,
-  INDEX (v),
-  FAMILY (a),
-  FAMILY (b),
-  FAMILY (c)
+  INDEX (v)
 )
 ----
 
@@ -176,10 +138,7 @@ CREATE TABLE virt_idx2 (
   b INT,
   c INT,
   v INT AS (b+1) VIRTUAL,
-  INDEX (v),
-  FAMILY (a),
-  FAMILY (b),
-  FAMILY (c)
+  INDEX (v)
 )
 ----
 
@@ -189,10 +148,7 @@ CREATE TABLE virt_idx3 (
   b INT,
   c INT,
   v INT AS (b+1) VIRTUAL,
-  INDEX (c, v),
-  FAMILY (a),
-  FAMILY (b),
-  FAMILY (c)
+  INDEX (c, v)
 )
 ----
 
@@ -203,10 +159,6 @@ CREATE TABLE virt_partial_idx (
     v INT AS (b + 1) VIRTUAL,
     c INT,
     d INT,
-    FAMILY (a),
-    FAMILY (b),
-    FAMILY (c),
-    FAMILY (d),
     INDEX (c) WHERE v > 1
 )
 ----
@@ -1601,8 +1553,8 @@ SELECT column1 FROM (VALUES (1, 2), (3, 4)) a
 values
  ├── columns: column1:1!null
  ├── cardinality: [2 - 2]
- ├── (1,)
- └── (3,)
+ ├── (1)
+ └── (3)
 
 # Discard all but middle Values column.
 norm expect=PruneValuesCols
@@ -1611,8 +1563,8 @@ SELECT column2 FROM (VALUES (1, 2, 3), (4, 5, 6)) a
 values
  ├── columns: column2:2!null
  ├── cardinality: [2 - 2]
- ├── (2,)
- └── (5,)
+ ├── (2)
+ └── (5)
 
 # Discard all but last Values column.
 norm expect=PruneValuesCols
@@ -1621,8 +1573,8 @@ SELECT column3 FROM (VALUES ('foo', 'bar', 'baz'), ('apple', 'banana', 'cherry')
 values
  ├── columns: column3:3!null
  ├── cardinality: [2 - 2]
- ├── ('baz',)
- └── ('cherry',)
+ ├── ('baz')
+ └── ('cherry')
 
 # Discard all Values columns.
 norm expect=PruneValuesCols
@@ -4286,10 +4238,6 @@ CREATE TABLE returning_test (
     e INT,
     f INT,
     g INT,
-    FAMILY (a),
-    FAMILY (b),
-    FAMILY (c),
-    FAMILY (d, e, f, g),
     UNIQUE (a)
 )
 ----
@@ -5150,8 +5098,8 @@ project
  │    │         ├── values
  │    │         │    ├── columns: column1:11
  │    │         │    ├── cardinality: [2 - 2]
- │    │         │    ├── (NULL,)
- │    │         │    └── (false,)
+ │    │         │    ├── (NULL)
+ │    │         │    └── (false)
  │    │         └── filters
  │    │              └── column1:11 [outer=(11), constraints=(/11: [/true - /true]; tight), fd=()-->(11)]
  │    └── filters (true)

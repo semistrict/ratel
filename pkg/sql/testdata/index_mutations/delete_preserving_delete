@@ -6,7 +6,6 @@ CREATE TABLE ti (
     a INT PRIMARY KEY,
     b INT,
     c INT,
-    FAMILY (a, b, c),
     INDEX index_to_mutate (b, c)
 );
 ----
@@ -33,7 +32,6 @@ CREATE TABLE tpi (
     a INT PRIMARY KEY,
     b INT,
     c STRING,
-    FAMILY (a, b, c),
     INDEX partial (c) WHERE a > b AND c IN ('foo', 'foobar')
 );
 ----
@@ -68,7 +66,6 @@ CREATE TABLE tei (
   k INT PRIMARY KEY,
   a INT,
   b INT,
-  FAMILY (k, a, b),
   INDEX t_a_plus_b_idx ((a + b))
 )
 ----
@@ -95,7 +92,6 @@ statement
 CREATE TABLE tii (
   a INT PRIMARY KEY,
   b INT[],
-  FAMILY (a,b),
   INVERTED INDEX inverted (b)
 )
 ----
@@ -126,7 +122,6 @@ CREATE TABLE tmi (
   a INT PRIMARY KEY,
   b INT,
   c JSON,
-  FAMILY (a, b, c),
   INVERTED INDEX inverted (b, c)
 )
 ----

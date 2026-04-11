@@ -2,14 +2,12 @@ CREATE TABLE t (
 	i INT NOT NULL,
 	t STRING NULL,
 	CONSTRAINT "primary" PRIMARY KEY (i ASC),
-	INDEX t_t_idx (t ASC),
-	FAMILY "primary" (i, t)
+	INDEX t_t_idx (t ASC)
 );
 
 CREATE TABLE a (
 	i INT NOT NULL,
-	CONSTRAINT "primary" PRIMARY KEY (i ASC),
-	FAMILY "primary" (i)
+	CONSTRAINT "primary" PRIMARY KEY (i ASC)
 );
 
 INSERT INTO t (i, t) VALUES

@@ -148,7 +148,6 @@ CREATE TABLE indexed (
   b INT,
   c INT DEFAULT(10),
   d INT AS (a + c) STORED,
-  FAMILY (a, b, c, d),
   UNIQUE INDEX secondary (d, b),
   CHECK (c > 0)
 )
@@ -502,7 +501,7 @@ UPSERT INTO t35364 (x) VALUES (0)
 # ------------------------------------------------------------------------------
 
 statement ok
-CREATE TABLE table38627 (a INT PRIMARY KEY, b INT, FAMILY (a, b)); INSERT INTO table38627 VALUES(1,1)
+CREATE TABLE table38627 (a INT PRIMARY KEY, b INT); INSERT INTO table38627 VALUES(1,1)
 
 statement ok
 BEGIN; ALTER TABLE table38627 ADD COLUMN c INT NOT NULL DEFAULT 5

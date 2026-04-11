@@ -3,15 +3,13 @@
 statement ok
 CREATE TABLE d (
   a INT PRIMARY KEY,
-  b JSONB,
-  FAMILY (a,b)
+  b JSONB
 )
 
 statement ok
 CREATE TABLE e (
   a INT PRIMARY KEY,
   b INT[],
-  FAMILY (a,b),
   INVERTED INDEX(b)
 )
 
@@ -19,7 +17,6 @@ statement ok
 CREATE TABLE f (
   a INT PRIMARY KEY,
   b DECIMAL[],
-  FAMILY (a,b),
   INVERTED INDEX(b)
 )
 
@@ -1458,7 +1455,7 @@ vectorized: true
 # the primary key data in the composite value.
 statement ok
 DROP TABLE IF EXISTS t;
-CREATE TABLE t (x DECIMAL PRIMARY KEY, y int[], FAMILY (x, y));
+CREATE TABLE t (x DECIMAL PRIMARY KEY, y int[]);
 CREATE INVERTED INDEX ON t(y)
 
 query T kvtrace

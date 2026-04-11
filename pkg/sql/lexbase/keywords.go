@@ -151,7 +151,6 @@ var KeywordsCategories = map[string]string{
 	"extract_duration":             "C",
 	"failure":                      "U",
 	"false":                        "R",
-	"family":                       "T",
 	"fetch":                        "R",
 	"files":                        "U",
 	"filter":                       "U",
@@ -699,7 +698,6 @@ var KeywordNames = []string{
 	"extract_duration",
 	"failure",
 	"false",
-	"family",
 	"fetch",
 	"files",
 	"filter",
@@ -1400,8 +1398,6 @@ func GetKeywordID(k string) int32 {
 		return FAILURE
 	case "false":
 		return FALSE
-	case "family":
-		return FAMILY
 	case "fetch":
 		return FETCH
 	case "files":

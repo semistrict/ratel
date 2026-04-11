@@ -7,7 +7,7 @@
 
 statement ok
 CREATE TYPE greeting AS ENUM ('hello', 'howdy', 'hi');
-CREATE TABLE t (x greeting PRIMARY KEY, y greeting, INDEX i (y), FAMILY (x, y));
+CREATE TABLE t (x greeting PRIMARY KEY, y greeting, INDEX i (y));
 INSERT INTO t VALUES ('hello', 'howdy'), ('howdy', 'hi')
 
 # Test that we calculate the correct stats and cardinality.
@@ -136,7 +136,7 @@ distinct-on
 
 # Test that a limited, ordered scan is efficient.
 statement ok
-CREATE TABLE composite_key (x greeting, y INT, PRIMARY KEY (x, y), FAMILY (x, y));
+CREATE TABLE composite_key (x greeting, y INT, PRIMARY KEY (x, y));
 
 query T
 EXPLAIN (opt) SELECT * FROM composite_key ORDER BY y LIMIT 5

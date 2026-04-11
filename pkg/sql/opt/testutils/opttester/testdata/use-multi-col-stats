@@ -13,7 +13,6 @@ CREATE TABLE rides (
     CONSTRAINT "primary" PRIMARY KEY (city ASC, id ASC),
     INDEX rides_auto_index_fk_city_ref_users (city ASC, rider_id ASC),
     INDEX rides_auto_index_fk_vehicle_city_ref_vehicles (vehicle_city ASC, vehicle_id ASC),
-    FAMILY "primary" (id, city, vehicle_city, rider_id, vehicle_id, start_address, end_address, start_time, end_time, revenue),
     CONSTRAINT check_vehicle_city_city CHECK (vehicle_city = city)
 )
 ----

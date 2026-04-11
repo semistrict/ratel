@@ -19,8 +19,7 @@ CREATE TABLE t (
     _int4
         INT4,
     _int8
-        INT8,
-    FAMILY "primary" (key, _date, _float4, _float8, _int2, _int4, _int8)
+        INT8
 )
 
 statement ok

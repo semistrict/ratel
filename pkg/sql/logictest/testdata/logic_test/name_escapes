@@ -7,11 +7,8 @@ CREATE table "woo; DROP USER humpty;" (x INT PRIMARY KEY); CREATE TABLE ";--notb
 DROP USER dumpty;
 CREATE TABLE unused (x " INT,
   INDEX "helpme ON (x)); -- this must stop!
-DROP USER alice;
-CREATE TABLE unused2(x INT, INDEX woo ON " (x ASC),
-  FAMILY "nonotagain (x)); -- welp!
 DROP USER queenofhearts;
-CREATE TABLE unused3(x INT, y INT, FAMILY woo " (x, y),
+CREATE TABLE unused3(x INT, y INT,
   CONSTRAINT "getmeoutofhere PRIMARY KEY (x ASC)); -- saveme!
 DROP USER madhatter;
 CREATE TABLE unused4(x INT, CONSTRAINT woo " PRIMARY KEY (x)
@@ -27,16 +24,13 @@ SHOW CREATE TABLE ";--notbetter"
                 DROP USER dumpty;
                 CREATE TABLE unused (x " INT8 NULL,
                   CONSTRAINT "getmeoutofhere PRIMARY KEY (x ASC)); -- saveme!
+                DROP USER queenofhearts;
+                CREATE TABLE unused3(x INT, y INT, "welp INT); -- concerning much
+                DROP USER dumpty;
+                CREATE TABLE unused (x ")
                 DROP USER madhatter;
                 CREATE TABLE unused4(x INT, CONSTRAINT woo " PRIMARY KEY (x ASC),
                   INDEX "helpme ON (x)); -- this must stop!
-                DROP USER alice;
-                CREATE TABLE unused2(x INT, INDEX woo ON " (x ASC),
-                  FAMILY "nonotagain (x)); -- welp!
-                DROP USER queenofhearts;
-                CREATE TABLE unused3(x INT, y INT, FAMILY woo " (x, y, "welp INT); -- concerning much
-                DROP USER dumpty;
-                CREATE TABLE unused (x ")
                 )
 
 # Check that view creates handle strange things properly.

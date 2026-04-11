@@ -449,8 +449,6 @@ CREATE TABLE fam (
   c INT,
   d INT,
   e INT,
-  FAMILY (a, b, c),
-  FAMILY (d, e),
   FOREIGN KEY (c, d) REFERENCES two (a, b)
 )
 ----

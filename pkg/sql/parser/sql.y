@@ -834,7 +834,7 @@ func (u *sqlSymUnion) cursorStmt() tree.CursorStmt {
 %token <str> EXPERIMENTAL_AUDIT EXPERIMENTAL_RELOCATE
 %token <str> EXPIRATION EXPLAIN EXPORT EXTENSION EXTRACT EXTRACT_DURATION
 
-%token <str> FAILURE FALSE FAMILY FETCH FETCHVAL FETCHTEXT FETCHVAL_PATH FETCHTEXT_PATH
+%token <str> FAILURE FALSE FETCH FETCHVAL FETCHTEXT FETCHVAL_PATH FETCHTEXT_PATH
 %token <str> FILES FILTER
 %token <str> FIRST FLOAT FLOAT4 FLOAT8 FLOORDIV FOLLOWING FOR FORCE FORCE_INDEX FORCE_ZIGZAG
 %token <str> FOREIGN FORWARD FREEZE FROM FULL FUNCTION FUNCTIONS
@@ -1254,7 +1254,7 @@ func (u *sqlSymUnion) cursorStmt() tree.CursorStmt {
 %type <str> opt_class opt_collate
 
 %type <str> cursor_name database_name index_name opt_index_name column_name insert_column_item statistics_name window_name opt_in_database
-%type <str> family_name opt_family_name table_alias_name constraint_name target_name zone_name partition_name collation_name
+%type <str> table_alias_name constraint_name target_name zone_name partition_name collation_name
 %type <str> db_object_name_component
 %type <*tree.UnresolvedObjectName> table_name db_name standalone_index_name sequence_name type_name view_name db_object_name simple_db_object_name complex_db_object_name
 %type <[]*tree.UnresolvedObjectName> type_name_list
@@ -1431,7 +1431,7 @@ func (u *sqlSymUnion) cursorStmt() tree.CursorStmt {
 %type <tree.Expr> string_or_placeholder_list
 %type <str> region_or_regions
 
-%type <str> unreserved_keyword type_func_name_keyword type_func_name_no_crdb_extra_keyword type_func_name_crdb_extra_keyword
+%type <str> unreserved_keyword type_func_name_keyword type_func_name_no_crdb_extra_keyword
 %type <str> col_name_keyword reserved_keyword cockroachdb_extra_reserved_keyword extra_var_value
 
 %type <tree.ResolvableTypeReference> complex_type_name
@@ -4115,22 +4115,6 @@ changefeed_target:
   {
     $$.val = tree.ChangefeedTarget{
       TableName: $1.unresolvedObjectName().ToUnresolvedName(),
-      }
-  }
-|
-  TABLE table_name FAMILY family_name
-  {
-    $$.val = tree.ChangefeedTarget{
-      TableName: $2.unresolvedObjectName().ToUnresolvedName(),
-      FamilyName: tree.Name($4),
-      }
-  }
-|
-table_name FAMILY family_name
-  {
-    $$.val = tree.ChangefeedTarget{
-      TableName: $1.unresolvedObjectName().ToUnresolvedName(),
-      FamilyName: tree.Name($3),
       }
   }
 
@@ -11319,8 +11303,8 @@ opt_array_bounds:
 | /* EMPTY */ { $$.val = []int32(nil) }
 
 // general_type_name is a variant of type_or_function_name but does not
-// include some extra keywords (like FAMILY) which cause ambiguity with
-// parsing of typenames in certain contexts.
+// include CockroachDB-specific extra reserved keywords, which can create
+// ambiguity when parsing type names in certain contexts.
 general_type_name:
   type_function_name_no_crdb_extra
 
@@ -13874,10 +13858,6 @@ database_name:         name
 
 column_name:           name
 
-family_name:           name
-
-opt_family_name:       opt_name
-
 table_alias_name:      name
 
 statistics_name:       name
@@ -14006,7 +13986,7 @@ func_name:
 | prefixed_column_path
 
 // func_name_no_crdb_extra is the same rule as func_name, but does not
-// contain some CRDB specific keywords like FAMILY.
+// include CockroachDB-specific reserved keywords.
 func_name_no_crdb_extra:
   type_function_name_no_crdb_extra
   {
@@ -14054,13 +14034,11 @@ complex_db_object_name:
     $$.val = res
   }
 
-// DB object name component -- this cannot not include any reserved
-// keyword because of ambiguity after FROM, but we've been too lax
-// with reserved keywords and made INDEX and FAMILY reserved, so we're
-// trying to gain them back here.
+// DB object name component -- this cannot include any reserved keyword
+// because of ambiguity after FROM, but CockroachDB keeps a small extra
+// reserved list that we still allow here for compatibility.
 db_object_name_component:
   name
-| type_func_name_crdb_extra_keyword
 | cockroachdb_extra_reserved_keyword
 
 // General name --- names that can be column, table, etc names.
@@ -14586,11 +14564,8 @@ col_name_keyword:
 | VIRTUAL
 | WORK
 
-// type_func_name_keyword contains both the standard set of
-// type_func_name_keyword's along with the set of CRDB extensions.
 type_func_name_keyword:
   type_func_name_no_crdb_extra_keyword
-| type_func_name_crdb_extra_keyword
 
 // Type/function identifier --- keywords that can be type or function names.
 //
@@ -14603,8 +14578,6 @@ type_func_name_keyword:
 // - thomas 2000-11-28
 //
 // *** DO NOT ADD COCKROACHDB-SPECIFIC KEYWORDS HERE ***
-//
-// See type_func_name_crdb_extra_keyword below.
 type_func_name_no_crdb_extra_keyword:
   AUTHORIZATION
 | COLLATION
@@ -14624,17 +14597,6 @@ type_func_name_no_crdb_extra_keyword:
 | OVERLAPS
 | RIGHT
 | SIMILAR
-
-// CockroachDB-specific keywords that can be used in type/function
-// identifiers.
-//
-// *** REFRAIN FROM ADDING KEYWORDS HERE ***
-//
-// Adding keywords here creates non-resolvable incompatibilities with
-// postgres clients.
-//
-type_func_name_crdb_extra_keyword:
-  FAMILY
 
 // Reserved keyword --- these keywords are usable only as an unrestricted_name.
 //

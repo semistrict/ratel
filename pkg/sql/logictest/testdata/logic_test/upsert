@@ -508,7 +508,7 @@ SELECT * FROM issue_17339 ORDER BY a;
 # the primary key. So we need a table with 3 families: 1 for the PK, 1
 # with just 1 col, and 1 with 2+ cols.
 statement ok
-CREATE TABLE tu (a INT PRIMARY KEY, b INT, c INT, d INT, FAMILY (a), FAMILY (b), FAMILY (c,d));
+CREATE TABLE tu (a INT PRIMARY KEY, b INT, c INT, d INT);
   INSERT INTO tu VALUES (1, 2, 3, 4)
 
 statement ok
@@ -944,9 +944,7 @@ statement ok
 CREATE TABLE table35970 (
     a DECIMAL(10,1) PRIMARY KEY,
     b DECIMAL(10,1),
-    c DECIMAL(10,0),
-    FAMILY fam0 (a, b),
-    FAMILY fam1 (c)
+    c DECIMAL(10,0)
 )
 
 query I

@@ -1277,7 +1277,7 @@ Join Tree #3
 --------------------------------------------------------------------------------
   inner-join (cross)
    ├── values
-   │    └── (x,)
+   │    └── (x)
    ├── inner-join (hash)
    │    ├── inner-join (hash)
    │    │    ├── scan cy
@@ -1291,7 +1291,7 @@ Join Tree #3
 Vertexes
   D:
     values
-     └── (x,)
+     └── (x)
   A:
     scan cy
   B:
@@ -1339,7 +1339,7 @@ inner-join-apply
  │    │    └── filters
  │    │         └── y = z
  │    ├── values
- │    │    └── (x,)
+ │    │    └── (x)
  │    └── filters (true)
  └── filters
       └── x = y
@@ -2619,8 +2619,7 @@ CREATE TABLE t88659 (
   b INT NOT NULL,
   c DECIMAL,
   INDEX idx (b DESC),
-  UNIQUE INDEX uniq ((b + a) ASC) STORING (b),
-  FAMILY (a, b)
+  UNIQUE INDEX uniq ((b + a) ASC) STORING (b)
 );
 ----
 

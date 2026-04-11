@@ -300,11 +300,12 @@ func NewColBatchScan(
 			return nil, err
 		}
 	}
-	if spec.JsonContainsFilter != nil {
-		rightExpr := spec.JsonContainsFilter.Right.LocalExpr
+	for i := range spec.JsonContainsFilters {
+		filterSpec := &spec.JsonContainsFilters[i]
+		rightExpr := filterSpec.Right.LocalExpr
 		if rightExpr == nil {
 			rightExpr, err = execinfrapb.DeserializeExpr(
-				spec.JsonContainsFilter.Right.Expr, flowCtx.NewSemaContext(flowCtx.Txn), flowCtx.EvalCtx, &tree.IndexedVarHelper{},
+				filterSpec.Right.Expr, flowCtx.NewSemaContext(flowCtx.Txn), flowCtx.EvalCtx, &tree.IndexedVarHelper{},
 			)
 			if err != nil {
 				fetcher.Release()
@@ -322,11 +323,11 @@ func NewColBatchScan(
 			return nil, errors.AssertionFailedf("JSON contains filter right datum has type %T", rightDatum)
 		}
 		if err := fetcher.ConfigureJSONContainsFilter(
-			int(spec.JsonContainsFilter.SourceColIdx),
-			append([]string(nil), spec.JsonContainsFilter.Path...),
-			spec.JsonContainsFilter.ContainedBy,
+			int(filterSpec.SourceColIdx),
+			append([]string(nil), filterSpec.Path...),
+			filterSpec.ContainedBy,
 			rightJSON.JSON,
-			postProcessOutputsFetchedColumn(post, fetchedCols, int(spec.JsonContainsFilter.SourceColIdx)),
+			postProcessOutputsFetchedColumn(post, fetchedCols, int(filterSpec.SourceColIdx)),
 		); err != nil {
 			fetcher.Release()
 			return nil, err

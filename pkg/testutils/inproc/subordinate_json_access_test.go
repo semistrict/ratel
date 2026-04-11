@@ -17,10 +17,11 @@ package inproc_test
 import (
 	"context"
 	"database/sql"
-	"strings"
+	"fmt"
 	"testing"
 
 	"github.com/semistrict/ratel/pkg/testutils/inproc"
+	"github.com/semistrict/ratel/pkg/testutils/inproc/internal/planassert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -85,23 +86,6 @@ func createSubordinateJSONJoinTables(t *testing.T, ctx context.Context, db *sql.
 	require.NoError(t, err)
 }
 
-func explainVecPlan(t *testing.T, ctx context.Context, db *sql.DB, query string) string {
-	t.Helper()
-
-	rows, err := db.QueryContext(ctx, `EXPLAIN (VEC, VERBOSE) `+query)
-	require.NoError(t, err)
-	defer rows.Close()
-
-	var lines []string
-	for rows.Next() {
-		var line string
-		require.NoError(t, rows.Scan(&line))
-		lines = append(lines, line)
-	}
-	require.NoError(t, rows.Err())
-	return strings.Join(lines, "\n")
-}
-
 func queryIDs(
 	t *testing.T, ctx context.Context, db *sql.DB, query string, args ...any,
 ) []int {
@@ -121,10 +105,41 @@ func queryIDs(
 	return got
 }
 
-func assertUsesColBatchScan(t *testing.T, plan string) {
-	t.Helper()
-	require.Contains(t, plan, "*colfetcher.ColBatchScan")
-	require.NotContains(t, plan, "*rowexec.tableReader")
+func TestSubordinateJSONPointLookupDistSQL(t *testing.T) {
+	ctx, c, db := startSubordinateJSONCluster(t, "on")
+	defer c.Stop()
+
+	createSubordinateJSONTable(t, ctx, db, `(1, '{"needle":{"tiny":"v"},"junk":{"a":"b","c":"d"}}')`)
+
+	var got sql.NullString
+	require.NoError(t, db.QueryRowContext(ctx,
+		`SELECT j#>>'{needle,tiny}' FROM t WHERE id = 1`,
+	).Scan(&got))
+	require.Equal(t, sql.NullString{String: "v", Valid: true}, got)
+
+	var id int
+	require.NoError(t, db.QueryRowContext(ctx,
+		`SELECT id FROM t WHERE id = 1 AND j#>>'{needle,tiny}' = 'v'`,
+	).Scan(&id))
+	require.Equal(t, 1, id)
+
+	plan := planassert.VecVerbose(t, ctx, db, `SELECT j#>>'{needle,tiny}' FROM t WHERE id = 1`)
+	planassert.UsesColBatchScan(t, plan)
+}
+
+func TestSubordinateJSONPointLookupFilterOnlyDefaultVectorizedPlan(t *testing.T) {
+	ctx, c, db := startSubordinateJSONCluster(t, "on")
+	defer c.Stop()
+
+	createSubordinateJSONTable(t, ctx, db, `(1, '{"needle":{"tiny":"v"},"junk":{"a":"b","c":"d"}}')`)
+
+	vecPlan := planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE id = 1 AND j#>>'{needle,tiny}' = 'v'`)
+	t.Logf("VEC PLAN:\n%s", vecPlan)
+	planassert.UsesColBatchScan(t, vecPlan)
+
+	distsqlPlan := planassert.DistSQLJSON(t, ctx, db, `SELECT id FROM t WHERE id = 1 AND j#>>'{needle,tiny}' = 'v'`)
+	t.Logf("DISTSQL JSON: %s", distsqlPlan)
+	planassert.NotContains(t, distsqlPlan, `"Spans: /1/0-/1/1"`)
 }
 
 func TestSubordinateJSONAccessProjection(t *testing.T) {
@@ -432,8 +447,8 @@ func TestSubordinateJSONColumnarExplainUsesColBatchScan(t *testing.T) {
 		(3, NULL)
 	`)
 
-	plan := explainVecPlan(t, ctx, db, `SELECT id FROM t WHERE j#>>'{a,b,-1}' = '20'`)
-	assertUsesColBatchScan(t, plan)
+	plan := planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE j#>>'{a,b,-1}' = '20'`)
+	planassert.UsesColBatchScan(t, plan)
 }
 
 func TestSubordinateJSONColumnarExplainExistsSetUsesColBatchScan(t *testing.T) {
@@ -447,8 +462,8 @@ func TestSubordinateJSONColumnarExplainExistsSetUsesColBatchScan(t *testing.T) {
 		(4, NULL)
 	`)
 
-	plan := explainVecPlan(t, ctx, db, `SELECT id FROM t WHERE j ?| ARRAY['missing', 'a']`)
-	assertUsesColBatchScan(t, plan)
+	plan := planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE j ?| ARRAY['missing', 'a']`)
+	planassert.UsesColBatchScan(t, plan)
 }
 
 func TestSubordinateJSONColumnarExplainProjectionUsesColBatchScan(t *testing.T) {
@@ -461,8 +476,8 @@ func TestSubordinateJSONColumnarExplainProjectionUsesColBatchScan(t *testing.T) 
 		(3, NULL)
 	`)
 
-	plan := explainVecPlan(t, ctx, db, `SELECT j->>'z' FROM t ORDER BY id`)
-	assertUsesColBatchScan(t, plan)
+	plan := planassert.VecVerbose(t, ctx, db, `SELECT j->>'z' FROM t ORDER BY id`)
+	planassert.UsesColBatchScan(t, plan)
 }
 
 func TestSubordinateJSONContainmentDistSQL(t *testing.T) {
@@ -549,6 +564,36 @@ func TestSubordinateJSONContainmentWithResidualFilterDistSQL(t *testing.T) {
 		ORDER BY id DESC
 	`)
 	require.Equal(t, []int{2}, got)
+}
+
+func TestSubordinateJSONMultipleContainmentFiltersDistSQL(t *testing.T) {
+	ctx, c, db := startSubordinateJSONCluster(t, "on")
+	defer c.Stop()
+
+	createSubordinateJSONTable(t, ctx, db, `
+		(1, '{"a": {"b": [10, 20]}, "z": 7}'),
+		(2, '{"a": {"b": [30]}, "z": 8}'),
+		(3, '{"a": {"b": [30]}, "z": 9}'),
+		(4, '{"a": {"b": [20], "c": null}, "z": 7}')
+	`)
+
+	got := queryIDs(t, ctx, db, `
+		SELECT id
+		FROM t
+		WHERE j @> '{"z": 8}'
+		  AND j->'a' @> '{"b": [30]}'
+		ORDER BY id
+	`)
+	require.Equal(t, []int{2}, got)
+
+	got = queryIDs(t, ctx, db, `
+		SELECT id
+		FROM t
+		WHERE j->'a' @> '{"b": [20]}'
+		  AND j->'a' <@ '{"b": [20], "c": null}'
+		ORDER BY id
+	`)
+	require.Equal(t, []int{4}, got)
 }
 
 func TestSubordinateJSONContainmentProjectionDistSQL(t *testing.T) {
@@ -1043,26 +1088,26 @@ func TestSubordinateJSONContainmentColumnarExplainUsesColBatchScan(t *testing.T)
 		(3, NULL)
 	`)
 
-	plan := explainVecPlan(t, ctx, db, `SELECT id FROM t WHERE j @> '{"a": {"b": [10, 20]}}'`)
-	assertUsesColBatchScan(t, plan)
+	plan := planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE j @> '{"a": {"b": [10, 20]}}'`)
+	planassert.UsesColBatchScan(t, plan)
 
-	plan = explainVecPlan(t, ctx, db, `SELECT id FROM t WHERE j->'a' @> '{"b": [30]}'`)
-	assertUsesColBatchScan(t, plan)
+	plan = planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE j->'a' @> '{"b": [30]}'`)
+	planassert.UsesColBatchScan(t, plan)
 
-	plan = explainVecPlan(t, ctx, db, `SELECT id FROM t WHERE j <@ '{"a": {"b": [10, 20]}, "z": 7, "extra": 1}'`)
-	assertUsesColBatchScan(t, plan)
+	plan = planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE j <@ '{"a": {"b": [10, 20]}, "z": 7, "extra": 1}'`)
+	planassert.UsesColBatchScan(t, plan)
 
-	plan = explainVecPlan(t, ctx, db, `SELECT id FROM t WHERE j->'a' @> '[{"x": 1}, {"y": 2}]'`)
-	assertUsesColBatchScan(t, plan)
+	plan = planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE j->'a' @> '[{"x": 1}, {"y": 2}]'`)
+	planassert.UsesColBatchScan(t, plan)
 
-	plan = explainVecPlan(t, ctx, db, `SELECT id FROM t WHERE j @> 'null'`)
-	assertUsesColBatchScan(t, plan)
+	plan = planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE j @> 'null'`)
+	planassert.UsesColBatchScan(t, plan)
 
-	plan = explainVecPlan(t, ctx, db, `SELECT id FROM t WHERE j->'a' <@ '[]'`)
-	assertUsesColBatchScan(t, plan)
+	plan = planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE j->'a' <@ '[]'`)
+	planassert.UsesColBatchScan(t, plan)
 
-	plan = explainVecPlan(t, ctx, db, `SELECT id FROM t WHERE j->'a' <@ '{}'`)
-	assertUsesColBatchScan(t, plan)
+	plan = planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE j->'a' <@ '{}'`)
+	planassert.UsesColBatchScan(t, plan)
 }
 
 func TestSubordinateJSONCombinedProgramsColumnarExplainUsesColBatchScan(t *testing.T) {
@@ -1076,7 +1121,7 @@ func TestSubordinateJSONCombinedProgramsColumnarExplainUsesColBatchScan(t *testi
 		(4, '{"a": {"b": [30]}, "z": 9}')
 	`)
 
-	plan := explainVecPlan(t, ctx, db, `
+	plan := planassert.VecVerbose(t, ctx, db, `
 		SELECT id, j#>>'{a,b,-1}'
 		FROM t
 		WHERE j ? 'a'
@@ -1084,7 +1129,7 @@ func TestSubordinateJSONCombinedProgramsColumnarExplainUsesColBatchScan(t *testi
 		  AND j->>'z' IS NOT NULL
 		ORDER BY id
 	`)
-	assertUsesColBatchScan(t, plan)
+	planassert.UsesColBatchScan(t, plan)
 }
 
 func TestSubordinateJSONCombinedProgramsResidualFilterColumnarExplainUsesColBatchScan(t *testing.T) {
@@ -1098,7 +1143,7 @@ func TestSubordinateJSONCombinedProgramsResidualFilterColumnarExplainUsesColBatc
 		(4, '{"a": {"b": [30]}, "z": 9}')
 	`)
 
-	plan := explainVecPlan(t, ctx, db, `
+	plan := planassert.VecVerbose(t, ctx, db, `
 		SELECT j#>>'{a,b,-1}'
 		FROM t
 		WHERE j ? 'a'
@@ -1106,7 +1151,7 @@ func TestSubordinateJSONCombinedProgramsResidualFilterColumnarExplainUsesColBatc
 		  AND id > 1
 		ORDER BY 1
 	`)
-	assertUsesColBatchScan(t, plan)
+	planassert.UsesColBatchScan(t, plan)
 }
 
 func TestSubordinateJSONSamePathMixedKindsDistSQL(t *testing.T) {
@@ -1155,13 +1200,13 @@ func TestSubordinateJSONSamePathMixedKindsColumnarExplainUsesColBatchScan(t *tes
 		(3, '{"q": "r"}')
 	`)
 
-	plan := explainVecPlan(t, ctx, db, `
+	plan := planassert.VecVerbose(t, ctx, db, `
 		SELECT id, j#>'{a,b,-1}'
 		FROM t
 		WHERE j#>>'{a,b,-1}' = '20'
 		ORDER BY id
 	`)
-	assertUsesColBatchScan(t, plan)
+	planassert.UsesColBatchScan(t, plan)
 }
 
 func TestSubordinateJSONSamePathJSONAndTextProjectionDistSQL(t *testing.T) {
@@ -1213,12 +1258,12 @@ func TestSubordinateJSONSamePathJSONAndTextProjectionColumnarExplainUsesColBatch
 		(3, '{"q": "r"}')
 	`)
 
-	plan := explainVecPlan(t, ctx, db, `
+	plan := planassert.VecVerbose(t, ctx, db, `
 		SELECT id, j#>'{a,b,-1}', j#>>'{a,b,-1}'
 		FROM t
 		ORDER BY id
 	`)
-	assertUsesColBatchScan(t, plan)
+	planassert.UsesColBatchScan(t, plan)
 }
 
 func TestSubordinateJSONSamePathJSONAndTextProjectionResidualFilterDistSQL(t *testing.T) {
@@ -1270,13 +1315,13 @@ func TestSubordinateJSONSamePathJSONAndTextProjectionResidualFilterColumnarExpla
 		(3, '{"a": {"b": [40, 50]}}')
 	`)
 
-	plan := explainVecPlan(t, ctx, db, `
+	plan := planassert.VecVerbose(t, ctx, db, `
 		SELECT id, j#>'{a,b,-1}', j#>>'{a,b,-1}'
 		FROM t
 		WHERE id > 1
 		ORDER BY id
 	`)
-	assertUsesColBatchScan(t, plan)
+	planassert.UsesColBatchScan(t, plan)
 }
 
 func TestSubordinateJSONCastWrappedProgramsDistSQL(t *testing.T) {
@@ -1350,23 +1395,23 @@ func TestSubordinateJSONCastWrappedProgramsColumnarExplainUsesColBatchScan(t *te
 		(4, NULL)
 	`)
 
-	plan := explainVecPlan(t, ctx, db, `SELECT id FROM t WHERE (j->'a')::JSONB @> '{"b": [30]}'`)
-	assertUsesColBatchScan(t, plan)
+	plan := planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE (j->'a')::JSONB @> '{"b": [30]}'`)
+	planassert.UsesColBatchScan(t, plan)
 
-	plan = explainVecPlan(t, ctx, db, `SELECT id FROM t WHERE (j#>>'{a,b,-1}')::STRING = '20'`)
-	assertUsesColBatchScan(t, plan)
+	plan = planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE (j#>>'{a,b,-1}')::STRING = '20'`)
+	planassert.UsesColBatchScan(t, plan)
 
-	plan = explainVecPlan(t, ctx, db, `SELECT id FROM t WHERE j ? CAST('a' AS STRING)`)
-	assertUsesColBatchScan(t, plan)
+	plan = planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE j ? CAST('a' AS STRING)`)
+	planassert.UsesColBatchScan(t, plan)
 
-	plan = explainVecPlan(t, ctx, db, `SELECT id FROM t WHERE j ?| CAST(ARRAY['missing', 'a'] AS STRING[])`)
-	assertUsesColBatchScan(t, plan)
+	plan = planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE j ?| CAST(ARRAY['missing', 'a'] AS STRING[])`)
+	planassert.UsesColBatchScan(t, plan)
 
-	plan = explainVecPlan(t, ctx, db, `SELECT id FROM t WHERE j ?& CAST(ARRAY['a', 'z'] AS STRING[])`)
-	assertUsesColBatchScan(t, plan)
+	plan = planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE j ?& CAST(ARRAY['a', 'z'] AS STRING[])`)
+	planassert.UsesColBatchScan(t, plan)
 
-	plan = explainVecPlan(t, ctx, db, `SELECT id FROM t WHERE j#>>CAST('{a,b,-1}' AS STRING[]) = CAST('20' AS STRING)`)
-	assertUsesColBatchScan(t, plan)
+	plan = planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE j#>>CAST('{a,b,-1}' AS STRING[]) = CAST('20' AS STRING)`)
+	planassert.UsesColBatchScan(t, plan)
 }
 
 func TestSubordinateJSONVirtualColumnsDistSQL(t *testing.T) {
@@ -1408,11 +1453,11 @@ func TestSubordinateJSONVirtualColumnsColumnarExplainUsesColBatchScan(t *testing
 		(4, NULL)
 	`)
 
-	plan := explainVecPlan(t, ctx, db, `SELECT id FROM t WHERE jt = '20'`)
-	assertUsesColBatchScan(t, plan)
+	plan := planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE jt = '20'`)
+	planassert.UsesColBatchScan(t, plan)
 
-	plan = explainVecPlan(t, ctx, db, `SELECT id FROM t WHERE ja @> '{"b": [30]}'`)
-	assertUsesColBatchScan(t, plan)
+	plan = planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE ja @> '{"b": [30]}'`)
+	planassert.UsesColBatchScan(t, plan)
 }
 
 func TestSubordinateJSONJoinPushdownDistSQL(t *testing.T) {
@@ -1458,21 +1503,21 @@ func TestSubordinateJSONJoinPushdownColumnarExplainUsesColBatchScan(t *testing.T
 		(1), (2), (3)
 	`)
 
-	plan := explainVecPlan(t, ctx, db, `
+	plan := planassert.VecVerbose(t, ctx, db, `
 		SELECT t.id
 		FROM t
 		JOIN u USING (id)
 		WHERE t.j#>>'{a,b,-1}' = '20'
 	`)
-	assertUsesColBatchScan(t, plan)
+	planassert.UsesColBatchScan(t, plan)
 
-	plan = explainVecPlan(t, ctx, db, `
+	plan = planassert.VecVerbose(t, ctx, db, `
 		SELECT t.id
 		FROM t
 		JOIN u USING (id)
 		WHERE t.j @> '{"z": 8}'
 	`)
-	assertUsesColBatchScan(t, plan)
+	planassert.UsesColBatchScan(t, plan)
 }
 
 func TestSubordinateJSONContainmentColumnarExplainResidualUsesColBatchScan(t *testing.T) {
@@ -1485,8 +1530,35 @@ func TestSubordinateJSONContainmentColumnarExplainResidualUsesColBatchScan(t *te
 		(3, '{"a": {"b": [30]}, "z": 9}')
 	`)
 
-	plan := explainVecPlan(t, ctx, db, `SELECT id FROM t WHERE j->'a' @> '{"b": [30]}' AND id < 3`)
-	assertUsesColBatchScan(t, plan)
+	plan := planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE j->'a' @> '{"b": [30]}' AND id < 3`)
+	planassert.UsesColBatchScan(t, plan)
+}
+
+func TestSubordinateJSONMultipleContainmentColumnarExplainUsesColBatchScan(t *testing.T) {
+	ctx, c, db := startSubordinateJSONCluster(t, "experimental_always")
+	defer c.Stop()
+
+	createSubordinateJSONTable(t, ctx, db, `
+		(1, '{"a": {"b": [10, 20]}, "z": 7}'),
+		(2, '{"a": {"b": [30]}, "z": 8}'),
+		(3, '{"a": {"b": [20], "c": null}, "z": 7}')
+	`)
+
+	plan := planassert.VecVerbose(t, ctx, db, `
+		SELECT id
+		FROM t
+		WHERE j @> '{"z": 8}'
+		  AND j->'a' @> '{"b": [30]}'
+	`)
+	planassert.UsesColBatchScan(t, plan)
+
+	plan = planassert.VecVerbose(t, ctx, db, `
+		SELECT id
+		FROM t
+		WHERE j->'a' @> '{"b": [20]}'
+		  AND j->'a' <@ '{"b": [20], "c": null}'
+	`)
+	planassert.UsesColBatchScan(t, plan)
 }
 
 func TestSubordinateJSONContainmentColumnarExplainProjectionUsesColBatchScan(t *testing.T) {
@@ -1499,8 +1571,8 @@ func TestSubordinateJSONContainmentColumnarExplainProjectionUsesColBatchScan(t *
 		(3, '{"q": "r"}')
 	`)
 
-	plan := explainVecPlan(t, ctx, db, `SELECT id, j FROM t WHERE j @> '{"z": 8}' ORDER BY id`)
-	assertUsesColBatchScan(t, plan)
+	plan := planassert.VecVerbose(t, ctx, db, `SELECT id, j FROM t WHERE j @> '{"z": 8}' ORDER BY id`)
+	planassert.UsesColBatchScan(t, plan)
 }
 
 func TestSubordinateJSONContainmentColumnarExplainResidualProjectionUsesColBatchScan(t *testing.T) {
@@ -1514,14 +1586,14 @@ func TestSubordinateJSONContainmentColumnarExplainResidualProjectionUsesColBatch
 		(4, '{"a": {"b": [30]}, "z": 9}')
 	`)
 
-	plan := explainVecPlan(t, ctx, db, `
+	plan := planassert.VecVerbose(t, ctx, db, `
 		SELECT j
 		FROM t
 		WHERE j @> '{"a": {"b": [20]}}'
 		  AND id > 1
 		ORDER BY id
 	`)
-	assertUsesColBatchScan(t, plan)
+	planassert.UsesColBatchScan(t, plan)
 }
 
 func TestSubordinateJSONSamePathContainmentColumnarExplainProjectionUsesColBatchScan(t *testing.T) {
@@ -1534,8 +1606,42 @@ func TestSubordinateJSONSamePathContainmentColumnarExplainProjectionUsesColBatch
 		(3, '{"q": "r"}')
 	`)
 
-	plan := explainVecPlan(t, ctx, db, `SELECT id, j#>'{a}' FROM t WHERE j#>'{a}' @> '{"b": [30]}' ORDER BY id`)
-	assertUsesColBatchScan(t, plan)
+	plan := planassert.VecVerbose(t, ctx, db, `SELECT id, j#>'{a}' FROM t WHERE j#>'{a}' @> '{"b": [30]}' ORDER BY id`)
+	planassert.UsesColBatchScan(t, plan)
+}
+
+func TestSubordinateJSONSamePathDualContainmentProjectionDistSQL(t *testing.T) {
+	ctx, c, db := startSubordinateJSONCluster(t, "experimental_always")
+	defer c.Stop()
+
+	createSubordinateJSONTable(t, ctx, db, `
+		(1, '{"a": {"b": [10, 20]}, "z": 7}'),
+		(2, '{"a": {"b": [20], "c": null}, "z": 8}'),
+		(3, '{"a": {"b": [20], "c": true}, "z": 9}'),
+		(4, '{"q": "r"}')
+	`)
+
+	rows, err := db.QueryContext(ctx, `
+		SELECT id, j#>'{a}'
+		FROM t
+		WHERE j#>'{a}' @> '{"b": [20]}'
+		  AND j#>'{a}' <@ '{"b": [20], "c": null}'
+		ORDER BY id
+	`)
+	require.NoError(t, err)
+	defer rows.Close()
+
+	var got []string
+	for rows.Next() {
+		var id int
+		var subtree string
+		require.NoError(t, rows.Scan(&id, &subtree))
+		got = append(got, fmt.Sprintf("%d=%s", id, subtree))
+	}
+	require.NoError(t, rows.Err())
+	require.Equal(t, []string{
+		`2={"b": [20], "c": null}`,
+	}, got)
 }
 
 func TestSubordinateJSONSamePathContainmentTextAccessColumnarExplainUsesColBatchScan(t *testing.T) {
@@ -1548,13 +1654,33 @@ func TestSubordinateJSONSamePathContainmentTextAccessColumnarExplainUsesColBatch
 		(3, '{"q": "r"}')
 	`)
 
-	plan := explainVecPlan(t, ctx, db, `
+	plan := planassert.VecVerbose(t, ctx, db, `
 		SELECT id, j#>>'{a,b,0}'
 		FROM t
 		WHERE j#>'{a}' @> '{"b": [30]}'
 		ORDER BY id
 	`)
-	assertUsesColBatchScan(t, plan)
+	planassert.UsesColBatchScan(t, plan)
+}
+
+func TestSubordinateJSONSamePathDualContainmentProjectionColumnarExplainUsesColBatchScan(t *testing.T) {
+	ctx, c, db := startSubordinateJSONCluster(t, "experimental_always")
+	defer c.Stop()
+
+	createSubordinateJSONTable(t, ctx, db, `
+		(1, '{"a": {"b": [10, 20]}, "z": 7}'),
+		(2, '{"a": {"b": [20], "c": null}, "z": 8}'),
+		(3, '{"a": {"b": [20], "c": true}, "z": 9}')
+	`)
+
+	plan := planassert.VecVerbose(t, ctx, db, `
+		SELECT id, j#>'{a}'
+		FROM t
+		WHERE j#>'{a}' @> '{"b": [20]}'
+		  AND j#>'{a}' <@ '{"b": [20], "c": null}'
+		ORDER BY id
+	`)
+	planassert.UsesColBatchScan(t, plan)
 }
 
 func TestSubordinateJSONSamePathContainmentCompareAndProjectionColumnarExplainUsesColBatchScan(t *testing.T) {
@@ -1567,14 +1693,14 @@ func TestSubordinateJSONSamePathContainmentCompareAndProjectionColumnarExplainUs
 		(3, '{"a": {"b": [40]}}')
 	`)
 
-	plan := explainVecPlan(t, ctx, db, `
+	plan := planassert.VecVerbose(t, ctx, db, `
 		SELECT id, j#>>'{a,b,0}'
 		FROM t
 		WHERE j#>'{a}' @> '{"b": [30]}'
 		  AND j#>>'{a,b,0}' = '30'
 		ORDER BY id
 	`)
-	assertUsesColBatchScan(t, plan)
+	planassert.UsesColBatchScan(t, plan)
 }
 
 func TestSubordinateJSONContainedByColumnarExplainProjectionUsesColBatchScan(t *testing.T) {
@@ -1587,8 +1713,8 @@ func TestSubordinateJSONContainedByColumnarExplainProjectionUsesColBatchScan(t *
 		(3, '{"q": "r"}')
 	`)
 
-	plan := explainVecPlan(t, ctx, db, `SELECT id, j FROM t WHERE j <@ '{"a": {"b": [30]}, "z": 8, "extra": 1}' ORDER BY id`)
-	assertUsesColBatchScan(t, plan)
+	plan := planassert.VecVerbose(t, ctx, db, `SELECT id, j FROM t WHERE j <@ '{"a": {"b": [30]}, "z": 8, "extra": 1}' ORDER BY id`)
+	planassert.UsesColBatchScan(t, plan)
 }
 
 func TestSubordinateJSONExistsAllFilterOnlyDistSQL(t *testing.T) {
@@ -1623,8 +1749,8 @@ func TestSubordinateJSONColumnarExplainExistsAllUsesColBatchScan(t *testing.T) {
 		(4, NULL)
 	`)
 
-	plan := explainVecPlan(t, ctx, db, `SELECT id FROM t WHERE j ?& ARRAY['a', 'z']`)
-	assertUsesColBatchScan(t, plan)
+	plan := planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE j ?& ARRAY['a', 'z']`)
+	planassert.UsesColBatchScan(t, plan)
 }
 
 func TestSubordinateJSONExistsSetFilterOnlyDistSQL(t *testing.T) {
@@ -1969,11 +2095,11 @@ func TestSubordinateJSONColumnarExplainPathCompareNonEqUsesColBatchScan(t *testi
 		(4, NULL)
 	`)
 
-	plan := explainVecPlan(t, ctx, db, `SELECT id FROM t WHERE j#>>'{a,b,-1}' < '25'`)
-	assertUsesColBatchScan(t, plan)
+	plan := planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE j#>>'{a,b,-1}' < '25'`)
+	planassert.UsesColBatchScan(t, plan)
 
-	plan = explainVecPlan(t, ctx, db, `SELECT id FROM t WHERE j->'1' <> '"obj"'::jsonb`)
-	assertUsesColBatchScan(t, plan)
+	plan = planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE j->'1' <> '"obj"'::jsonb`)
+	planassert.UsesColBatchScan(t, plan)
 }
 
 func TestSubordinateJSONPathCompareWithResidualFilterDistSQL(t *testing.T) {
@@ -2049,12 +2175,12 @@ func TestSubordinateJSONColumnarExplainPathCompareResidualProjectionUsesColBatch
 		(3, '{"a": {"b": [10]}}')
 	`)
 
-	plan := explainVecPlan(t, ctx, db, `
+	plan := planassert.VecVerbose(t, ctx, db, `
 		SELECT j
 		FROM t
 		WHERE j#>>'{a,b,-1}' = '20' AND id < 2
 	`)
-	assertUsesColBatchScan(t, plan)
+	planassert.UsesColBatchScan(t, plan)
 }
 
 func TestSubordinateJSONPathCompareProjectionDistSQL(t *testing.T) {
@@ -2209,9 +2335,9 @@ func TestSubordinateJSONColumnarExplainPathNullFiltersUseColBatchScan(t *testing
 		(3, NULL)
 	`)
 
-	plan := explainVecPlan(t, ctx, db, `SELECT id FROM t WHERE j#>>'{a,b,1}' IS NULL`)
-	assertUsesColBatchScan(t, plan)
+	plan := planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE j#>>'{a,b,1}' IS NULL`)
+	planassert.UsesColBatchScan(t, plan)
 
-	plan = explainVecPlan(t, ctx, db, `SELECT id FROM t WHERE j#>>'{a,b,0}' IS NOT NULL`)
-	assertUsesColBatchScan(t, plan)
+	plan = planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE j#>>'{a,b,0}' IS NOT NULL`)
+	planassert.UsesColBatchScan(t, plan)
 }

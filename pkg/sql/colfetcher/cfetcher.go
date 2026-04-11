@@ -179,9 +179,10 @@ func (cf *cFetcher) registerJSONSelectedPath(
 		}
 	}
 	shared := &cSharedJSONSelectedPathState{
-		key:      key,
-		colIdx:   colIdx,
-		selector: row.NewJSONSelectedPathState(path),
+		key:         key,
+		colIdx:      colIdx,
+		encodedPath: append([]string(nil), path...),
+		selector:    row.NewJSONSelectedPathState(path),
 	}
 	cf.jsonSharedSelectedPaths = append(cf.jsonSharedSelectedPaths, shared)
 	if cf.jsonSharedSelectedByCol == nil {
@@ -243,7 +244,22 @@ func (s *cSharedJSONSelectedPathState) observe(
 	if err != nil || !ok {
 		return err
 	}
-	if len(s.access) > 0 {
+	return s.observeSelected(relPath, kind, childCount, j)
+}
+
+func (s *cSharedJSONSelectedPathState) selectPath(
+	path []keys.SubordinatePathSegment, kind rowenc.SubordinateJSONNodeKind, childCount int,
+) ([]keys.SubordinatePathSegment, bool, error) {
+	return s.selector.SelectPath(path, kind, childCount)
+}
+
+func (s *cSharedJSONSelectedPathState) observeSelected(
+	relPath []keys.SubordinatePathSegment,
+	kind rowenc.SubordinateJSONNodeKind,
+	childCount int,
+	j jsonutil.JSON,
+) error {
+	if s.materialize || len(s.access) > 0 {
 		nodeKind, err := row.SubordinateJSONNodeKindFromEncoded(kind)
 		if err != nil {
 			return err
@@ -258,9 +274,11 @@ func (s *cSharedJSONSelectedPathState) observe(
 	for _, access := range s.access {
 		access.sawSubordinate = true
 	}
-	for _, contains := range s.contains {
-		if err := contains.program.ObserveSelected(relPath, kind, childCount, j); err != nil {
-			return err
+	if !s.materialize && len(s.access) == 0 {
+		for _, contains := range s.contains {
+			if err := contains.program.ObserveSelected(relPath, kind, childCount, j); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -268,6 +286,10 @@ func (s *cSharedJSONSelectedPathState) observe(
 
 func (s *cSharedJSONSelectedPathState) resultDatum(kind row.JSONAccessKind) (tree.Datum, error) {
 	return s.cache.ResultDatum(s.builder, kind)
+}
+
+func (s *cSharedJSONSelectedPathState) containsResult(program *row.JSONContainsProgram) (bool, error) {
+	return s.cache.ContainsResult(s.builder, program)
 }
 
 // Release implements the execinfra.Releasable interface.
@@ -449,7 +471,8 @@ type cFetcher struct {
 	jsonPathCompareFilter              *cJSONPathCompareFilterState
 	lastRowPassesJSONPathCompareFilter bool
 
-	jsonContainsFilter              *cJSONContainsFilterState
+	jsonContainsFilters             []*cJSONContainsFilterState
+	jsonContainsByCol               map[int][]*cJSONContainsFilterState
 	lastRowPassesJSONContainsFilter bool
 
 	jsonAccessPrograms              []cJSONAccessProgramState
@@ -514,6 +537,7 @@ type cSharedJSONAccessProgramState struct {
 type cSharedJSONSelectedPathState struct {
 	key         string
 	colIdx      int
+	encodedPath []string
 	materialize bool
 	selector    *row.JSONSelectedPathState
 	builder     *subordinateJSONBuilder
@@ -771,16 +795,21 @@ func (cf *cFetcher) ConfigureJSONContainsFilter(
 	if err != nil {
 		return err
 	}
-	cf.jsonContainsFilter = &cJSONContainsFilterState{
+	filter := &cJSONContainsFilterState{
 		colIdx:      colIdx,
 		materialize: materialize,
 		containedBy: containedBy,
 		program:     prog,
 	}
+	if cf.jsonContainsByCol == nil {
+		cf.jsonContainsByCol = make(map[int][]*cJSONContainsFilterState)
+	}
 	selected := cf.registerJSONSelectedPath(colIdx, path)
 	selected.materialize = selected.materialize || materialize
-	selected.contains = append(selected.contains, cf.jsonContainsFilter)
-	cf.jsonContainsFilter.selected = selected
+	selected.contains = append(selected.contains, filter)
+	filter.selected = selected
+	cf.jsonContainsFilters = append(cf.jsonContainsFilters, filter)
+	cf.jsonContainsByCol[colIdx] = append(cf.jsonContainsByCol[colIdx], filter)
 	cf.lastRowPassesJSONContainsFilter = true
 	return nil
 }
@@ -819,8 +848,10 @@ func (cf *cFetcher) resetJSONProgramsForRow() {
 	for i := range cf.jsonSharedSelectedPaths {
 		cf.jsonSharedSelectedPaths[i].reset()
 	}
-	if cf.jsonContainsFilter != nil {
-		cf.jsonContainsFilter.program.Reset()
+	for i := range cf.jsonContainsFilters {
+		cf.jsonContainsFilters[i].program.Reset()
+	}
+	if len(cf.jsonContainsFilters) > 0 {
 		cf.lastRowPassesJSONContainsFilter = true
 	}
 	for i := range cf.jsonAccessPrograms {
@@ -875,6 +906,25 @@ func (cf *cFetcher) StartScan(
 		}
 	}
 
+	if lookups, ok, err := cf.subordinateJSONRowHeadLookupSpecs(); err != nil {
+		return err
+	} else if ok {
+		f, err := row.NewSubordinateJSONRowHeadKVFetcher(
+			txn,
+			spans,
+			cf.reverse,
+			cf.lockStrength,
+			cf.lockWaitPolicy,
+			cf.lockTimeout,
+			lookups,
+		)
+		if err != nil {
+			return err
+		}
+		cf.setFetcher(f, limitHint)
+		return nil
+	}
+
 	f, err := row.NewKVFetcher(
 		ctx,
 		txn,
@@ -894,6 +944,35 @@ func (cf *cFetcher) StartScan(
 	}
 	cf.setFetcher(f, limitHint)
 	return nil
+}
+
+func (cf *cFetcher) subordinateJSONRowHeadLookupSpecs() ([]row.SubordinateJSONRowLookupSpec, bool, error) {
+	if cf.reverse || !cf.hasSubordinateColumns || cf.table.spec.MaxKeysPerRow > 1 {
+		return nil, false, nil
+	}
+	if cf.jsonExistsFilter != nil || len(cf.jsonSharedSelectedPaths) == 0 {
+		return nil, false, nil
+	}
+	byCol := make(map[int][][]keys.SubordinatePathSegment)
+	for i := range cf.jsonSharedSelectedPaths {
+		selected := cf.jsonSharedSelectedPaths[i]
+		prefix, ok, err := row.LongestStaticSubordinateJSONPathPrefix(selected.encodedPath)
+		if err != nil {
+			return nil, false, err
+		}
+		if !ok || len(prefix) == 0 {
+			return nil, false, nil
+		}
+		byCol[selected.colIdx] = append(byCol[selected.colIdx], prefix)
+	}
+	lookups := make([]row.SubordinateJSONRowLookupSpec, 0, len(byCol))
+	for colIdx, paths := range byCol {
+		lookups = append(lookups, row.SubordinateJSONRowLookupSpec{
+			ColID:         cf.table.spec.FetchedColumns[colIdx].ColumnID,
+			SelectedPaths: paths,
+		})
+	}
+	return lookups, true, nil
 }
 
 // StartScanStreaming initializes and starts the key-value scan using the
@@ -1456,16 +1535,32 @@ func (cf *cFetcher) finishJSONPathCompareFilter() error {
 }
 
 func (cf *cFetcher) finishJSONContainsFilter() error {
-	if cf.jsonContainsFilter == nil {
+	if len(cf.jsonContainsFilters) == 0 {
 		cf.lastRowPassesJSONContainsFilter = true
 		return nil
 	}
-	f := cf.jsonContainsFilter
-	contains, err := f.program.Passes()
-	if err != nil {
-		return err
+	for _, f := range cf.jsonContainsFilters {
+		if f.selected != nil && (f.selected.materialize || len(f.selected.access) > 0) {
+			contains, err := f.selected.containsResult(f.program)
+			if err != nil {
+				return err
+			}
+			if !contains {
+				cf.lastRowPassesJSONContainsFilter = false
+				return nil
+			}
+			continue
+		}
+		contains, err := f.program.Passes()
+		if err != nil {
+			return err
+		}
+		if !contains {
+			cf.lastRowPassesJSONContainsFilter = false
+			return nil
+		}
 	}
-	cf.lastRowPassesJSONContainsFilter = contains
+	cf.lastRowPassesJSONContainsFilter = true
 	return nil
 }
 
@@ -1567,13 +1662,27 @@ func (cf *cFetcher) processSubordinateValue(
 		return prettyKey, prettyValue, nil
 
 	case types.JsonFamily:
-		nodeKind, childCount, j, err := rowenc.DecodeSubordinateJSONValueWithCardinality(cf.machine.nextKV.Value)
+		nodeKind, childCount, scalarRaw, err := rowenc.PeekSubordinateJSONValueMetadata(cf.machine.nextKV.Value)
 		if err != nil {
 			return "", "", errors.Wrapf(err, "decoding subordinate JSON value for column %d", colID)
 		}
-		kind, err := row.SubordinateJSONNodeKindFromEncoded(nodeKind)
-		if err != nil {
-			return "", "", err
+		var (
+			j           jsonutil.JSON
+			decodedJSON bool
+		)
+		decodeScalar := func() (jsonutil.JSON, error) {
+			if nodeKind != rowenc.SubordinateJSONScalar {
+				return nil, nil
+			}
+			if decodedJSON {
+				return j, nil
+			}
+			decodedJSON = true
+			j, err = rowenc.DecodeSubordinateJSONScalarBytes(scalarRaw)
+			if err != nil {
+				return nil, err
+			}
+			return j, nil
 		}
 
 		needMaterialize := false
@@ -1583,16 +1692,36 @@ func (cf *cFetcher) processSubordinateValue(
 		if cf.jsonPathCompareFilter != nil && cf.jsonPathCompareFilter.shared.colIdx == idx {
 			needMaterialize = needMaterialize || cf.jsonPathCompareFilter.shared.materialize
 		}
-		if cf.jsonContainsFilter != nil && cf.jsonContainsFilter.colIdx == idx && cf.jsonContainsFilter.selected == nil {
-			if err := cf.jsonContainsFilter.program.Observe(path, nodeKind, childCount, j); err != nil {
+		containsFilters := cf.jsonContainsByCol[idx]
+		for _, filter := range containsFilters {
+			if filter.selected != nil {
+				continue
+			}
+			if nodeKind == rowenc.SubordinateJSONScalar {
+				if j, err = decodeScalar(); err != nil {
+					return "", "", err
+				}
+			}
+			if err := filter.program.Observe(path, nodeKind, childCount, j); err != nil {
 				return "", "", err
 			}
-			needMaterialize = needMaterialize || cf.jsonContainsFilter.materialize
+			needMaterialize = needMaterialize || filter.materialize
 		}
-		sawSelectedPathProgram := false
+		hasSelectedPathProgram := len(cf.jsonSharedSelectedByCol[idx]) > 0
 		for _, shared := range cf.jsonSharedSelectedByCol[idx] {
-			sawSelectedPathProgram = true
-			if err := shared.observe(path, nodeKind, childCount, j); err != nil {
+			relPath, ok, err := shared.selectPath(path, nodeKind, childCount)
+			if err != nil {
+				return "", "", err
+			}
+			if !ok {
+				continue
+			}
+			if nodeKind == rowenc.SubordinateJSONScalar {
+				if j, err = decodeScalar(); err != nil {
+					return "", "", err
+				}
+			}
+			if err := shared.observeSelected(relPath, nodeKind, childCount, j); err != nil {
 				return "", "", err
 			}
 			needMaterialize = needMaterialize || shared.materialize
@@ -1602,6 +1731,11 @@ func (cf *cFetcher) processSubordinateValue(
 			if shared.selected != nil {
 				continue
 			}
+			if nodeKind == rowenc.SubordinateJSONScalar && shared.program.NeedsScalarAt(path, nodeKind) {
+				if j, err = decodeScalar(); err != nil {
+					return "", "", err
+				}
+			}
 			if err := shared.observe(path, nodeKind, childCount, j); err != nil {
 				return "", "", err
 			}
@@ -1610,9 +1744,9 @@ func (cf *cFetcher) processSubordinateValue(
 		}
 		if (cf.jsonExistsFilter != nil && cf.jsonExistsFilter.shared.colIdx == idx) ||
 			(cf.jsonPathCompareFilter != nil && cf.jsonPathCompareFilter.shared.colIdx == idx) ||
-			(cf.jsonContainsFilter != nil && cf.jsonContainsFilter.colIdx == idx) ||
+			len(cf.jsonContainsByCol[idx]) > 0 ||
 			sawJSONProgram ||
-			sawSelectedPathProgram {
+			hasSelectedPathProgram {
 			if !needMaterialize {
 				if cf.traceKV {
 					prettyKey = fmt.Sprintf("%s/%s", prettyKey, colSpec.Name)
@@ -1624,6 +1758,10 @@ func (cf *cFetcher) processSubordinateValue(
 			}
 		}
 
+		kind, err := row.SubordinateJSONNodeKindFromEncoded(nodeKind)
+		if err != nil {
+			return "", "", err
+		}
 		if cf.subordinateJSONBuilders == nil {
 			cf.subordinateJSONBuilders = make(map[int]*subordinateJSONBuilder)
 		}
@@ -1631,6 +1769,11 @@ func (cf *cFetcher) processSubordinateValue(
 		if builder == nil {
 			builder = &subordinateJSONBuilder{}
 			cf.subordinateJSONBuilders[idx] = builder
+		}
+		if nodeKind == rowenc.SubordinateJSONScalar {
+			if j, err = decodeScalar(); err != nil {
+				return "", "", err
+			}
 		}
 		if err := builder.Set(path, kind, j); err != nil {
 			return "", "", err

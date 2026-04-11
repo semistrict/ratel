@@ -134,6 +134,124 @@ func makeJSONFetchPathFetcher(t *testing.T, path []string, asText bool, material
 	return rf
 }
 
+func TestTryStaticSubordinateJSONPath(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	t.Run("static object path", func(t *testing.T) {
+		path, ok, err := TryStaticSubordinateJSONPath([]string{
+			jsonPathStepKeyPrefix + strconv.Quote("needle"),
+			jsonPathStepKeyOrIndexPrefix + strconv.Quote("tiny"),
+		})
+		require.NoError(t, err)
+		require.True(t, ok)
+		require.Equal(t, []keys.SubordinatePathSegment{
+			{Kind: keys.SubordinatePathObjectKey, ObjectKey: "needle"},
+			{Kind: keys.SubordinatePathObjectKey, ObjectKey: "tiny"},
+		}, path)
+	})
+
+	t.Run("reject ambiguous numeric key-or-index", func(t *testing.T) {
+		path, ok, err := TryStaticSubordinateJSONPath([]string{
+			jsonPathStepKeyOrIndexPrefix + strconv.Quote("0"),
+		})
+		require.NoError(t, err)
+		require.False(t, ok)
+		require.Nil(t, path)
+	})
+
+	t.Run("reject negative index", func(t *testing.T) {
+		path, ok, err := TryStaticSubordinateJSONPath([]string{
+			jsonPathStepIndexPrefix + "-1",
+		})
+		require.NoError(t, err)
+		require.False(t, ok)
+		require.Nil(t, path)
+	})
+}
+
+func TestLongestStaticSubordinateJSONPathPrefix(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	t.Run("stops at negative index after static object prefix", func(t *testing.T) {
+		path, ok, err := LongestStaticSubordinateJSONPathPrefix([]string{
+			jsonPathStepKeyOrIndexPrefix + strconv.Quote("needle"),
+			jsonPathStepKeyOrIndexPrefix + strconv.Quote("-1"),
+			jsonPathStepKeyOrIndexPrefix + strconv.Quote("tiny"),
+		})
+		require.NoError(t, err)
+		require.True(t, ok)
+		require.Equal(t, []keys.SubordinatePathSegment{
+			{Kind: keys.SubordinatePathObjectKey, ObjectKey: "needle"},
+		}, path)
+	})
+
+	t.Run("stops before ambiguous numeric key-or-index", func(t *testing.T) {
+		path, ok, err := LongestStaticSubordinateJSONPathPrefix([]string{
+			jsonPathStepKeyOrIndexPrefix + strconv.Quote("0"),
+			jsonPathStepKeyOrIndexPrefix + strconv.Quote("tiny"),
+		})
+		require.NoError(t, err)
+		require.True(t, ok)
+		require.Empty(t, path)
+	})
+}
+
+func TestSubordinateJSONRowHeadLookupSpecs(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	t.Run("static object prefix before negative index", func(t *testing.T) {
+		rf := makeSingleColumnFetcher(t, types.Jsonb, 7, "doc")
+		rf.hasSubordinateColumns = true
+		rf.table.spec.MaxKeysPerRow = 1
+		require.NoError(t, rf.ConfigureJSONPathCompareFilter(
+			tree.NewTestingEvalContext(cluster.MakeTestingClusterSettings()),
+			0,
+			JSONAccessFetchTextPath,
+			[]string{
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("needle"),
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("-1"),
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("tiny"),
+			},
+			exec.JSONPathFilterEq,
+			tree.NewDString("x"),
+			false, /* materialize */
+		))
+
+		lookups, ok, err := rf.subordinateJSONRowHeadLookupSpecs()
+		require.NoError(t, err)
+		require.True(t, ok)
+		require.Equal(t, []SubordinateJSONRowLookupSpec{{
+			ColID: 7,
+			SelectedPaths: [][]keys.SubordinatePathSegment{{
+				{Kind: keys.SubordinatePathObjectKey, ObjectKey: "needle"},
+			}},
+		}}, lookups)
+	})
+
+	t.Run("rejects ambiguous numeric key-or-index prefix", func(t *testing.T) {
+		rf := makeSingleColumnFetcher(t, types.Jsonb, 7, "doc")
+		rf.hasSubordinateColumns = true
+		rf.table.spec.MaxKeysPerRow = 1
+		require.NoError(t, rf.ConfigureJSONPathCompareFilter(
+			tree.NewTestingEvalContext(cluster.MakeTestingClusterSettings()),
+			0,
+			JSONAccessFetchTextPath,
+			[]string{
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("0"),
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("tiny"),
+			},
+			exec.JSONPathFilterEq,
+			tree.NewDString("x"),
+			false, /* materialize */
+		))
+
+		lookups, ok, err := rf.subordinateJSONRowHeadLookupSpecs()
+		require.NoError(t, err)
+		require.False(t, ok)
+		require.Nil(t, lookups)
+	})
+}
+
 func makeJSONPathCompareFetcher(
 	t *testing.T, path []string, asText bool, mode exec.JSONPathFilterMode, right tree.Datum, materialize bool,
 ) *Fetcher {
@@ -207,12 +325,12 @@ func TestConfigureJSONContainsFilterSharesSelectedPathStateWithJSONAccessProgram
 	}}))
 
 	require.Len(t, rf.jsonSharedSelectedPaths, 1)
-	require.NotNil(t, rf.jsonContainsFilter)
-	require.NotNil(t, rf.jsonContainsFilter.selected)
+	require.Len(t, rf.jsonContainsFilters, 1)
+	require.NotNil(t, rf.jsonContainsFilters[0].selected)
 	require.Len(t, rf.jsonAccessPrograms, 1)
-	require.Same(t, rf.jsonContainsFilter.selected, rf.jsonAccessPrograms[0].shared.selected)
-	require.Len(t, rf.jsonContainsFilter.selected.contains, 1)
-	require.Len(t, rf.jsonContainsFilter.selected.access, 1)
+	require.Same(t, rf.jsonContainsFilters[0].selected, rf.jsonAccessPrograms[0].shared.selected)
+	require.Len(t, rf.jsonContainsFilters[0].selected.contains, 1)
+	require.Len(t, rf.jsonContainsFilters[0].selected.access, 1)
 }
 
 func observeSelectedJSONPathStateForTests(t *testing.T, selected *sharedJSONSelectedPathState) {
@@ -835,6 +953,30 @@ func TestSubordinateJSONPathMatcherMaterializeText(t *testing.T) {
 	require.Equal(t, "x", *txt)
 }
 
+func TestSubordinateJSONPathMatcherMaterializeTextStoredPaths(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	m := newSubordinateJSONPathMatcher([]string{
+		jsonPathStepKeyOrIndexPrefix + strconv.Quote("a"),
+		jsonPathStepKeyOrIndexPrefix + strconv.Quote("0"),
+	})
+	observeJSONPathMatcherKV(t, m, 7, []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathHeader}}, `{}`)
+	observeJSONPathMatcherKV(t, m, 7, []keys.SubordinatePathSegment{
+		{Kind: keys.SubordinatePathHeader},
+		{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"},
+	}, `["x"]`)
+	observeJSONPathMatcherKV(t, m, 7, []keys.SubordinatePathSegment{
+		{Kind: keys.SubordinatePathHeader},
+		{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"},
+		{Kind: keys.SubordinatePathArrayIndex, ArrayIdx: 0},
+	}, `"x"`)
+
+	txt, err := m.MaterializeText()
+	require.NoError(t, err)
+	require.NotNil(t, txt)
+	require.Equal(t, "x", *txt)
+}
+
 func TestJSONAccessProgramExists(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 
@@ -848,6 +990,31 @@ func TestJSONAccessProgramExists(t *testing.T) {
 	kind, childCount, j, err = rowenc.DecodeSubordinateJSONValueWithCardinality(kv.Value)
 	require.NoError(t, err)
 	require.NoError(t, p.Observe([]keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}}, kind, childCount, j))
+
+	d, err := p.ResultDatum()
+	require.NoError(t, err)
+	require.Equal(t, tree.DBoolTrue, d)
+}
+
+func TestJSONAccessProgramExistsStoredPaths(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	p := newJSONExistsProgram("a")
+	kv, _ := makeSubordinateJSONKV(t, 7, []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathHeader}}, `{}`)
+	kind, childCount, j, err := rowenc.DecodeSubordinateJSONValueWithCardinality(kv.Value)
+	require.NoError(t, err)
+	require.NoError(t, p.Observe([]keys.SubordinatePathSegment{{Kind: keys.SubordinatePathHeader}}, kind, childCount, j))
+
+	kv, _ = makeSubordinateJSONKV(t, 7, []keys.SubordinatePathSegment{
+		{Kind: keys.SubordinatePathHeader},
+		{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"},
+	}, `1`)
+	kind, childCount, j, err = rowenc.DecodeSubordinateJSONValueWithCardinality(kv.Value)
+	require.NoError(t, err)
+	require.NoError(t, p.Observe([]keys.SubordinatePathSegment{
+		{Kind: keys.SubordinatePathHeader},
+		{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"},
+	}, kind, childCount, j))
 
 	d, err := p.ResultDatum()
 	require.NoError(t, err)
@@ -938,6 +1105,46 @@ func TestJSONAccessProgramFetchTextPath(t *testing.T) {
 	d, err := p.ResultDatum()
 	require.NoError(t, err)
 	require.Equal(t, tree.NewDString("x"), d)
+}
+
+func TestJSONSelectedPathStateMatchesStoredChildBeforeRootHeader(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	selected := NewJSONSelectedPathState([]string{
+		jsonPathStepKeyOrIndexPrefix + strconv.Quote("a"),
+		jsonPathStepKeyOrIndexPrefix + strconv.Quote("b"),
+		jsonPathStepKeyOrIndexPrefix + strconv.Quote("1"),
+	})
+	relPath, ok, err := selected.SelectPath([]keys.SubordinatePathSegment{
+		{Kind: keys.SubordinatePathHeader},
+		{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"},
+		{Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"},
+		{Kind: keys.SubordinatePathArrayIndex, ArrayIdx: 1},
+	}, rowenc.SubordinateJSONScalar, 0)
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathHeader}}, relPath)
+}
+
+func TestJSONSelectedPathStateMatchesStoredDescendantBeforeAncestorHeaders(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	selected := NewJSONSelectedPathState([]string{
+		jsonPathStepKeyOrIndexPrefix + strconv.Quote("a"),
+		jsonPathStepKeyOrIndexPrefix + strconv.Quote("b"),
+	})
+	relPath, ok, err := selected.SelectPath([]keys.SubordinatePathSegment{
+		{Kind: keys.SubordinatePathHeader},
+		{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"},
+		{Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"},
+		{Kind: keys.SubordinatePathObjectKey, ObjectKey: "c"},
+	}, rowenc.SubordinateJSONScalar, 0)
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, []keys.SubordinatePathSegment{
+		{Kind: keys.SubordinatePathHeader},
+		{Kind: keys.SubordinatePathObjectKey, ObjectKey: "c"},
+	}, relPath)
 }
 
 func TestFinishJSONAccessProgramsRejectInlineJSON(t *testing.T) {
@@ -1228,6 +1435,178 @@ func TestProcessSubordinateKVJSONContainedByArrayOfObjectsFilter(t *testing.T) {
 	require.NoError(t, rf.finishJSONContainsFilter())
 	require.True(t, rf.RowPassesJSONContainsFilter())
 	require.Nil(t, rf.subordinateJSONBuilders)
+}
+
+func TestProcessSubordinateKVJSONContainsFilterSharesSelectedPathMaterialization(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	rf := makeJSONContainsFetcher(t, []string{"a"}, false, `{"b":[20]}`, false)
+	require.NoError(t, rf.ConfigureJSONAccessPrograms([]JSONAccessSpec{
+		{ColIdx: 0, Kind: JSONAccessFetchJSONPath, Path: []string{jsonPathStepKeyOrIndexPrefix + strconv.Quote("a")}, Materialize: false},
+	}))
+
+	for _, tc := range []struct {
+		path []keys.SubordinatePathSegment
+		json string
+	}{
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathHeader}}, json: `{}`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}}, json: `{"b":[10,20]}`},
+		{path: []keys.SubordinatePathSegment{
+			{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"},
+			{Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"},
+		}, json: `[10,20]`},
+		{path: []keys.SubordinatePathSegment{
+			{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"},
+			{Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"},
+			{Kind: keys.SubordinatePathArrayIndex, ArrayIdx: 0},
+		}, json: `10`},
+		{path: []keys.SubordinatePathSegment{
+			{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"},
+			{Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"},
+			{Kind: keys.SubordinatePathArrayIndex, ArrayIdx: 1},
+		}, json: `20`},
+	} {
+		kv, remaining := makeSubordinateJSONKV(t, 7, tc.path, tc.json)
+		_, _, err := rf.processSubordinateKV(context.Background(), &rf.table, kv, remaining, "/tbl/1/0")
+		require.NoError(t, err)
+	}
+
+	require.False(t, rf.jsonContainsFilters[0].program.SawSubordinate())
+	require.NoError(t, rf.finishJSONContainsFilter())
+	require.True(t, rf.RowPassesJSONContainsFilter())
+	require.NoError(t, rf.finishJSONAccessPrograms())
+	require.JSONEq(t, `{"b":[10,20]}`, rf.JSONAccessProgramResults()[0].(*tree.DJSON).JSON.String())
+}
+
+func TestProcessSubordinateKVJSONContainedByFilterSharesSelectedPathMaterialization(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	rf := makeJSONContainsFetcher(t, []string{"a"}, true, `{"b":[10,20],"extra":true}`, false)
+	require.NoError(t, rf.ConfigureJSONAccessPrograms([]JSONAccessSpec{
+		{ColIdx: 0, Kind: JSONAccessFetchJSONPath, Path: []string{jsonPathStepKeyOrIndexPrefix + strconv.Quote("a")}, Materialize: false},
+	}))
+
+	for _, tc := range []struct {
+		path []keys.SubordinatePathSegment
+		json string
+	}{
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathHeader}}, json: `{}`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}}, json: `{"b":[10,20]}`},
+		{path: []keys.SubordinatePathSegment{
+			{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"},
+			{Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"},
+		}, json: `[10,20]`},
+		{path: []keys.SubordinatePathSegment{
+			{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"},
+			{Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"},
+			{Kind: keys.SubordinatePathArrayIndex, ArrayIdx: 0},
+		}, json: `10`},
+		{path: []keys.SubordinatePathSegment{
+			{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"},
+			{Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"},
+			{Kind: keys.SubordinatePathArrayIndex, ArrayIdx: 1},
+		}, json: `20`},
+	} {
+		kv, remaining := makeSubordinateJSONKV(t, 7, tc.path, tc.json)
+		_, _, err := rf.processSubordinateKV(context.Background(), &rf.table, kv, remaining, "/tbl/1/0")
+		require.NoError(t, err)
+	}
+
+	require.False(t, rf.jsonContainsFilters[0].program.SawSubordinate())
+	require.NoError(t, rf.finishJSONContainsFilter())
+	require.True(t, rf.RowPassesJSONContainsFilter())
+	require.NoError(t, rf.finishJSONAccessPrograms())
+	require.JSONEq(t, `{"b":[10,20]}`, rf.JSONAccessProgramResults()[0].(*tree.DJSON).JSON.String())
+}
+
+func TestFinishJSONContainsFilterSharedSelectedPathMissing(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	rf := makeJSONContainsFetcher(t, []string{"a"}, false, `{"b":[20]}`, false)
+	require.NoError(t, rf.ConfigureJSONAccessPrograms([]JSONAccessSpec{
+		{ColIdx: 0, Kind: JSONAccessFetchJSONPath, Path: []string{jsonPathStepKeyOrIndexPrefix + strconv.Quote("a")}, Materialize: false},
+	}))
+
+	kv, remaining := makeSubordinateJSONKV(t, 7, []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathHeader}}, `{}`)
+	_, _, err := rf.processSubordinateKV(context.Background(), &rf.table, kv, remaining, "/tbl/1/0")
+	require.NoError(t, err)
+
+	require.False(t, rf.jsonContainsFilters[0].program.SawSubordinate())
+	require.NoError(t, rf.finishJSONContainsFilter())
+	require.False(t, rf.RowPassesJSONContainsFilter())
+	require.NoError(t, rf.finishJSONAccessPrograms())
+	require.Equal(t, tree.DNull, rf.JSONAccessProgramResults()[0])
+}
+
+func TestProcessSubordinateKVMultipleJSONContainsFilters(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	rf := makeJSONContainsFetcher(t, []string{"a"}, false, `{"b":[20]}`, false)
+	right, err := jsonutil.ParseJSON(`{"b":[10,20],"c":null}`)
+	require.NoError(t, err)
+	require.NoError(t, rf.ConfigureJSONContainsFilter(
+		0,
+		[]string{jsonPathStepKeyOrIndexPrefix + strconv.Quote("a")},
+		true,
+		right,
+		false,
+	))
+
+	for _, tc := range []struct {
+		path []keys.SubordinatePathSegment
+		json string
+	}{
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathHeader}}, json: `{}`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}}, json: `{"b":[10,20],"c":null}`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}, {Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"}}, json: `[10,20]`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}, {Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"}, {Kind: keys.SubordinatePathArrayIndex, ArrayIdx: 0}}, json: `10`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}, {Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"}, {Kind: keys.SubordinatePathArrayIndex, ArrayIdx: 1}}, json: `20`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}, {Kind: keys.SubordinatePathObjectKey, ObjectKey: "c"}}, json: `null`},
+	} {
+		kv, remaining := makeSubordinateJSONKV(t, 7, tc.path, tc.json)
+		_, _, err := rf.processSubordinateKV(context.Background(), &rf.table, kv, remaining, "/tbl/1/0")
+		require.NoError(t, err)
+	}
+
+	require.Len(t, rf.jsonContainsFilters, 2)
+	require.NoError(t, rf.finishJSONContainsFilter())
+	require.True(t, rf.RowPassesJSONContainsFilter())
+}
+
+func TestProcessSubordinateKVMultipleJSONContainsFiltersShareSelectedCache(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	rf := makeJSONContainsFetcher(t, []string{"a"}, false, `{"b":[20]}`, true)
+	right, err := jsonutil.ParseJSON(`{"b":[10,20],"c":null}`)
+	require.NoError(t, err)
+	require.NoError(t, rf.ConfigureJSONContainsFilter(
+		0,
+		[]string{jsonPathStepKeyOrIndexPrefix + strconv.Quote("a")},
+		true,
+		right,
+		true,
+	))
+
+	for _, tc := range []struct {
+		path []keys.SubordinatePathSegment
+		json string
+	}{
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathHeader}}, json: `{}`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}}, json: `{"b":[10,20],"c":null}`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}, {Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"}}, json: `[10,20]`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}, {Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"}, {Kind: keys.SubordinatePathArrayIndex, ArrayIdx: 0}}, json: `10`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}, {Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"}, {Kind: keys.SubordinatePathArrayIndex, ArrayIdx: 1}}, json: `20`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}, {Kind: keys.SubordinatePathObjectKey, ObjectKey: "c"}}, json: `null`},
+	} {
+		kv, remaining := makeSubordinateJSONKV(t, 7, tc.path, tc.json)
+		_, _, err := rf.processSubordinateKV(context.Background(), &rf.table, kv, remaining, "/tbl/1/0")
+		require.NoError(t, err)
+	}
+
+	require.Len(t, rf.jsonContainsFilters, 2)
+	require.NoError(t, rf.finishJSONContainsFilter())
+	require.True(t, rf.RowPassesJSONContainsFilter())
+	require.Equal(t, 2, rf.jsonContainsFilters[0].selected.cache.NumContainsResults())
 }
 
 func TestProcessSubordinateKVJSONContainsNullAndEmptyFilter(t *testing.T) {
@@ -1792,6 +2171,134 @@ func TestRecursiveJSONUpdateRemovesOldSubtree(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, row, 1)
 	require.Equal(t, `5`, row[0].(*tree.DJSON).JSON.String())
+}
+
+func TestRecursiveJSONInserterOverwriteRemovesOldSubtree(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+	ctx := context.Background()
+
+	s, sqlDB, kvDB := serverutils.StartServer(t, base.TestServerArgs{})
+	defer s.Stopper().Stop(ctx)
+
+	sqlRunner := sqlutils.MakeSQLRunner(sqlDB)
+	sqlRunner.Exec(t, `CREATE DATABASE d`)
+	sqlRunner.Exec(t, `CREATE TABLE d.json_upsert (k INT PRIMARY KEY, doc JSONB)`)
+	sqlRunner.Exec(t, `INSERT INTO d.json_upsert VALUES (1, '{"a":{"b":[10,20]}}')`)
+
+	tableDesc := desctestutils.TestingGetPublicTableDescriptor(
+		kvDB, keys.SystemSQLCodec, "d", "json_upsert",
+	)
+	st := cluster.MakeTestingClusterSettings()
+	txn := kv.NewTxn(ctx, kvDB, 0)
+	ri, err := MakeInserter(
+		ctx,
+		txn,
+		keys.SystemSQLCodec,
+		tableDesc,
+		tableDesc.PublicColumns(),
+		&tree.DatumAlloc{},
+		&st.SV,
+		false, /* internal */
+		nil,   /* metrics */
+	)
+	require.NoError(t, err)
+
+	j, err := jsonutil.ParseJSON(`{"a":{"b":[99]}}`)
+	require.NoError(t, err)
+
+	b := &kv.Batch{}
+	require.NoError(t, ri.InsertRow(
+		ctx, b, []tree.Datum{tree.NewDInt(1), tree.NewDJSON(j)}, PartialIndexUpdateHelper{}, true, /* overwrite */
+		false, /* traceKV */
+	))
+	require.NoError(t, txn.Run(ctx, b))
+	require.NoError(t, txn.Commit(ctx))
+
+	span := tableDesc.IndexSpan(keys.SystemSQLCodec, tableDesc.GetPrimaryIndexID())
+	kvs, err := kvDB.Scan(ctx, span.Key, span.EndKey, 0)
+	require.NoError(t, err)
+
+	var sawOldArrayTail bool
+	for i := 1; i < len(kvs); i++ {
+		_, _, path, err := keys.DecodeSubordinatePathKey(kvs[i].Key)
+		require.NoError(t, err)
+		if subordinatePathString(path) == "$.a.b[1]" {
+			sawOldArrayTail = true
+		}
+	}
+	require.False(t, sawOldArrayTail)
+
+	rf := initFetcher(t, initFetcherArgs{
+		tableDesc: tableDesc,
+		indexIdx:  0,
+		columns:   []int{1},
+	}, false /* reverseScan */, &tree.DatumAlloc{}, nil /* memMon */)
+	require.NoError(t, rf.StartScan(
+		ctx,
+		kv.NewTxn(ctx, kvDB, 0),
+		roachpb.Spans{span},
+		rowinfra.NoBytesLimit,
+		rowinfra.NoRowLimit,
+		false, /* traceKV */
+		false, /* forceProductionKVBatchSize */
+	))
+	row, err := rf.NextRowDecoded(ctx)
+	require.NoError(t, err)
+	require.Len(t, row, 1)
+	require.Equal(t, `{"a": {"b": [99]}}`, row[0].(*tree.DJSON).JSON.String())
+}
+
+func TestRecursiveJSONInserterOverwriteMultiRowRemovesOldSubtree(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+	ctx := context.Background()
+
+	s, sqlDB, kvDB := serverutils.StartServer(t, base.TestServerArgs{})
+	defer s.Stopper().Stop(ctx)
+
+	sqlRunner := sqlutils.MakeSQLRunner(sqlDB)
+	sqlRunner.Exec(t, `CREATE DATABASE d`)
+	sqlRunner.Exec(t, `CREATE TABLE d.json_upsert_multi (k INT PRIMARY KEY, doc JSONB)`)
+	sqlRunner.Exec(t, `INSERT INTO d.json_upsert_multi VALUES (1, '{"a":{"b":[10,20]}}'), (2, NULL)`)
+
+	tableDesc := desctestutils.TestingGetPublicTableDescriptor(
+		kvDB, keys.SystemSQLCodec, "d", "json_upsert_multi",
+	)
+	st := cluster.MakeTestingClusterSettings()
+	txn := kv.NewTxn(ctx, kvDB, 0)
+	ri, err := MakeInserter(
+		ctx,
+		txn,
+		keys.SystemSQLCodec,
+		tableDesc,
+		tableDesc.PublicColumns(),
+		&tree.DatumAlloc{},
+		&st.SV,
+		false, /* internal */
+		nil,   /* metrics */
+	)
+	require.NoError(t, err)
+
+	j1, err := jsonutil.ParseJSON(`{"a":{"b":[99]}}`)
+	require.NoError(t, err)
+	j2, err := jsonutil.ParseJSON(`{"a":{"b":[5]}}`)
+	require.NoError(t, err)
+
+	b := &kv.Batch{}
+	require.NoError(t, ri.InsertRow(
+		ctx, b, []tree.Datum{tree.NewDInt(1), tree.NewDJSON(j1)}, PartialIndexUpdateHelper{}, true, /* overwrite */
+		false, /* traceKV */
+	))
+	require.NoError(t, ri.InsertRow(
+		ctx, b, []tree.Datum{tree.NewDInt(2), tree.NewDJSON(j2)}, PartialIndexUpdateHelper{}, true, /* overwrite */
+		false, /* traceKV */
+	))
+	require.NoError(t, txn.Run(ctx, b))
+	require.NoError(t, txn.Commit(ctx))
+
+	sqlRunner.CheckQueryResults(t,
+		`SELECT k, coalesce(doc#>>'{a,b,-1}', 'NULL') FROM d.json_upsert_multi WHERE doc ? 'a' ORDER BY k`,
+		[][]string{{"1", "99"}, {"2", "5"}},
+	)
 }
 
 func mustGetTuple(t *testing.T, v roachpb.Value) []byte {

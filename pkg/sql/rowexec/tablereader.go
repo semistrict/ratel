@@ -255,12 +255,13 @@ func newTableReader(
 			return nil, err
 		}
 	}
-	if spec.JsonContainsFilter != nil {
-		rightExpr := spec.JsonContainsFilter.Right.LocalExpr
+	for i := range spec.JsonContainsFilters {
+		filterSpec := &spec.JsonContainsFilters[i]
+		rightExpr := filterSpec.Right.LocalExpr
 		if rightExpr == nil {
 			var err error
 			rightExpr, err = execinfrapb.DeserializeExpr(
-				spec.JsonContainsFilter.Right.Expr, &tr.SemaCtx, tr.EvalCtx, &tree.IndexedVarHelper{},
+				filterSpec.Right.Expr, &tr.SemaCtx, tr.EvalCtx, &tree.IndexedVarHelper{},
 			)
 			if err != nil {
 				return nil, err
@@ -275,11 +276,11 @@ func newTableReader(
 			return nil, errors.AssertionFailedf("JSON contains filter right datum has type %T", rightDatum)
 		}
 		if err := fetcher.ConfigureJSONContainsFilter(
-			int(spec.JsonContainsFilter.SourceColIdx),
-			append([]string(nil), spec.JsonContainsFilter.Path...),
-			spec.JsonContainsFilter.ContainedBy,
+			int(filterSpec.SourceColIdx),
+			append([]string(nil), filterSpec.Path...),
+			filterSpec.ContainedBy,
 			rightJSON.JSON,
-			postProcessOutputsFetchedColumn(post, len(spec.FetchSpec.FetchedColumns), int(spec.JsonContainsFilter.SourceColIdx)),
+			postProcessOutputsFetchedColumn(post, len(spec.FetchSpec.FetchedColumns), int(filterSpec.SourceColIdx)),
 		); err != nil {
 			return nil, err
 		}

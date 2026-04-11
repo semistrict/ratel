@@ -235,13 +235,14 @@ type Fetcher struct {
 	// filter is set.
 	lastRowPassesJSONPathCompareFilter bool
 
-	// jsonContainsFilter, when set, evaluates a containment predicate over a
-	// scan-local JSON access result.
-	jsonContainsFilter *jsonContainsFilterState
+	// jsonContainsFilters evaluate containment predicates over scan-local JSON
+	// access results.
+	jsonContainsFilters []*jsonContainsFilterState
+	jsonContainsByCol   map[int][]*jsonContainsFilterState
 
-	// lastRowPassesJSONContainsFilter records the filter result for the most
-	// recently finalized row. It is true when no scan-local JSON containment
-	// filter is set.
+	// lastRowPassesJSONContainsFilter records whether the most recently
+	// finalized row satisfied all configured scan-local JSON containment
+	// filters. It is true when no such filters are set.
 	lastRowPassesJSONContainsFilter bool
 
 	// lastRowJSONAccessProgramResults stores finalized per-row results for the
@@ -327,6 +328,7 @@ type sharedJSONAccessProgramState struct {
 type sharedJSONSelectedPathState struct {
 	key         string
 	colIdx      int
+	encodedPath []string
 	materialize bool
 	selector    *JSONSelectedPathState
 	builder     *SubordinateJSONBuilder
@@ -396,9 +398,10 @@ func (rf *Fetcher) registerJSONSelectedPath(
 		}
 	}
 	shared := &sharedJSONSelectedPathState{
-		key:      key,
-		colIdx:   colIdx,
-		selector: NewJSONSelectedPathState(path),
+		key:         key,
+		colIdx:      colIdx,
+		encodedPath: append([]string(nil), path...),
+		selector:    NewJSONSelectedPathState(path),
 	}
 	rf.jsonSharedSelectedPaths = append(rf.jsonSharedSelectedPaths, shared)
 	if rf.jsonSharedSelectedByCol == nil {
@@ -460,7 +463,22 @@ func (s *sharedJSONSelectedPathState) observe(
 	if err != nil || !ok {
 		return err
 	}
-	if len(s.access) > 0 {
+	return s.observeSelected(relPath, kind, childCount, j)
+}
+
+func (s *sharedJSONSelectedPathState) selectPath(
+	path []keys.SubordinatePathSegment, kind rowenc.SubordinateJSONNodeKind, childCount int,
+) ([]keys.SubordinatePathSegment, bool, error) {
+	return s.selector.SelectPath(path, kind, childCount)
+}
+
+func (s *sharedJSONSelectedPathState) observeSelected(
+	relPath []keys.SubordinatePathSegment,
+	kind rowenc.SubordinateJSONNodeKind,
+	childCount int,
+	j jsonutil.JSON,
+) error {
+	if s.materialize || len(s.access) > 0 {
 		nodeKind, err := SubordinateJSONNodeKindFromEncoded(kind)
 		if err != nil {
 			return err
@@ -475,9 +493,11 @@ func (s *sharedJSONSelectedPathState) observe(
 	for _, access := range s.access {
 		access.sawSubordinate = true
 	}
-	for _, contains := range s.contains {
-		if err := contains.program.ObserveSelected(relPath, kind, childCount, j); err != nil {
-			return err
+	if !s.materialize && len(s.access) == 0 {
+		for _, contains := range s.contains {
+			if err := contains.program.ObserveSelected(relPath, kind, childCount, j); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -485,6 +505,10 @@ func (s *sharedJSONSelectedPathState) observe(
 
 func (s *sharedJSONSelectedPathState) resultDatum(kind JSONAccessKind) (tree.Datum, error) {
 	return s.cache.ResultDatum(s.builder, kind)
+}
+
+func (s *sharedJSONSelectedPathState) containsResult(program *JSONContainsProgram) (bool, error) {
+	return s.cache.ContainsResult(s.builder, program)
 }
 
 // Reset resets this Fetcher, preserving the memory capacity that was used
@@ -577,16 +601,21 @@ func (rf *Fetcher) ConfigureJSONContainsFilter(
 	if err != nil {
 		return err
 	}
-	rf.jsonContainsFilter = &jsonContainsFilterState{
+	filter := &jsonContainsFilterState{
 		colIdx:      colIdx,
 		materialize: materialize,
 		containedBy: containedBy,
 		program:     prog,
 	}
+	if rf.jsonContainsByCol == nil {
+		rf.jsonContainsByCol = make(map[int][]*jsonContainsFilterState)
+	}
 	selected := rf.registerJSONSelectedPath(colIdx, path)
 	selected.materialize = selected.materialize || materialize
-	selected.contains = append(selected.contains, rf.jsonContainsFilter)
-	rf.jsonContainsFilter.selected = selected
+	selected.contains = append(selected.contains, filter)
+	filter.selected = selected
+	rf.jsonContainsFilters = append(rf.jsonContainsFilters, filter)
+	rf.jsonContainsByCol[colIdx] = append(rf.jsonContainsByCol[colIdx], filter)
 	rf.lastRowPassesJSONContainsFilter = true
 	return nil
 }
@@ -822,6 +851,24 @@ func (rf *Fetcher) StartScan(
 		return errors.AssertionFailedf("no spans")
 	}
 
+	if lookups, ok, err := rf.subordinateJSONRowHeadLookupSpecs(); err != nil {
+		return err
+	} else if ok {
+		f, err := NewSubordinateJSONRowHeadKVFetcher(
+			txn,
+			spans,
+			rf.reverse,
+			rf.lockStrength,
+			rf.lockWaitPolicy,
+			rf.lockTimeout,
+			lookups,
+		)
+		if err != nil {
+			return err
+		}
+		return rf.StartScanFrom(ctx, f, traceKV)
+	}
+
 	f, err := makeKVBatchFetcher(
 		ctx,
 		makeKVBatchFetcherDefaultSendFunc(txn),
@@ -841,6 +888,35 @@ func (rf *Fetcher) StartScan(
 		return err
 	}
 	return rf.StartScanFrom(ctx, &f, traceKV)
+}
+
+func (rf *Fetcher) subordinateJSONRowHeadLookupSpecs() ([]SubordinateJSONRowLookupSpec, bool, error) {
+	if rf.reverse || !rf.hasSubordinateColumns || rf.table.spec.MaxKeysPerRow > 1 {
+		return nil, false, nil
+	}
+	if rf.jsonExistsFilter != nil || len(rf.jsonSharedSelectedPaths) == 0 {
+		return nil, false, nil
+	}
+	byCol := make(map[int][][]keys.SubordinatePathSegment)
+	for i := range rf.jsonSharedSelectedPaths {
+		selected := rf.jsonSharedSelectedPaths[i]
+		prefix, ok, err := LongestStaticSubordinateJSONPathPrefix(selected.encodedPath)
+		if err != nil {
+			return nil, false, err
+		}
+		if !ok || len(prefix) == 0 {
+			return nil, false, nil
+		}
+		byCol[selected.colIdx] = append(byCol[selected.colIdx], prefix)
+	}
+	lookups := make([]SubordinateJSONRowLookupSpec, 0, len(byCol))
+	for colIdx, paths := range byCol {
+		lookups = append(lookups, SubordinateJSONRowLookupSpec{
+			ColID:         rf.table.spec.FetchedColumns[colIdx].ColumnID,
+			SelectedPaths: paths,
+		})
+	}
+	return lookups, true, nil
 }
 
 // TestingInconsistentScanSleep introduces a sleep inside the fetcher after
@@ -1127,8 +1203,10 @@ func (rf *Fetcher) processKV(
 		if rf.jsonPathCompareFilter != nil {
 			rf.lastRowPassesJSONPathCompareFilter = true
 		}
-		if rf.jsonContainsFilter != nil {
-			rf.jsonContainsFilter.program.Reset()
+		for i := range rf.jsonContainsFilters {
+			rf.jsonContainsFilters[i].program.Reset()
+		}
+		if len(rf.jsonContainsFilters) > 0 {
 			rf.lastRowPassesJSONContainsFilter = true
 		}
 		for i := range rf.jsonAccessPrograms {
@@ -1497,25 +1575,63 @@ func (rf *Fetcher) processSubordinateKV(
 		return prettyKey, prettyValue, nil
 
 	case types.JsonFamily:
-		nodeKind, childCount, j, err := rowenc.DecodeSubordinateJSONValueWithCardinality(kv.Value)
+		nodeKind, childCount, scalarRaw, err := rowenc.PeekSubordinateJSONValueMetadata(kv.Value)
 		if err != nil {
 			return "", "", errors.Wrapf(err, "decoding subordinate JSON value for column %d", colID)
+		}
+		var (
+			j           jsonutil.JSON
+			decodedJSON bool
+		)
+		decodeScalar := func() (jsonutil.JSON, error) {
+			if nodeKind != rowenc.SubordinateJSONScalar {
+				return nil, nil
+			}
+			if decodedJSON {
+				return j, nil
+			}
+			decodedJSON = true
+			j, err = rowenc.DecodeSubordinateJSONScalarBytes(scalarRaw)
+			if err != nil {
+				return nil, err
+			}
+			return j, nil
 		}
 
 		filterCol := rf.jsonExistsFilter != nil && rf.jsonExistsFilter.shared.colIdx == idx
 		compareCol := rf.jsonPathCompareFilter != nil && rf.jsonPathCompareFilter.shared.colIdx == idx
-		containsCol := rf.jsonContainsFilter != nil && rf.jsonContainsFilter.colIdx == idx
+		containsFilters := rf.jsonContainsByCol[idx]
+		containsCol := len(containsFilters) > 0
 		needMaterialize := false
-		if containsCol && rf.jsonContainsFilter.selected == nil {
-			if err := rf.jsonContainsFilter.program.Observe(path, nodeKind, childCount, j); err != nil {
+		for _, filter := range containsFilters {
+			if filter.selected != nil {
+				continue
+			}
+			if nodeKind == rowenc.SubordinateJSONScalar {
+				if j, err = decodeScalar(); err != nil {
+					return "", "", err
+				}
+			}
+			if err := filter.program.Observe(path, nodeKind, childCount, j); err != nil {
 				return "", "", err
 			}
-			needMaterialize = needMaterialize || rf.jsonContainsFilter.materialize
+			needMaterialize = needMaterialize || filter.materialize
 		}
-		sawSelectedPathProgram := false
+		hasSelectedPathProgram := len(rf.jsonSharedSelectedByCol[idx]) > 0
 		for _, shared := range rf.jsonSharedSelectedByCol[idx] {
-			sawSelectedPathProgram = true
-			if err := shared.observe(path, nodeKind, childCount, j); err != nil {
+			relPath, ok, err := shared.selectPath(path, nodeKind, childCount)
+			if err != nil {
+				return "", "", err
+			}
+			if !ok {
+				continue
+			}
+			if nodeKind == rowenc.SubordinateJSONScalar {
+				if j, err = decodeScalar(); err != nil {
+					return "", "", err
+				}
+			}
+			if err := shared.observeSelected(relPath, nodeKind, childCount, j); err != nil {
 				return "", "", err
 			}
 			needMaterialize = needMaterialize || shared.materialize
@@ -1526,12 +1642,17 @@ func (rf *Fetcher) processSubordinateKV(
 				continue
 			}
 			sawJSONProgram = true
+			if nodeKind == rowenc.SubordinateJSONScalar && shared.program.NeedsScalarAt(path, nodeKind) {
+				if j, err = decodeScalar(); err != nil {
+					return "", "", err
+				}
+			}
 			if err := shared.observe(path, nodeKind, childCount, j); err != nil {
 				return "", "", err
 			}
 			needMaterialize = needMaterialize || shared.materialize
 		}
-		if (filterCol || compareCol || containsCol || sawJSONProgram || sawSelectedPathProgram) && !needMaterialize {
+		if (filterCol || compareCol || containsCol || sawJSONProgram || hasSelectedPathProgram) && !needMaterialize {
 			if rf.traceKV {
 				prettyKey = fmt.Sprintf("%s/%s", prettyKey, colSpec.Name)
 				prettyValue = "json-access"
@@ -1551,6 +1672,11 @@ func (rf *Fetcher) processSubordinateKV(
 		if builder == nil {
 			builder = &subordinateJSONBuilder{}
 			rf.subordinateJSONBuilders[idx] = builder
+		}
+		if nodeKind == rowenc.SubordinateJSONScalar {
+			if j, err = decodeScalar(); err != nil {
+				return "", "", err
+			}
 		}
 		if err := builder.Set(path, kind, j); err != nil {
 			return "", "", err
@@ -1827,30 +1953,46 @@ func (rf *Fetcher) finishJSONPathCompareFilter() error {
 }
 
 func (rf *Fetcher) finishJSONContainsFilter() error {
-	if rf.jsonContainsFilter == nil {
+	if len(rf.jsonContainsFilters) == 0 {
 		rf.lastRowPassesJSONContainsFilter = true
 		return nil
 	}
-	f := rf.jsonContainsFilter
-	if !f.program.SawSubordinate() {
-		encDatum := rf.table.row[f.colIdx]
-		if encDatum.IsUnset() {
+	for _, f := range rf.jsonContainsFilters {
+		if f.selected != nil && (f.selected.materialize || len(f.selected.access) > 0) {
+			contains, err := f.selected.containsResult(f.program)
+			if err != nil {
+				return err
+			}
+			if !contains {
+				rf.lastRowPassesJSONContainsFilter = false
+				return nil
+			}
+			continue
+		}
+		if !f.program.SawSubordinate() {
+			encDatum := rf.table.row[f.colIdx]
+			if encDatum.IsUnset() {
+				rf.lastRowPassesJSONContainsFilter = false
+				return nil
+			}
+			if err := encDatum.EnsureDecoded(rf.table.spec.FetchedColumns[f.colIdx].Type, rf.alloc); err != nil {
+				return err
+			}
+			return errors.AssertionFailedf(
+				"inline JSON encountered in JSON contains filter fallback for column %q",
+				rf.table.spec.FetchedColumns[f.colIdx].Name,
+			)
+		}
+		contains, err := f.program.Passes()
+		if err != nil {
+			return err
+		}
+		if !contains {
 			rf.lastRowPassesJSONContainsFilter = false
 			return nil
 		}
-		if err := encDatum.EnsureDecoded(rf.table.spec.FetchedColumns[f.colIdx].Type, rf.alloc); err != nil {
-			return err
-		}
-		return errors.AssertionFailedf(
-			"inline JSON encountered in JSON contains filter fallback for column %q",
-			rf.table.spec.FetchedColumns[f.colIdx].Name,
-		)
 	}
-	contains, err := f.program.Passes()
-	if err != nil {
-		return err
-	}
-	rf.lastRowPassesJSONContainsFilter = contains
+	rf.lastRowPassesJSONContainsFilter = true
 	return nil
 }
 

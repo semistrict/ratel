@@ -1,0 +1,101 @@
+// Copyright 2026 The Ratel Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Package planassert provides reusable EXPLAIN-plan readers and assertions for
+// inproc integration tests.
+package planassert
+
+import (
+	"context"
+	"database/sql"
+	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+// VecVerbose returns the EXPLAIN (VEC, VERBOSE) output joined into one string.
+func VecVerbose(t testing.TB, ctx context.Context, db *sql.DB, query string) string {
+	t.Helper()
+
+	rows, err := db.QueryContext(ctx, `EXPLAIN (VEC, VERBOSE) `+query)
+	require.NoError(t, err)
+	defer rows.Close()
+
+	var lines []string
+	for rows.Next() {
+		var line string
+		require.NoError(t, rows.Scan(&line))
+		lines = append(lines, line)
+	}
+	require.NoError(t, rows.Err())
+	return strings.Join(lines, "\n")
+}
+
+// DistSQLJSON returns the EXPLAIN (DISTSQL, JSON) output.
+func DistSQLJSON(t testing.TB, ctx context.Context, db *sql.DB, query string) string {
+	t.Helper()
+
+	var plan string
+	err := db.QueryRowContext(ctx, `EXPLAIN (DISTSQL, JSON) `+query).Scan(&plan)
+	require.NoError(t, err)
+	return plan
+}
+
+// DistSQLVerbose returns the EXPLAIN (DISTSQL) output joined into one string.
+func DistSQLVerbose(t testing.TB, ctx context.Context, db *sql.DB, query string) string {
+	t.Helper()
+
+	rows, err := db.QueryContext(ctx, `EXPLAIN (DISTSQL) `+query)
+	require.NoError(t, err)
+	defer rows.Close()
+
+	var lines []string
+	for rows.Next() {
+		var line string
+		require.NoError(t, rows.Scan(&line))
+		lines = append(lines, line)
+	}
+	require.NoError(t, rows.Err())
+	return strings.Join(lines, "\n")
+}
+
+// Contains asserts that the plan output contains all requested fragments.
+func Contains(t testing.TB, plan string, fragments ...string) {
+	t.Helper()
+	for _, fragment := range fragments {
+		require.Contains(t, plan, fragment)
+	}
+}
+
+// NotContains asserts that the plan output omits all requested fragments.
+func NotContains(t testing.TB, plan string, fragments ...string) {
+	t.Helper()
+	for _, fragment := range fragments {
+		require.NotContains(t, plan, fragment)
+	}
+}
+
+// UsesColBatchScan asserts that the plan stays in the native vectorized scan.
+func UsesColBatchScan(t testing.TB, plan string) {
+	t.Helper()
+	Contains(t, plan, "*colfetcher.ColBatchScan")
+	NotContains(t, plan, "*rowexec.tableReader")
+}
+
+// UsesFullDistribution asserts that the plan is distributed across the cluster.
+func UsesFullDistribution(t testing.TB, plan string) {
+	t.Helper()
+	Contains(t, plan, "distribution: full")
+}

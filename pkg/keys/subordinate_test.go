@@ -166,6 +166,69 @@ func TestSubordinatePathKeySortOrder(t *testing.T) {
 	}
 }
 
+func TestSubordinatePathPrefixCoversSubtree(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	codec := SystemSQLCodec
+	pkPrefix := encoding.EncodeUvarintAscending(codec.IndexPrefix(42, 1), 7)
+	rowKey := MakeFamilyKey(pkPrefix, 0)
+
+	path := []SubordinatePathSegment{
+		{Kind: SubordinatePathObjectKey, ObjectKey: "needle"},
+	}
+	prefix := roachpb.Key(MakeSubordinatePathPrefix(rowKey, 5, path))
+	child := roachpb.Key(MakeSubordinatePathKey(rowKey, 5, append(append([]SubordinatePathSegment(nil), path...),
+		SubordinatePathSegment{Kind: SubordinatePathObjectKey, ObjectKey: "tiny"})))
+	sibling := roachpb.Key(MakeSubordinatePathKey(rowKey, 5, []SubordinatePathSegment{
+		{Kind: SubordinatePathObjectKey, ObjectKey: "other"},
+	}))
+
+	require.True(t, prefix.Compare(child) <= 0)
+	require.True(t, child.Compare(prefix.PrefixEnd()) < 0)
+	require.True(t, sibling.Compare(prefix) < 0 || sibling.Compare(prefix.PrefixEnd()) >= 0)
+}
+
+func TestSubordinateExactKeyNextExcludesChildren(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	codec := SystemSQLCodec
+	pkPrefix := encoding.EncodeUvarintAscending(codec.IndexPrefix(42, 1), 7)
+	rowKey := roachpb.Key(MakeFamilyKey(pkPrefix, 0))
+
+	root := roachpb.Key(MakeSubordinatePathKey([]byte(rowKey), 5, []SubordinatePathSegment{{Kind: SubordinatePathHeader}}))
+	child := roachpb.Key(MakeSubordinatePathKey([]byte(rowKey), 5, []SubordinatePathSegment{
+		{Kind: SubordinatePathObjectKey, ObjectKey: "needle"},
+	}))
+
+	require.True(t, root.Compare(child) < 0)
+	require.True(t, root.Next().Compare(child) <= 0)
+	require.True(t, child.Compare(root.Next()) >= 0)
+}
+
+func TestSubordinateStoredAncestorExactKeysSortBeforeDescendants(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	codec := SystemSQLCodec
+	pkPrefix := encoding.EncodeUvarintAscending(codec.IndexPrefix(42, 1), 7)
+	rowKey := roachpb.Key(MakeFamilyKey(pkPrefix, 0))
+
+	root := roachpb.Key(MakeSubordinatePathKey([]byte(rowKey), 5, []SubordinatePathSegment{
+		{Kind: SubordinatePathHeader},
+	}))
+	child := roachpb.Key(MakeSubordinatePathKey([]byte(rowKey), 5, []SubordinatePathSegment{
+		{Kind: SubordinatePathHeader},
+		{Kind: SubordinatePathObjectKey, ObjectKey: "a"},
+	}))
+	grandchild := roachpb.Key(MakeSubordinatePathKey([]byte(rowKey), 5, []SubordinatePathSegment{
+		{Kind: SubordinatePathHeader},
+		{Kind: SubordinatePathObjectKey, ObjectKey: "a"},
+		{Kind: SubordinatePathArrayIndex, ArrayIdx: 1},
+	}))
+
+	require.True(t, root.Compare(child) < 0)
+	require.True(t, child.Compare(grandchild) < 0)
+}
+
 func TestSubordinateKeyRowPrefix(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 

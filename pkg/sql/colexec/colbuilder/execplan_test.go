@@ -197,12 +197,12 @@ func TestSupportedNativelyAcceptsScanLocalJSONTableReader(t *testing.T) {
 					Path:         []string{`p:"a"`},
 					Mode:         1,
 				},
-				JsonContainsFilter: &execinfrapb.JSONContainsFilterSpec{
+				JsonContainsFilters: []execinfrapb.JSONContainsFilterSpec{{
 					SourceColIdx: 0,
 					Kind:         4,
 					Path:         []string{`p:"a"`},
 					Right:        execinfrapb.Expression{Expr: `'{"b":[1]}'::JSONB`},
-				},
+				}},
 				JsonAccesses: []execinfrapb.JSONAccessSpec{{
 					SourceColIdx: 0,
 					Kind:         5,

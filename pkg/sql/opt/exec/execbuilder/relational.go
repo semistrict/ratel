@@ -1096,21 +1096,22 @@ func (b *Builder) tryBuildScanWithJSONContainsFilter(sel *memo.SelectExpr) (exec
 	}
 
 	var (
-		jsonFilter *exec.JSONContainsFilter
-		filterIdx  = -1
-		err        error
+		jsonFilters []exec.JSONContainsFilter
+		filterIdxs  util.FastIntSet
+		err         error
 	)
 	for i := range sel.Filters {
+		var jsonFilter *exec.JSONContainsFilter
 		jsonFilter, ok, err = b.extractJSONContainsScanFilter(sel, scan, sel.Filters[i].Condition)
 		if err != nil {
 			return execPlan{}, false, err
 		}
 		if ok {
-			filterIdx = i
-			break
+			jsonFilters = append(jsonFilters, *jsonFilter)
+			filterIdxs.Add(i)
 		}
 	}
-	if filterIdx == -1 {
+	if len(jsonFilters) == 0 {
 		return execPlan{}, false, nil
 	}
 
@@ -1123,8 +1124,10 @@ func (b *Builder) tryBuildScanWithJSONContainsFilter(sel *memo.SelectExpr) (exec
 	if err != nil {
 		return execPlan{}, false, err
 	}
-	params.ExtraNeededCols.Add(int(jsonFilter.Access.SourceCol))
-	params.JSONContainsFilter = jsonFilter
+	params.JSONContainsFilters = append(params.JSONContainsFilters, jsonFilters...)
+	for i := range jsonFilters {
+		params.ExtraNeededCols.Add(int(jsonFilters[i].Access.SourceCol))
+	}
 
 	res := execPlan{outputCols: outputCols}
 	root, err := b.factory.ConstructScan(
@@ -1137,10 +1140,14 @@ func (b *Builder) tryBuildScanWithJSONContainsFilter(sel *memo.SelectExpr) (exec
 		return execPlan{}, false, err
 	}
 	res.root = root
-	if len(sel.Filters) > 1 {
+	if len(sel.Filters) > len(jsonFilters) {
 		var residual memo.FiltersExpr
-		residual = append(residual, sel.Filters[:filterIdx]...)
-		residual = append(residual, sel.Filters[filterIdx+1:]...)
+		for i := range sel.Filters {
+			if filterIdxs.Contains(i) {
+				continue
+			}
+			residual = append(residual, sel.Filters[i])
+		}
 		filter, err := b.buildScalarWithMap(res.outputCols, &residual)
 		if err != nil {
 			return execPlan{}, false, err
@@ -1602,7 +1609,7 @@ func (b *Builder) tryBuildScanWithJSONFilterAndAccessProject(prj *memo.ProjectEx
 		return execPlan{}, false, nil
 	}
 	sel, ok := prj.Input.(*memo.SelectExpr)
-	if !ok || !jsonProjectOrderingSupported(prj) {
+	if !ok {
 		return execPlan{}, false, nil
 	}
 	scan, ok := sel.Input.(*memo.ScanExpr)
@@ -1613,7 +1620,7 @@ func (b *Builder) tryBuildScanWithJSONFilterAndAccessProject(prj *memo.ProjectEx
 	var (
 		existsFilter      *exec.JSONExistsFilter
 		pathCompareFilter *exec.JSONPathCompareFilter
-		containsFilter    *exec.JSONContainsFilter
+		containsFilters   []exec.JSONContainsFilter
 		residual          memo.FiltersExpr
 	)
 	for i := range sel.Filters {
@@ -1621,11 +1628,7 @@ func (b *Builder) tryBuildScanWithJSONFilterAndAccessProject(prj *memo.ProjectEx
 		if f, matched, err := b.extractJSONContainsScanFilter(sel, scan, filter); err != nil {
 			return execPlan{}, false, err
 		} else if matched {
-			if containsFilter != nil {
-				residual = append(residual, sel.Filters[i])
-				continue
-			}
-			containsFilter = f
+			containsFilters = append(containsFilters, *f)
 			continue
 		}
 		if f, matched, err := b.extractJSONPathCompareScanFilter(sel, scan, filter); err != nil {
@@ -1650,14 +1653,10 @@ func (b *Builder) tryBuildScanWithJSONFilterAndAccessProject(prj *memo.ProjectEx
 		}
 		residual = append(residual, sel.Filters[i])
 	}
-	if existsFilter == nil && pathCompareFilter == nil && containsFilter == nil {
-		return execPlan{}, false, nil
-	}
-
 	md := b.mem.Metadata()
 	tab := md.Table(scan.Table)
 	private := scan.ScanPrivate
-	private.Cols = sel.Relational().OutputCols
+	private.Cols = prj.Passthrough.Union(residual.OuterCols())
 
 	params, outputCols, err := b.scanParams(tab, &private, sel.Relational(), sel.RequiredPhysical())
 	if err != nil {
@@ -1665,15 +1664,15 @@ func (b *Builder) tryBuildScanWithJSONFilterAndAccessProject(prj *memo.ProjectEx
 	}
 	params.JSONExistsFilter = existsFilter
 	params.JSONPathCompareFilter = pathCompareFilter
-	params.JSONContainsFilter = containsFilter
+	params.JSONContainsFilters = append(params.JSONContainsFilters, containsFilters...)
 	if existsFilter != nil {
 		params.ExtraNeededCols.Add(int(existsFilter.SourceCol))
 	}
 	if pathCompareFilter != nil {
 		params.ExtraNeededCols.Add(int(pathCompareFilter.Access.SourceCol))
 	}
-	if containsFilter != nil {
-		params.ExtraNeededCols.Add(int(containsFilter.Access.SourceCol))
+	for i := range containsFilters {
+		params.ExtraNeededCols.Add(int(containsFilters[i].Access.SourceCol))
 	}
 
 	res := execPlan{outputCols: outputCols}
@@ -1693,6 +1692,9 @@ func (b *Builder) tryBuildScanWithJSONFilterAndAccessProject(prj *memo.ProjectEx
 		params.JSONAccesses = append(params.JSONAccesses, *prog)
 		params.ExtraNeededCols.Add(int(prog.SourceCol))
 		res.outputCols.Set(int(item.Col), int(prog.OutputOrdinal))
+	}
+	if existsFilter == nil && pathCompareFilter == nil && len(containsFilters) == 0 && len(params.JSONAccesses) == 0 {
+		return execPlan{}, false, nil
 	}
 
 	root, err := b.factory.ConstructScan(
@@ -1743,8 +1745,13 @@ func (b *Builder) tryBuildScanWithJSONAccessProject(prj *memo.ProjectExpr) (exec
 		return execPlan{}, false, nil
 	}
 	scan, ok := prj.Input.(*memo.ScanExpr)
-	if !ok || !jsonProjectOrderingSupported(prj) {
+	if !ok {
 		return execPlan{}, false, nil
+	}
+	if len(prj.Projections) == 1 {
+		if _, ok := stripTransparentScalarCasts(prj.Projections[0].Element).(*memo.FetchTextPathExpr); ok {
+			return execPlan{}, false, errors.AssertionFailedf("entered tryBuildScanWithJSONAccessProject")
+		}
 	}
 
 	md := b.mem.Metadata()

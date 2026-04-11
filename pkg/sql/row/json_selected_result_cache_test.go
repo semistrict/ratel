@@ -60,3 +60,30 @@ func TestJSONSelectedPathResultCacheMissingPath(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "NULL", textDatum.String())
 }
+
+func TestJSONSelectedPathResultCacheCachesContainmentResults(t *testing.T) {
+	var builder SubordinateJSONBuilder
+	doc, err := jsonutil.ParseJSON(`1`)
+	require.NoError(t, err)
+	require.NoError(t, builder.Set(
+		[]keys.SubordinatePathSegment{{Kind: keys.SubordinatePathHeader}},
+		SubordinateJSONNodeScalar,
+		doc,
+	))
+
+	right, err := jsonutil.ParseJSON(`1`)
+	require.NoError(t, err)
+	program, err := NewJSONContainsProgram(nil, right, false)
+	require.NoError(t, err)
+
+	var cache JSONSelectedPathResultCache
+	contains, err := cache.ContainsResult(&builder, program)
+	require.NoError(t, err)
+	require.True(t, contains)
+	require.Len(t, cache.contains, 1)
+
+	contains, err = cache.ContainsResult(nil, program)
+	require.NoError(t, err)
+	require.True(t, contains)
+	require.Len(t, cache.contains, 1)
+}

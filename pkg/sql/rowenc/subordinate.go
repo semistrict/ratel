@@ -73,9 +73,9 @@ func EncodeSubordinateJSONValue(j jsonutil.JSON) (roachpb.Value, error) {
 	return v, nil
 }
 
-func DecodeSubordinateJSONValueWithCardinality(
+func PeekSubordinateJSONValueMetadata(
 	v roachpb.Value,
-) (SubordinateJSONNodeKind, int, jsonutil.JSON, error) {
+) (SubordinateJSONNodeKind, int, []byte, error) {
 	raw, err := v.GetBytes()
 	if err != nil {
 		return 0, 0, nil, err
@@ -95,12 +95,37 @@ func DecodeSubordinateJSONValueWithCardinality(
 		}
 		return kind, int(count), nil, nil
 	case SubordinateJSONScalar:
-		remaining, j, err := jsonutil.DecodeJSON(raw[1:])
+		return kind, 0, raw[1:], nil
+	default:
+		return 0, 0, nil, errors.AssertionFailedf("unknown subordinate JSON node kind %d", kind)
+	}
+}
+
+func DecodeSubordinateJSONScalarBytes(raw []byte) (jsonutil.JSON, error) {
+	remaining, j, err := jsonutil.DecodeJSON(raw)
+	if err != nil {
+		return nil, err
+	}
+	if len(remaining) != 0 {
+		return nil, errors.AssertionFailedf("trailing data in subordinate JSON scalar")
+	}
+	return j, nil
+}
+
+func DecodeSubordinateJSONValueWithCardinality(
+	v roachpb.Value,
+) (SubordinateJSONNodeKind, int, jsonutil.JSON, error) {
+	kind, childCount, scalarRaw, err := PeekSubordinateJSONValueMetadata(v)
+	if err != nil {
+		return 0, 0, nil, err
+	}
+	switch kind {
+	case SubordinateJSONObject, SubordinateJSONArray:
+		return kind, childCount, nil, nil
+	case SubordinateJSONScalar:
+		j, err := DecodeSubordinateJSONScalarBytes(scalarRaw)
 		if err != nil {
 			return 0, 0, nil, err
-		}
-		if len(remaining) != 0 {
-			return 0, 0, nil, errors.AssertionFailedf("trailing data in subordinate JSON scalar")
 		}
 		return kind, 0, j, nil
 	default:

@@ -48,7 +48,7 @@ type SubordinatePathSegment struct {
 //
 // The resulting key layout is:
 //
-//	<pk_prefix>/<family_0:uvarint(0)>/<col_id:uvarint>/<path...>/<suffix_len:uvarint>
+//	<pk_prefix>/<family_0:uvarint(0)>/<col_id:uvarint>/<path...>/<end:uvarint(0)>/<suffix_len:uvarint>
 //
 // Path segments are encoded as:
 //
@@ -56,14 +56,29 @@ type SubordinatePathSegment struct {
 //	<array idx>  => <kind:uvarint(1)><elem_idx:uvarint>
 //	<object key> => <kind:uvarint(2)><key:bytes>
 //
+// The extra trailing header/end marker makes an exact ancestor key sort before
+// all of its descendants while still allowing MakeSubordinatePathPrefix to
+// describe subtree spans over the logical path alone.
+//
 // suffix_len is the number of bytes from the family-0 sentinel through the end
-// of the path. This makes GetRowPrefixLength work correctly: the final uvarint
-// tells it how many preceding bytes to strip (plus the length byte itself) to
-// recover the pk_prefix.
+// marker. This makes GetRowPrefixLength work correctly: the final uvarint tells
+// it how many preceding bytes to strip (plus the length byte itself) to recover
+// the pk_prefix.
 func MakeSubordinatePathKey(rowKey []byte, colID uint32, path []SubordinatePathSegment) []byte {
 	// rowKey ends with the family-0 sentinel, a single-byte uvarint(0).
 	pkPrefixLen := len(rowKey) - 1
+	key := MakeSubordinatePathPrefix(rowKey, colID, path)
+	key = encoding.EncodeUvarintAscending(key, uint64(SubordinatePathHeader))
 
+	suffixLen := len(key) - pkPrefixLen
+	key = encoding.EncodeUvarintAscending(key, uint64(suffixLen))
+	return key
+}
+
+// MakeSubordinatePathPrefix builds the sortable key prefix for a subordinate
+// JSON/array path without the trailing suffix-length uvarint. It can be used
+// to construct subtree spans like [prefix, prefix.PrefixEnd()).
+func MakeSubordinatePathPrefix(rowKey []byte, colID uint32, path []SubordinatePathSegment) []byte {
 	key := make([]byte, len(rowKey), len(rowKey)+16)
 	copy(key, rowKey)
 
@@ -81,9 +96,6 @@ func MakeSubordinatePathKey(rowKey []byte, colID uint32, path []SubordinatePathS
 			panic(errors.AssertionFailedf("unknown subordinate path segment kind %d", seg.Kind))
 		}
 	}
-
-	suffixLen := len(key) - pkPrefixLen
-	key = encoding.EncodeUvarintAscending(key, uint64(suffixLen))
 	return key
 }
 
@@ -173,10 +185,16 @@ func DecodeSubordinatePathKey(key []byte) (rowPrefix []byte, colID uint32, path 
 			if len(path) == 0 {
 				return nil, 0, nil, errors.Errorf("unknown subordinate path segment kind %d", seg.Kind)
 			}
+			if n := len(path); n > 0 && path[n-1].Kind == SubordinatePathHeader {
+				path = path[:n-1]
+			}
 			return rowPrefix, uint32(col), path, nil
 		}
 	}
 
+	if n := len(path); n > 0 && path[n-1].Kind == SubordinatePathHeader {
+		path = path[:n-1]
+	}
 	return rowPrefix, uint32(col), path, nil
 }
 

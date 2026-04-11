@@ -78,7 +78,11 @@ type JSONAccessProgram struct {
 // a fetched JSON column or JSON path using the subordinate JSON stream
 // directly, without materializing the matched subtree for filter-only scans.
 type JSONContainsProgram struct {
-	matcher *subordinateJSONContainsMatcher
+	matcher     *subordinateJSONContainsMatcher
+	right       jsonutil.JSON
+	pattern     jsonutil.ContainsPattern
+	containedBy bool
+	cacheKey    string
 }
 
 // SharedJSONAccessProgramKey canonicalizes the per-column work key used to
@@ -186,7 +190,17 @@ func NewJSONContainsProgram(path []string, right jsonutil.JSON, containedBy bool
 	if err != nil {
 		return nil, err
 	}
-	return &JSONContainsProgram{matcher: matcher}, nil
+	pattern, err := jsonutil.NewContainsPattern(right)
+	if err != nil {
+		return nil, err
+	}
+	return &JSONContainsProgram{
+		matcher:     matcher,
+		right:       right,
+		pattern:     pattern,
+		containedBy: containedBy,
+		cacheKey:    containmentCacheKey(containedBy, right),
+	}, nil
 }
 
 func (p *JSONContainsProgram) Reset() {
@@ -226,6 +240,24 @@ func (p *JSONContainsProgram) SawSubordinate() bool {
 
 func (p *JSONContainsProgram) Passes() (bool, error) {
 	return p.matcher.Result()
+}
+
+// EvaluateMaterialized applies the containment predicate to a materialized JSON
+// subtree. This is used when another scan-local program already built the same
+// selected path, so containment can reuse that subtree instead of keeping a
+// second streamed matcher in lockstep.
+func (p *JSONContainsProgram) EvaluateMaterialized(j jsonutil.JSON) (bool, error) {
+	if p.containedBy {
+		return p.pattern.Contains(j)
+	}
+	return jsonutil.ContainsWithPattern(j, p.pattern)
+}
+
+func containmentCacheKey(containedBy bool, right jsonutil.JSON) string {
+	if containedBy {
+		return "contained-by|" + right.String()
+	}
+	return "contains|" + right.String()
 }
 
 func (p *JSONAccessProgram) Reset() {
@@ -271,6 +303,17 @@ func (p *JSONAccessProgram) ObserveSelected(
 		return p.matcher.ObserveSelected(relPath, kind, childCount, j)
 	default:
 		return errors.AssertionFailedf("ObserveSelected called for non-path JSON access kind %d", p.kind)
+	}
+}
+
+func (p *JSONAccessProgram) NeedsScalarAt(
+	path []keys.SubordinatePathSegment, kind rowenc.SubordinateJSONNodeKind,
+) bool {
+	switch p.kind {
+	case jsonAccessExists, jsonAccessExistsAny, jsonAccessExistsAll:
+		return subordinateJSONExistsCandidateNeedsScalar(path, kind)
+	default:
+		return true
 	}
 }
 
@@ -372,6 +415,7 @@ func (p *JSONAccessProgram) observeExistsSet(
 func subordinateJSONExistsCandidate(
 	path []keys.SubordinatePathSegment, kind rowenc.SubordinateJSONNodeKind, j jsonutil.JSON,
 ) (string, bool, error) {
+	path = normalizeObservedSubordinateJSONPath(path)
 	if len(path) == 1 && path[0].Kind == keys.SubordinatePathHeader && kind == rowenc.SubordinateJSONScalar {
 		txt, err := j.AsText()
 		if err != nil {
@@ -401,6 +445,19 @@ func subordinateJSONExistsCandidate(
 		}
 	}
 	return "", false, nil
+}
+
+func subordinateJSONExistsCandidateNeedsScalar(
+	path []keys.SubordinatePathSegment, kind rowenc.SubordinateJSONNodeKind,
+) bool {
+	path = normalizeObservedSubordinateJSONPath(path)
+	if kind != rowenc.SubordinateJSONScalar {
+		return false
+	}
+	if len(path) == 1 && path[0].Kind == keys.SubordinatePathHeader {
+		return true
+	}
+	return len(path) == 1 && path[0].Kind == keys.SubordinatePathArrayIndex
 }
 
 func makeJSONAccessKeySet(keys []string) map[string]struct{} {

@@ -60,6 +60,7 @@ type JSONSelectedPathState struct {
 
 type subordinateJSONPathSelector struct {
 	queryPath     []subordinateJSONQueryPathStep
+	staticTarget  []keys.SubordinatePathSegment
 	targetPrefix  []keys.SubordinatePathSegment
 	resolvedSteps int
 	sawRoot       bool
@@ -81,6 +82,94 @@ func NewJSONSelectedPathState(path []string) *JSONSelectedPathState {
 	}
 }
 
+// TryStaticSubordinateJSONPath decodes a scan-local JSON path into concrete
+// subordinate key segments when that path can be addressed statically from KV
+// keys alone. It returns ok=false for ambiguous key-or-index steps and for
+// negative indexes, which require runtime container metadata.
+func TryStaticSubordinateJSONPath(path []string) ([]keys.SubordinatePathSegment, bool, error) {
+	segments := make([]keys.SubordinatePathSegment, 0, len(path))
+	for _, enc := range path {
+		step, err := decodeSubordinateJSONQueryPathStep(enc)
+		if err != nil {
+			return nil, false, err
+		}
+		switch step.kind {
+		case subordinateJSONQueryPathKey:
+			segments = append(segments, keys.SubordinatePathSegment{
+				Kind:      keys.SubordinatePathObjectKey,
+				ObjectKey: step.value,
+			})
+		case subordinateJSONQueryPathIndex:
+			if step.index < 0 {
+				return nil, false, nil
+			}
+			segments = append(segments, keys.SubordinatePathSegment{
+				Kind:     keys.SubordinatePathArrayIndex,
+				ArrayIdx: uint32(step.index),
+			})
+		case subordinateJSONQueryPathKeyOrIndex:
+			if idx, err := strconv.Atoi(step.value); err == nil {
+				if idx < 0 {
+					return nil, false, nil
+				}
+				return nil, false, nil
+			}
+			segments = append(segments, keys.SubordinatePathSegment{
+				Kind:      keys.SubordinatePathObjectKey,
+				ObjectKey: step.value,
+			})
+		default:
+			return nil, false, errors.AssertionFailedf("unknown subordinate JSON path step kind %d", step.kind)
+		}
+	}
+	return segments, true, nil
+}
+
+// LongestStaticSubordinateJSONPathPrefix returns the longest path prefix that
+// can be addressed directly from subordinate JSON keys alone. Unlike
+// TryStaticSubordinateJSONPath, it stops at the first runtime-dependent step
+// and returns the static prefix collected so far.
+func LongestStaticSubordinateJSONPathPrefix(
+	path []string,
+) ([]keys.SubordinatePathSegment, bool, error) {
+	segments := make([]keys.SubordinatePathSegment, 0, len(path))
+	for _, enc := range path {
+		step, err := decodeSubordinateJSONQueryPathStep(enc)
+		if err != nil {
+			return nil, false, err
+		}
+		switch step.kind {
+		case subordinateJSONQueryPathKey:
+			segments = append(segments, keys.SubordinatePathSegment{
+				Kind:      keys.SubordinatePathObjectKey,
+				ObjectKey: step.value,
+			})
+		case subordinateJSONQueryPathIndex:
+			if step.index < 0 {
+				return segments, true, nil
+			}
+			segments = append(segments, keys.SubordinatePathSegment{
+				Kind:     keys.SubordinatePathArrayIndex,
+				ArrayIdx: uint32(step.index),
+			})
+		case subordinateJSONQueryPathKeyOrIndex:
+			if idx, err := strconv.Atoi(step.value); err == nil {
+				if idx < 0 {
+					return segments, true, nil
+				}
+				return segments, true, nil
+			}
+			segments = append(segments, keys.SubordinatePathSegment{
+				Kind:      keys.SubordinatePathObjectKey,
+				ObjectKey: step.value,
+			})
+		default:
+			return nil, false, errors.AssertionFailedf("unknown subordinate JSON query path step kind %d", step.kind)
+		}
+	}
+	return segments, true, nil
+}
+
 // Reset prepares the selector for a new row.
 func (s *JSONSelectedPathState) Reset() {
 	s.selector = newSubordinateJSONPathSelector(s.encodedPath)
@@ -98,6 +187,12 @@ func (s *JSONSelectedPathState) Select(
 	return s.selector.Observe(path, kind, childCount, scalar)
 }
 
+func (s *JSONSelectedPathState) SelectPath(
+	path []keys.SubordinatePathSegment, kind rowenc.SubordinateJSONNodeKind, childCount int,
+) ([]keys.SubordinatePathSegment, bool, error) {
+	return s.selector.Observe(path, kind, childCount, nil)
+}
+
 func newSubordinateJSONPathSelector(path []string) *subordinateJSONPathSelector {
 	steps := make([]subordinateJSONQueryPathStep, 0, len(path))
 	for _, enc := range path {
@@ -107,7 +202,90 @@ func newSubordinateJSONPathSelector(path []string) *subordinateJSONPathSelector 
 		}
 		steps = append(steps, step)
 	}
-	return &subordinateJSONPathSelector{queryPath: steps}
+	selector := &subordinateJSONPathSelector{queryPath: steps}
+	staticPath, ok, err := TryStaticSubordinateJSONPath(path)
+	if err != nil {
+		selector.parseErr = err
+		return selector
+	}
+	if ok {
+		selector.staticTarget = staticPath
+	}
+	return selector
+}
+
+func matchObservedSubordinateJSONStep(
+	step subordinateJSONQueryPathStep, observed keys.SubordinatePathSegment,
+) (keys.SubordinatePathSegment, bool, bool, error) {
+	switch step.kind {
+	case subordinateJSONQueryPathKey:
+		if observed.Kind != keys.SubordinatePathObjectKey || observed.ObjectKey != step.value {
+			return keys.SubordinatePathSegment{}, false, false, nil
+		}
+		return observed, true, false, nil
+	case subordinateJSONQueryPathIndex:
+		if step.index < 0 {
+			return keys.SubordinatePathSegment{}, false, true, nil
+		}
+		if observed.Kind != keys.SubordinatePathArrayIndex || observed.ArrayIdx != uint32(step.index) {
+			return keys.SubordinatePathSegment{}, false, false, nil
+		}
+		return observed, true, false, nil
+	case subordinateJSONQueryPathKeyOrIndex:
+		switch observed.Kind {
+		case keys.SubordinatePathObjectKey:
+			if observed.ObjectKey != step.value {
+				return keys.SubordinatePathSegment{}, false, false, nil
+			}
+			return observed, true, false, nil
+		case keys.SubordinatePathArrayIndex:
+			idx, err := strconv.Atoi(step.value)
+			if err != nil || idx < 0 || observed.ArrayIdx != uint32(idx) {
+				return keys.SubordinatePathSegment{}, false, false, nil
+			}
+			return observed, true, false, nil
+		default:
+			return keys.SubordinatePathSegment{}, false, false, nil
+		}
+	default:
+		return keys.SubordinatePathSegment{}, false, false,
+			errors.AssertionFailedf("unknown subordinate JSON path step kind %d", step.kind)
+	}
+}
+
+func (s *subordinateJSONPathSelector) tryDirectMatch(
+	normalizedPath []keys.SubordinatePathSegment,
+) ([]keys.SubordinatePathSegment, bool, error) {
+	if len(normalizedPath) == 0 || len(s.queryPath) == 0 {
+		return nil, false, nil
+	}
+	limit := len(normalizedPath)
+	if limit > len(s.queryPath) {
+		limit = len(s.queryPath)
+	}
+	resolved := make([]keys.SubordinatePathSegment, 0, limit)
+	for i := 0; i < limit; i++ {
+		seg, ok, unresolved, err := matchObservedSubordinateJSONStep(s.queryPath[i], normalizedPath[i])
+		if err != nil {
+			return nil, false, err
+		}
+		if unresolved || !ok {
+			return nil, false, nil
+		}
+		resolved = append(resolved, seg)
+	}
+	if len(normalizedPath) >= len(s.queryPath) {
+		relPath := []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathHeader}}
+		if len(normalizedPath) > len(s.queryPath) {
+			relPath = append(relPath, normalizedPath[len(s.queryPath):]...)
+		}
+		return relPath, true, nil
+	}
+	if len(resolved) > s.resolvedSteps {
+		s.targetPrefix = append(s.targetPrefix[:0], resolved...)
+		s.resolvedSteps = len(resolved)
+	}
+	return nil, false, nil
 }
 
 func (s *subordinateJSONPathSelector) Observe(
@@ -126,8 +304,22 @@ func (s *subordinateJSONPathSelector) Observe(
 	if len(s.queryPath) == 0 {
 		return append([]keys.SubordinatePathSegment(nil), path...), true, nil
 	}
+	normalizedPath := normalizeObservedSubordinateJSONPath(path)
+	if s.staticTarget != nil {
+		if !subordinatePathHasPrefix(normalizedPath, s.staticTarget) {
+			return nil, false, nil
+		}
+		relPath := []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathHeader}}
+		if len(normalizedPath) > len(s.staticTarget) {
+			relPath = append(relPath, normalizedPath[len(s.staticTarget):]...)
+		}
+		return relPath, true, nil
+	}
+	if relPath, ok, err := s.tryDirectMatch(normalizedPath); err != nil || ok {
+		return relPath, ok, err
+	}
 
-	if len(path) == 1 && path[0].Kind == keys.SubordinatePathHeader {
+	if len(normalizedPath) == 1 && normalizedPath[0].Kind == keys.SubordinatePathHeader {
 		s.sawRoot = true
 		if s.resolvedSteps == 0 {
 			seg, ok, err := resolveSubordinateJSONPathStep(kind, childCount, s.queryPath[0])
@@ -143,11 +335,11 @@ func (s *subordinateJSONPathSelector) Observe(
 		}
 		return nil, false, nil
 	}
-	if !s.sawRoot {
-		return nil, false, errors.AssertionFailedf("subordinate JSON child encountered before root header")
+	if s.resolvedSteps == 0 {
+		return nil, false, nil
 	}
 
-	if s.resolvedSteps < len(s.queryPath) && subordinatePathEqual(path, s.targetPrefix) {
+	if s.resolvedSteps < len(s.queryPath) && subordinatePathEqual(normalizedPath, s.targetPrefix) {
 		seg, ok, err := resolveSubordinateJSONPathStep(kind, childCount, s.queryPath[s.resolvedSteps])
 		if err != nil {
 			return nil, false, err
@@ -160,12 +352,12 @@ func (s *subordinateJSONPathSelector) Observe(
 		s.resolvedSteps++
 	}
 
-	if s.resolvedSteps != len(s.queryPath) || !subordinatePathHasPrefix(path, s.targetPrefix) {
+	if s.resolvedSteps != len(s.queryPath) || !subordinatePathHasPrefix(normalizedPath, s.targetPrefix) {
 		return nil, false, nil
 	}
 	relPath := []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathHeader}}
-	if len(path) > len(s.targetPrefix) {
-		relPath = append(relPath, path[len(s.targetPrefix):]...)
+	if len(normalizedPath) > len(s.targetPrefix) {
+		relPath = append(relPath, normalizedPath[len(s.targetPrefix):]...)
 	}
 	return relPath, true, nil
 }
@@ -311,4 +503,11 @@ func subordinatePathHasPrefix(path, prefix []keys.SubordinatePathSegment) bool {
 		}
 	}
 	return true
+}
+
+func normalizeObservedSubordinateJSONPath(path []keys.SubordinatePathSegment) []keys.SubordinatePathSegment {
+	if len(path) > 1 && path[0].Kind == keys.SubordinatePathHeader {
+		return path[1:]
+	}
+	return path
 }

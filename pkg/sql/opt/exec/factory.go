@@ -66,13 +66,13 @@ type ScanParams struct {
 	// internal-only column.
 	JSONPathCompareFilter *JSONPathCompareFilter
 
-	// JSONContainsFilter, when set, evaluates a filter of the form
+	// JSONContainsFilters, when set, evaluate filters of the form
 	//   json_col @> <right>
 	//   json_col <@ <right>
 	//   json_col->... @> <right>
 	// while scanning. This is only used when the source JSON column is fetched
 	// as an internal-only column.
-	JSONContainsFilter *JSONContainsFilter
+	JSONContainsFilters []JSONContainsFilter
 
 	// JSONAccesses contains scan-local JSON access programs that can compute
 	// derived results directly from recursive subordinate JSON storage.

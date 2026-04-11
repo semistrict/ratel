@@ -26,6 +26,7 @@ type JSONSelectedPathResultCache struct {
 	cachedText tree.Datum
 	haveJSON   bool
 	haveText   bool
+	contains   map[string]bool
 }
 
 // Reset clears all cached selected-path result datums.
@@ -34,6 +35,7 @@ func (c *JSONSelectedPathResultCache) Reset() {
 	c.cachedText = nil
 	c.haveJSON = false
 	c.haveText = false
+	c.contains = nil
 }
 
 // ResultDatum returns the cached result for kind, materializing from builder if
@@ -86,4 +88,37 @@ func (c *JSONSelectedPathResultCache) ResultDatum(
 	default:
 		return nil, errors.AssertionFailedf("unexpected selected JSON result kind %d", kind)
 	}
+}
+
+// ContainsResult returns the cached containment result for program, materializing
+// the selected JSON subtree if necessary.
+func (c *JSONSelectedPathResultCache) ContainsResult(
+	builder *SubordinateJSONBuilder, program *JSONContainsProgram,
+) (bool, error) {
+	if c.contains != nil {
+		if cached, ok := c.contains[program.cacheKey]; ok {
+			return cached, nil
+		}
+	}
+	d, err := c.ResultDatum(builder, JSONAccessFetchJSONPath)
+	if err != nil {
+		return false, err
+	}
+	var contains bool
+	if d != tree.DNull {
+		contains, err = program.EvaluateMaterialized(d.(*tree.DJSON).JSON)
+		if err != nil {
+			return false, err
+		}
+	}
+	if c.contains == nil {
+		c.contains = make(map[string]bool, 1)
+	}
+	c.contains[program.cacheKey] = contains
+	return contains, nil
+}
+
+// NumContainsResults returns the number of cached containment results.
+func (c *JSONSelectedPathResultCache) NumContainsResults() int {
+	return len(c.contains)
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/settings"
 	"github.com/semistrict/ratel/pkg/sql/catalog"
+	"github.com/semistrict/ratel/pkg/sql/rowenc"
 	"github.com/semistrict/ratel/pkg/sql/rowenc/valueside"
 	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 	"github.com/semistrict/ratel/pkg/util/log"
@@ -123,6 +124,7 @@ type putter interface {
 	Put(key, value interface{})
 	InitPut(key, value interface{}, failOnTombstones bool)
 	Del(key ...interface{})
+	DelRange(begin, end interface{}, returnKeys bool)
 }
 
 // InsertRow adds to the batch the kv operations necessary to insert a table row
@@ -185,7 +187,18 @@ func (ri *Inserter) InsertRow(
 		return err
 	}
 
-	// Write subordinate keys for array columns.
+	// Overwrite-style inserts must clear any existing subordinate keys before
+	// re-emitting the new subordinate rows, otherwise stale array/JSON entries
+	// from the previous value survive the write.
+	if overwrite {
+		subordinateStart, subordinateEnd := rowenc.SubordinateRowRange(primaryIndexKey)
+		if traceKV {
+			log.VEventfDepth(ctx, 1, 2, "DelRange %s - %s", subordinateStart, subordinateEnd)
+		}
+		b.DelRange(subordinateStart, subordinateEnd, false /* returnKeys */)
+	}
+
+	// Write subordinate keys for subordinate-encoded columns.
 	for i := range subEntries {
 		e := &subEntries[i]
 		putFn(ctx, b, &e.Key, &e.Value, traceKV)

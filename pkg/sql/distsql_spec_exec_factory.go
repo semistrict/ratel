@@ -15,8 +15,11 @@
 package sql
 
 import (
+	"sort"
+
 	"github.com/cockroachdb/errors"
 	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/sql/catalog"
 	"github.com/semistrict/ratel/pkg/sql/catalog/colinfo"
@@ -29,6 +32,7 @@ import (
 	"github.com/semistrict/ratel/pkg/sql/opt/exec"
 	"github.com/semistrict/ratel/pkg/sql/opt/exec/explain"
 	"github.com/semistrict/ratel/pkg/sql/physicalplan"
+	"github.com/semistrict/ratel/pkg/sql/row"
 	"github.com/semistrict/ratel/pkg/sql/rowenc"
 	"github.com/semistrict/ratel/pkg/sql/sem/builtins"
 	"github.com/semistrict/ratel/pkg/sql/sem/tree"
@@ -98,6 +102,225 @@ func (*distSQLSpecExecFactory) SupportsJSONScanAccessPrograms() bool {
 
 func (*distSQLSpecExecFactory) SupportsJSONPathCompareScanFilter() bool {
 	return true
+}
+
+type jsonPointLookupSpanBuilder struct {
+	rowKey roachpb.Key
+	spans  roachpb.Spans
+	seen   map[string]struct{}
+}
+
+func newJSONPointLookupSpanBuilder(rowKey roachpb.Key) *jsonPointLookupSpanBuilder {
+	b := &jsonPointLookupSpanBuilder{
+		rowKey: append(roachpb.Key(nil), rowKey...),
+		seen:   make(map[string]struct{}),
+	}
+	b.addExactKey(b.rowKey)
+	return b
+}
+
+func (b *jsonPointLookupSpanBuilder) addSpan(span roachpb.Span) {
+	key := string(span.Key) + "\x00" + string(span.EndKey)
+	if _, ok := b.seen[key]; ok {
+		return
+	}
+	b.seen[key] = struct{}{}
+	b.spans = append(b.spans, span)
+}
+
+func (b *jsonPointLookupSpanBuilder) addExactKey(key roachpb.Key) {
+	cp := append(roachpb.Key(nil), key...)
+	b.addSpan(roachpb.Span{Key: cp, EndKey: cp.Next()})
+}
+
+func (b *jsonPointLookupSpanBuilder) addPathPrefix(prefix roachpb.Key) {
+	cp := append(roachpb.Key(nil), prefix...)
+	b.addSpan(roachpb.Span{Key: cp, EndKey: cp.PrefixEnd()})
+}
+
+func (b *jsonPointLookupSpanBuilder) addRootHeader(colID descpb.ColumnID) {
+	b.addExactKey(roachpb.Key(keys.MakeSubordinatePathKey(b.rowKey, uint32(colID),
+		[]keys.SubordinatePathSegment{{Kind: keys.SubordinatePathHeader}})))
+}
+
+func subordinateJSONStoredPath(path []keys.SubordinatePathSegment) []keys.SubordinatePathSegment {
+	stored := make([]keys.SubordinatePathSegment, 0, len(path)+1)
+	stored = append(stored, keys.SubordinatePathSegment{Kind: keys.SubordinatePathHeader})
+	stored = append(stored, path...)
+	return stored
+}
+
+func (b *jsonPointLookupSpanBuilder) addExistsKeys(colID descpb.ColumnID, objectKeys []string) {
+	b.addRootHeader(colID)
+	for _, objectKey := range objectKeys {
+		b.addExactKey(roachpb.Key(keys.MakeSubordinatePathKey(b.rowKey, uint32(colID), subordinateJSONStoredPath([]keys.SubordinatePathSegment{{
+			Kind:      keys.SubordinatePathObjectKey,
+			ObjectKey: objectKey,
+		}}))))
+	}
+}
+
+func (b *jsonPointLookupSpanBuilder) addSelectedPath(colID descpb.ColumnID, path []keys.SubordinatePathSegment) {
+	storedPath := subordinateJSONStoredPath(path)
+	b.addRootHeader(colID)
+	for i := 2; i < len(storedPath); i++ {
+		b.addExactKey(roachpb.Key(keys.MakeSubordinatePathKey(
+			b.rowKey, uint32(colID), storedPath[:i],
+		)))
+	}
+	b.addPathPrefix(roachpb.Key(keys.MakeSubordinatePathPrefix(
+		b.rowKey, uint32(colID), storedPath,
+	)))
+}
+
+func (b *jsonPointLookupSpanBuilder) finish() roachpb.Spans {
+	sort.Slice(b.spans, func(i, j int) bool {
+		if cmp := b.spans[i].Key.Compare(b.spans[j].Key); cmp != 0 {
+			return cmp < 0
+		}
+		return b.spans[i].EndKey.Compare(b.spans[j].EndKey) < 0
+	})
+	return b.spans
+}
+
+func exactSingleRowSentinelKey(spans roachpb.Spans) (roachpb.Key, bool) {
+	if len(spans) != 1 {
+		var rowKey roachpb.Key
+		for i := range spans {
+			span := spans[i]
+			if !span.EndKey.Equal(span.Key.Next()) {
+				continue
+			}
+			prefixLen, err := keys.GetRowPrefixLength(span.Key)
+			if err != nil || prefixLen != len(span.Key)-1 {
+				continue
+			}
+			if rowKey != nil {
+				if !rowKey.Equal(span.Key) {
+					return nil, false
+				}
+				continue
+			}
+			rowKey = append(roachpb.Key(nil), span.Key...)
+		}
+		if rowKey == nil {
+			return nil, false
+		}
+		return rowKey, true
+	}
+	span := spans[0]
+	if !span.EndKey.Equal(span.Key.PrefixEnd()) {
+		return nil, false
+	}
+	prefixLen, err := keys.GetRowPrefixLength(span.Key)
+	if err != nil || prefixLen != len(span.Key)-1 {
+		return nil, false
+	}
+	return append(roachpb.Key(nil), span.Key...), true
+}
+
+func addStaticJSONPathSpans(
+	builder *jsonPointLookupSpanBuilder, colID descpb.ColumnID, path []string,
+) (bool, error) {
+	if len(path) == 0 {
+		return false, nil
+	}
+	segments, ok, err := row.TryStaticSubordinateJSONPath(path)
+	if err != nil || !ok {
+		return ok, err
+	}
+	builder.addSelectedPath(colID, segments)
+	return true, nil
+}
+
+func maybeOptimizeExactPointLookupJSONSpans(
+	spans roachpb.Spans, table catalog.TableDescriptor, params exec.ScanParams,
+) (roachpb.Spans, bool, error) {
+	if params.Reverse {
+		return nil, false, nil
+	}
+	rowKey, ok := exactSingleRowSentinelKey(spans)
+	if !ok {
+		return nil, false, nil
+	}
+
+	colByOrd := table.AllColumns()
+	builder := newJSONPointLookupSpanBuilder(rowKey)
+	targeted := false
+
+	ensureSourceOnlyExtra := func(source exec.TableColumnOrdinal) bool {
+		return !params.NeededCols.Contains(int(source))
+	}
+
+	if params.JSONExistsFilter != nil {
+		source := params.JSONExistsFilter.SourceCol
+		if !ensureSourceOnlyExtra(source) {
+			return nil, false, nil
+		}
+		colID := colByOrd[int(source)].GetID()
+		switch params.JSONExistsFilter.Kind {
+		case exec.JSONAccessExists:
+			builder.addExistsKeys(colID, []string{params.JSONExistsFilter.Key})
+		case exec.JSONAccessExistsAny, exec.JSONAccessExistsAll:
+			builder.addExistsKeys(colID, params.JSONExistsFilter.Keys)
+		default:
+			return nil, false, nil
+		}
+		targeted = true
+	}
+
+	if params.JSONPathCompareFilter != nil {
+		source := params.JSONPathCompareFilter.Access.SourceCol
+		if !ensureSourceOnlyExtra(source) {
+			return nil, false, nil
+		}
+		ok, err := addStaticJSONPathSpans(builder, colByOrd[int(source)].GetID(), params.JSONPathCompareFilter.Access.Path)
+		if err != nil || !ok {
+			return nil, false, err
+		}
+		targeted = true
+	}
+
+	for i := range params.JSONContainsFilters {
+		filter := &params.JSONContainsFilters[i]
+		source := filter.Access.SourceCol
+		if !ensureSourceOnlyExtra(source) {
+			return nil, false, nil
+		}
+		ok, err := addStaticJSONPathSpans(builder, colByOrd[int(source)].GetID(), filter.Access.Path)
+		if err != nil || !ok {
+			return nil, false, err
+		}
+		targeted = true
+	}
+
+	for i := range params.JSONAccesses {
+		prog := &params.JSONAccesses[i]
+		source := prog.SourceCol
+		if !ensureSourceOnlyExtra(source) {
+			return nil, false, nil
+		}
+		colID := colByOrd[int(source)].GetID()
+		switch prog.Kind {
+		case exec.JSONAccessExists:
+			builder.addExistsKeys(colID, []string{prog.Key})
+		case exec.JSONAccessExistsAny, exec.JSONAccessExistsAll:
+			builder.addExistsKeys(colID, prog.Keys)
+		case exec.JSONAccessFetchJSONPath, exec.JSONAccessFetchTextPath:
+			ok, err := addStaticJSONPathSpans(builder, colID, prog.Path)
+			if err != nil || !ok {
+				return nil, false, err
+			}
+		default:
+			return nil, false, nil
+		}
+		targeted = true
+	}
+
+	if !targeted {
+		return nil, false, nil
+	}
+	return builder.finish(), true, nil
 }
 
 func (e *distSQLSpecExecFactory) getPlanCtx(recommendation distRecommendation) *PlanningCtx {
@@ -231,8 +454,7 @@ func (e *distSQLSpecExecFactory) ConstructScan(
 	jsonExistsFilterFetchIdx = -1
 	var jsonPathCompareFilterFetchIdx int
 	jsonPathCompareFilterFetchIdx = -1
-	var jsonContainsFilterFetchIdx int
-	jsonContainsFilterFetchIdx = -1
+	jsonContainsFilterFetchIdxByTableOrd := make(map[int]int, len(params.JSONContainsFilters))
 	fetchIdxByTableOrd := make(map[int]int, params.NeededCols.Len()+params.ExtraNeededCols.Len())
 	for ord, ok := params.NeededCols.Next(0); ok; ord, ok = params.NeededCols.Next(ord + 1) {
 		fetchIdxByTableOrd[ord] = len(cols)
@@ -251,8 +473,10 @@ func (e *distSQLSpecExecFactory) ConstructScan(
 		if params.JSONPathCompareFilter != nil && ord == int(params.JSONPathCompareFilter.Access.SourceCol) {
 			jsonPathCompareFilterFetchIdx = len(cols)
 		}
-		if params.JSONContainsFilter != nil && ord == int(params.JSONContainsFilter.Access.SourceCol) {
-			jsonContainsFilterFetchIdx = len(cols)
+		for i := range params.JSONContainsFilters {
+			if ord == int(params.JSONContainsFilters[i].Access.SourceCol) {
+				jsonContainsFilterFetchIdxByTableOrd[ord] = len(cols)
+			}
 		}
 		fetchIdxByTableOrd[ord] = len(cols)
 		cols = append(cols, allCols[ord])
@@ -282,6 +506,11 @@ func (e *distSQLSpecExecFactory) ConstructScan(
 	if err != nil {
 		return nil, err
 	}
+	if optimizedSpans, ok, err := maybeOptimizeExactPointLookupJSONSpans(spans, tabDesc, params); err != nil {
+		return nil, err
+	} else if ok {
+		spans = optimizedSpans
+	}
 
 	isFullTableOrIndexScan := len(spans) == 1 && spans[0].EqualValue(
 		tabDesc.IndexSpan(e.planner.ExecCfg().Codec, idx.GetID()),
@@ -305,6 +534,7 @@ func (e *distSQLSpecExecFactory) ConstructScan(
 	if err := rowenc.InitIndexFetchSpec(&trSpec.FetchSpec, e.planner.ExecCfg().Codec, tabDesc, idx, columnIDs); err != nil {
 		return nil, err
 	}
+	trSpec.BatchBytesLimit = int64(defaultScanBatchBytesLimit(trSpec.FetchSpec))
 	if params.Locking != nil {
 		trSpec.LockingStrength = descpb.ToScanLockingStrength(params.Locking.Strength)
 		trSpec.LockingWaitPolicy = descpb.ToScanLockingWaitPolicy(params.Locking.WaitPolicy)
@@ -384,22 +614,27 @@ func (e *distSQLSpecExecFactory) ConstructScan(
 			Right:        rightExpr,
 		}
 	}
-	if params.JSONContainsFilter != nil {
-		if jsonContainsFilterFetchIdx == -1 {
-			return nil, errors.AssertionFailedf(
-				"JSON contains filter column %d was not added to fetched columns", params.JSONContainsFilter.Access.SourceCol,
-			)
-		}
-		rightExpr, err := physicalplan.MakeExpression(params.JSONContainsFilter.Right, e.getPlanCtx(recommendation), nil /* indexVarMap */)
-		if err != nil {
-			return nil, err
-		}
-		trSpec.JsonContainsFilter = &execinfrapb.JSONContainsFilterSpec{
-			SourceColIdx: uint32(jsonContainsFilterFetchIdx),
-			Kind:         uint32(params.JSONContainsFilter.Access.Kind),
-			Path:         append([]string(nil), params.JSONContainsFilter.Access.Path...),
-			ContainedBy:  params.JSONContainsFilter.ContainedBy,
-			Right:        rightExpr,
+	if len(params.JSONContainsFilters) > 0 {
+		trSpec.JsonContainsFilters = make([]execinfrapb.JSONContainsFilterSpec, len(params.JSONContainsFilters))
+		for i := range params.JSONContainsFilters {
+			filter := &params.JSONContainsFilters[i]
+			jsonContainsFilterFetchIdx, ok := jsonContainsFilterFetchIdxByTableOrd[int(filter.Access.SourceCol)]
+			if !ok {
+				return nil, errors.AssertionFailedf(
+					"JSON contains filter column %d was not added to fetched columns", filter.Access.SourceCol,
+				)
+			}
+			rightExpr, err := physicalplan.MakeExpression(filter.Right, e.getPlanCtx(recommendation), nil /* indexVarMap */)
+			if err != nil {
+				return nil, err
+			}
+			trSpec.JsonContainsFilters[i] = execinfrapb.JSONContainsFilterSpec{
+				SourceColIdx: uint32(jsonContainsFilterFetchIdx),
+				Kind:         uint32(filter.Access.Kind),
+				Path:         append([]string(nil), filter.Access.Path...),
+				ContainedBy:  filter.ContainedBy,
+				Right:        rightExpr,
+			}
 		}
 	}
 	if len(params.JSONAccesses) > 0 {

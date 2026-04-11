@@ -51,6 +51,12 @@ func (i KVInserter) Del(key ...interface{}) {
 	// always write even if all non-key columns are NULL.
 }
 
+// DelRange is not implemented.
+func (i KVInserter) DelRange(begin, end interface{}, returnKeys bool) {
+	// IMPORT starts from empty keyspace, and IMPORT INTO disallows overwriting an
+	// existing row, so row conversion never needs to emit range deletes here.
+}
+
 // Put method of the putter interface.
 func (i KVInserter) Put(key, value interface{}) {
 	i(roachpb.KeyValue{

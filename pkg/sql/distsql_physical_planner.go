@@ -1230,6 +1230,7 @@ func initTableReaderSpecTemplate(
 	if err := rowenc.InitIndexFetchSpec(&s.FetchSpec, codec, n.desc, n.index, colIDs); err != nil {
 		return nil, execinfrapb.PostProcessSpec{}, err
 	}
+	s.BatchBytesLimit = int64(defaultScanBatchBytesLimit(s.FetchSpec))
 
 	var post execinfrapb.PostProcessSpec
 	if n.hardLimit != 0 {
@@ -1541,9 +1542,11 @@ func (dsp *DistSQLPlanner) planTableReaders(
 		// new slices in generateScanSpans and PartitionSpans).
 		tr.Spans = sp.Spans
 
-		tr.Parallelize = info.parallelize
+		tr.Parallelize = info.parallelize && !scanFetchSpecHasSubordinateColumns(tr.FetchSpec)
 		if !tr.Parallelize {
-			tr.BatchBytesLimit = dsp.distSQLSrv.TestingKnobs.TableReaderBatchBytesLimit
+			if dsp.distSQLSrv.TestingKnobs.TableReaderBatchBytesLimit != 0 {
+				tr.BatchBytesLimit = dsp.distSQLSrv.TestingKnobs.TableReaderBatchBytesLimit
+			}
 		}
 		p.TotalEstimatedScannedRows += info.estimatedRowCount
 
@@ -2982,6 +2985,21 @@ func (dsp *DistSQLPlanner) createPhysPlanForPlanNode(
 		if err != nil {
 			return nil, err
 		}
+		if scan, ok := n.source.plan.(*scanNode); ok {
+			residual, pushed, err := dsp.tryPushJSONFilterIntoTableReaders(plan, scan, n, planCtx)
+			if err != nil {
+				return nil, err
+			}
+			if pushed {
+				if residual == nil {
+					break
+				}
+				if err := plan.AddFilter(residual, planCtx, plan.PlanToStreamColMap); err != nil {
+					return nil, err
+				}
+				break
+			}
+		}
 
 		if err := plan.AddFilter(n.filter, planCtx, plan.PlanToStreamColMap); err != nil {
 			return nil, err
@@ -3035,6 +3053,24 @@ func (dsp *DistSQLPlanner) createPhysPlanForPlanNode(
 		plan, err = dsp.createPhysPlanForPlanNode(ctx, planCtx, n.source.plan)
 		if err != nil {
 			return nil, err
+		}
+		var scan *scanNode
+		switch src := n.source.plan.(type) {
+		case *scanNode:
+			scan = src
+		case *filterNode:
+			if s, ok := src.source.plan.(*scanNode); ok {
+				scan = s
+			}
+		}
+		if scan != nil {
+			pushed, err := dsp.tryPushJSONRenderIntoTableReaders(plan, scan, n, planCtx)
+			if err != nil {
+				return nil, err
+			}
+			if pushed {
+				break
+			}
 		}
 		err = dsp.createPlanForRender(plan, n, planCtx)
 		if err != nil {

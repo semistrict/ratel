@@ -355,6 +355,62 @@ func TestConfigureJSONAccessProgramsSharesPathStateWithJSONPathCompareFilter(t *
 	require.Same(t, cf.jsonPathCompareFilter.shared, cf.jsonAccessPrograms[0].shared)
 }
 
+func TestSubordinateJSONRowHeadLookupSpecs(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	t.Run("static object prefix before negative index", func(t *testing.T) {
+		cf := makeJSONCFetcher()
+		cf.hasSubordinateColumns = true
+		cf.table.spec.MaxKeysPerRow = 1
+		require.NoError(t, cf.ConfigureJSONPathCompareFilter(
+			tree.NewTestingEvalContext(cluster.MakeTestingClusterSettings()),
+			0,
+			row.JSONAccessFetchTextPath,
+			[]string{
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("needle"),
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("-1"),
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("tiny"),
+			},
+			exec.JSONPathFilterEq,
+			tree.NewDString("x"),
+			false, /* materialize */
+		))
+
+		lookups, ok, err := cf.subordinateJSONRowHeadLookupSpecs()
+		require.NoError(t, err)
+		require.True(t, ok)
+		require.Equal(t, []row.SubordinateJSONRowLookupSpec{{
+			ColID: 3,
+			SelectedPaths: [][]keys.SubordinatePathSegment{{
+				{Kind: keys.SubordinatePathObjectKey, ObjectKey: "needle"},
+			}},
+		}}, lookups)
+	})
+
+	t.Run("rejects ambiguous numeric key-or-index prefix", func(t *testing.T) {
+		cf := makeJSONCFetcher()
+		cf.hasSubordinateColumns = true
+		cf.table.spec.MaxKeysPerRow = 1
+		require.NoError(t, cf.ConfigureJSONPathCompareFilter(
+			tree.NewTestingEvalContext(cluster.MakeTestingClusterSettings()),
+			0,
+			row.JSONAccessFetchTextPath,
+			[]string{
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("0"),
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("tiny"),
+			},
+			exec.JSONPathFilterEq,
+			tree.NewDString("x"),
+			false, /* materialize */
+		))
+
+		lookups, ok, err := cf.subordinateJSONRowHeadLookupSpecs()
+		require.NoError(t, err)
+		require.False(t, ok)
+		require.Nil(t, lookups)
+	})
+}
+
 func TestConfigureJSONContainsFilterSharesSelectedPathStateWithJSONAccessPrograms(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 
@@ -373,12 +429,12 @@ func TestConfigureJSONContainsFilterSharesSelectedPathStateWithJSONAccessProgram
 	}}, 0))
 
 	require.Len(t, cf.jsonSharedSelectedPaths, 1)
-	require.NotNil(t, cf.jsonContainsFilter)
-	require.NotNil(t, cf.jsonContainsFilter.selected)
+	require.Len(t, cf.jsonContainsFilters, 1)
+	require.NotNil(t, cf.jsonContainsFilters[0].selected)
 	require.Len(t, cf.jsonAccessPrograms, 1)
-	require.Same(t, cf.jsonContainsFilter.selected, cf.jsonAccessPrograms[0].shared.selected)
-	require.Len(t, cf.jsonContainsFilter.selected.contains, 1)
-	require.Len(t, cf.jsonContainsFilter.selected.access, 1)
+	require.Same(t, cf.jsonContainsFilters[0].selected, cf.jsonAccessPrograms[0].shared.selected)
+	require.Len(t, cf.jsonContainsFilters[0].selected.contains, 1)
+	require.Len(t, cf.jsonContainsFilters[0].selected.access, 1)
 }
 
 func observeSelectedJSONPathStateForCFetcherTests(t *testing.T, selected *cSharedJSONSelectedPathState) {
@@ -883,6 +939,189 @@ func TestJSONContainsNullAndEmptyFilterNoMaterialize(t *testing.T) {
 		require.True(t, cf.lastRowPassesJSONContainsFilter)
 		require.Nil(t, cf.subordinateJSONBuilders)
 	})
+}
+
+func TestJSONContainsFilterSharesSelectedPathMaterialization(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	cf := makeSingleColumnCFetcherWithOutputs(types.Jsonb, 3, "doc", types.Jsonb)
+	right, err := jsonutil.ParseJSON(`{"b":[20]}`)
+	require.NoError(t, err)
+	require.NoError(t, cf.ConfigureJSONContainsFilter(
+		0, encodeJSONQueryPath("a"), false, right, false,
+	))
+	require.NoError(t, cf.ConfigureJSONAccessPrograms([]row.JSONAccessSpec{
+		{ColIdx: 0, Kind: row.JSONAccessFetchJSONPath, Path: encodeJSONQueryPath("a"), Materialize: false},
+	}, 1))
+	cf.resetJSONProgramsForRow()
+
+	rowKey := keys.MakeFamilyKey(keys.SystemSQLCodec.IndexPrefix(1, 1), 0)
+	for _, tc := range []struct {
+		path []keys.SubordinatePathSegment
+		json string
+	}{
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathHeader}}, json: `{}`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}}, json: `{"b":[10,20]}`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}, {Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"}}, json: `[10,20]`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}, {Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"}, {Kind: keys.SubordinatePathArrayIndex, ArrayIdx: 0}}, json: `10`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}, {Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"}, {Kind: keys.SubordinatePathArrayIndex, ArrayIdx: 1}}, json: `20`},
+	} {
+		cf.machine.nextKV.Key = keys.MakeSubordinatePathKey(rowKey, 3, tc.path)
+		cf.machine.nextKV.Value, _ = makeSubordinateJSONValue(t, 3, tc.path, tc.json)
+		_, _, err := cf.processSubordinateValue(context.Background(), cf.table, nil, "/tbl/1/0")
+		require.NoError(t, err)
+	}
+
+	require.False(t, cf.jsonContainsFilters[0].program.SawSubordinate())
+	require.NoError(t, cf.finishJSONContainsFilter())
+	require.True(t, cf.lastRowPassesJSONContainsFilter)
+	require.NoError(t, cf.finalizeJSONAccessPrograms())
+	require.JSONEq(t, `{"b":[10,20]}`, cf.machine.colvecs.Vecs[1].JSON().Get(0).String())
+}
+
+func TestJSONContainedByFilterSharesSelectedPathMaterialization(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	cf := makeSingleColumnCFetcherWithOutputs(types.Jsonb, 3, "doc", types.Jsonb)
+	right, err := jsonutil.ParseJSON(`{"b":[10,20],"extra":true}`)
+	require.NoError(t, err)
+	require.NoError(t, cf.ConfigureJSONContainsFilter(
+		0, encodeJSONQueryPath("a"), true, right, false,
+	))
+	require.NoError(t, cf.ConfigureJSONAccessPrograms([]row.JSONAccessSpec{
+		{ColIdx: 0, Kind: row.JSONAccessFetchJSONPath, Path: encodeJSONQueryPath("a"), Materialize: false},
+	}, 1))
+	cf.resetJSONProgramsForRow()
+
+	rowKey := keys.MakeFamilyKey(keys.SystemSQLCodec.IndexPrefix(1, 1), 0)
+	for _, tc := range []struct {
+		path []keys.SubordinatePathSegment
+		json string
+	}{
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathHeader}}, json: `{}`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}}, json: `{"b":[10,20]}`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}, {Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"}}, json: `[10,20]`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}, {Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"}, {Kind: keys.SubordinatePathArrayIndex, ArrayIdx: 0}}, json: `10`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}, {Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"}, {Kind: keys.SubordinatePathArrayIndex, ArrayIdx: 1}}, json: `20`},
+	} {
+		cf.machine.nextKV.Key = keys.MakeSubordinatePathKey(rowKey, 3, tc.path)
+		cf.machine.nextKV.Value, _ = makeSubordinateJSONValue(t, 3, tc.path, tc.json)
+		_, _, err := cf.processSubordinateValue(context.Background(), cf.table, nil, "/tbl/1/0")
+		require.NoError(t, err)
+	}
+
+	require.False(t, cf.jsonContainsFilters[0].program.SawSubordinate())
+	require.NoError(t, cf.finishJSONContainsFilter())
+	require.True(t, cf.lastRowPassesJSONContainsFilter)
+	require.NoError(t, cf.finalizeJSONAccessPrograms())
+	require.JSONEq(t, `{"b":[10,20]}`, cf.machine.colvecs.Vecs[1].JSON().Get(0).String())
+}
+
+func TestJSONContainsFilterSharedSelectedPathMissing(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	cf := makeSingleColumnCFetcherWithOutputs(types.Jsonb, 3, "doc", types.Jsonb)
+	right, err := jsonutil.ParseJSON(`{"b":[20]}`)
+	require.NoError(t, err)
+	require.NoError(t, cf.ConfigureJSONContainsFilter(
+		0, encodeJSONQueryPath("a"), false, right, false,
+	))
+	require.NoError(t, cf.ConfigureJSONAccessPrograms([]row.JSONAccessSpec{
+		{ColIdx: 0, Kind: row.JSONAccessFetchJSONPath, Path: encodeJSONQueryPath("a"), Materialize: false},
+	}, 1))
+	cf.resetJSONProgramsForRow()
+
+	rowKey := keys.MakeFamilyKey(keys.SystemSQLCodec.IndexPrefix(1, 1), 0)
+	cf.machine.nextKV.Key = keys.MakeSubordinatePathKey(rowKey, 3, []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathHeader}})
+	cf.machine.nextKV.Value, _ = makeSubordinateJSONValue(t, 3, []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathHeader}}, `{}`)
+	_, _, err = cf.processSubordinateValue(context.Background(), cf.table, nil, "/tbl/1/0")
+	require.NoError(t, err)
+
+	require.False(t, cf.jsonContainsFilters[0].program.SawSubordinate())
+	require.NoError(t, cf.finishJSONContainsFilter())
+	require.False(t, cf.lastRowPassesJSONContainsFilter)
+	require.NoError(t, cf.finalizeJSONAccessPrograms())
+	require.True(t, cf.machine.colvecs.Nulls[1].NullAt(0))
+}
+
+func TestMultipleJSONContainsFiltersNoMaterialize(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	cf := makeJSONCFetcher()
+	rightA, err := jsonutil.ParseJSON(`{"b":[20]}`)
+	require.NoError(t, err)
+	require.NoError(t, cf.ConfigureJSONContainsFilter(
+		0, encodeJSONQueryPath("a"), false, rightA, false,
+	))
+	rightRoot, err := jsonutil.ParseJSON(`{"b":[10,20],"c":null}`)
+	require.NoError(t, err)
+	require.NoError(t, cf.ConfigureJSONContainsFilter(
+		0, encodeJSONQueryPath("a"), true, rightRoot, false,
+	))
+	cf.resetJSONProgramsForRow()
+
+	rowKey := keys.MakeFamilyKey(keys.SystemSQLCodec.IndexPrefix(1, 1), 0)
+	for _, tc := range []struct {
+		path []keys.SubordinatePathSegment
+		json string
+	}{
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathHeader}}, json: `{}`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}}, json: `{"b":[10,20],"c":null}`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}, {Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"}}, json: `[10,20]`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}, {Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"}, {Kind: keys.SubordinatePathArrayIndex, ArrayIdx: 0}}, json: `10`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}, {Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"}, {Kind: keys.SubordinatePathArrayIndex, ArrayIdx: 1}}, json: `20`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}, {Kind: keys.SubordinatePathObjectKey, ObjectKey: "c"}}, json: `null`},
+	} {
+		cf.machine.nextKV.Key = keys.MakeSubordinatePathKey(rowKey, 3, tc.path)
+		cf.machine.nextKV.Value, _ = makeSubordinateJSONValue(t, 3, tc.path, tc.json)
+		_, _, err := cf.processSubordinateValue(context.Background(), cf.table, nil, "/tbl/1/0")
+		require.NoError(t, err)
+	}
+
+	require.Len(t, cf.jsonContainsFilters, 2)
+	require.NoError(t, cf.finishJSONContainsFilter())
+	require.True(t, cf.lastRowPassesJSONContainsFilter)
+	require.Nil(t, cf.subordinateJSONBuilders)
+}
+
+func TestMultipleJSONContainsFiltersShareSelectedCache(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	cf := makeJSONCFetcher()
+	rightA, err := jsonutil.ParseJSON(`{"b":[20]}`)
+	require.NoError(t, err)
+	require.NoError(t, cf.ConfigureJSONContainsFilter(
+		0, encodeJSONQueryPath("a"), false, rightA, true,
+	))
+	rightRoot, err := jsonutil.ParseJSON(`{"b":[10,20],"c":null}`)
+	require.NoError(t, err)
+	require.NoError(t, cf.ConfigureJSONContainsFilter(
+		0, encodeJSONQueryPath("a"), true, rightRoot, true,
+	))
+	cf.resetJSONProgramsForRow()
+
+	rowKey := keys.MakeFamilyKey(keys.SystemSQLCodec.IndexPrefix(1, 1), 0)
+	for _, tc := range []struct {
+		path []keys.SubordinatePathSegment
+		json string
+	}{
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathHeader}}, json: `{}`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}}, json: `{"b":[10,20],"c":null}`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}, {Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"}}, json: `[10,20]`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}, {Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"}, {Kind: keys.SubordinatePathArrayIndex, ArrayIdx: 0}}, json: `10`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}, {Kind: keys.SubordinatePathObjectKey, ObjectKey: "b"}, {Kind: keys.SubordinatePathArrayIndex, ArrayIdx: 1}}, json: `20`},
+		{path: []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathObjectKey, ObjectKey: "a"}, {Kind: keys.SubordinatePathObjectKey, ObjectKey: "c"}}, json: `null`},
+	} {
+		cf.machine.nextKV.Key = keys.MakeSubordinatePathKey(rowKey, 3, tc.path)
+		cf.machine.nextKV.Value, _ = makeSubordinateJSONValue(t, 3, tc.path, tc.json)
+		_, _, err := cf.processSubordinateValue(context.Background(), cf.table, nil, "/tbl/1/0")
+		require.NoError(t, err)
+	}
+
+	require.Len(t, cf.jsonContainsFilters, 2)
+	require.NoError(t, cf.finishJSONContainsFilter())
+	require.True(t, cf.lastRowPassesJSONContainsFilter)
+	require.Equal(t, 2, cf.jsonContainsFilters[0].selected.cache.NumContainsResults())
 }
 
 func TestFinalizeJSONAccessProgramsWritesDerivedColumns(t *testing.T) {

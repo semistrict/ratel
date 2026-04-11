@@ -231,12 +231,12 @@ message TableReaderSpec {
   // directly from recursive subordinate JSON storage during row scanning.
   optional JSONPathCompareFilterSpec json_path_compare_filter = 25;
 
-  // json_contains_filter, when set, evaluates a filter of the form
+  // json_contains_filters, when set, evaluate filters of the form
   //   json_col @> <right>
   //   json_col <@ <right>
   //   json_col->... @> <right>
   // directly from recursive subordinate JSON storage during row scanning.
-  optional JSONContainsFilterSpec json_contains_filter = 26;
+  repeated JSONContainsFilterSpec json_contains_filters = 26 [(gogoproto.nullable) = false];
 
   reserved 1, 2, 4, 6, 7, 8, 13, 14, 15, 16, 19;
 }

@@ -2,11 +2,11 @@ package inproc_test
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/semistrict/ratel/pkg/base"
 	"github.com/semistrict/ratel/pkg/testutils/inproc"
+	"github.com/semistrict/ratel/pkg/testutils/inproc/internal/planassert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -54,21 +54,9 @@ func TestDistributedUDF(t *testing.T) {
 	require.NoError(t, rows.Err())
 
 	// Verify the query plan is distributed (not just on gateway).
-	var plan string
-	err = db.QueryRowContext(ctx, `EXPLAIN (DISTSQL) SELECT double_it(val) FROM nums`).Scan(&plan)
-	// EXPLAIN DISTSQL returns multiple rows, collect them all.
-	planRows, err := db.QueryContext(ctx, `EXPLAIN (DISTSQL) SELECT double_it(val) FROM nums`)
-	require.NoError(t, err)
-	defer planRows.Close()
-	var planLines []string
-	for planRows.Next() {
-		var line string
-		require.NoError(t, planRows.Scan(&line))
-		planLines = append(planLines, line)
-	}
-	require.NoError(t, planRows.Err())
-	fullPlan := strings.Join(planLines, "\n")
+	fullPlan := planassert.DistSQLVerbose(t, ctx, db, `SELECT double_it(val) FROM nums`)
 	t.Logf("DISTSQL plan:\n%s", fullPlan)
+	planassert.UsesFullDistribution(t, fullPlan)
 }
 
 // TestDistributedUDFWithSQL verifies that a UDF using the sql“

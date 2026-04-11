@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -316,11 +318,13 @@ type jsonContainsFilterState struct {
 
 type sharedJSONAccessProgramState struct {
 	key            string
+	kind           JSONAccessKind
 	colIdx         int
 	materialize    bool
 	sawSubordinate bool
 	program        *JSONAccessProgram
 	selected       *sharedJSONSelectedPathState
+	existsKeys     []string
 	cachedResult   tree.Datum
 	haveCached     bool
 }
@@ -370,9 +374,16 @@ func (rf *Fetcher) registerJSONAccessProgram(
 	}
 	shared := &sharedJSONAccessProgramState{
 		key:         key,
+		kind:        spec.Kind,
 		colIdx:      spec.ColIdx,
 		materialize: spec.Materialize,
 		program:     prog,
+	}
+	switch spec.Kind {
+	case JSONAccessExists:
+		shared.existsKeys = []string{spec.Key}
+	case JSONAccessExistsAny, JSONAccessExistsAll:
+		shared.existsKeys = append([]string(nil), spec.Keys...)
 	}
 	if spec.Kind == JSONAccessFetchJSONPath || spec.Kind == JSONAccessFetchTextPath {
 		selected := rf.registerJSONSelectedPath(spec.ColIdx, spec.Path)
@@ -810,6 +821,9 @@ func (rf *Fetcher) Init(
 	}
 
 	// Check for columns that use subordinate key encoding.
+	if spec.MaxKeysPerRow == 0 {
+		rf.hasSubordinateColumns = true
+	}
 	for i := range spec.FetchedColumns {
 		switch spec.FetchedColumns[i].Type.Family() {
 		case types.ArrayFamily, types.JsonFamily:
@@ -891,13 +905,14 @@ func (rf *Fetcher) StartScan(
 }
 
 func (rf *Fetcher) subordinateJSONRowHeadLookupSpecs() ([]SubordinateJSONRowLookupSpec, bool, error) {
-	if rf.reverse || !rf.hasSubordinateColumns || rf.table.spec.MaxKeysPerRow > 1 {
+	if !rf.hasSubordinateColumns {
 		return nil, false, nil
 	}
-	if rf.jsonExistsFilter != nil || len(rf.jsonSharedSelectedPaths) == 0 {
-		return nil, false, nil
+	type lookupPaths struct {
+		paths      [][]keys.SubordinatePathSegment
+		existsKeys []string
 	}
-	byCol := make(map[int][][]keys.SubordinatePathSegment)
+	byCol := make(map[int]*lookupPaths)
 	for i := range rf.jsonSharedSelectedPaths {
 		selected := rf.jsonSharedSelectedPaths[i]
 		prefix, ok, err := LongestStaticSubordinateJSONPathPrefix(selected.encodedPath)
@@ -907,13 +922,93 @@ func (rf *Fetcher) subordinateJSONRowHeadLookupSpecs() ([]SubordinateJSONRowLook
 		if !ok || len(prefix) == 0 {
 			return nil, false, nil
 		}
-		byCol[selected.colIdx] = append(byCol[selected.colIdx], prefix)
+		entry := byCol[selected.colIdx]
+		if entry == nil {
+			entry = &lookupPaths{}
+			byCol[selected.colIdx] = entry
+		}
+		entry.paths = append(entry.paths, prefix)
+	}
+	for i := range rf.jsonSharedAccessPrograms {
+		shared := rf.jsonSharedAccessPrograms[i]
+		if shared.selected != nil {
+			continue
+		}
+		switch shared.kind {
+		case JSONAccessExists, JSONAccessExistsAny, JSONAccessExistsAll:
+		default:
+			return nil, false, nil
+		}
+		entry := byCol[shared.colIdx]
+		if entry == nil {
+			entry = &lookupPaths{}
+			byCol[shared.colIdx] = entry
+		}
+		entry.existsKeys = append(entry.existsKeys, shared.existsKeys...)
+	}
+	for i := range rf.jsonSharedAccessPrograms {
+		if rf.jsonSharedAccessPrograms[i].materialize {
+			return nil, false, nil
+		}
+	}
+	for i := range rf.jsonSharedSelectedPaths {
+		if rf.jsonSharedSelectedPaths[i].materialize {
+			return nil, false, nil
+		}
+	}
+	if len(byCol) == 0 {
+		supported := true
+		rf.table.neededValueColsByIdx.ForEach(func(colIdx int) {
+			if !supported {
+				return
+			}
+			if colIdx < 0 || colIdx >= len(rf.table.spec.FetchedColumns) {
+				supported = false
+				return
+			}
+			switch rf.table.spec.FetchedColumns[colIdx].Type.Family() {
+			case types.ArrayFamily, types.JsonFamily:
+				supported = false
+			}
+		})
+		if !supported {
+			return nil, false, nil
+		}
+		return nil, true, nil
+	}
+	if rf.table.spec.MaxKeysPerRow > 1 {
+		if len(rf.jsonAccessPrograms) > 0 || len(rf.jsonContainsFilters) > 0 {
+			return nil, false, nil
+		}
+		supported := true
+		rf.table.neededValueColsByIdx.ForEach(func(colIdx int) {
+			if !supported {
+				return
+			}
+			if colIdx < 0 || colIdx >= len(rf.table.spec.FetchedColumns) {
+				supported = false
+				return
+			}
+			if rf.table.spec.FetchedColumns[colIdx].Type.Family() != types.JsonFamily {
+				supported = false
+				return
+			}
+			if _, ok := byCol[colIdx]; !ok {
+				supported = false
+			}
+		})
+		if !supported {
+			return nil, false, nil
+		}
 	}
 	lookups := make([]SubordinateJSONRowLookupSpec, 0, len(byCol))
-	for colIdx, paths := range byCol {
+	for colIdx, entry := range byCol {
+		sort.Strings(entry.existsKeys)
+		entry.existsKeys = slices.Compact(entry.existsKeys)
 		lookups = append(lookups, SubordinateJSONRowLookupSpec{
 			ColID:         rf.table.spec.FetchedColumns[colIdx].ColumnID,
-			SelectedPaths: paths,
+			SelectedPaths: entry.paths,
+			ExistsKeys:    entry.existsKeys,
 		})
 	}
 	return lookups, true, nil

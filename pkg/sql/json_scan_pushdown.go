@@ -356,6 +356,29 @@ func extractJSONPathCompareFilterFromTypedExpr(
 	return nil, false, nil
 }
 
+func extractJSONExistsFilterFromTypedExpr(
+	evalCtx *tree.EvalContext,
+	sourceCols []catalog.Column,
+	planToStreamColMap []int,
+	expr tree.TypedExpr,
+) (*execinfrapb.JSONExistsFilterSpec, bool, error) {
+	access, ok, err := extractJSONAccessProgramFromTypedExpr(evalCtx, sourceCols, planToStreamColMap, expr)
+	if err != nil || !ok {
+		return nil, ok, err
+	}
+	switch exec.JSONAccessKind(access.Kind) {
+	case exec.JSONAccessExists, exec.JSONAccessExistsAny, exec.JSONAccessExistsAll:
+	default:
+		return nil, false, nil
+	}
+	return &execinfrapb.JSONExistsFilterSpec{
+		SourceColIdx: access.SourceColIdx,
+		Kind:         access.Kind,
+		Key:          access.Key,
+		Keys:         append([]string(nil), access.Keys...),
+	}, true, nil
+}
+
 func fetchedColumnProjected(post execinfrapb.PostProcessSpec, fetchedCols int, idx int) bool {
 	if !post.Projection {
 		return idx < fetchedCols
@@ -372,6 +395,7 @@ func maybeOptimizeExactPointLookupJSONTableReaderSpans(
 	spans roachpb.Spans,
 	sourceCols []catalog.Column,
 	post execinfrapb.PostProcessSpec,
+	jsonExistsFilter *execinfrapb.JSONExistsFilterSpec,
 	jsonAccesses []execinfrapb.JSONAccessSpec,
 	jsonPathCompareFilter *execinfrapb.JSONPathCompareFilterSpec,
 ) (roachpb.Spans, bool, error) {
@@ -381,6 +405,22 @@ func maybeOptimizeExactPointLookupJSONTableReaderSpans(
 	}
 	builder := newJSONPointLookupSpanBuilder(rowKey)
 	targeted := false
+
+	if jsonExistsFilter != nil {
+		if fetchedColumnProjected(post, len(sourceCols), int(jsonExistsFilter.SourceColIdx)) {
+			return nil, false, nil
+		}
+		colID := sourceCols[int(jsonExistsFilter.SourceColIdx)].GetID()
+		switch exec.JSONAccessKind(jsonExistsFilter.Kind) {
+		case exec.JSONAccessExists:
+			builder.addExistsKeys(colID, []string{jsonExistsFilter.Key})
+		case exec.JSONAccessExistsAny, exec.JSONAccessExistsAll:
+			builder.addExistsKeys(colID, jsonExistsFilter.Keys)
+		default:
+			return nil, false, nil
+		}
+		targeted = true
+	}
 
 	for i := range jsonAccesses {
 		access := jsonAccesses[i]
@@ -512,7 +552,7 @@ func (dsp *DistSQLPlanner) tryPushJSONRenderIntoTableReaders(
 			tr.JsonAccesses = append(tr.JsonAccesses, jsonAccesses...)
 		}
 		if optimized, ok, err := maybeOptimizeExactPointLookupJSONTableReaderSpans(
-			tr.Spans, scan.cols, finalPost, tr.JsonAccesses, tr.JsonPathCompareFilter,
+			tr.Spans, scan.cols, finalPost, tr.JsonExistsFilter, tr.JsonAccesses, tr.JsonPathCompareFilter,
 		); err != nil {
 			return false, err
 		} else if ok {
@@ -546,27 +586,39 @@ func (dsp *DistSQLPlanner) tryPushJSONFilterIntoTableReaders(
 
 	conjuncts := flattenTypedAndExpr(n.filter)
 	var (
-		spec         *execinfrapb.JSONPathCompareFilterSpec
+		existsSpec   *execinfrapb.JSONExistsFilterSpec
+		pathSpec     *execinfrapb.JSONPathCompareFilterSpec
 		residual     []tree.TypedExpr
 		pushedFilter bool
 	)
 	for _, conjunct := range conjuncts {
-		if pushedFilter {
-			residual = append(residual, conjunct)
-			continue
+		if existsSpec == nil {
+			candidate, ok, err := extractJSONExistsFilterFromTypedExpr(
+				planCtx.EvalContext(), scan.cols, p.PlanToStreamColMap, conjunct,
+			)
+			if err != nil {
+				return nil, false, err
+			}
+			if ok {
+				existsSpec = candidate
+				pushedFilter = true
+				continue
+			}
 		}
-		candidate, ok, err := extractJSONPathCompareFilterFromTypedExpr(
-			planCtx.EvalContext(), planCtx, scan.cols, p.PlanToStreamColMap, conjunct,
-		)
-		if err != nil {
-			return nil, false, err
+		if pathSpec == nil {
+			candidate, ok, err := extractJSONPathCompareFilterFromTypedExpr(
+				planCtx.EvalContext(), planCtx, scan.cols, p.PlanToStreamColMap, conjunct,
+			)
+			if err != nil {
+				return nil, false, err
+			}
+			if ok {
+				pathSpec = candidate
+				pushedFilter = true
+				continue
+			}
 		}
-		if !ok {
-			residual = append(residual, conjunct)
-			continue
-		}
-		spec = candidate
-		pushedFilter = true
+		residual = append(residual, conjunct)
 	}
 	if !pushedFilter {
 		return nil, false, nil
@@ -574,12 +626,23 @@ func (dsp *DistSQLPlanner) tryPushJSONFilterIntoTableReaders(
 	for _, pIdx := range p.ResultRouters {
 		proc := &p.Processors[pIdx]
 		tr := proc.Spec.Core.TableReader
-		if tr == nil || tr.JsonPathCompareFilter != nil {
+		if tr == nil {
 			return nil, false, nil
 		}
-		tr.JsonPathCompareFilter = spec
+		if existsSpec != nil {
+			if tr.JsonExistsFilter != nil {
+				return nil, false, nil
+			}
+			tr.JsonExistsFilter = existsSpec
+		}
+		if pathSpec != nil {
+			if tr.JsonPathCompareFilter != nil {
+				return nil, false, nil
+			}
+			tr.JsonPathCompareFilter = pathSpec
+		}
 		if optimized, ok, err := maybeOptimizeExactPointLookupJSONTableReaderSpans(
-			tr.Spans, scan.cols, finalPost, tr.JsonAccesses, tr.JsonPathCompareFilter,
+			tr.Spans, scan.cols, finalPost, tr.JsonExistsFilter, tr.JsonAccesses, tr.JsonPathCompareFilter,
 		); err != nil {
 			return nil, false, err
 		} else if ok {

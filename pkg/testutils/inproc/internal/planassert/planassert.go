@@ -19,11 +19,15 @@ package planassert
 import (
 	"context"
 	"database/sql"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
+
+var kvRowsReadRE = regexp.MustCompile(`KV rows read: ([\d,]+)`)
 
 // VecVerbose returns the EXPLAIN (VEC, VERBOSE) output joined into one string.
 func VecVerbose(t testing.TB, ctx context.Context, db *sql.DB, query string) string {
@@ -71,6 +75,24 @@ func DistSQLVerbose(t testing.TB, ctx context.Context, db *sql.DB, query string)
 	return strings.Join(lines, "\n")
 }
 
+// AnalyzeVerbose returns the EXPLAIN ANALYZE (VERBOSE) output joined into one string.
+func AnalyzeVerbose(t testing.TB, ctx context.Context, db *sql.DB, query string) string {
+	t.Helper()
+
+	rows, err := db.QueryContext(ctx, `EXPLAIN ANALYZE (VERBOSE) `+query)
+	require.NoError(t, err)
+	defer rows.Close()
+
+	var lines []string
+	for rows.Next() {
+		var line string
+		require.NoError(t, rows.Scan(&line))
+		lines = append(lines, line)
+	}
+	require.NoError(t, rows.Err())
+	return strings.Join(lines, "\n")
+}
+
 // Contains asserts that the plan output contains all requested fragments.
 func Contains(t testing.TB, plan string, fragments ...string) {
 	t.Helper()
@@ -98,4 +120,21 @@ func UsesColBatchScan(t testing.TB, plan string) {
 func UsesFullDistribution(t testing.TB, plan string) {
 	t.Helper()
 	Contains(t, plan, "distribution: full")
+}
+
+// KVRowsRead extracts the "KV rows read" counter from EXPLAIN ANALYZE (VERBOSE).
+func KVRowsRead(t testing.TB, plan string) int {
+	t.Helper()
+	matches := kvRowsReadRE.FindStringSubmatch(plan)
+	require.Len(t, matches, 2, "missing KV rows read in plan:\n%s", plan)
+	n, err := strconv.Atoi(strings.ReplaceAll(matches[1], ",", ""))
+	require.NoError(t, err)
+	return n
+}
+
+// UsesAtMostKVRowsRead asserts that EXPLAIN ANALYZE reported a bounded number
+// of KV rows read for the statement under test.
+func UsesAtMostKVRowsRead(t testing.TB, plan string, max int) {
+	t.Helper()
+	require.LessOrEqual(t, KVRowsRead(t, plan), max, plan)
 }

@@ -52,6 +52,8 @@ type updateRun struct {
 	tu         tableUpdater
 	rowsNeeded bool
 
+	subordinateJSONMutation *subordinateJSONMutationPlan
+
 	checkOrds checkSet
 
 	// done informs a new call to BatchedNext() that the previous call to
@@ -311,6 +313,17 @@ func (u *updateNode) processSourceRow(params runParams, sourceVals tree.Datums) 
 		if err != nil {
 			return err
 		}
+	}
+
+	if u.run.subordinateJSONMutation != nil {
+		op, setSQLNull, err := u.run.subordinateJSONMutation.buildOp(sourceVals)
+		if err != nil {
+			return err
+		}
+		if setSQLNull {
+			return u.run.tu.rowForSubordinateJSONNull(params.ctx, oldValues, op.ColID, u.run.traceKV)
+		}
+		return u.run.tu.rowForSubordinateJSONMutation(params.ctx, oldValues, op, u.run.traceKV)
 	}
 
 	// Queue the insert in the KV batch.

@@ -400,6 +400,16 @@ func (desc *wrapper) HasArrayColumn() bool {
 	return false
 }
 
+func (desc *wrapper) hasSubordinateColumn() bool {
+	for _, col := range desc.PublicColumns() {
+		switch col.GetType().Family() {
+		case types.ArrayFamily, types.JsonFamily:
+			return true
+		}
+	}
+	return false
+}
+
 // PublicColumns implements the TableDescriptor interface.
 func (desc *wrapper) PublicColumns() []catalog.Column {
 	return desc.getExistingOrNewColumnCache().public

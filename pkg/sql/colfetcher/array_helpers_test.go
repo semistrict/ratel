@@ -90,6 +90,51 @@ func makeSingleColumnCFetcherWithOutputs(
 	return cf
 }
 
+func makeTwoColumnCFetcher(
+	firstType *types.T,
+	firstID descpb.ColumnID,
+	firstName string,
+	secondType *types.T,
+	secondID descpb.ColumnID,
+	secondName string,
+) *cFetcher {
+	evalCtx := tree.NewTestingEvalContext(cluster.MakeTestingClusterSettings())
+	factory := coldataext.NewExtendedColumnFactory(evalCtx)
+	allTyps := []*types.T{firstType, secondType}
+	batch := coldata.NewMemBatchWithCapacity(allTyps, 1, factory)
+	batch.SetLength(1)
+
+	var colMap catalog.TableColMap
+	colMap.Set(firstID, 0)
+	colMap.Set(secondID, 1)
+
+	cf := &cFetcher{
+		table: &cTableInfo{
+			cFetcherTableArgs: &cFetcherTableArgs{
+				spec: descpb.IndexFetchSpec{
+					FetchedColumns: []descpb.IndexFetchSpec_Column{
+						{ColumnID: firstID, Name: firstName, Type: firstType},
+						{ColumnID: secondID, Name: secondName, Type: secondType},
+					},
+				},
+				ColIdxMap: colMap,
+				typs:      allTyps,
+			},
+			orderedColIdxMap: &colIdxMap{
+				vals: []descpb.ColumnID{firstID, secondID},
+				ords: []int{0, 1},
+			},
+		},
+	}
+	cf.machine.batch = batch
+	cf.machine.colvecs.SetBatch(batch)
+	cf.machine.remainingValueColsByIdx.Add(0)
+	cf.machine.remainingValueColsByIdx.Add(1)
+	cf.table.neededValueColsByIdx.Add(0)
+	cf.table.neededValueColsByIdx.Add(1)
+	return cf
+}
+
 func makeSubordinateValue(
 	t *testing.T, colID descpb.ColumnID, elemIdx int, d tree.Datum,
 ) (roachpb.Value, []byte) {
@@ -387,6 +432,36 @@ func TestSubordinateJSONRowHeadLookupSpecs(t *testing.T) {
 		}}, lookups)
 	})
 
+	t.Run("allows reverse scans with static prefix", func(t *testing.T) {
+		cf := makeJSONCFetcher()
+		cf.hasSubordinateColumns = true
+		cf.reverse = true
+		cf.table.spec.MaxKeysPerRow = 1
+		require.NoError(t, cf.ConfigureJSONPathCompareFilter(
+			tree.NewTestingEvalContext(cluster.MakeTestingClusterSettings()),
+			0,
+			row.JSONAccessFetchTextPath,
+			[]string{
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("needle"),
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("-1"),
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("tiny"),
+			},
+			exec.JSONPathFilterEq,
+			tree.NewDString("x"),
+			false, /* materialize */
+		))
+
+		lookups, ok, err := cf.subordinateJSONRowHeadLookupSpecs()
+		require.NoError(t, err)
+		require.True(t, ok)
+		require.Equal(t, []row.SubordinateJSONRowLookupSpec{{
+			ColID: 3,
+			SelectedPaths: [][]keys.SubordinatePathSegment{{
+				{Kind: keys.SubordinatePathObjectKey, ObjectKey: "needle"},
+			}},
+		}}, lookups)
+	})
+
 	t.Run("rejects ambiguous numeric key-or-index prefix", func(t *testing.T) {
 		cf := makeJSONCFetcher()
 		cf.hasSubordinateColumns = true
@@ -408,6 +483,161 @@ func TestSubordinateJSONRowHeadLookupSpecs(t *testing.T) {
 		require.NoError(t, err)
 		require.False(t, ok)
 		require.Nil(t, lookups)
+	})
+
+	t.Run("includes exists keys without selected paths", func(t *testing.T) {
+		cf := makeJSONCFetcher()
+		cf.hasSubordinateColumns = true
+		cf.table.spec.MaxKeysPerRow = 1
+		require.NoError(t, cf.ConfigureJSONExistsFilter(0, row.JSONAccessExistsAny, "", []string{"b", "a"}, false))
+
+		lookups, ok, err := cf.subordinateJSONRowHeadLookupSpecs()
+		require.NoError(t, err)
+		require.True(t, ok)
+		require.Equal(t, []row.SubordinateJSONRowLookupSpec{{
+			ColID:         3,
+			SelectedPaths: nil,
+			ExistsKeys:    []string{"a", "b"},
+		}}, lookups)
+	})
+
+	t.Run("rejects projected source json even when max keys per row is one", func(t *testing.T) {
+		cf := makeJSONCFetcher()
+		cf.hasSubordinateColumns = true
+		cf.table.spec.MaxKeysPerRow = 1
+		require.NoError(t, cf.ConfigureJSONExistsFilter(0, row.JSONAccessExists, "a", nil, true /* materialize */))
+
+		lookups, ok, err := cf.subordinateJSONRowHeadLookupSpecs()
+		require.NoError(t, err)
+		require.False(t, ok)
+		require.Nil(t, lookups)
+	})
+
+	t.Run("allows row head lookup with no json programs when only non-subordinate values are needed", func(t *testing.T) {
+		cf := makeSingleColumnCFetcher(types.String, 4, "pad")
+		cf.hasSubordinateColumns = true
+		cf.table.spec.MaxKeysPerRow = 0
+
+		lookups, ok, err := cf.subordinateJSONRowHeadLookupSpecs()
+		require.NoError(t, err)
+		require.True(t, ok)
+		require.Nil(t, lookups)
+	})
+
+	t.Run("allows max keys per row when all needed value cols are looked-up json", func(t *testing.T) {
+		cf := makeJSONCFetcher()
+		cf.hasSubordinateColumns = true
+		cf.table.spec.MaxKeysPerRow = 2
+		require.NoError(t, cf.ConfigureJSONPathCompareFilter(
+			tree.NewTestingEvalContext(cluster.MakeTestingClusterSettings()),
+			0,
+			row.JSONAccessFetchTextPath,
+			[]string{
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("needle"),
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("-1"),
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("tiny"),
+			},
+			exec.JSONPathFilterEq,
+			tree.NewDString("x"),
+			false, /* materialize */
+		))
+
+		lookups, ok, err := cf.subordinateJSONRowHeadLookupSpecs()
+		require.NoError(t, err)
+		require.True(t, ok)
+		require.Equal(t, []row.SubordinateJSONRowLookupSpec{{
+			ColID: 3,
+			SelectedPaths: [][]keys.SubordinatePathSegment{{
+				{Kind: keys.SubordinatePathObjectKey, ObjectKey: "needle"},
+			}},
+		}}, lookups)
+	})
+
+	t.Run("rejects max keys per row when non-json value column is also needed", func(t *testing.T) {
+		cf := makeTwoColumnCFetcher(types.Jsonb, 3, "doc", types.String, 4, "pad")
+		cf.hasSubordinateColumns = true
+		cf.table.spec.MaxKeysPerRow = 2
+		require.NoError(t, cf.ConfigureJSONPathCompareFilter(
+			tree.NewTestingEvalContext(cluster.MakeTestingClusterSettings()),
+			0,
+			row.JSONAccessFetchTextPath,
+			[]string{
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("needle"),
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("-1"),
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("tiny"),
+			},
+			exec.JSONPathFilterEq,
+			tree.NewDString("x"),
+			false, /* materialize */
+		))
+
+		lookups, ok, err := cf.subordinateJSONRowHeadLookupSpecs()
+		require.NoError(t, err)
+		require.False(t, ok)
+		require.Nil(t, lookups)
+	})
+
+	t.Run("rejects max keys per row when source json column must be materialized", func(t *testing.T) {
+		cf := makeJSONCFetcher()
+		cf.hasSubordinateColumns = true
+		cf.table.spec.MaxKeysPerRow = 2
+		require.NoError(t, cf.ConfigureJSONPathCompareFilter(
+			tree.NewTestingEvalContext(cluster.MakeTestingClusterSettings()),
+			0,
+			row.JSONAccessFetchTextPath,
+			[]string{
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("needle"),
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("-1"),
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("tiny"),
+			},
+			exec.JSONPathFilterEq,
+			tree.NewDString("x"),
+			true, /* materialize */
+		))
+
+		lookups, ok, err := cf.subordinateJSONRowHeadLookupSpecs()
+		require.NoError(t, err)
+		require.False(t, ok)
+		require.Nil(t, lookups)
+	})
+}
+
+func BenchmarkSubordinateJSONRowHeadLookupSpecs(b *testing.B) {
+	encodedPath := []string{
+		jsonPathStepKeyOrIndexPrefix + strconv.Quote("needle"),
+		jsonPathStepKeyOrIndexPrefix + strconv.Quote("-1"),
+		jsonPathStepKeyOrIndexPrefix + strconv.Quote("tiny"),
+	}
+	evalCtx := tree.NewTestingEvalContext(cluster.MakeTestingClusterSettings())
+
+	b.Run("max_keys_per_row_1", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			cf := makeJSONCFetcher()
+			cf.hasSubordinateColumns = true
+			cf.table.spec.MaxKeysPerRow = 1
+			require.NoError(b, cf.ConfigureJSONPathCompareFilter(
+				evalCtx, 0, row.JSONAccessFetchTextPath, encodedPath, exec.JSONPathFilterEq, tree.NewDString("x"), false,
+			))
+			lookups, ok, err := cf.subordinateJSONRowHeadLookupSpecs()
+			require.NoError(b, err)
+			require.True(b, ok)
+			require.Len(b, lookups, 1)
+		}
+	})
+
+	b.Run("max_keys_per_row_2_json_only", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			cf := makeJSONCFetcher()
+			cf.hasSubordinateColumns = true
+			cf.table.spec.MaxKeysPerRow = 2
+			require.NoError(b, cf.ConfigureJSONPathCompareFilter(
+				evalCtx, 0, row.JSONAccessFetchTextPath, encodedPath, exec.JSONPathFilterEq, tree.NewDString("x"), false,
+			))
+			lookups, ok, err := cf.subordinateJSONRowHeadLookupSpecs()
+			require.NoError(b, err)
+			require.True(b, ok)
+			require.Len(b, lookups, 1)
+		}
 	})
 }
 

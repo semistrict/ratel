@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/semistrict/ratel/pkg/sql/row"
 	"github.com/semistrict/ratel/pkg/testutils/inproc"
 	"github.com/semistrict/ratel/pkg/testutils/inproc/internal/planassert"
 	"github.com/stretchr/testify/require"
@@ -113,17 +114,17 @@ func TestSubordinateJSONPointLookupDistSQL(t *testing.T) {
 
 	var got sql.NullString
 	require.NoError(t, db.QueryRowContext(ctx,
-		`SELECT j#>>'{needle,tiny}' FROM t WHERE id = 1`,
+		`SELECT j->'needle'->>'tiny' FROM t WHERE id = 1`,
 	).Scan(&got))
 	require.Equal(t, sql.NullString{String: "v", Valid: true}, got)
 
 	var id int
 	require.NoError(t, db.QueryRowContext(ctx,
-		`SELECT id FROM t WHERE id = 1 AND j#>>'{needle,tiny}' = 'v'`,
+		`SELECT id FROM t WHERE id = 1 AND j->'needle'->>'tiny' = 'v'`,
 	).Scan(&id))
 	require.Equal(t, 1, id)
 
-	plan := planassert.VecVerbose(t, ctx, db, `SELECT j#>>'{needle,tiny}' FROM t WHERE id = 1`)
+	plan := planassert.VecVerbose(t, ctx, db, `SELECT j->'needle'->>'tiny' FROM t WHERE id = 1`)
 	planassert.UsesColBatchScan(t, plan)
 }
 
@@ -133,11 +134,11 @@ func TestSubordinateJSONPointLookupFilterOnlyDefaultVectorizedPlan(t *testing.T)
 
 	createSubordinateJSONTable(t, ctx, db, `(1, '{"needle":{"tiny":"v"},"junk":{"a":"b","c":"d"}}')`)
 
-	vecPlan := planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE id = 1 AND j#>>'{needle,tiny}' = 'v'`)
+	vecPlan := planassert.VecVerbose(t, ctx, db, `SELECT id FROM t WHERE id = 1 AND j->'needle'->>'tiny' = 'v'`)
 	t.Logf("VEC PLAN:\n%s", vecPlan)
 	planassert.UsesColBatchScan(t, vecPlan)
 
-	distsqlPlan := planassert.DistSQLJSON(t, ctx, db, `SELECT id FROM t WHERE id = 1 AND j#>>'{needle,tiny}' = 'v'`)
+	distsqlPlan := planassert.DistSQLJSON(t, ctx, db, `SELECT id FROM t WHERE id = 1 AND j->'needle'->>'tiny' = 'v'`)
 	t.Logf("DISTSQL JSON: %s", distsqlPlan)
 	planassert.NotContains(t, distsqlPlan, `"Spans: /1/0-/1/1"`)
 }
@@ -284,6 +285,31 @@ func TestSubordinateJSONExistsFilterOnlyDistSQL(t *testing.T) {
 	}
 	require.NoError(t, rows.Err())
 	require.Equal(t, []int{2, 1}, got)
+}
+
+func TestSubordinateJSONExistsFilterOnlyUsesRowHeadLookupFetcher(t *testing.T) {
+	ctx, c, db := startSubordinateJSONCluster(t, "on")
+	defer c.Stop()
+
+	createSubordinateJSONTable(t, ctx, db, `(1, '{"needle":[{"tiny":"v"}],"junk":{"a":"b","c":"d"}}')`)
+	plan := planassert.DistSQLJSON(t, ctx, db, `SELECT id FROM t WHERE j ? 'needle'`)
+	planassert.NotContains(t, plan, `"Filterer/`)
+
+	var seen []row.SubordinateJSONRowLookupSpec
+	prev := row.TestingSubordinateJSONRowHeadFetcherCreated
+	row.TestingSubordinateJSONRowHeadFetcherCreated = func(lookups []row.SubordinateJSONRowLookupSpec) {
+		seen = append([]row.SubordinateJSONRowLookupSpec(nil), lookups...)
+	}
+	defer func() {
+		row.TestingSubordinateJSONRowHeadFetcherCreated = prev
+	}()
+
+	var id int
+	require.NoError(t, db.QueryRowContext(ctx, `SELECT id FROM t WHERE j ? 'needle'`).Scan(&id))
+	require.Equal(t, 1, id)
+	require.Len(t, seen, 1)
+	require.Empty(t, seen[0].SelectedPaths)
+	require.Equal(t, []string{"needle"}, seen[0].ExistsKeys)
 }
 
 func TestSubordinateJSONColumnarExperimentalAlways(t *testing.T) {

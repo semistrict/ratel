@@ -25,6 +25,7 @@ import (
 	"github.com/semistrict/ratel/pkg/kv/kvserver/concurrency/lock"
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	"github.com/semistrict/ratel/pkg/sql/rowenc"
 )
 
 // SubordinateJSONRowLookupSpec identifies the subordinate JSON subtree prefixes
@@ -33,6 +34,7 @@ import (
 type SubordinateJSONRowLookupSpec struct {
 	ColID         descpb.ColumnID
 	SelectedPaths [][]keys.SubordinatePathSegment
+	ExistsKeys    []string
 }
 
 type subordinateJSONRowHeadSpanBuilder struct {
@@ -96,6 +98,22 @@ func (b *subordinateJSONRowHeadSpanBuilder) addSelectedPath(
 	)))
 }
 
+func (b *subordinateJSONRowHeadSpanBuilder) addExistsKeys(colID descpb.ColumnID, keysToCheck []string) {
+	b.addExactKey(roachpb.Key(keys.MakeSubordinatePathKey(
+		b.rowKey, uint32(colID), []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathHeader}},
+	)))
+	for _, key := range keysToCheck {
+		b.addExactKey(roachpb.Key(keys.MakeSubordinatePathKey(
+			b.rowKey,
+			uint32(colID),
+			[]keys.SubordinatePathSegment{
+				{Kind: keys.SubordinatePathHeader},
+				{Kind: keys.SubordinatePathObjectKey, ObjectKey: key},
+			},
+		)))
+	}
+}
+
 func (b *subordinateJSONRowHeadSpanBuilder) finish() roachpb.Spans {
 	sort.Slice(b.spans, func(i, j int) bool {
 		if cmp := b.spans[i].Key.Compare(b.spans[j].Key); cmp != 0 {
@@ -109,11 +127,17 @@ func (b *subordinateJSONRowHeadSpanBuilder) finish() roachpb.Spans {
 type subordinateJSONRowHeadBatchFetcher struct {
 	sendFn         sendFunc
 	spans          roachpb.Spans
+	reverse        bool
 	lockStrength   lock.Strength
 	lockWaitPolicy lock.WaitPolicy
 	lockTimeout    time.Duration
 	lookups        []SubordinateJSONRowLookupSpec
 }
+
+// TestingSubordinateJSONRowHeadFetcherCreated, when non-nil, is invoked after a
+// subordinate JSON row-head fetcher is constructed. Tests can use it to assert
+// that a query took the optimized broad-scan path.
+var TestingSubordinateJSONRowHeadFetcherCreated func([]SubordinateJSONRowLookupSpec)
 
 // NewSubordinateJSONRowHeadKVFetcher constructs a KV fetcher that turns a
 // broad scan into a sequence of row-head scans plus exact subordinate JSON
@@ -127,17 +151,18 @@ func NewSubordinateJSONRowHeadKVFetcher(
 	lockTimeout time.Duration,
 	lookups []SubordinateJSONRowLookupSpec,
 ) (*KVFetcher, error) {
-	if reverse {
-		return nil, errors.AssertionFailedf("reverse subordinate JSON row-head fetcher is unsupported")
-	}
 	cp := append(roachpb.Spans(nil), spans...)
 	f := &subordinateJSONRowHeadBatchFetcher{
 		sendFn:         makeKVBatchFetcherDefaultSendFunc(txn),
 		spans:          cp,
+		reverse:        reverse,
 		lockStrength:   getKeyLockingStrength(lockStrength),
 		lockWaitPolicy: GetWaitPolicy(lockWaitPolicy),
 		lockTimeout:    lockTimeout,
 		lookups:        append([]SubordinateJSONRowLookupSpec(nil), lookups...),
+	}
+	if TestingSubordinateJSONRowHeadFetcherCreated != nil {
+		TestingSubordinateJSONRowHeadFetcherCreated(append([]SubordinateJSONRowLookupSpec(nil), f.lookups...))
 	}
 	return newKVFetcher(f), nil
 }
@@ -146,7 +171,7 @@ func (f *subordinateJSONRowHeadBatchFetcher) nextBatch(
 	ctx context.Context,
 ) (ok bool, kvs []roachpb.KeyValue, batchResponse []byte, err error) {
 	for len(f.spans) > 0 {
-		headKV, rowKey, spanDone, err := f.fetchNextRowHead(ctx, f.spans[0])
+		rowKey, spanDone, err := f.fetchNextRowKey(ctx, f.spans[0])
 		if err != nil {
 			return false, nil, nil, err
 		}
@@ -154,6 +179,10 @@ func (f *subordinateJSONRowHeadBatchFetcher) nextBatch(
 			f.spans[0] = roachpb.Span{}
 			f.spans = f.spans[1:]
 			continue
+		}
+		headKV, err := f.fetchRowHeadKV(ctx, rowKey)
+		if err != nil {
+			return false, nil, nil, err
 		}
 		kvs = append(kvs, headKV)
 		lookupKVs, err := f.fetchRowLookups(ctx, rowKey)
@@ -168,17 +197,88 @@ func (f *subordinateJSONRowHeadBatchFetcher) nextBatch(
 
 func (f *subordinateJSONRowHeadBatchFetcher) close(context.Context) {}
 
-func (f *subordinateJSONRowHeadBatchFetcher) fetchNextRowHead(
+func (f *subordinateJSONRowHeadBatchFetcher) fetchNextRowKey(
 	ctx context.Context, span roachpb.Span,
-) (kv roachpb.KeyValue, rowKey roachpb.Key, spanDone bool, err error) {
+) (rowKey roachpb.Key, spanDone bool, err error) {
 	var ba roachpb.BatchRequest
 	ba.Header.WaitPolicy = f.lockWaitPolicy
 	ba.Header.LockTimeout = f.lockTimeout
 	ba.Header.MaxSpanRequestKeys = 1
 
-	var req roachpb.ScanRequest
-	req.SetSpan(span)
-	req.ScanFormat = roachpb.KEY_VALUES
+	union := roachpb.RequestUnion{}
+	if f.reverse {
+		var req roachpb.ReverseScanRequest
+		req.SetSpan(span)
+		req.ScanFormat = roachpb.KEY_VALUES
+		req.KeyLocking = f.lockStrength
+		union.MustSetInner(&req)
+	} else {
+		var req roachpb.ScanRequest
+		req.SetSpan(span)
+		req.ScanFormat = roachpb.KEY_VALUES
+		req.KeyLocking = f.lockStrength
+		union.MustSetInner(&req)
+	}
+	ba.Requests = []roachpb.RequestUnion{union}
+
+	br, err := f.sendFn(ctx, ba)
+	if err != nil {
+		return nil, false, err
+	}
+	var rows []roachpb.KeyValue
+	switch t := br.Responses[0].GetInner().(type) {
+	case *roachpb.ScanResponse:
+		rows = t.Rows
+	case *roachpb.ReverseScanResponse:
+		rows = t.Rows
+	default:
+		return nil, false, errors.AssertionFailedf("unexpected row-head scan response %T", t)
+	}
+	if len(rows) == 0 {
+		return nil, true, nil
+	}
+	if len(rows) != 1 {
+		return nil, false, errors.AssertionFailedf("expected one row-marker KV, got %d", len(rows))
+	}
+	kv := rows[0]
+	prefixLen, err := keys.GetRowPrefixLength(kv.Key)
+	if err != nil {
+		return nil, false, err
+	}
+	if prefixLen <= 0 || prefixLen >= len(kv.Key) {
+		return nil, false, errors.AssertionFailedf("invalid row-marker key %q", kv.Key)
+	}
+	rowKey = roachpb.Key(keys.MakeFamilyKey(append([]byte(nil), kv.Key[:prefixLen]...), 0))
+
+	if f.reverse {
+		if rowKey.Compare(span.Key) <= 0 {
+			f.spans[0] = roachpb.Span{}
+			f.spans = f.spans[1:]
+		} else {
+			f.spans[0] = roachpb.Span{Key: span.Key, EndKey: append(roachpb.Key(nil), rowKey...)}
+		}
+	} else {
+		nextKey := append(roachpb.Key(nil), rowKey...)
+		nextKey = nextKey.PrefixEnd()
+		if nextKey.Compare(span.EndKey) >= 0 {
+			f.spans[0] = roachpb.Span{}
+			f.spans = f.spans[1:]
+		} else {
+			f.spans[0] = roachpb.Span{Key: nextKey, EndKey: span.EndKey}
+		}
+	}
+	return rowKey, false, nil
+}
+
+func (f *subordinateJSONRowHeadBatchFetcher) fetchRowHeadKV(
+	ctx context.Context, rowKey roachpb.Key,
+) (roachpb.KeyValue, error) {
+	var ba roachpb.BatchRequest
+	ba.Header.WaitPolicy = f.lockWaitPolicy
+	ba.Header.LockTimeout = f.lockTimeout
+
+	var req roachpb.GetRequest
+	req.Key = rowKey
 	req.KeyLocking = f.lockStrength
 	union := roachpb.RequestUnion{}
 	union.MustSetInner(&req)
@@ -186,34 +286,13 @@ func (f *subordinateJSONRowHeadBatchFetcher) fetchNextRowHead(
 
 	br, err := f.sendFn(ctx, ba)
 	if err != nil {
-		return kv, nil, false, err
+		return roachpb.KeyValue{}, err
 	}
-	resp := br.Responses[0].GetInner().(*roachpb.ScanResponse)
-	if len(resp.Rows) == 0 {
-		return kv, nil, true, nil
+	resp := br.Responses[0].GetInner().(*roachpb.GetResponse)
+	if resp.Value == nil {
+		return roachpb.KeyValue{}, errors.AssertionFailedf("missing row-head value for key %q", rowKey)
 	}
-	if len(resp.Rows) != 1 {
-		return kv, nil, false, errors.AssertionFailedf("expected one row-head KV, got %d", len(resp.Rows))
-	}
-	kv = resp.Rows[0]
-	prefixLen, err := keys.GetRowPrefixLength(kv.Key)
-	if err != nil {
-		return kv, nil, false, err
-	}
-	if prefixLen <= 0 || prefixLen >= len(kv.Key) {
-		return kv, nil, false, errors.AssertionFailedf("invalid row-head key %q", kv.Key)
-	}
-	rowKey = roachpb.Key(keys.MakeFamilyKey(append([]byte(nil), kv.Key[:prefixLen]...), 0))
-
-	nextKey := append(roachpb.Key(nil), rowKey...)
-	nextKey = nextKey.PrefixEnd()
-	if nextKey.Compare(span.EndKey) >= 0 {
-		f.spans[0] = roachpb.Span{}
-		f.spans = f.spans[1:]
-	} else {
-		f.spans[0] = roachpb.Span{Key: nextKey, EndKey: span.EndKey}
-	}
-	return kv, rowKey, false, nil
+	return roachpb.KeyValue{Key: append(roachpb.Key(nil), rowKey...), Value: *resp.Value}, nil
 }
 
 func (f *subordinateJSONRowHeadBatchFetcher) fetchRowLookups(
@@ -225,8 +304,86 @@ func (f *subordinateJSONRowHeadBatchFetcher) fetchRowLookups(
 		for _, path := range lookup.SelectedPaths {
 			builder.addSelectedPath(lookup.ColID, path)
 		}
+		if len(lookup.ExistsKeys) > 0 {
+			builder.addExistsKeys(lookup.ColID, lookup.ExistsKeys)
+		}
 	}
 	spans := builder.finish()
+	if len(spans) == 0 {
+		return nil, nil
+	}
+	kvs, err := f.fetchLookupSpans(ctx, spans)
+	if err != nil {
+		return nil, err
+	}
+	extraSpans := f.buildExistsArrayElementSpans(rowKey, kvs)
+	if len(extraSpans) == 0 {
+		return kvs, nil
+	}
+	extraKVs, err := f.fetchLookupSpans(ctx, extraSpans)
+	if err != nil {
+		return nil, err
+	}
+	kvs = append(kvs, extraKVs...)
+	sort.Slice(kvs, func(i, j int) bool {
+		return kvs[i].Key.Compare(kvs[j].Key) < 0
+	})
+	return kvs, nil
+}
+
+func (f *subordinateJSONRowHeadBatchFetcher) buildExistsArrayElementSpans(
+	rowKey roachpb.Key, kvs []roachpb.KeyValue,
+) roachpb.Spans {
+	var spans roachpb.Spans
+	for i := range f.lookups {
+		lookup := &f.lookups[i]
+		if len(lookup.ExistsKeys) == 0 {
+			continue
+		}
+		nodeKind, childCount, ok, err := lookupRootSubordinateJSONNode(kvs, rowKey, lookup.ColID)
+		if err != nil || !ok {
+			continue
+		}
+		if nodeKind != rowenc.SubordinateJSONArray || childCount <= 0 {
+			continue
+		}
+		for elemIdx := 0; elemIdx < childCount; elemIdx++ {
+			key := roachpb.Key(keys.MakeSubordinatePathKey(
+				rowKey,
+				uint32(lookup.ColID),
+				[]keys.SubordinatePathSegment{
+					{Kind: keys.SubordinatePathHeader},
+					{Kind: keys.SubordinatePathArrayIndex, ArrayIdx: uint32(elemIdx)},
+				},
+			))
+			spans = append(spans, roachpb.Span{Key: key, EndKey: key.Next()})
+		}
+	}
+	return spans
+}
+
+func lookupRootSubordinateJSONNode(
+	kvs []roachpb.KeyValue, rowKey roachpb.Key, colID descpb.ColumnID,
+) (nodeKind rowenc.SubordinateJSONNodeKind, childCount int, ok bool, err error) {
+	rootKey := roachpb.Key(keys.MakeSubordinatePathKey(
+		rowKey, uint32(colID), []keys.SubordinatePathSegment{{Kind: keys.SubordinatePathHeader}},
+	))
+	for i := range kvs {
+		if !kvs[i].Key.Equal(rootKey) {
+			continue
+		}
+		nodeKind, childCount, _, err = rowenc.PeekSubordinateJSONValueMetadata(kvs[i].Value)
+		if err != nil {
+			return 0, 0, false, err
+		}
+		return nodeKind, childCount, true, nil
+	}
+	return 0, 0, false, nil
+}
+
+func (f *subordinateJSONRowHeadBatchFetcher) fetchLookupSpans(
+	ctx context.Context, spans roachpb.Spans,
+) ([]roachpb.KeyValue, error) {
 	if len(spans) == 0 {
 		return nil, nil
 	}

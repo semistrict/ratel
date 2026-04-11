@@ -20,6 +20,7 @@ import (
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/settings"
 	"github.com/semistrict/ratel/pkg/sql/catalog"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
 	"github.com/semistrict/ratel/pkg/sql/row"
 	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 )
@@ -62,6 +63,20 @@ func (tu *tableUpdater) rowForUpdate(
 ) (tree.Datums, error) {
 	tu.currentBatchSize++
 	return tu.ru.UpdateRow(ctx, tu.b, oldValues, updateValues, pm, traceKV)
+}
+
+func (tu *tableUpdater) rowForSubordinateJSONMutation(
+	ctx context.Context, oldValues tree.Datums, mutation row.SubordinateJSONMutationOp, traceKV bool,
+) error {
+	tu.currentBatchSize++
+	return tu.ru.UpdateSubordinateJSONRow(ctx, tu.txn, tu.b, oldValues, mutation, traceKV)
+}
+
+func (tu *tableUpdater) rowForSubordinateJSONNull(
+	ctx context.Context, oldValues tree.Datums, colID descpb.ColumnID, traceKV bool,
+) error {
+	tu.currentBatchSize++
+	return tu.ru.ClearSubordinateJSONColumn(ctx, tu.b, oldValues, colID, traceKV)
 }
 
 // tableDesc is part of the tableWriter interface.

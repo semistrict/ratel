@@ -190,6 +190,39 @@ func appendJSONSubordinateEntries(
 	return entries, nil
 }
 
+// EncodeSubordinateJSONContainerValue encodes an object/array container header
+// for subordinate JSON storage without requiring the full container payload.
+func EncodeSubordinateJSONContainerValue(
+	kind SubordinateJSONNodeKind, childCount int,
+) (roachpb.Value, error) {
+	if childCount < 0 {
+		return roachpb.Value{}, errors.AssertionFailedf("negative subordinate JSON child count %d", childCount)
+	}
+	var raw []byte
+	switch kind {
+	case SubordinateJSONObject, SubordinateJSONArray:
+		raw = []byte{byte(kind)}
+		raw = encoding.EncodeUvarintAscending(raw, uint64(childCount))
+	default:
+		return roachpb.Value{}, errors.AssertionFailedf("invalid subordinate JSON container kind %d", kind)
+	}
+	var v roachpb.Value
+	v.SetBytes(raw)
+	return v, nil
+}
+
+// EncodeJSONSubordinateEntriesAtPath appends subordinate entries for j rooted
+// at the given path prefix.
+func EncodeJSONSubordinateEntriesAtPath(
+	entries []IndexEntry,
+	sentinelKey []byte,
+	colID uint32,
+	path []keys.SubordinatePathSegment,
+	j jsonutil.JSON,
+) ([]IndexEntry, error) {
+	return appendJSONSubordinateEntries(entries, sentinelKey, colID, path, j)
+}
+
 // EncodeSubordinateKeys returns subordinate key entries for all columns that
 // use subordinate storage in the given row.
 //

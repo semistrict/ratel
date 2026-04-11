@@ -16,7 +16,9 @@ package row
 
 import (
 	"context"
+	"fmt"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/semistrict/ratel/pkg/base"
@@ -44,7 +46,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func makeArraySubordinateFetcher(t *testing.T, materialize bool, left tree.Datum) *Fetcher {
+func makeArraySubordinateFetcher(t testing.TB, materialize bool, left tree.Datum) *Fetcher {
 	t.Helper()
 
 	var colIdxMap catalog.TableColMap
@@ -75,7 +77,7 @@ func makeArraySubordinateFetcher(t *testing.T, materialize bool, left tree.Datum
 	return rf
 }
 
-func makeSingleColumnFetcher(t *testing.T, typ *types.T, colID descpb.ColumnID, name string) *Fetcher {
+func makeSingleColumnFetcher(t testing.TB, typ *types.T, colID descpb.ColumnID, name string) *Fetcher {
 	t.Helper()
 
 	var colIdxMap catalog.TableColMap
@@ -107,14 +109,55 @@ func makeSingleColumnFetcher(t *testing.T, typ *types.T, colID descpb.ColumnID, 
 	}
 }
 
-func makeJSONExistsFetcher(t *testing.T, key string, materialize bool) *Fetcher {
+func makeTwoColumnFetcher(
+	t testing.TB,
+	firstType *types.T,
+	firstID descpb.ColumnID,
+	firstName string,
+	secondType *types.T,
+	secondID descpb.ColumnID,
+	secondName string,
+) *Fetcher {
+	t.Helper()
+
+	var colIdxMap catalog.TableColMap
+	colIdxMap.Set(firstID, 0)
+	colIdxMap.Set(secondID, 1)
+	var neededValueColsByIdx util.FastIntSet
+	neededValueColsByIdx.Add(0)
+	neededValueColsByIdx.Add(1)
+
+	return &Fetcher{
+		table: tableInfo{
+			spec: descpb.IndexFetchSpec{
+				FetchedColumns: []descpb.IndexFetchSpec_Column{
+					{ColumnID: firstID, Name: firstName, Type: firstType},
+					{ColumnID: secondID, Name: secondName, Type: secondType},
+				},
+			},
+			colIdxMap:            colIdxMap,
+			neededValueColsByIdx: neededValueColsByIdx,
+			neededValueCols:      2,
+			row:                  make(rowenc.EncDatumRow, 2),
+			decodedRow:           make(tree.Datums, 2),
+			keyVals:              make([]rowenc.EncDatum, 0),
+			extraVals:            make([]rowenc.EncDatum, 0),
+			indexColIdx:          []int{-1},
+			timestampOutputIdx:   noOutputColumn,
+			oidOutputIdx:         noOutputColumn,
+		},
+		alloc: &tree.DatumAlloc{},
+	}
+}
+
+func makeJSONExistsFetcher(t testing.TB, key string, materialize bool) *Fetcher {
 	t.Helper()
 	rf := makeSingleColumnFetcher(t, types.Jsonb, 7, "doc")
 	require.NoError(t, rf.ConfigureJSONExistsFilter(0, JSONAccessExists, key, nil, materialize))
 	return rf
 }
 
-func makeJSONFetchPathFetcher(t *testing.T, path []string, asText bool, materialize bool) *Fetcher {
+func makeJSONFetchPathFetcher(t testing.TB, path []string, asText bool, materialize bool) *Fetcher {
 	t.Helper()
 	rf := makeSingleColumnFetcher(t, types.Jsonb, 7, "doc")
 	encodedPath := make([]string, 0, len(path))
@@ -228,6 +271,36 @@ func TestSubordinateJSONRowHeadLookupSpecs(t *testing.T) {
 		}}, lookups)
 	})
 
+	t.Run("allows reverse scans with static prefix", func(t *testing.T) {
+		rf := makeSingleColumnFetcher(t, types.Jsonb, 7, "doc")
+		rf.hasSubordinateColumns = true
+		rf.reverse = true
+		rf.table.spec.MaxKeysPerRow = 1
+		require.NoError(t, rf.ConfigureJSONPathCompareFilter(
+			tree.NewTestingEvalContext(cluster.MakeTestingClusterSettings()),
+			0,
+			JSONAccessFetchTextPath,
+			[]string{
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("needle"),
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("-1"),
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("tiny"),
+			},
+			exec.JSONPathFilterEq,
+			tree.NewDString("x"),
+			false, /* materialize */
+		))
+
+		lookups, ok, err := rf.subordinateJSONRowHeadLookupSpecs()
+		require.NoError(t, err)
+		require.True(t, ok)
+		require.Equal(t, []SubordinateJSONRowLookupSpec{{
+			ColID: 7,
+			SelectedPaths: [][]keys.SubordinatePathSegment{{
+				{Kind: keys.SubordinatePathObjectKey, ObjectKey: "needle"},
+			}},
+		}}, lookups)
+	})
+
 	t.Run("rejects ambiguous numeric key-or-index prefix", func(t *testing.T) {
 		rf := makeSingleColumnFetcher(t, types.Jsonb, 7, "doc")
 		rf.hasSubordinateColumns = true
@@ -250,10 +323,165 @@ func TestSubordinateJSONRowHeadLookupSpecs(t *testing.T) {
 		require.False(t, ok)
 		require.Nil(t, lookups)
 	})
+
+	t.Run("includes exists keys without selected paths", func(t *testing.T) {
+		rf := makeSingleColumnFetcher(t, types.Jsonb, 7, "doc")
+		rf.hasSubordinateColumns = true
+		rf.table.spec.MaxKeysPerRow = 1
+		require.NoError(t, rf.ConfigureJSONExistsFilter(0, JSONAccessExistsAny, "", []string{"b", "a"}, false))
+
+		lookups, ok, err := rf.subordinateJSONRowHeadLookupSpecs()
+		require.NoError(t, err)
+		require.True(t, ok)
+		require.Equal(t, []SubordinateJSONRowLookupSpec{{
+			ColID:         7,
+			SelectedPaths: nil,
+			ExistsKeys:    []string{"a", "b"},
+		}}, lookups)
+	})
+
+	t.Run("rejects projected source json even when max keys per row is one", func(t *testing.T) {
+		rf := makeSingleColumnFetcher(t, types.Jsonb, 7, "doc")
+		rf.hasSubordinateColumns = true
+		rf.table.spec.MaxKeysPerRow = 1
+		require.NoError(t, rf.ConfigureJSONExistsFilter(0, JSONAccessExists, "a", nil, true /* materialize */))
+
+		lookups, ok, err := rf.subordinateJSONRowHeadLookupSpecs()
+		require.NoError(t, err)
+		require.False(t, ok)
+		require.Nil(t, lookups)
+	})
+
+	t.Run("allows row head lookup with no json programs when only non-subordinate values are needed", func(t *testing.T) {
+		rf := makeSingleColumnFetcher(t, types.String, 8, "pad")
+		rf.hasSubordinateColumns = true
+		rf.table.spec.MaxKeysPerRow = 0
+
+		lookups, ok, err := rf.subordinateJSONRowHeadLookupSpecs()
+		require.NoError(t, err)
+		require.True(t, ok)
+		require.Nil(t, lookups)
+	})
+
+	t.Run("allows max keys per row when all needed value cols are looked-up json", func(t *testing.T) {
+		rf := makeSingleColumnFetcher(t, types.Jsonb, 7, "doc")
+		rf.hasSubordinateColumns = true
+		rf.table.spec.MaxKeysPerRow = 2
+		require.NoError(t, rf.ConfigureJSONPathCompareFilter(
+			tree.NewTestingEvalContext(cluster.MakeTestingClusterSettings()),
+			0,
+			JSONAccessFetchTextPath,
+			[]string{
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("needle"),
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("-1"),
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("tiny"),
+			},
+			exec.JSONPathFilterEq,
+			tree.NewDString("x"),
+			false, /* materialize */
+		))
+
+		lookups, ok, err := rf.subordinateJSONRowHeadLookupSpecs()
+		require.NoError(t, err)
+		require.True(t, ok)
+		require.Equal(t, []SubordinateJSONRowLookupSpec{{
+			ColID: 7,
+			SelectedPaths: [][]keys.SubordinatePathSegment{{
+				{Kind: keys.SubordinatePathObjectKey, ObjectKey: "needle"},
+			}},
+		}}, lookups)
+	})
+
+	t.Run("rejects max keys per row when non-json value column is also needed", func(t *testing.T) {
+		rf := makeTwoColumnFetcher(t, types.Jsonb, 7, "doc", types.String, 8, "pad")
+		rf.hasSubordinateColumns = true
+		rf.table.spec.MaxKeysPerRow = 2
+		require.NoError(t, rf.ConfigureJSONPathCompareFilter(
+			tree.NewTestingEvalContext(cluster.MakeTestingClusterSettings()),
+			0,
+			JSONAccessFetchTextPath,
+			[]string{
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("needle"),
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("-1"),
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("tiny"),
+			},
+			exec.JSONPathFilterEq,
+			tree.NewDString("x"),
+			false, /* materialize */
+		))
+
+		lookups, ok, err := rf.subordinateJSONRowHeadLookupSpecs()
+		require.NoError(t, err)
+		require.False(t, ok)
+		require.Nil(t, lookups)
+	})
+
+	t.Run("rejects max keys per row when source json column must be materialized", func(t *testing.T) {
+		rf := makeSingleColumnFetcher(t, types.Jsonb, 7, "doc")
+		rf.hasSubordinateColumns = true
+		rf.table.spec.MaxKeysPerRow = 2
+		require.NoError(t, rf.ConfigureJSONPathCompareFilter(
+			tree.NewTestingEvalContext(cluster.MakeTestingClusterSettings()),
+			0,
+			JSONAccessFetchTextPath,
+			[]string{
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("needle"),
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("-1"),
+				jsonPathStepKeyOrIndexPrefix + strconv.Quote("tiny"),
+			},
+			exec.JSONPathFilterEq,
+			tree.NewDString("x"),
+			true, /* materialize */
+		))
+
+		lookups, ok, err := rf.subordinateJSONRowHeadLookupSpecs()
+		require.NoError(t, err)
+		require.False(t, ok)
+		require.Nil(t, lookups)
+	})
+}
+
+func BenchmarkSubordinateJSONRowHeadLookupSpecs(b *testing.B) {
+	encodedPath := []string{
+		jsonPathStepKeyOrIndexPrefix + strconv.Quote("needle"),
+		jsonPathStepKeyOrIndexPrefix + strconv.Quote("-1"),
+		jsonPathStepKeyOrIndexPrefix + strconv.Quote("tiny"),
+	}
+	evalCtx := tree.NewTestingEvalContext(cluster.MakeTestingClusterSettings())
+
+	b.Run("max_keys_per_row_1", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			rf := makeSingleColumnFetcher(b, types.Jsonb, 7, "doc")
+			rf.hasSubordinateColumns = true
+			rf.table.spec.MaxKeysPerRow = 1
+			require.NoError(b, rf.ConfigureJSONPathCompareFilter(
+				evalCtx, 0, JSONAccessFetchTextPath, encodedPath, exec.JSONPathFilterEq, tree.NewDString("x"), false,
+			))
+			lookups, ok, err := rf.subordinateJSONRowHeadLookupSpecs()
+			require.NoError(b, err)
+			require.True(b, ok)
+			require.Len(b, lookups, 1)
+		}
+	})
+
+	b.Run("max_keys_per_row_2_json_only", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			rf := makeSingleColumnFetcher(b, types.Jsonb, 7, "doc")
+			rf.hasSubordinateColumns = true
+			rf.table.spec.MaxKeysPerRow = 2
+			require.NoError(b, rf.ConfigureJSONPathCompareFilter(
+				evalCtx, 0, JSONAccessFetchTextPath, encodedPath, exec.JSONPathFilterEq, tree.NewDString("x"), false,
+			))
+			lookups, ok, err := rf.subordinateJSONRowHeadLookupSpecs()
+			require.NoError(b, err)
+			require.True(b, ok)
+			require.Len(b, lookups, 1)
+		}
+	})
 }
 
 func makeJSONPathCompareFetcher(
-	t *testing.T, path []string, asText bool, mode exec.JSONPathFilterMode, right tree.Datum, materialize bool,
+	t testing.TB, path []string, asText bool, mode exec.JSONPathFilterMode, right tree.Datum, materialize bool,
 ) *Fetcher {
 	t.Helper()
 	rf := makeSingleColumnFetcher(t, types.Jsonb, 7, "doc")
@@ -2299,6 +2527,358 @@ func TestRecursiveJSONInserterOverwriteMultiRowRemovesOldSubtree(t *testing.T) {
 		`SELECT k, coalesce(doc#>>'{a,b,-1}', 'NULL') FROM d.json_upsert_multi WHERE doc ? 'a' ORDER BY k`,
 		[][]string{{"1", "99"}, {"2", "5"}},
 	)
+}
+
+func mustDJSON(t testing.TB, raw string) *tree.DJSON {
+	t.Helper()
+	j, err := jsonutil.ParseJSON(raw)
+	require.NoError(t, err)
+	return tree.NewDJSON(j)
+}
+
+func makeLargeRootArrayJSONDoc(targetBytes int) string {
+	var b strings.Builder
+	b.Grow(targetBytes + targetBytes/8)
+	b.WriteByte('[')
+
+	chunk := strings.Repeat("x", 240)
+	for i := 0; b.Len() < targetBytes; i++ {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		if i == 10 {
+			b.WriteString(`{"test":"v"}`)
+			continue
+		}
+		fmt.Fprintf(&b, `{"junk":"%s","i":%d}`, chunk, i)
+	}
+
+	b.WriteByte(']')
+	return b.String()
+}
+
+func makeLargeRootObjectJSONDoc(targetBytes int) string {
+	var b strings.Builder
+	b.Grow(targetBytes + targetBytes/8)
+	b.WriteString(`{"test":"v","tail_delete":"gone"`)
+
+	chunk := strings.Repeat("x", 240)
+	for i := 0; b.Len() < targetBytes; i++ {
+		fmt.Fprintf(&b, `,"k%06d":"%s"`, i, chunk)
+	}
+
+	b.WriteByte('}')
+	return b.String()
+}
+
+func TestRecursiveJSONUpdaterLocalMutations(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+	ctx := context.Background()
+
+	s, sqlDB, kvDB := serverutils.StartServer(t, base.TestServerArgs{})
+	defer s.Stopper().Stop(ctx)
+
+	sqlRunner := sqlutils.MakeSQLRunner(sqlDB)
+	sqlRunner.Exec(t, `CREATE DATABASE d`)
+	sqlRunner.Exec(t, `CREATE TABLE d.t (k INT PRIMARY KEY, doc JSONB)`)
+
+	st := cluster.MakeTestingClusterSettings()
+
+	applyMutation := func(
+		t *testing.T, initial string, mutation SubordinateJSONMutationOp, expected string,
+	) {
+		t.Helper()
+		sqlRunner.Exec(t, `DELETE FROM d.t`)
+		sqlRunner.Exec(t, `INSERT INTO d.t VALUES (1, $1::JSONB)`, initial)
+
+		tableDesc := desctestutils.TestingGetPublicTableDescriptor(
+			kvDB, keys.SystemSQLCodec, "d", "t",
+		)
+		txn := kv.NewTxn(ctx, kvDB, 0)
+		ru, err := MakeUpdater(
+			ctx,
+			txn,
+			keys.SystemSQLCodec,
+			tableDesc,
+			[]catalog.Column{tableDesc.PublicColumns()[1]},
+			tableDesc.PublicColumns(),
+			UpdaterDefault,
+			&tree.DatumAlloc{},
+			&st.SV,
+			false, /* internal */
+			nil,   /* metrics */
+		)
+		require.NoError(t, err)
+
+		b := &kv.Batch{}
+		require.NoError(t, ru.UpdateSubordinateJSONRow(
+			ctx,
+			txn,
+			b,
+			[]tree.Datum{tree.NewDInt(1), tree.DNull},
+			mutation,
+			false, /* traceKV */
+		))
+		require.NoError(t, txn.Run(ctx, b))
+		require.NoError(t, txn.Commit(ctx))
+		sqlRunner.CheckQueryResults(t, `SELECT doc::STRING FROM d.t`, [][]string{{expected}})
+	}
+
+	t.Run("root object concat", func(t *testing.T) {
+		applyMutation(t,
+			`{"test":"old","keep":1}`,
+			SubordinateJSONMutationOp{
+				ColID: 2,
+				Kind:  SubordinateJSONMutationConcat,
+				Value: mustDJSON(t, `{"test":"new","added":2}`).JSON,
+			},
+			`{"added": 2, "keep": 1, "test": "new"}`,
+		)
+	})
+
+	t.Run("root object delete key", func(t *testing.T) {
+		applyMutation(t,
+			`{"test":"old","keep":1}`,
+			SubordinateJSONMutationOp{
+				ColID: 2,
+				Kind:  SubordinateJSONMutationDeleteKey,
+				Key:   "test",
+			},
+			`{"keep": 1}`,
+		)
+	})
+
+	t.Run("root object set key", func(t *testing.T) {
+		applyMutation(t,
+			`{"test":"old","keep":1}`,
+			SubordinateJSONMutationOp{
+				ColID:         2,
+				Kind:          SubordinateJSONMutationSetPath,
+				Path:          []string{"test"},
+				Value:         mustDJSON(t, `"new"`).JSON,
+				CreateMissing: false,
+			},
+			`{"keep": 1, "test": "new"}`,
+		)
+	})
+
+	t.Run("root array append", func(t *testing.T) {
+		applyMutation(t,
+			`[{"test":"a"},{"test":"b"}]`,
+			SubordinateJSONMutationOp{
+				ColID: 2,
+				Kind:  SubordinateJSONMutationConcat,
+				Value: mustDJSON(t, `[{"test":"c"}]`).JSON,
+			},
+			`[{"test": "a"}, {"test": "b"}, {"test": "c"}]`,
+		)
+	})
+
+	t.Run("root array delete last", func(t *testing.T) {
+		applyMutation(t,
+			`[{"test":"a"},{"test":"b"}]`,
+			SubordinateJSONMutationOp{
+				ColID: 2,
+				Kind:  SubordinateJSONMutationDeleteLastArrayElement,
+			},
+			`[{"test": "a"}]`,
+		)
+	})
+
+	t.Run("root array object key set", func(t *testing.T) {
+		applyMutation(t,
+			`[{"test":"a"},{"test":"b"}]`,
+			SubordinateJSONMutationOp{
+				ColID:         2,
+				Kind:          SubordinateJSONMutationSetPath,
+				Path:          []string{"1", "test"},
+				Value:         mustDJSON(t, `"updated"`).JSON,
+				CreateMissing: false,
+			},
+			`[{"test": "a"}, {"test": "updated"}]`,
+		)
+	})
+}
+
+func TestRecursiveJSONUpdaterLargeRootArrayMutationsStayLocal(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+	ctx := context.Background()
+
+	s, sqlDB, kvDB := serverutils.StartServer(t, base.TestServerArgs{})
+	defer s.Stopper().Stop(ctx)
+
+	sqlRunner := sqlutils.MakeSQLRunner(sqlDB)
+	sqlRunner.Exec(t, `CREATE DATABASE d`)
+	sqlRunner.Exec(t, `CREATE TABLE d.t (k INT PRIMARY KEY, doc JSONB)`)
+
+	st := cluster.MakeTestingClusterSettings()
+	const targetBytes = 128 << 10
+	testCases := []struct {
+		name               string
+		initialDoc         string
+		mutation           SubordinateJSONMutationOp
+		expectedProjection string
+	}{
+		{
+			name:       "append root array element",
+			initialDoc: makeLargeRootArrayJSONDoc(targetBytes),
+			mutation: SubordinateJSONMutationOp{
+				ColID: 2,
+				Kind:  SubordinateJSONMutationConcat,
+				Value: mustDJSON(t, `[{"test":"appended"}]`).JSON,
+			},
+			expectedProjection: `CASE WHEN jsonb_array_length(doc) > 10 AND doc->10->>'test' = 'v' AND doc->(jsonb_array_length(doc) - 1)->>'test' = 'appended' THEN 1 ELSE 0 END`,
+		},
+		{
+			name:       "delete last root array element",
+			initialDoc: makeLargeRootArrayJSONDoc(targetBytes),
+			mutation: SubordinateJSONMutationOp{
+				ColID: 2,
+				Kind:  SubordinateJSONMutationDeleteLastArrayElement,
+			},
+			expectedProjection: `CASE WHEN jsonb_array_length(doc) >= 10 AND doc->10->>'test' = 'v' THEN 1 ELSE 0 END`,
+		},
+		{
+			name:       "set root array element key",
+			initialDoc: makeLargeRootArrayJSONDoc(targetBytes),
+			mutation: SubordinateJSONMutationOp{
+				ColID:         2,
+				Kind:          SubordinateJSONMutationSetPath,
+				Path:          []string{"10", "test"},
+				Value:         mustDJSON(t, `"updated"`).JSON,
+				CreateMissing: false,
+			},
+			expectedProjection: `CASE WHEN doc->10->>'test' = 'updated' THEN 1 ELSE 0 END`,
+		},
+		{
+			name:       "append root object key",
+			initialDoc: makeLargeRootObjectJSONDoc(targetBytes),
+			mutation: SubordinateJSONMutationOp{
+				ColID: 2,
+				Kind:  SubordinateJSONMutationConcat,
+				Value: mustDJSON(t, `{"appended":"v"}`).JSON,
+			},
+			expectedProjection: `CASE WHEN doc->>'test' = 'v' AND doc->>'appended' = 'v' THEN 1 ELSE 0 END`,
+		},
+		{
+			name:       "delete root object key",
+			initialDoc: makeLargeRootObjectJSONDoc(targetBytes),
+			mutation: SubordinateJSONMutationOp{
+				ColID: 2,
+				Kind:  SubordinateJSONMutationDeleteKey,
+				Key:   "tail_delete",
+			},
+			expectedProjection: `CASE WHEN doc->>'tail_delete' IS NULL AND doc->>'test' = 'v' THEN 1 ELSE 0 END`,
+		},
+		{
+			name:       "set root object key",
+			initialDoc: makeLargeRootObjectJSONDoc(targetBytes),
+			mutation: SubordinateJSONMutationOp{
+				ColID:         2,
+				Kind:          SubordinateJSONMutationSetPath,
+				Path:          []string{"test"},
+				Value:         mustDJSON(t, `"updated"`).JSON,
+				CreateMissing: false,
+			},
+			expectedProjection: `CASE WHEN doc->>'test' = 'updated' THEN 1 ELSE 0 END`,
+		},
+	}
+
+	applyLocalMutation := func(
+		t *testing.T, initialDoc string, mutation SubordinateJSONMutationOp, expectedProjection string,
+	) {
+		t.Helper()
+		sqlRunner.Exec(t, `DELETE FROM d.t`)
+		sqlRunner.Exec(t, `INSERT INTO d.t VALUES (1, $1::JSONB)`, initialDoc)
+
+		tableDesc := desctestutils.TestingGetPublicTableDescriptor(
+			kvDB, keys.SystemSQLCodec, "d", "t",
+		)
+		txn := kv.NewTxn(ctx, kvDB, 0)
+		ru, err := MakeUpdater(
+			ctx,
+			txn,
+			keys.SystemSQLCodec,
+			tableDesc,
+			[]catalog.Column{tableDesc.PublicColumns()[1]},
+			tableDesc.PublicColumns(),
+			UpdaterDefault,
+			&tree.DatumAlloc{},
+			&st.SV,
+			false, /* internal */
+			nil,   /* metrics */
+		)
+		require.NoError(t, err)
+
+		oldValues := []tree.Datum{tree.NewDInt(1), tree.DNull}
+		primaryIndexKey, err := ru.Helper.encodePrimaryIndex(ru.FetchColIDtoRowIndex, oldValues)
+		require.NoError(t, err)
+		rowKey := keys.MakeFamilyKey(primaryIndexKey, 0)
+		headerKey := roachpb.Key(keys.MakeSubordinatePathKey(rowKey, 2, []keys.SubordinatePathSegment{
+			{Kind: keys.SubordinatePathHeader},
+		}))
+
+		b := &kv.Batch{}
+		localApplied, err := ru.tryApplyLocalSubordinateJSONMutation(
+			ctx, txn, b, rowKey, headerKey, mutation, false, /* traceKV */
+		)
+		require.NoError(t, err)
+		require.True(t, localApplied)
+		require.Less(t, int64(b.ApproximateMutationBytes()), int64(1<<20))
+
+		require.NoError(t, txn.Run(ctx, b))
+		require.NoError(t, txn.Commit(ctx))
+		sqlRunner.CheckQueryResults(t, `SELECT `+expectedProjection+` FROM d.t`, [][]string{{"1"}})
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			applyLocalMutation(t, tc.initialDoc, tc.mutation, tc.expectedProjection)
+		})
+	}
+}
+
+func TestRecursiveJSONUpdaterClearColumn(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+	ctx := context.Background()
+
+	s, sqlDB, kvDB := serverutils.StartServer(t, base.TestServerArgs{})
+	defer s.Stopper().Stop(ctx)
+
+	sqlRunner := sqlutils.MakeSQLRunner(sqlDB)
+	sqlRunner.Exec(t, `CREATE DATABASE d`)
+	sqlRunner.Exec(t, `CREATE TABLE d.t (k INT PRIMARY KEY, doc JSONB)`)
+	sqlRunner.Exec(t, `INSERT INTO d.t VALUES (1, '{"test":"old","keep":1}')`)
+
+	tableDesc := desctestutils.TestingGetPublicTableDescriptor(
+		kvDB, keys.SystemSQLCodec, "d", "t",
+	)
+	st := cluster.MakeTestingClusterSettings()
+	txn := kv.NewTxn(ctx, kvDB, 0)
+	ru, err := MakeUpdater(
+		ctx,
+		txn,
+		keys.SystemSQLCodec,
+		tableDesc,
+		[]catalog.Column{tableDesc.PublicColumns()[1]},
+		tableDesc.PublicColumns(),
+		UpdaterDefault,
+		&tree.DatumAlloc{},
+		&st.SV,
+		false, /* internal */
+		nil,   /* metrics */
+	)
+	require.NoError(t, err)
+
+	b := &kv.Batch{}
+	require.NoError(t, ru.ClearSubordinateJSONColumn(
+		ctx, b, []tree.Datum{tree.NewDInt(1), tree.DNull}, 2, false, /* traceKV */
+	))
+	require.NoError(t, txn.Run(ctx, b))
+	require.NoError(t, txn.Commit(ctx))
+
+	sqlRunner.CheckQueryResults(t, `SELECT doc IS NULL FROM d.t`, [][]string{{"true"}})
 }
 
 func mustGetTuple(t *testing.T, v roachpb.Value) []byte {

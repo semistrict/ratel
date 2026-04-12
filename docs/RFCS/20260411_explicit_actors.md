@@ -351,10 +351,13 @@ On first successful write to an actor:
 2. look up or insert the registry entry
 3. verify name/hash consistency
 4. reject collisions between distinct names with the same hash
-5. establish sticky range splits at the actor keyspan boundaries
-6. proceed with the write
+5. proceed with the write
 
 This work should occur transactionally before the statement emits user-table KV.
+
+No dedicated range is created per actor. Multiple small actors share Raft
+ranges. The split queue handles splitting at actor boundaries when a range
+grows large enough.
 
 ## Execution model
 
@@ -491,19 +494,26 @@ into one range.
 
 ### Capacity limits
 
-Because actors cannot split, the system must define explicit limits and surface
-them clearly. At minimum:
+A single actor's data cannot be split across Raft ranges. The system defines an
+explicit size limit to prevent a single actor from growing into an unsplittable
+mega-range:
 
-- maximum actor live data size
+- `kv.actor.max_size` (default 4 GiB): enforced via KV backpressure once an
+  actor occupies a dedicated range.
 
-When an operation would exceed the hard limit, the operation must fail with a
-clear user-visible error. It must not trigger automatic repartition of the
-actor.
+When an operation would exceed the limit, it fails with a clear user-visible
+error.
 
-## Span configuration
+## Range management
 
-On first write, the system places sticky range splits at the actor keyspan
-boundaries to establish the single-Raft-group invariant.
+Multiple small actors share Raft ranges. The split queue splits ranges at
+actor boundaries when they exceed the configured range size -- never through
+the middle of an actor's data. A single large actor that fills its own range
+cannot be split further.
+
+Merges between ranges containing different actors are permitted, subject to
+normal merge criteria. This allows the system to compact ranges when actors
+are deleted or shrink.
 
 ## DDL semantics
 

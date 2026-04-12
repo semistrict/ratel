@@ -6,8 +6,7 @@
 
 Ratel now supports **explicit actors** -- lightweight, per-entity isolated data
 scopes inspired by Cloudflare Durable Objects. Each actor gets its own keyspace
-within the cluster, confined to a single Raft range with automatic sticky splits
-and size-based backpressure.
+within the cluster, designed to scale to billions of small actors.
 
 **SQL syntax:**
 
@@ -33,12 +32,12 @@ COMMIT;
 
 **Key properties:**
 
-- Each actor is a contiguous key prefix (truncated SHA-256 hash). On first
-  write, a sticky split creates a dedicated Raft range for the actor. From that
-  point on, the actor cannot be split internally and cannot be merged with
-  adjacent actors -- one actor, one range.
-- `kv.actor.max_size` cluster setting (default 4 GiB) rejects writes that would
-  exceed the limit via KV backpressure.
+- Each actor is a contiguous key prefix (truncated SHA-256 hash). Multiple small
+  actors share Raft ranges. When a range grows large, the split queue splits it
+  at an actor boundary -- never through the middle of an actor's data.
+- A single large actor that fills its own range cannot be split further.
+  `kv.actor.max_size` (default 4 GiB) rejects writes via KV backpressure once
+  an actor occupies a dedicated range and exceeds the limit.
 - The `system.actors` table provides a registry for collision detection and
   enumeration.
 - `actor_scope` and `actor('name').table` are mutually exclusive -- using both

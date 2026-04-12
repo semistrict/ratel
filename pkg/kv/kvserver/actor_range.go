@@ -15,8 +15,6 @@
 package kvserver
 
 import (
-	"bytes"
-
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/roachpb"
 )
@@ -30,19 +28,4 @@ func actorSpanForRange(desc *roachpb.RangeDescriptor) (roachpb.Span, bool, error
 		return roachpb.Span{}, false, nil
 	}
 	return span, true, nil
-}
-
-func sameActorRange(start, other roachpb.RKey) (bool, error) {
-	startPrefix, startOK, err := keys.ActorPrefixFromKey(start.AsRawKey())
-	if err != nil {
-		return false, err
-	}
-	otherPrefix, otherOK, err := keys.ActorPrefixFromKey(other.AsRawKey())
-	if err != nil {
-		return false, err
-	}
-	if !startOK || !otherOK {
-		return !startOK && !otherOK, nil
-	}
-	return bytes.Equal(startPrefix, otherPrefix), nil
 }

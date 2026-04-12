@@ -141,12 +141,6 @@ func shouldSplitRange(
 func (sq *splitQueue) shouldQueue(
 	ctx context.Context, now hlc.ClockTimestamp, repl *Replica, confReader spanconfig.StoreReader,
 ) (shouldQ bool, priority float64) {
-	if _, ok, err := actorSpanForRange(repl.Desc()); err != nil {
-		log.Warningf(ctx, "unable to classify actor range for split queue: %v", err)
-	} else if ok {
-		return false, 0
-	}
-
 	shouldQ, priority = shouldSplitRange(ctx, repl.Desc(), repl.GetMVCCStats(),
 		repl.GetMaxBytes(), repl.shouldBackpressureWrites(), confReader)
 
@@ -190,11 +184,6 @@ func (sq *splitQueue) processAttempt(
 	ctx context.Context, r *Replica, confReader spanconfig.StoreReader,
 ) (processed bool, err error) {
 	desc := r.Desc()
-	if _, ok, err := actorSpanForRange(desc); err != nil {
-		return false, err
-	} else if ok {
-		return false, nil
-	}
 	// First handle the case of splitting due to span config maps.
 	if splitKey := confReader.ComputeSplitKey(ctx, desc.StartKey, desc.EndKey); splitKey != nil {
 		if interior, err := keys.IsInteriorActorSplitKey(splitKey.AsRawKey()); err != nil {

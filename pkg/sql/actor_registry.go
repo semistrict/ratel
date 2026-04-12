@@ -17,18 +17,15 @@ package sql
 import (
 	"bytes"
 	"context"
-	"strings"
 
 	"github.com/cockroachdb/errors"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
-	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/security"
 	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
 	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
 	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 	"github.com/semistrict/ratel/pkg/sql/sessiondata"
-	"github.com/semistrict/ratel/pkg/util/hlc"
 )
 
 // ensureActorExists makes actor creation a cluster-global, idempotent
@@ -40,8 +37,11 @@ import (
 // The function is structured as a fast-path check followed by a slow-path
 // creation. The fast path reads system.actors without acquiring any locks; if
 // the actor already exists and its hash matches, we return immediately. Only
-// first-write paths hit the slow path which inserts the registry row and
-// establishes sticky range splits at the actor boundaries.
+// first-write paths hit the slow path which inserts the registry row.
+//
+// No dedicated range is created per actor. Multiple small actors share ranges.
+// The split queue handles splitting at actor boundaries when a range grows
+// large enough.
 func (p *planner) ensureActorExists(ctx context.Context, actorName string) error {
 	if actorName == "" {
 		return nil
@@ -75,10 +75,7 @@ func (p *planner) ensureActorExists(ctx context.Context, actorName string) error
 		return nil
 	}
 
-	// Slow path: first write for this actor. Register and split.
-	codec := p.ExecCfg().Codec
-	actorPrefix := keys.MakeActorPrefix(codec.TenantPrefix(), actorName)
-
+	// Slow path: first write for this actor. Register it.
 	if err := p.ExecCfg().DB.Txn(ctx, func(ctx context.Context, txn *kv.Txn) error {
 		if _, err := ie.ExecEx(
 			ctx,
@@ -132,13 +129,6 @@ func (p *planner) ensureActorExists(ctx context.Context, actorName string) error
 	}); err != nil {
 		return err
 	}
-
-	if err := maybeStickySplitActorBoundary(ctx, p.ExecCfg().DB, actorPrefix); err != nil {
-		return err
-	}
-	if err := maybeStickySplitActorBoundary(ctx, p.ExecCfg().DB, actorPrefix.PrefixEnd()); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -146,24 +136,4 @@ func (p *planner) actorRegistryInternalExecutor(ctx context.Context) *InternalEx
 	sd := p.SessionData().Clone()
 	sd.ActorScope = ""
 	return p.ExecCfg().InternalExecutorFactory(ctx, sd).(*InternalExecutor)
-}
-
-func maybeStickySplitActorBoundary(ctx context.Context, db *kv.DB, splitKey roachpb.Key) error {
-	if err := db.AdminSplit(ctx, splitKey, hlc.MaxTimestamp); err != nil {
-		if isBenignActorSplitError(err) {
-			return nil
-		}
-		return err
-	}
-	return nil
-}
-
-func isBenignActorSplitError(err error) bool {
-	if errors.HasType(err, (*roachpb.ConditionFailedError)(nil)) {
-		return true
-	}
-	msg := err.Error()
-	return strings.Contains(msg, "already split") ||
-		strings.Contains(msg, "cannot split range at start key") ||
-		strings.Contains(msg, "cannot split range at end key")
 }

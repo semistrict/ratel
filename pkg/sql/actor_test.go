@@ -300,16 +300,10 @@ func TestActorScopeDistSQLIndexJoin(t *testing.T) {
 	// DistSQL with actor().table syntax.
 	sqlDB.Exec(t, `SET distsql = always`)
 	sqlDB.CheckQueryResults(t, `SELECT id FROM actor('alpha').t@by_v WHERE v = 1`, [][]string{{"1"}})
-
-	tableID := lookupTableID(t, db, "t")
-	moveActorIndexRangeToNode(t, tc, tableID, 1 /* primary index */, "alpha", 1 /* node */)
-	moveActorIndexRangeToNode(t, tc, tableID, 2 /* secondary index */, "alpha", 1 /* node */)
-
-	sqlDB.CheckQueryResults(t, `SELECT id FROM actor('alpha').t@by_v WHERE v = 1`, [][]string{{"1"}})
 	sqlDB.CheckQueryResults(t, `SELECT w FROM actor('alpha').t@by_v WHERE v = 1`, [][]string{{"actor-alpha"}})
 }
 
-func TestActorRangeRejectsInteriorSplitAndCrossActorMerge(t *testing.T) {
+func TestActorRejectsInteriorSplit(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
 
@@ -323,17 +317,12 @@ func TestActorRangeRejectsInteriorSplitAndCrossActorMerge(t *testing.T) {
 
 	tableID := lookupTableID(t, db, "t")
 	codec := keys.MakeActorSQLCodec(keys.SystemSQLCodec, "alpha")
-	actorPrefix := roachpb.Key(codec.TenantPrefix())
 	interiorSplitKey := roachpb.Key(codec.TablePrefix(uint32(tableID)))
 
+	// Explicit splits interior to an actor's key space are rejected.
 	err := s.DB().AdminSplit(context.Background(), interiorSplitKey, hlc.MaxTimestamp)
 	if err == nil || !strings.Contains(err.Error(), "cannot split actor range at interior key") {
 		t.Fatalf("expected interior actor split rejection, got %+v", err)
-	}
-
-	err = s.DB().AdminMerge(context.Background(), actorPrefix)
-	if err == nil || !strings.Contains(err.Error(), "cannot merge across actor boundaries") {
-		t.Fatalf("expected cross-actor merge rejection, got %+v", err)
 	}
 }
 
@@ -348,6 +337,18 @@ func TestActorMaxSizeRejectsWrites(t *testing.T) {
 	sqlDB := sqlutils.MakeSQLRunner(db)
 	sqlDB.Exec(t, `CREATE TABLE t (id INT PRIMARY KEY, v STRING)`)
 	sqlDB.Exec(t, `INSERT INTO actor('alpha').t VALUES (1, 'seed')`)
+
+	// Explicitly split at the actor boundaries to give the actor its own
+	// range. Without this, the actor shares a range and backpressure
+	// (which checks range size) would not fire.
+	codec := keys.MakeActorSQLCodec(keys.SystemSQLCodec, "alpha")
+	actorPrefix := roachpb.Key(codec.TenantPrefix())
+	if err := s.DB().AdminSplit(context.Background(), actorPrefix, hlc.MaxTimestamp); err != nil {
+		t.Fatalf("split at actor start: %+v", err)
+	}
+	if err := s.DB().AdminSplit(context.Background(), actorPrefix.PrefixEnd(), hlc.MaxTimestamp); err != nil {
+		t.Fatalf("split at actor end: %+v", err)
+	}
 
 	kvserverbase.ActorMaxSize.Override(
 		context.Background(), &s.ClusterSettings().SV, 1<<10, /* 1 KiB */
@@ -418,27 +419,3 @@ func assertActorIndexHasKVs(t *testing.T, kvDB *kv.DB, tableID int, indexID int,
 	}
 }
 
-func moveActorIndexRangeToNode(
-	t *testing.T,
-	tc *testcluster.TestCluster,
-	tableID int,
-	indexID int,
-	actorName string,
-	serverIdx int,
-) {
-	t.Helper()
-	codec := keys.MakeActorSQLCodec(keys.SystemSQLCodec, actorName)
-	rangeKey := roachpb.Key(codec.TenantPrefix())
-	rangeDesc := tc.LookupRangeOrFatal(t, rangeKey)
-	target := tc.Target(serverIdx)
-	if _, ok := rangeDesc.GetReplicaDescriptor(target.StoreID); !ok {
-		var err error
-		rangeDesc, err = tc.AddVoters(rangeKey, target)
-		if err != nil {
-			t.Fatalf("add voter for %s: %+v", rangeKey, err)
-		}
-	}
-	if err := tc.TransferRangeLease(rangeDesc, target); err != nil {
-		t.Fatalf("transfer lease for %s: %+v", rangeKey, err)
-	}
-}

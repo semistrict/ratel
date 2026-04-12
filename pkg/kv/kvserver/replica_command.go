@@ -387,10 +387,25 @@ func (r *Replica) adminSplitWithDescriptor(
 		if !splitKey.Equal(foundSplitKey) {
 			return reply, errors.Errorf("cannot split range at range-local key %s", splitKey)
 		}
-		if insideActor, err := keys.IsInteriorActorSplitKey(splitKey.AsRawKey()); err != nil {
+		if actorSpan, ok, err := keys.ActorSpanFromKey(splitKey.AsRawKey()); err != nil {
 			return reply, err
-		} else if insideActor {
-			return reply, errors.Errorf("cannot split actor range at interior key %s", splitKey)
+		} else if ok && !splitKey.AsRawKey().Equal(actorSpan.Key) && !splitKey.AsRawKey().Equal(actorSpan.EndKey) {
+			// The proposed key is interior to an actor's key space.
+			if len(args.SplitKey) != 0 {
+				// Explicit split request — reject.
+				return reply, errors.Errorf("cannot split actor range at interior key %s", splitKey)
+			}
+			// Auto-found split key: snap to the actor boundary so the range
+			// splits between actors rather than through one.
+			snapped, err := keys.Addr(actorSpan.Key)
+			if err != nil {
+				return reply, err
+			}
+			if !kvserverbase.ContainsKey(desc, snapped.AsRawKey()) {
+				return reply, unsplittableRangeError{}
+			}
+			splitKey = snapped
+			foundSplitKey = snapped.AsRawKey()
 		}
 		if !storage.IsValidSplitKey(foundSplitKey) {
 			return reply, errors.Errorf("cannot split range at key %s", splitKey)
@@ -651,12 +666,6 @@ func (r *Replica) AdminMerge(
 		if err := dbRightDescKV.ValueProto(&rightDesc); err != nil {
 			return err
 		}
-		if sameActor, err := sameActorRange(origLeftDesc.StartKey, rightDesc.StartKey); err != nil {
-			return err
-		} else if !sameActor {
-			return errors.New("cannot merge across actor boundaries")
-		}
-
 		// Verify that the two ranges are mergeable.
 		if !bytes.Equal(origLeftDesc.EndKey, rightDesc.StartKey) {
 			// Should never happen, but just in case.

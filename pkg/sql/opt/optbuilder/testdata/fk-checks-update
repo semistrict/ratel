@@ -462,14 +462,14 @@ UPDATE fam SET c = 3
 ----
 update fam
  ├── columns: <none>
- ├── fetch columns: fam.a:9 fam.b:10 fam.c:11 rowid:14
+ ├── fetch columns: fam.a:9 fam.b:10 fam.c:11 fam.d:12 e:13 rowid:14
  ├── update-mapping:
  │    └── c_new:17 => fam.c:3
  ├── input binding: &1
  ├── project
- │    ├── columns: c_new:17!null fam.a:9 fam.b:10 fam.c:11 fam.d:12 rowid:14!null
+ │    ├── columns: c_new:17!null fam.a:9 fam.b:10 fam.c:11 fam.d:12 e:13 rowid:14!null
  │    ├── scan fam
- │    │    └── columns: fam.a:9 fam.b:10 fam.c:11 fam.d:12 rowid:14!null
+ │    │    └── columns: fam.a:9 fam.b:10 fam.c:11 fam.d:12 e:13 rowid:14!null
  │    └── projections
  │         └── 3 [as=c_new:17]
  └── f-k-checks
@@ -496,14 +496,14 @@ UPDATE fam SET d = 3
 ----
 update fam
  ├── columns: <none>
- ├── fetch columns: fam.d:12 e:13 rowid:14
+ ├── fetch columns: fam.a:9 fam.b:10 fam.c:11 fam.d:12 e:13 rowid:14
  ├── update-mapping:
  │    └── d_new:17 => fam.d:4
  ├── input binding: &1
  ├── project
- │    ├── columns: d_new:17!null fam.c:11 fam.d:12 e:13 rowid:14!null
+ │    ├── columns: d_new:17!null fam.a:9 fam.b:10 fam.c:11 fam.d:12 e:13 rowid:14!null
  │    ├── scan fam
- │    │    └── columns: fam.c:11 fam.d:12 e:13 rowid:14!null
+ │    │    └── columns: fam.a:9 fam.b:10 fam.c:11 fam.d:12 e:13 rowid:14!null
  │    └── projections
  │         └── 3 [as=d_new:17]
  └── f-k-checks

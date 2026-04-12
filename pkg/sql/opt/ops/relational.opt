@@ -93,6 +93,10 @@ define ScanPrivate {
     # about how often this optimization is getting applied.
     PartitionConstrainedScan bool
 
+    # ActorName identifies the actor whose table data is being scanned. An empty
+    # string indicates the legacy unscoped tenant keyspace.
+    ActorName string
+
     # ExactPrefix caches the exact prefix of the Constraint.
     ExactPrefix int
 }
@@ -305,6 +309,10 @@ define IndexJoinPrivate {
     # Table identifies the table to do lookups in. The primary index is
     # currently the only index used.
     Table TableID
+
+    # ActorName selects the actor-scoped table data keyspace for the primary
+    # index lookups performed by this index join.
+    ActorName string
 
     # Cols specifies the set of columns that the index join operator projects.
     # This may be a subset of the columns that the table contains.

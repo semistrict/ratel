@@ -81,6 +81,9 @@ func (b *Builder) buildUpdate(upd *tree.Update, inScope *scope) (outScope *scope
 	// Find which table we're working on, check the permissions.
 	tab, depName, alias, refColumns := b.resolveTableForMutation(upd.Table, privilege.UPDATE)
 
+	// Extract actor from the table reference (actor('name').table syntax).
+	inScope = b.applyActorFromTableRef(upd.Table, inScope)
+
 	if refColumns != nil {
 		panic(pgerror.Newf(pgcode.Syntax,
 			"cannot specify a list of column IDs with UPDATE"))

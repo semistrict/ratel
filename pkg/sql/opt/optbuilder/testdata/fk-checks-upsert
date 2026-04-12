@@ -85,8 +85,8 @@ upsert c1
  │    │    │    │    ├── columns: p_default:7!null i_default:8 column1:6!null
  │    │    │    │    ├── values
  │    │    │    │    │    ├── columns: column1:6!null
- │    │    │    │    │    ├── (100)
- │    │    │    │    │    └── (200)
+ │    │    │    │    │    ├── (100,)
+ │    │    │    │    │    └── (200,)
  │    │    │    │    └── projections
  │    │    │    │         ├── 5 [as=p_default:7]
  │    │    │    │         └── NULL::INT8 [as=i_default:8]
@@ -296,8 +296,8 @@ upsert c2
  │    │    │    │    ├── grouping columns: column1:4!null
  │    │    │    │    └── values
  │    │    │    │         ├── columns: column1:4!null
- │    │    │    │         ├── (1)
- │    │    │    │         └── (2)
+ │    │    │    │         ├── (1,)
+ │    │    │    │         └── (2,)
  │    │    │    ├── scan c2
  │    │    │    │    └── columns: c2.c:5!null c2.crdb_internal_mvcc_timestamp:6 c2.tableoid:7
  │    │    │    └── filters
@@ -378,8 +378,8 @@ upsert c3
  │    │    │    │    ├── columns: p_default:6 column1:5!null
  │    │    │    │    ├── values
  │    │    │    │    │    ├── columns: column1:5!null
- │    │    │    │    │    ├── (100)
- │    │    │    │    │    └── (200)
+ │    │    │    │    │    ├── (100,)
+ │    │    │    │    │    └── (200,)
  │    │    │    │    └── projections
  │    │    │    │         └── NULL::INT8 [as=p_default:6]
  │    │    │    └── aggregations
@@ -824,8 +824,8 @@ upsert cpq
  │    │    │    │    │    ├── columns: p_default:8!null q_default:9!null other_default:10 column1:7!null
  │    │    │    │    │    ├── values
  │    │    │    │    │    │    ├── columns: column1:7!null
- │    │    │    │    │    │    ├── (1)
- │    │    │    │    │    │    └── (2)
+ │    │    │    │    │    │    ├── (1,)
+ │    │    │    │    │    │    └── (2,)
  │    │    │    │    │    └── projections
  │    │    │    │    │         ├── 4 [as=p_default:8]
  │    │    │    │    │         ├── 8 [as=q_default:9]
@@ -1450,8 +1450,8 @@ upsert p2
       │    │    │    ├── columns: fk_default:6 column1:5!null
       │    │    │    ├── values
       │    │    │    │    ├── columns: column1:5!null
-      │    │    │    │    ├── (1)
-      │    │    │    │    └── (2)
+      │    │    │    │    ├── (1,)
+      │    │    │    │    └── (2,)
       │    │    │    └── projections
       │    │    │         └── NULL::INT8 [as=fk_default:6]
       │    │    └── aggregations
@@ -1582,8 +1582,8 @@ upsert pq
       │    │    │    ├── columns: p_default:8 column1:7!null
       │    │    │    ├── values
       │    │    │    │    ├── columns: column1:7!null
-      │    │    │    │    ├── (1)
-      │    │    │    │    └── (2)
+      │    │    │    │    ├── (1,)
+      │    │    │    │    └── (2,)
       │    │    │    └── projections
       │    │    │         └── NULL::INT8 [as=p_default:8]
       │    │    └── aggregations

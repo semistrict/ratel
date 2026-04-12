@@ -61,6 +61,8 @@ type scanNode struct {
 
 	spans   []roachpb.Span
 	reverse bool
+	// actorName selects the actor-scoped table data keyspace for this scan.
+	actorName string
 
 	reqOrdering ReqOrdering
 

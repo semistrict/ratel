@@ -352,6 +352,7 @@ func (f *PlanGistFactory) ConstructOrdinality(
 func (f *PlanGistFactory) ConstructIndexJoin(
 	input exec.Node,
 	table cat.Table,
+	actorName string,
 	keyCols []exec.NodeColumnOrdinal,
 	tableCols exec.TableColumnOrdinalSet,
 	reqOrdering exec.OutputOrdering,
@@ -363,6 +364,7 @@ func (f *PlanGistFactory) ConstructIndexJoin(
 	node, err := f.wrappedFactory.ConstructIndexJoin(
 		input,
 		table,
+		actorName,
 		keyCols,
 		tableCols,
 		reqOrdering,
@@ -608,6 +610,7 @@ func (f *PlanGistFactory) ConstructShowTrace(
 func (f *PlanGistFactory) ConstructInsert(
 	input exec.Node,
 	table cat.Table,
+	actorName string,
 	arbiterIndexes cat.IndexOrdinals,
 	arbiterConstraints cat.UniqueOrdinals,
 	insertCols exec.TableColumnOrdinalSet,
@@ -625,6 +628,7 @@ func (f *PlanGistFactory) ConstructInsert(
 	node, err := f.wrappedFactory.ConstructInsert(
 		input,
 		table,
+		actorName,
 		arbiterIndexes,
 		arbiterConstraints,
 		insertCols,
@@ -638,6 +642,7 @@ func (f *PlanGistFactory) ConstructInsert(
 func (f *PlanGistFactory) ConstructInsertFastPath(
 	rows [][]tree.TypedExpr,
 	table cat.Table,
+	actorName string,
 	insertCols exec.TableColumnOrdinalSet,
 	returnCols exec.TableColumnOrdinalSet,
 	checkCols exec.CheckOrdinalSet,
@@ -653,6 +658,7 @@ func (f *PlanGistFactory) ConstructInsertFastPath(
 	node, err := f.wrappedFactory.ConstructInsertFastPath(
 		rows,
 		table,
+		actorName,
 		insertCols,
 		returnCols,
 		checkCols,
@@ -665,6 +671,7 @@ func (f *PlanGistFactory) ConstructInsertFastPath(
 func (f *PlanGistFactory) ConstructUpdate(
 	input exec.Node,
 	table cat.Table,
+	actorName string,
 	fetchCols exec.TableColumnOrdinalSet,
 	updateCols exec.TableColumnOrdinalSet,
 	returnCols exec.TableColumnOrdinalSet,
@@ -680,6 +687,7 @@ func (f *PlanGistFactory) ConstructUpdate(
 	node, err := f.wrappedFactory.ConstructUpdate(
 		input,
 		table,
+		actorName,
 		fetchCols,
 		updateCols,
 		returnCols,
@@ -693,6 +701,7 @@ func (f *PlanGistFactory) ConstructUpdate(
 func (f *PlanGistFactory) ConstructUpsert(
 	input exec.Node,
 	table cat.Table,
+	actorName string,
 	arbiterIndexes cat.IndexOrdinals,
 	arbiterConstraints cat.UniqueOrdinals,
 	canaryCol exec.NodeColumnOrdinal,
@@ -713,6 +722,7 @@ func (f *PlanGistFactory) ConstructUpsert(
 	node, err := f.wrappedFactory.ConstructUpsert(
 		input,
 		table,
+		actorName,
 		arbiterIndexes,
 		arbiterConstraints,
 		canaryCol,
@@ -729,6 +739,7 @@ func (f *PlanGistFactory) ConstructUpsert(
 func (f *PlanGistFactory) ConstructDelete(
 	input exec.Node,
 	table cat.Table,
+	actorName string,
 	fetchCols exec.TableColumnOrdinalSet,
 	returnCols exec.TableColumnOrdinalSet,
 	// If set, the operator will commit the transaction as part of its execution.
@@ -743,6 +754,7 @@ func (f *PlanGistFactory) ConstructDelete(
 	node, err := f.wrappedFactory.ConstructDelete(
 		input,
 		table,
+		actorName,
 		fetchCols,
 		returnCols,
 		autoCommit,
@@ -752,6 +764,7 @@ func (f *PlanGistFactory) ConstructDelete(
 
 func (f *PlanGistFactory) ConstructDeleteRange(
 	table cat.Table,
+	actorName string,
 	needed exec.TableColumnOrdinalSet,
 	indexConstraint *constraint.Constraint,
 	// If set, the operator will commit the transaction as part of its execution.
@@ -766,6 +779,7 @@ func (f *PlanGistFactory) ConstructDeleteRange(
 	f.encodeBool(autoCommit)
 	node, err := f.wrappedFactory.ConstructDeleteRange(
 		table,
+		actorName,
 		needed,
 		indexConstraint,
 		autoCommit,

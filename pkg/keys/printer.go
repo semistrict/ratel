@@ -16,6 +16,7 @@ package keys
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
@@ -142,6 +143,9 @@ var (
 		}},
 		{Name: "/Table", start: TableDataMin, end: TableDataMax, Entries: []DictEntry{
 			{Name: "", prefix: nil, ppFunc: decodeKeyPrint, PSFunc: tableKeyParse},
+		}},
+		{Name: "/Actor", start: ActorDataMin, end: ActorDataMax, Entries: []DictEntry{
+			{Name: "", prefix: nil, ppFunc: actorKeyPrint, PSFunc: actorKeyParse},
 		}},
 		{Name: "/Tenant", start: TenantTableDataMin, end: TenantTableDataMax, Entries: []DictEntry{
 			{Name: "", prefix: nil, ppFunc: tenantKeyPrint, PSFunc: tenantKeyParse},
@@ -284,6 +288,7 @@ func localStoreKeyParse(input string) (remainder string, output roachpb.Key) {
 }
 
 const strTable = "/Table/"
+const strActor = "/Actor/"
 const strSystemConfigSpan = "SystemConfigSpan"
 const strSystemConfigSpanStart = "Start"
 
@@ -300,6 +305,37 @@ func tenantKeyParse(input string) (remainder string, output roachpb.Key) {
 		panic(&ErrUglifyUnsupported{err})
 	}
 	output = MakeTenantPrefix(roachpb.MakeTenantID(tenantID))
+	if strings.HasPrefix(remainder, strActor) {
+		var actorKey roachpb.Key
+		remainder = remainder[len(strActor)-1:]
+		remainder, actorKey = actorKeyParse(remainder)
+		output = append(output, actorKey...)
+	} else if strings.HasPrefix(remainder, strTable) {
+		var indexKey roachpb.Key
+		remainder = remainder[len(strTable)-1:]
+		remainder, indexKey = tableKeyParse(remainder)
+		output = append(output, indexKey...)
+	}
+	return remainder, output
+}
+
+func actorKeyParse(input string) (remainder string, output roachpb.Key) {
+	input = mustShiftSlash(input)
+	slashPos := strings.Index(input, "/")
+	if slashPos < 0 {
+		slashPos = len(input)
+	}
+	remainder = input[slashPos:]
+	hashHex := input[:slashPos]
+	hashBytes, err := hex.DecodeString(hashHex)
+	if err != nil {
+		panic(&ErrUglifyUnsupported{err})
+	}
+	if len(hashBytes) != ActorHashLen {
+		panic(&ErrUglifyUnsupported{errors.Newf("actor hash must be %d bytes, found %d", ActorHashLen, len(hashBytes))})
+	}
+	output = append(output, ActorPrefixByte)
+	output = append(output, hashBytes...)
 	if strings.HasPrefix(remainder, strTable) {
 		var indexKey roachpb.Key
 		remainder = remainder[len(strTable)-1:]
@@ -634,7 +670,24 @@ func tenantKeyPrint(valDirs []encoding.Direction, key roachpb.Key) string {
 	if len(key) == 0 {
 		return fmt.Sprintf("/%s", tID)
 	}
+	if len(key) > 0 && key[0] == ActorPrefixByte {
+		return fmt.Sprintf("/%s/Actor%s", tID, actorKeyPrint(valDirs, key))
+	}
 	return fmt.Sprintf("/%s%s", tID, key.StringWithDirs(valDirs, 0))
+}
+
+func actorKeyPrint(valDirs []encoding.Direction, key roachpb.Key) string {
+	key, hash, err := DecodeActorPrefix(key)
+	if err != nil {
+		return fmt.Sprintf("/err:%v", err)
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "/%x", hash[:])
+	if len(key) > 0 {
+		b.WriteString("/Table")
+		b.WriteString(decodeKeyPrint(valDirs, key))
+	}
+	return b.String()
 }
 
 // prettyPrintInternal parse key with prefix in KeyDict.

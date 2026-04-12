@@ -7,6 +7,7 @@ var KeywordsCategories = map[string]string{
 	"absolute":                     "U",
 	"access":                       "U",
 	"action":                       "U",
+	"actor":                        "R",
 	"add":                          "U",
 	"admin":                        "U",
 	"after":                        "U",
@@ -554,6 +555,7 @@ var KeywordNames = []string{
 	"absolute",
 	"access",
 	"action",
+	"actor",
 	"add",
 	"admin",
 	"after",
@@ -1110,6 +1112,8 @@ func GetKeywordID(k string) int32 {
 		return ACCESS
 	case "action":
 		return ACTION
+	case "actor":
+		return ACTOR
 	case "add":
 		return ADD
 	case "admin":

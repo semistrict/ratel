@@ -38,6 +38,16 @@ var MergeQueueEnabled = settings.RegisterBoolSetting(
 	true,
 )
 
+// ActorMaxSize is the hard size ceiling for a single actor range. Actors are
+// not allowed to split, so writes are rejected once an actor reaches this
+// limit.
+var ActorMaxSize = settings.RegisterByteSizeSetting(
+	settings.TenantWritable,
+	"kv.actor.max_size",
+	"maximum size of a single actor before writes are rejected",
+	4<<30, /* 4 GiB */
+)
+
 // CmdIDKey is a Raft command id. This will be logged unredacted - keep it random.
 type CmdIDKey string
 

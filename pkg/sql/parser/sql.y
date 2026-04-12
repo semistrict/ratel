@@ -806,7 +806,7 @@ func (u *sqlSymUnion) cursorStmt() tree.CursorStmt {
 // below; search this file for "Keyword category lists".
 
 // Ordinary key words in alphabetical order.
-%token <str> ABORT ABSOLUTE ACCESS ACTION ADD ADMIN AFTER AGGREGATE
+%token <str> ABORT ABSOLUTE ACCESS ACTOR ACTION ADD ADMIN AFTER AGGREGATE
 %token <str> ALL ALTER ALWAYS ANALYSE ANALYZE AND AND_AND ANY ANNOTATE_TYPE ARRAY AS ASC
 %token <str> ASENSITIVE ASYMMETRIC AT ATTRIBUTE AUTHORIZATION AUTOMATIC AVAILABILITY
 
@@ -9844,6 +9844,16 @@ insert_target:
     name := $1.unresolvedObjectName().ToTableName()
     $$.val = &tree.AliasedTableExpr{Expr: &name, As: tree.AliasClause{Alias: tree.Name($3)}}
   }
+| ACTOR '(' SCONST ')' '.' table_name
+  {
+    name := $6.unresolvedObjectName().ToTableName()
+    $$.val = &tree.AliasedTableExpr{Expr: &name, ActorName: $3}
+  }
+| ACTOR '(' SCONST ')' '.' table_name AS table_alias_name
+  {
+    name := $6.unresolvedObjectName().ToTableName()
+    $$.val = &tree.AliasedTableExpr{Expr: &name, ActorName: $3, As: tree.AliasClause{Alias: tree.Name($8)}}
+  }
 | numeric_table_ref
   {
     $$.val = $1.tblExpr()
@@ -10866,6 +10876,17 @@ table_ref:
       As:         $4.aliasClause(),
     }
   }
+| ACTOR '(' SCONST ')' '.' relation_expr opt_index_flags opt_ordinality opt_alias_clause
+  {
+    name := $6.unresolvedObjectName().ToTableName()
+    $$.val = &tree.AliasedTableExpr{
+      Expr:       &name,
+      IndexFlags: $7.indexFlags(),
+      Ordinality: $8.bool(),
+      As:         $9.aliasClause(),
+      ActorName:  $3,
+    }
+  }
 | select_with_parens opt_ordinality opt_alias_clause
   {
     $$.val = &tree.AliasedTableExpr{
@@ -11205,6 +11226,15 @@ table_name_opt_idx:
     $$.val = &tree.AliasedTableExpr{
       Expr: &name,
       IndexFlags: $3.indexFlags(),
+    }
+  }
+| ACTOR '(' SCONST ')' '.' table_name opt_index_flags
+  {
+    name := $6.unresolvedObjectName().ToTableName()
+    $$.val = &tree.AliasedTableExpr{
+      Expr: &name,
+      IndexFlags: $7.indexFlags(),
+      ActorName: $3,
     }
   }
 
@@ -14608,7 +14638,8 @@ type_func_name_no_crdb_extra_keyword:
 // See cockroachdb_extra_reserved_keyword below.
 //
 reserved_keyword:
-  ALL
+  ACTOR
+| ALL
 | ANALYSE
 | ANALYZE
 | AND

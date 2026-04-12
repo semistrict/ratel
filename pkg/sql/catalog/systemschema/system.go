@@ -612,6 +612,16 @@ CREATE TABLE system.wasm_functions (
 	CONSTRAINT "primary" PRIMARY KEY (database_id, schema_id, function_name, arg_types)
 );`
 
+	ActorsTableSchema = `
+CREATE TABLE system.actors (
+	tenant_id    INT8 NOT NULL,
+	actor_name   STRING NOT NULL,
+	actor_hash   BYTES NOT NULL,
+	created_at   TIMESTAMP NOT NULL DEFAULT now(),
+	CONSTRAINT "primary" PRIMARY KEY (tenant_id, actor_name),
+	UNIQUE INDEX actors_tenant_id_actor_hash_key (tenant_id, actor_hash)
+);`
+
 	SpanCountTableSchema = `
 CREATE TABLE system.span_count (
 	singleton  BOOL DEFAULT TRUE,
@@ -2394,6 +2404,48 @@ var (
 				},
 				KeyColumnIDs: []descpb.ColumnID{1, 2, 3, 4},
 				Version:      descpb.StrictIndexColumnIDGuaranteesVersion,
+			},
+		))
+
+	ActorsTable = registerSystemTable(
+		ActorsTableSchema,
+		systemTable(
+			catconstants.ActorsTableName,
+			keys.ActorsTableID,
+			[]descpb.ColumnDescriptor{
+				{Name: "tenant_id", ID: 1, Type: types.Int, Nullable: false},
+				{Name: "actor_name", ID: 2, Type: types.String, Nullable: false},
+				{Name: "actor_hash", ID: 3, Type: types.Bytes, Nullable: false},
+				{Name: "created_at", ID: 4, Type: types.Timestamp, Nullable: false, DefaultExpr: &nowString},
+			},
+			[]descpb.RowGroupDescriptor{
+				{
+					Name:        "primary",
+					ID:          0,
+					ColumnNames: []string{"tenant_id", "actor_name", "actor_hash", "created_at"},
+					ColumnIDs:   []descpb.ColumnID{1, 2, 3, 4},
+				},
+			},
+			descpb.IndexDescriptor{
+				Name:                tabledesc.LegacyPrimaryKeyIndexName,
+				ID:                  1,
+				Unique:              true,
+				KeyColumnNames:      []string{"tenant_id", "actor_name"},
+				KeyColumnDirections: []descpb.IndexDescriptor_Direction{descpb.IndexDescriptor_ASC, descpb.IndexDescriptor_ASC},
+				KeyColumnIDs:        []descpb.ColumnID{1, 2},
+				Version:             descpb.StrictIndexColumnIDGuaranteesVersion,
+			},
+			descpb.IndexDescriptor{
+				Name:                "actors_tenant_id_actor_hash_key",
+				ID:                  2,
+				Unique:              true,
+				KeyColumnNames:      []string{"tenant_id", "actor_hash"},
+				KeyColumnDirections: []descpb.IndexDescriptor_Direction{descpb.IndexDescriptor_ASC, descpb.IndexDescriptor_ASC},
+				KeyColumnIDs:        []descpb.ColumnID{1, 3},
+				KeySuffixColumnIDs:  []descpb.ColumnID{2},
+				StoreColumnNames:    []string{"created_at"},
+				StoreColumnIDs:      []descpb.ColumnID{4},
+				Version:             descpb.StrictIndexColumnIDGuaranteesVersion,
 			},
 		))
 

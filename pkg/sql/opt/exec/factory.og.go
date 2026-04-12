@@ -332,6 +332,7 @@ type Factory interface {
 	ConstructIndexJoin(
 		input Node,
 		table cat.Table,
+		actorName string,
 		keyCols []NodeColumnOrdinal,
 		tableCols TableColumnOrdinalSet,
 		reqOrdering OutputOrdering,
@@ -529,6 +530,7 @@ type Factory interface {
 	ConstructInsert(
 		input Node,
 		table cat.Table,
+		actorName string,
 		arbiterIndexes cat.IndexOrdinals,
 		arbiterConstraints cat.UniqueOrdinals,
 		insertCols TableColumnOrdinalSet,
@@ -558,6 +560,7 @@ type Factory interface {
 	ConstructInsertFastPath(
 		rows [][]tree.TypedExpr,
 		table cat.Table,
+		actorName string,
 		insertCols TableColumnOrdinalSet,
 		returnCols TableColumnOrdinalSet,
 		checkCols CheckOrdinalSet,
@@ -593,6 +596,7 @@ type Factory interface {
 	ConstructUpdate(
 		input Node,
 		table cat.Table,
+		actorName string,
 		fetchCols TableColumnOrdinalSet,
 		updateCols TableColumnOrdinalSet,
 		returnCols TableColumnOrdinalSet,
@@ -631,6 +635,7 @@ type Factory interface {
 	ConstructUpsert(
 		input Node,
 		table cat.Table,
+		actorName string,
 		arbiterIndexes cat.IndexOrdinals,
 		arbiterConstraints cat.UniqueOrdinals,
 		canaryCol NodeColumnOrdinal,
@@ -657,6 +662,7 @@ type Factory interface {
 	ConstructDelete(
 		input Node,
 		table cat.Table,
+		actorName string,
 		fetchCols TableColumnOrdinalSet,
 		returnCols TableColumnOrdinalSet,
 		// If set, the operator will commit the transaction as part of its execution.
@@ -680,6 +686,7 @@ type Factory interface {
 	// single operator.
 	ConstructDeleteRange(
 		table cat.Table,
+		actorName string,
 		needed TableColumnOrdinalSet,
 		indexConstraint *constraint.Constraint,
 		// If set, the operator will commit the transaction as part of its execution.
@@ -1078,6 +1085,7 @@ func (StubFactory) ConstructOrdinality(
 func (StubFactory) ConstructIndexJoin(
 	input Node,
 	table cat.Table,
+	actorName string,
 	keyCols []NodeColumnOrdinal,
 	tableCols TableColumnOrdinalSet,
 	reqOrdering OutputOrdering,
@@ -1203,6 +1211,7 @@ func (StubFactory) ConstructShowTrace(
 func (StubFactory) ConstructInsert(
 	input Node,
 	table cat.Table,
+	actorName string,
 	arbiterIndexes cat.IndexOrdinals,
 	arbiterConstraints cat.UniqueOrdinals,
 	insertCols TableColumnOrdinalSet,
@@ -1216,6 +1225,7 @@ func (StubFactory) ConstructInsert(
 func (StubFactory) ConstructInsertFastPath(
 	rows [][]tree.TypedExpr,
 	table cat.Table,
+	actorName string,
 	insertCols TableColumnOrdinalSet,
 	returnCols TableColumnOrdinalSet,
 	checkCols CheckOrdinalSet,
@@ -1228,6 +1238,7 @@ func (StubFactory) ConstructInsertFastPath(
 func (StubFactory) ConstructUpdate(
 	input Node,
 	table cat.Table,
+	actorName string,
 	fetchCols TableColumnOrdinalSet,
 	updateCols TableColumnOrdinalSet,
 	returnCols TableColumnOrdinalSet,
@@ -1241,6 +1252,7 @@ func (StubFactory) ConstructUpdate(
 func (StubFactory) ConstructUpsert(
 	input Node,
 	table cat.Table,
+	actorName string,
 	arbiterIndexes cat.IndexOrdinals,
 	arbiterConstraints cat.UniqueOrdinals,
 	canaryCol NodeColumnOrdinal,
@@ -1257,6 +1269,7 @@ func (StubFactory) ConstructUpsert(
 func (StubFactory) ConstructDelete(
 	input Node,
 	table cat.Table,
+	actorName string,
 	fetchCols TableColumnOrdinalSet,
 	returnCols TableColumnOrdinalSet,
 	autoCommit bool,
@@ -1266,6 +1279,7 @@ func (StubFactory) ConstructDelete(
 
 func (StubFactory) ConstructDeleteRange(
 	table cat.Table,
+	actorName string,
 	needed TableColumnOrdinalSet,
 	indexConstraint *constraint.Constraint,
 	autoCommit bool,

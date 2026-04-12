@@ -188,6 +188,19 @@ var varGen = map[string]sessionVar{
 		},
 	},
 
+	`actor_scope`: {
+		Set: func(_ context.Context, m sessionDataMutator, s string) error {
+			m.SetActorScope(s)
+			return nil
+		},
+		Get: func(evalCtx *extendedEvalContext) (string, error) {
+			return evalCtx.SessionData().ActorScope, nil
+		},
+		GlobalDefault: func(_ *settings.Values) string {
+			return ""
+		},
+	},
+
 	// CockroachDB extension.
 	`avoid_buffering`: {
 		Get: func(evalCtx *extendedEvalContext) (string, error) {

@@ -19,6 +19,7 @@ import (
 	"context"
 
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/sql/catalog"
@@ -41,6 +42,8 @@ import (
 type deleteRangeNode struct {
 	// spans are the spans to delete.
 	spans roachpb.Spans
+	// actorName selects the actor keyspace for the deleted rows.
+	actorName string
 	// desc is the table descriptor the delete is operating on.
 	desc catalog.TableDescriptor
 	// fetcher is around to decode the returned keys from the DeleteRange, so that
@@ -91,12 +94,16 @@ func (d *deleteRangeNode) startExec(params runParams) error {
 	if err := params.p.cancelChecker.Check(); err != nil {
 		return err
 	}
+	if err := params.p.ensureActorExists(params.ctx, d.actorName); err != nil {
+		return err
+	}
 
 	// Configure the fetcher, which is only used to decode the returned keys from
 	// the DeleteRange, and is never used to actually fetch kvs.
 	var spec descpb.IndexFetchSpec
+	codec := keys.MakeActorSQLCodec(params.ExecCfg().Codec, d.actorName)
 	if err := rowenc.InitIndexFetchSpec(
-		&spec, params.ExecCfg().Codec, d.desc, d.desc.GetPrimaryIndex(), nil, /* columnIDs */
+		&spec, codec, d.desc, d.desc.GetPrimaryIndex(), nil, /* columnIDs */
 	); err != nil {
 		return err
 	}

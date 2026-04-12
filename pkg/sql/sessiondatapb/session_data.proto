@@ -93,6 +93,9 @@ message SessionData {
   // increase the speed of lookup joins when each input row might get multiple
   // looked up rows at the cost of increased memory usage.
   bool parallelize_multi_key_lookup_joins_enabled = 19;
+  // ActorScope selects the actor whose table data is accessed by default for
+  // statements in this session. An empty value means unscoped table access.
+  string actor_scope = 20;
   // Troubleshooting mode determines whether we refuse to do additional work with
   // the query (i.e. collect & emit telemetry data). Troubleshooting mode is
   // disabled by default.

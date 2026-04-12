@@ -86,6 +86,46 @@ func TestMakeKey(t *testing.T) {
 	}
 }
 
+func TestActorKeyLayout(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	actorPrefix := MakeActorPrefix(nil, "alpha")
+	if !bytes.HasPrefix(actorPrefix, ActorDataMin) {
+		t.Fatalf("expected actor prefix %x to start with actor sentinel %x", actorPrefix, ActorDataMin)
+	}
+	if bytes.Compare(actorPrefix, TableDataMax) <= 0 {
+		t.Fatalf("expected actor prefix %x to sort after table data max %x", actorPrefix, TableDataMax)
+	}
+	if bytes.Compare(actorPrefix, ActorDataMax) >= 0 {
+		t.Fatalf("expected actor prefix %x to sort before actor data max %x", actorPrefix, ActorDataMax)
+	}
+	if bytes.Compare(ActorDataMax, ScratchRangeMin) != 0 {
+		t.Fatalf("expected scratch range min %x to follow actor data max %x", ScratchRangeMin, ActorDataMax)
+	}
+}
+
+func TestActorRowPrefixLength(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	codec := MakeActorSQLCodec(SystemSQLCodec, "alpha")
+	rowPrefix := encoding.EncodeUvarintAscending(codec.IndexPrefix(42, 1), 7)
+	row := MakeFamilyKey(rowPrefix, 0)
+	prefixLen, err := GetRowPrefixLength(row)
+	require.NoError(t, err)
+	require.True(t, bytes.Equal(rowPrefix, row[:prefixLen]))
+
+	safe, err := EnsureSafeSplitKey(row)
+	require.NoError(t, err)
+	require.True(t, bytes.Equal(rowPrefix, safe))
+
+	rem, _, err := DecodeTenantPrefix(row)
+	require.NoError(t, err)
+	_, tableID, indexID, err := DecodeTableIDIndexID(rem)
+	require.NoError(t, err)
+	require.Equal(t, uint32(42), tableID)
+	require.Equal(t, uint32(1), indexID)
+}
+
 func TestAbortSpanEncodeDecode(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	const rangeID = 123

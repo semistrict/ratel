@@ -2877,6 +2877,10 @@ func (m *sessionDataMutator) SetDatabase(dbName string) {
 	m.data.Database = dbName
 }
 
+func (m *sessionDataMutator) SetActorScope(actorName string) {
+	m.data.ActorScope = actorName
+}
+
 func (m *sessionDataMutator) SetTemporarySchemaName(scName string) {
 	if m.onTempSchemaCreation != nil {
 		m.onTempSchemaCreation()

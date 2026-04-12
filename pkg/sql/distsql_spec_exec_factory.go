@@ -17,6 +17,7 @@ package sql
 import (
 	"github.com/cockroachdb/errors"
 	"github.com/semistrict/ratel/pkg/base"
+	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/sql/catalog"
 	"github.com/semistrict/ratel/pkg/sql/catalog/colinfo"
@@ -205,9 +206,10 @@ func (e *distSQLSpecExecFactory) ConstructScan(
 	tabDesc := table.(*optTable).desc
 	idx := index.(*optIndex).idx
 	colCfg := makeScanColumnsConfig(table, params.NeededCols)
+	codec := keys.MakeActorSQLCodec(e.planner.ExecCfg().Codec, params.ActorName)
 
 	var sb span.Builder
-	sb.Init(e.planner.EvalContext(), e.planner.ExecCfg().Codec, tabDesc, idx)
+	sb.Init(e.planner.EvalContext(), codec, tabDesc, idx)
 
 	cols := make([]catalog.Column, 0, params.NeededCols.Len()+params.ExtraNeededCols.Len())
 	allCols := tabDesc.AllColumns()
@@ -251,7 +253,7 @@ func (e *distSQLSpecExecFactory) ConstructScan(
 	}
 
 	isFullTableOrIndexScan := len(spans) == 1 && spans[0].EqualValue(
-		tabDesc.IndexSpan(e.planner.ExecCfg().Codec, idx.GetID()),
+		tabDesc.IndexSpan(codec, idx.GetID()),
 	)
 	if err = colCfg.assertValidReqOrdering(reqOrdering); err != nil {
 		return nil, err
@@ -269,7 +271,7 @@ func (e *distSQLSpecExecFactory) ConstructScan(
 		Reverse:                         params.Reverse,
 		TableDescriptorModificationTime: tabDesc.GetModificationTime(),
 	}
-	if err := rowenc.InitIndexFetchSpec(&trSpec.FetchSpec, e.planner.ExecCfg().Codec, tabDesc, idx, columnIDs); err != nil {
+	if err := rowenc.InitIndexFetchSpec(&trSpec.FetchSpec, codec, tabDesc, idx, columnIDs); err != nil {
 		return nil, err
 	}
 	if params.Locking != nil {
@@ -682,6 +684,7 @@ func (e *distSQLSpecExecFactory) ConstructOrdinality(
 func (e *distSQLSpecExecFactory) ConstructIndexJoin(
 	input exec.Node,
 	table cat.Table,
+	actorName string,
 	keyCols []exec.NodeColumnOrdinal,
 	tableCols exec.TableColumnOrdinalSet,
 	reqOrdering exec.OutputOrdering,
@@ -968,6 +971,7 @@ func (e *distSQLSpecExecFactory) ConstructShowTrace(
 func (e *distSQLSpecExecFactory) ConstructInsert(
 	input exec.Node,
 	table cat.Table,
+	actorName string,
 	arbiterIndexes cat.IndexOrdinals,
 	arbiterConstraints cat.UniqueOrdinals,
 	insertCols exec.TableColumnOrdinalSet,
@@ -981,6 +985,7 @@ func (e *distSQLSpecExecFactory) ConstructInsert(
 func (e *distSQLSpecExecFactory) ConstructInsertFastPath(
 	rows [][]tree.TypedExpr,
 	table cat.Table,
+	actorName string,
 	insertCols exec.TableColumnOrdinalSet,
 	returnCols exec.TableColumnOrdinalSet,
 	checkCols exec.CheckOrdinalSet,
@@ -993,6 +998,7 @@ func (e *distSQLSpecExecFactory) ConstructInsertFastPath(
 func (e *distSQLSpecExecFactory) ConstructUpdate(
 	input exec.Node,
 	table cat.Table,
+	actorName string,
 	fetchCols exec.TableColumnOrdinalSet,
 	updateCols exec.TableColumnOrdinalSet,
 	returnCols exec.TableColumnOrdinalSet,
@@ -1006,6 +1012,7 @@ func (e *distSQLSpecExecFactory) ConstructUpdate(
 func (e *distSQLSpecExecFactory) ConstructUpsert(
 	input exec.Node,
 	table cat.Table,
+	actorName string,
 	arbiterIndexes cat.IndexOrdinals,
 	arbiterConstraints cat.UniqueOrdinals,
 	canaryCol exec.NodeColumnOrdinal,
@@ -1022,6 +1029,7 @@ func (e *distSQLSpecExecFactory) ConstructUpsert(
 func (e *distSQLSpecExecFactory) ConstructDelete(
 	input exec.Node,
 	table cat.Table,
+	actorName string,
 	fetchCols exec.TableColumnOrdinalSet,
 	returnCols exec.TableColumnOrdinalSet,
 	autoCommit bool,
@@ -1031,6 +1039,7 @@ func (e *distSQLSpecExecFactory) ConstructDelete(
 
 func (e *distSQLSpecExecFactory) ConstructDeleteRange(
 	table cat.Table,
+	actorName string,
 	needed exec.TableColumnOrdinalSet,
 	indexConstraint *constraint.Constraint,
 	autoCommit bool,

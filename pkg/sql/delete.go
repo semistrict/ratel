@@ -45,6 +45,7 @@ type deleteNode struct {
 type deleteRun struct {
 	td         tableDeleter
 	rowsNeeded bool
+	actorName  string
 
 	// done informs a new call to BatchedNext() that the previous call
 	// to BatchedNext() has completed the work already.
@@ -64,6 +65,8 @@ type deleteRun struct {
 	// of the mutation. Otherwise, the value at the i-th index refers to the
 	// index of the resultRowBuffer where the i-th column is to be returned.
 	rowIdxToRetIdx []int
+
+	actorEnsured bool
 }
 
 var _ mutationPlanNode = &deleteNode{}
@@ -155,6 +158,12 @@ func (d *deleteNode) BatchedNext(params runParams) (bool, error) {
 // processSourceRow processes one row from the source for deletion and, if
 // result rows are needed, saves it in the result row container
 func (d *deleteNode) processSourceRow(params runParams, sourceVals tree.Datums) error {
+	if !d.run.actorEnsured {
+		if err := params.p.ensureActorExists(params.ctx, d.run.actorName); err != nil {
+			return err
+		}
+		d.run.actorEnsured = true
+	}
 	// Create a set of partial index IDs to not delete from. Indexes should not
 	// be deleted from when they are partial indexes and the row does not
 	// satisfy the predicate and therefore do not exist in the partial index.

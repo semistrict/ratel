@@ -20,6 +20,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverbase"
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/settings"
 	"github.com/semistrict/ratel/pkg/util/log"
@@ -154,6 +155,12 @@ func (r *Replica) shouldBackpressureWrites() bool {
 // maybeBackpressureBatch blocks to apply backpressure if the replica deems
 // that backpressure is necessary.
 func (r *Replica) maybeBackpressureBatch(ctx context.Context, ba *roachpb.BatchRequest) error {
+	// Actor size rejection runs unconditionally — actor keys live outside the
+	// backpressurable span list (which ends at TableDataMax), so the
+	// canBackpressureBatch guard below would skip them.
+	if err := r.maybeRejectActorWriteBatch(ba); err != nil {
+		return err
+	}
 	if !canBackpressureBatch(ba) {
 		return nil
 	}
@@ -199,4 +206,27 @@ func (r *Replica) maybeBackpressureBatch(ctx context.Context, ba *roachpb.BatchR
 		}
 	}
 	return nil
+}
+
+func (r *Replica) maybeRejectActorWriteBatch(ba *roachpb.BatchRequest) error {
+	if _, ok, err := actorSpanForRange(r.Desc()); err != nil {
+		return err
+	} else if !ok {
+		return nil
+	}
+
+	limit := kvserverbase.ActorMaxSize.Get(&r.store.cfg.Settings.SV)
+	if limit <= 0 {
+		return nil
+	}
+	currentSize := r.GetMVCCStats().Total()
+	projectedSize := currentSize + int64(ba.Size())
+	if projectedSize <= limit {
+		return nil
+	}
+	return errors.Newf(
+		"actor range is at %d bytes and cannot exceed kv.actor.max_size=%d without splitting",
+		currentSize,
+		limit,
+	)
 }

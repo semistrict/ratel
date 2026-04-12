@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverbase"
 	"github.com/semistrict/ratel/pkg/roachpb"
@@ -140,6 +141,12 @@ func shouldSplitRange(
 func (sq *splitQueue) shouldQueue(
 	ctx context.Context, now hlc.ClockTimestamp, repl *Replica, confReader spanconfig.StoreReader,
 ) (shouldQ bool, priority float64) {
+	if _, ok, err := actorSpanForRange(repl.Desc()); err != nil {
+		log.Warningf(ctx, "unable to classify actor range for split queue: %v", err)
+	} else if ok {
+		return false, 0
+	}
+
 	shouldQ, priority = shouldSplitRange(ctx, repl.Desc(), repl.GetMVCCStats(),
 		repl.GetMaxBytes(), repl.shouldBackpressureWrites(), confReader)
 
@@ -183,8 +190,19 @@ func (sq *splitQueue) processAttempt(
 	ctx context.Context, r *Replica, confReader spanconfig.StoreReader,
 ) (processed bool, err error) {
 	desc := r.Desc()
+	if _, ok, err := actorSpanForRange(desc); err != nil {
+		return false, err
+	} else if ok {
+		return false, nil
+	}
 	// First handle the case of splitting due to span config maps.
 	if splitKey := confReader.ComputeSplitKey(ctx, desc.StartKey, desc.EndKey); splitKey != nil {
+		if interior, err := keys.IsInteriorActorSplitKey(splitKey.AsRawKey()); err != nil {
+			return false, errors.Wrap(err, "checking actor split key")
+		} else if interior {
+			log.VEventf(ctx, 1, "skipping config-boundary split at %s: interior to actor range", splitKey)
+			return false, nil
+		}
 		if _, err := r.adminSplitWithDescriptor(
 			ctx,
 			roachpb.AdminSplitRequest{
@@ -222,6 +240,12 @@ func (sq *splitQueue) processAttempt(
 
 	now := timeutil.Now()
 	if splitByLoadKey := r.loadBasedSplitter.MaybeSplitKey(now); splitByLoadKey != nil {
+		if interior, err := keys.IsInteriorActorSplitKey(splitByLoadKey); err != nil {
+			return false, errors.Wrap(err, "checking actor split key")
+		} else if interior {
+			log.VEventf(ctx, 1, "skipping load-based split at %s: interior to actor range", splitByLoadKey)
+			return false, nil
+		}
 		batchHandledQPS, _ := r.QueriesPerSecond()
 		raftAppliedQPS := r.WritesPerSecond()
 		splitQPS := r.loadBasedSplitter.LastQPS(now)

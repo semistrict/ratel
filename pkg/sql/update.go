@@ -51,6 +51,7 @@ var _ mutationPlanNode = &updateNode{}
 type updateRun struct {
 	tu         tableUpdater
 	rowsNeeded bool
+	actorName  string
 
 	checkOrds checkSet
 
@@ -122,6 +123,8 @@ type updateRun struct {
 	// columns of the target table being returned, that we must pass through
 	// from the input node.
 	numPassthrough int
+
+	actorEnsured bool
 }
 
 func (u *updateNode) startExec(params runParams) error {
@@ -213,6 +216,12 @@ func (u *updateNode) BatchedNext(params runParams) (bool, error) {
 // processSourceRow processes one row from the source for update and, if
 // result rows are needed, saves it in the result row container.
 func (u *updateNode) processSourceRow(params runParams, sourceVals tree.Datums) error {
+	if !u.run.actorEnsured {
+		if err := params.p.ensureActorExists(params.ctx, u.run.actorName); err != nil {
+			return err
+		}
+		u.run.actorEnsured = true
+	}
 	// sourceVals contains values for the columns from the table, in the order of the
 	// table descriptor. (One per column in u.tw.ru.FetchCols)
 	//

@@ -61,6 +61,14 @@ func (b *Builder) buildDataSource(
 			locking = locking.filter(source.As.Alias)
 		}
 
+		// If the table reference carries an actor qualifier, push a child scope
+		// with that actor name. Each table in a JOIN can have its own actor.
+		if source.ActorName != "" {
+			b.checkActorMutualExclusion(source.ActorName)
+			inScope = inScope.push()
+			inScope.actorName = source.ActorName
+		}
+
 		outScope = b.buildDataSource(source.Expr, indexFlags, locking, inScope)
 
 		if source.Ordinality {
@@ -515,14 +523,14 @@ func (b *Builder) buildScan(
 			panic(pgerror.Newf(pgcode.Syntax,
 				"%s not allowed with virtual tables", locking.get().Strength))
 		}
-		private := memo.ScanPrivate{Table: tabID, Cols: scanColIDs}
+		private := memo.ScanPrivate{Table: tabID, Cols: scanColIDs, ActorName: b.resolveActorNameForTable(inScope.actorName, tab)}
 		outScope.expr = b.factory.ConstructScan(&private)
 
 		// Note: virtual tables should not be collected as view dependencies.
 		return outScope
 	}
 
-	private := memo.ScanPrivate{Table: tabID, Cols: scanColIDs}
+	private := memo.ScanPrivate{Table: tabID, Cols: scanColIDs, ActorName: b.resolveActorNameForTable(inScope.actorName, tab)}
 	if indexFlags != nil {
 		private.Flags.NoIndexJoin = indexFlags.NoIndexJoin
 		private.Flags.NoZigzagJoin = indexFlags.NoZigzagJoin
@@ -993,7 +1001,10 @@ func (b *Builder) buildSelectClause(
 	desiredTypes []*types.T,
 	inScope *scope,
 ) (outScope *scope) {
-	fromScope := b.buildFrom(sel.From, locking, inScope)
+	fromScopeIn := inScope.push()
+	fromScopeIn.actorName = b.resolveActorName(inScope.actorName)
+
+	fromScope := b.buildFrom(sel.From, locking, fromScopeIn)
 
 	b.processWindowDefs(sel, fromScope)
 	b.buildWhere(sel.Where, fromScope)
@@ -1127,6 +1138,53 @@ func (b *Builder) buildWhere(where *tree.Where, inScope *scope) {
 		inScope.expr,
 		memo.FiltersExpr{b.factory.ConstructFiltersItem(filter)},
 	)
+}
+
+func (b *Builder) resolveActorName(actorName string) string {
+	if actorName != "" {
+		return actorName
+	}
+	if b.evalCtx == nil || b.evalCtx.SessionData() == nil {
+		return ""
+	}
+	return b.evalCtx.SessionData().ActorScope
+}
+
+// applyActorFromTableRef extracts the ActorName from an AliasedTableExpr (if
+// present) and returns a child scope with that actor name set. Used by mutation
+// builders (INSERT/UPDATE/DELETE) to propagate the actor from the target table
+// reference to the scan scope.
+func (b *Builder) applyActorFromTableRef(texpr tree.TableExpr, inScope *scope) *scope {
+	ate, ok := texpr.(*tree.AliasedTableExpr)
+	if !ok || ate.ActorName == "" {
+		return inScope
+	}
+	b.checkActorMutualExclusion(ate.ActorName)
+	s := inScope.push()
+	s.actorName = ate.ActorName
+	return s
+}
+
+// checkActorMutualExclusion panics if actor_scope is set while an
+// actor('name').table qualifier is used. The two mechanisms are mutually
+// exclusive: use one or the other.
+func (b *Builder) checkActorMutualExclusion(actorName string) {
+	if actorName == "" {
+		return
+	}
+	if b.evalCtx != nil && b.evalCtx.SessionData() != nil && b.evalCtx.SessionData().ActorScope != "" {
+		panic(pgerror.Newf(
+			pgcode.Syntax,
+			"cannot use actor() table qualifier when actor_scope is set; use one or the other",
+		))
+	}
+}
+
+func (b *Builder) resolveActorNameForTable(actorName string, tab cat.Table) string {
+	if tab.IsSystemTable() {
+		return ""
+	}
+	return b.resolveActorName(actorName)
 }
 
 // buildFromTables builds a series of InnerJoin expressions that together

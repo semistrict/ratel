@@ -99,8 +99,24 @@ With a storage URL, discover nodes from S3:
 	RunE: runRatelSQL,
 }
 
+var ratelStartLocalCmd = &cobra.Command{
+	Use:   "start-local",
+	Short: "Start a single-node cluster for local development",
+	Long: `Start a single-node Ratel instance with no S3, no TLS, and an in-memory store.
+The node auto-initializes, listens on localhost, and is ready for SQL immediately.
+
+Connect with:  ratel sql localhost:26257`,
+	Args: cobra.NoArgs,
+	RunE: runRatelStartLocal,
+}
+
 func init() {
-	ratelCmd.AddCommand(ratelInitCmd, ratelJoinCmd, ratelSQLCmd)
+	ratelCmd.AddCommand(ratelInitCmd, ratelJoinCmd, ratelSQLCmd, ratelStartLocalCmd)
+
+	ratelStartLocalCmd.Flags().StringVar(&ratelListenAddr, "listen-addr", "localhost:26257",
+		"Address to listen on for RPC and SQL connections")
+	ratelStartLocalCmd.Flags().StringVar(&ratelHTTPAddr, "http-addr", "localhost:8080",
+		"Address to listen on for the admin HTTP interface")
 
 	for _, cmd := range []*cobra.Command{ratelInitCmd, ratelJoinCmd} {
 		cmd.Flags().StringVar(&ratelListenAddr, "listen-addr", "localhost:26257",
@@ -192,6 +208,28 @@ func ratelPassphrase(confirm bool) ([]byte, error) {
 func ratelLocalDir(clusterURL string) string {
 	h := sha256.Sum256([]byte(clusterURL))
 	return filepath.Join(os.TempDir(), fmt.Sprintf("ratel-%x", h[:8]))
+}
+
+func runRatelStartLocal(cmd *cobra.Command, args []string) error {
+	ctx := context.Background()
+
+	storeDir, err := os.MkdirTemp("", "ratel-local-*")
+	if err != nil {
+		return errors.Wrap(err, "creating temp store directory")
+	}
+
+	fmt.Fprintf(os.Stderr, "Starting local single-node Ratel (store: %s)...\n", storeDir)
+	return ratelStartServer(ctx, ratelServerOpts{
+		clusterURL:     "file://" + storeDir,
+		listenAddr:     ratelListenAddr,
+		httpAddr:       ratelHTTPAddr,
+		certsDir:       "",   // insecure
+		storeDir:       storeDir,
+		joinList:       nil,  // single-node
+		autoInitialize: true,
+		nodesStore:     nil,  // no S3 node registry
+		ratelNodeID:    "local",
+	})
 }
 
 func runRatelInit(cmd *cobra.Command, args []string) error {
@@ -389,7 +427,7 @@ func ratelStartServer(ctx context.Context, opts ratelServerOpts) error {
 	// Crash recovery: if a previous registration exists for this node-id,
 	// recover its store_id so we download the right manifest bundle.
 	var recoveryStoreID int32
-	if opts.ratelNodeID != "" {
+	if opts.ratelNodeID != "" && opts.nodesStore != nil {
 		reg, exists, err := storage.NodeRegistrationExists(ctx, opts.nodesStore, opts.ratelNodeID)
 		if err != nil {
 			return errors.Wrap(err, "checking for previous node registration")
@@ -402,9 +440,11 @@ func ratelStartServer(ctx context.Context, opts ratelServerOpts) error {
 	}
 
 	storeSpec := base.StoreSpec{
-		Path:              opts.storeDir,
-		RemoteStoragePath: opts.clusterURL,
-		RecoveryStoreID:   recoveryStoreID,
+		Path:            opts.storeDir,
+		RecoveryStoreID: recoveryStoreID,
+	}
+	if opts.nodesStore != nil {
+		storeSpec.RemoteStoragePath = opts.clusterURL
 	}
 	cfg.Stores = base.StoreSpecList{Specs: []base.StoreSpec{storeSpec}}
 
@@ -455,25 +495,28 @@ func ratelStartServer(ctx context.Context, opts ratelServerOpts) error {
 				return errors.Wrap(err, "accepting clients failed")
 			}
 
-			// Register the node using the real NodeID assigned by CockroachDB,
-			// keyed by the operator-assigned ratel node ID.
 			nodeID := int(s.NodeID())
 			storeID := int(s.GetFirstStoreID())
-			reg := storage.NodeRegistration{
-				NodeID:      nodeID,
-				RatelNodeID: opts.ratelNodeID,
-				StoreID:     storeID,
-				Addr:        cfg.AdvertiseAddr,
-				SQLAddr:     cfg.SQLAdvertiseAddr,
-				HTTPAddr:    cfg.HTTPAddr,
-			}
-			if regErr := storage.RegisterNode(ctx, opts.nodesStore, reg); regErr != nil {
-				return errors.Wrap(regErr, "registering node")
-			}
 
-			// Start background heartbeat goroutine.
-			heartbeatCtx := context.Background()
-			go runHeartbeat(heartbeatCtx, stopper.ShouldQuiesce(), opts.nodesStore, reg)
+			// Register the node using the real NodeID assigned by CockroachDB,
+			// keyed by the operator-assigned ratel node ID.
+			if opts.nodesStore != nil {
+				reg := storage.NodeRegistration{
+					NodeID:      nodeID,
+					RatelNodeID: opts.ratelNodeID,
+					StoreID:     storeID,
+					Addr:        cfg.AdvertiseAddr,
+					SQLAddr:     cfg.SQLAdvertiseAddr,
+					HTTPAddr:    cfg.HTTPAddr,
+				}
+				if regErr := storage.RegisterNode(ctx, opts.nodesStore, reg); regErr != nil {
+					return errors.Wrap(regErr, "registering node")
+				}
+
+				// Start background heartbeat goroutine.
+				heartbeatCtx := context.Background()
+				go runHeartbeat(heartbeatCtx, stopper.ShouldQuiesce(), opts.nodesStore, reg)
+			}
 
 			fmt.Fprintf(os.Stderr, "Node %d (store %d) is ready. SQL address: %s, HTTP address: %s\n",
 				nodeID, storeID, cfg.SQLAdvertiseAddr, cfg.HTTPAddr)

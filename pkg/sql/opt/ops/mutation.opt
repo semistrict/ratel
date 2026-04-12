@@ -172,6 +172,10 @@ define MutationPrivate {
 
     # FKCascades stores metadata necessary for building cascading queries.
     FKCascades FKCascades
+
+    # ActorName identifies the actor whose table data is being mutated. An
+    # empty string indicates the legacy unscoped tenant keyspace.
+    ActorName string
 }
 
 # Update evaluates a relational input expression that fetches existing rows from

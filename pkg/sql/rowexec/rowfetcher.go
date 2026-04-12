@@ -81,6 +81,7 @@ func makeRowFetcherLegacy(
 	alloc *tree.DatumAlloc,
 	lockStrength descpb.ScanLockingStrength,
 	lockWaitPolicy descpb.ScanLockingWaitPolicy,
+	actorName string,
 	withSystemColumns bool,
 ) (*row.Fetcher, error) {
 	colIDs := make([]descpb.ColumnID, 0, len(desc.AllColumns()))
@@ -104,7 +105,7 @@ func makeRowFetcherLegacy(
 	index := desc.ActiveIndexes()[indexIdx]
 
 	var spec descpb.IndexFetchSpec
-	if err := rowenc.InitIndexFetchSpec(&spec, flowCtx.Codec(), desc, index, colIDs); err != nil {
+	if err := rowenc.InitIndexFetchSpec(&spec, flowCtx.TableDataCodecForActor(actorName), desc, index, colIDs); err != nil {
 		return nil, err
 	}
 

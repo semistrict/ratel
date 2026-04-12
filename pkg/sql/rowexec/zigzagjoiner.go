@@ -481,7 +481,7 @@ func (z *zigzagJoiner) setupInfo(
 	// Setup the RowContainers.
 	info.container.Reset()
 
-	info.spanBuilder.Init(flowCtx.EvalCtx, flowCtx.Codec(), info.table, info.index)
+	info.spanBuilder.Init(flowCtx.EvalCtx, flowCtx.TableDataCodecForActor(spec.ActorName), info.table, info.index)
 
 	// Setup the Fetcher.
 	fetcher, err := makeRowFetcherLegacy(
@@ -496,6 +496,7 @@ func (z *zigzagJoiner) setupInfo(
 		// supplied, so there is no locking strength on *ZigzagJoinerSpec.
 		descpb.ScanLockingStrength_FOR_NONE,
 		descpb.ScanLockingWaitPolicy_BLOCK,
+		spec.ActorName,
 		false, /* withSystemColumns */
 	)
 	if err != nil {
@@ -510,7 +511,7 @@ func (z *zigzagJoiner) setupInfo(
 		info.fetcher = fetcher
 	}
 
-	info.prefix = rowenc.MakeIndexKeyPrefix(flowCtx.Codec(), info.table.GetID(), info.index.GetID())
+	info.prefix = rowenc.MakeIndexKeyPrefix(flowCtx.TableDataCodecForActor(spec.ActorName), info.table.GetID(), info.index.GetID())
 	span, err := z.produceSpanFromBaseRow()
 
 	if err != nil {

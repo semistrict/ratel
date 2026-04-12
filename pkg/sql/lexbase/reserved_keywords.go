@@ -4,6 +4,7 @@
 package lexbase
 
 var reservedKeywords = map[string]struct{}{
+	"actor":                              {},
 	"all":                                {},
 	"analyse":                            {},
 	"analyze":                            {},

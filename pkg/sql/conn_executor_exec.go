@@ -315,6 +315,13 @@ func (ex *connExecutor) execStmtInOpenState(
 	sp.SetTag("statement", attribute.StringValue(parserStmt.SQL))
 	defer sp.Finish()
 	ast := parserStmt.AST
+	if ex.sessionData().ActorScope != "" && ast.StatementType() == tree.TypeDDL {
+		ev, payload := ex.makeErrEvent(pgerror.Newf(
+			pgcode.InvalidTransactionState,
+			"cannot execute DDL with actor_scope set; run SET actor_scope = '' first",
+		), ast)
+		return ev, payload, nil
+	}
 	ctx = withStatement(ctx, ast)
 
 	makeErrEvent := func(err error) (fsm.Event, fsm.EventPayload, error) {

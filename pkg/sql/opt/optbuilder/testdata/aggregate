@@ -1765,8 +1765,8 @@ scalar-group-by
  ├── columns: xor_agg:2
  ├── values
  │    ├── columns: column1:1!null
- │    ├── ('\x01')
- │    └── ('\x0101')
+ │    ├── ('\x01',)
+ │    └── ('\x0101',)
  └── aggregations
       └── xor-agg [as=xor_agg:2]
            └── column1:1
@@ -4589,8 +4589,8 @@ scalar-group-by
  │    ├── columns: column2:2(string)
  │    ├── values
  │    │    ├── columns: column1:1(unknown)
- │    │    ├── (NULL) [type=tuple{unknown}]
- │    │    └── (NULL) [type=tuple{unknown}]
+ │    │    ├── (NULL,) [type=tuple{unknown}]
+ │    │    └── (NULL,) [type=tuple{unknown}]
  │    └── projections
  │         └── column1:1::STRING [as=column2:2, type=string]
  └── aggregations

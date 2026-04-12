@@ -504,11 +504,7 @@ func getZoneByID(id config.ObjectID, cfg *config.SystemConfig) (*zonepb.ZoneConf
 	if zoneVal == nil {
 		return nil, nil
 	}
-	zone := new(zonepb.ZoneConfig)
-	if err := zoneVal.GetProto(zone); err != nil {
-		return nil, err
-	}
-	return zone, nil
+	return config.DecodeZoneConfigValue(zoneVal)
 }
 
 // StoreResolver is a function resolving a store descriptor by its id. Empty

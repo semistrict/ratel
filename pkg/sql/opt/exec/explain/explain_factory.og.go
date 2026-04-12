@@ -606,6 +606,7 @@ func (f *Factory) ConstructOrdinality(
 func (f *Factory) ConstructIndexJoin(
 	input exec.Node,
 	table cat.Table,
+	actorName string,
 	keyCols []exec.NodeColumnOrdinal,
 	tableCols exec.TableColumnOrdinalSet,
 	reqOrdering exec.OutputOrdering,
@@ -615,6 +616,7 @@ func (f *Factory) ConstructIndexJoin(
 	args := &indexJoinArgs{
 		Input:       inputNode,
 		Table:       table,
+		ActorName:   actorName,
 		KeyCols:     keyCols,
 		TableCols:   tableCols,
 		ReqOrdering: reqOrdering,
@@ -628,6 +630,7 @@ func (f *Factory) ConstructIndexJoin(
 	wrapped, err := f.wrappedFactory.ConstructIndexJoin(
 		inputNode.WrappedNode(),
 		table,
+		actorName,
 		keyCols,
 		tableCols,
 		reqOrdering,
@@ -1039,6 +1042,7 @@ func (f *Factory) ConstructShowTrace(
 func (f *Factory) ConstructInsert(
 	input exec.Node,
 	table cat.Table,
+	actorName string,
 	arbiterIndexes cat.IndexOrdinals,
 	arbiterConstraints cat.UniqueOrdinals,
 	insertCols exec.TableColumnOrdinalSet,
@@ -1054,6 +1058,7 @@ func (f *Factory) ConstructInsert(
 	args := &insertArgs{
 		Input:              inputNode,
 		Table:              table,
+		ActorName:          actorName,
 		ArbiterIndexes:     arbiterIndexes,
 		ArbiterConstraints: arbiterConstraints,
 		InsertCols:         insertCols,
@@ -1069,6 +1074,7 @@ func (f *Factory) ConstructInsert(
 	wrapped, err := f.wrappedFactory.ConstructInsert(
 		inputNode.WrappedNode(),
 		table,
+		actorName,
 		arbiterIndexes,
 		arbiterConstraints,
 		insertCols,
@@ -1086,6 +1092,7 @@ func (f *Factory) ConstructInsert(
 func (f *Factory) ConstructInsertFastPath(
 	rows [][]tree.TypedExpr,
 	table cat.Table,
+	actorName string,
 	insertCols exec.TableColumnOrdinalSet,
 	returnCols exec.TableColumnOrdinalSet,
 	checkCols exec.CheckOrdinalSet,
@@ -1097,6 +1104,7 @@ func (f *Factory) ConstructInsertFastPath(
 	args := &insertFastPathArgs{
 		Rows:       rows,
 		Table:      table,
+		ActorName:  actorName,
 		InsertCols: insertCols,
 		ReturnCols: returnCols,
 		CheckCols:  checkCols,
@@ -1111,6 +1119,7 @@ func (f *Factory) ConstructInsertFastPath(
 	wrapped, err := f.wrappedFactory.ConstructInsertFastPath(
 		rows,
 		table,
+		actorName,
 		insertCols,
 		returnCols,
 		checkCols,
@@ -1127,6 +1136,7 @@ func (f *Factory) ConstructInsertFastPath(
 func (f *Factory) ConstructUpdate(
 	input exec.Node,
 	table cat.Table,
+	actorName string,
 	fetchCols exec.TableColumnOrdinalSet,
 	updateCols exec.TableColumnOrdinalSet,
 	returnCols exec.TableColumnOrdinalSet,
@@ -1139,6 +1149,7 @@ func (f *Factory) ConstructUpdate(
 	args := &updateArgs{
 		Input:       inputNode,
 		Table:       table,
+		ActorName:   actorName,
 		FetchCols:   fetchCols,
 		UpdateCols:  updateCols,
 		ReturnCols:  returnCols,
@@ -1154,6 +1165,7 @@ func (f *Factory) ConstructUpdate(
 	wrapped, err := f.wrappedFactory.ConstructUpdate(
 		inputNode.WrappedNode(),
 		table,
+		actorName,
 		fetchCols,
 		updateCols,
 		returnCols,
@@ -1171,6 +1183,7 @@ func (f *Factory) ConstructUpdate(
 func (f *Factory) ConstructUpsert(
 	input exec.Node,
 	table cat.Table,
+	actorName string,
 	arbiterIndexes cat.IndexOrdinals,
 	arbiterConstraints cat.UniqueOrdinals,
 	canaryCol exec.NodeColumnOrdinal,
@@ -1189,6 +1202,7 @@ func (f *Factory) ConstructUpsert(
 	args := &upsertArgs{
 		Input:              inputNode,
 		Table:              table,
+		ActorName:          actorName,
 		ArbiterIndexes:     arbiterIndexes,
 		ArbiterConstraints: arbiterConstraints,
 		CanaryCol:          canaryCol,
@@ -1207,6 +1221,7 @@ func (f *Factory) ConstructUpsert(
 	wrapped, err := f.wrappedFactory.ConstructUpsert(
 		inputNode.WrappedNode(),
 		table,
+		actorName,
 		arbiterIndexes,
 		arbiterConstraints,
 		canaryCol,
@@ -1227,6 +1242,7 @@ func (f *Factory) ConstructUpsert(
 func (f *Factory) ConstructDelete(
 	input exec.Node,
 	table cat.Table,
+	actorName string,
 	fetchCols exec.TableColumnOrdinalSet,
 	returnCols exec.TableColumnOrdinalSet,
 	// If set, the operator will commit the transaction as part of its execution.
@@ -1239,6 +1255,7 @@ func (f *Factory) ConstructDelete(
 	args := &deleteArgs{
 		Input:      inputNode,
 		Table:      table,
+		ActorName:  actorName,
 		FetchCols:  fetchCols,
 		ReturnCols: returnCols,
 		AutoCommit: autoCommit,
@@ -1251,6 +1268,7 @@ func (f *Factory) ConstructDelete(
 	wrapped, err := f.wrappedFactory.ConstructDelete(
 		inputNode.WrappedNode(),
 		table,
+		actorName,
 		fetchCols,
 		returnCols,
 		autoCommit,
@@ -1264,6 +1282,7 @@ func (f *Factory) ConstructDelete(
 
 func (f *Factory) ConstructDeleteRange(
 	table cat.Table,
+	actorName string,
 	needed exec.TableColumnOrdinalSet,
 	indexConstraint *constraint.Constraint,
 	// If set, the operator will commit the transaction as part of its execution.
@@ -1275,6 +1294,7 @@ func (f *Factory) ConstructDeleteRange(
 ) (exec.Node, error) {
 	args := &deleteRangeArgs{
 		Table:           table,
+		ActorName:       actorName,
 		Needed:          needed,
 		IndexConstraint: indexConstraint,
 		AutoCommit:      autoCommit,
@@ -1286,6 +1306,7 @@ func (f *Factory) ConstructDeleteRange(
 	// Build the "real" node.
 	wrapped, err := f.wrappedFactory.ConstructDeleteRange(
 		table,
+		actorName,
 		needed,
 		indexConstraint,
 		autoCommit,
@@ -2065,6 +2086,7 @@ type ordinalityArgs struct {
 type indexJoinArgs struct {
 	Input       *Node
 	Table       cat.Table
+	ActorName   string
 	KeyCols     []exec.NodeColumnOrdinal
 	TableCols   exec.TableColumnOrdinalSet
 	ReqOrdering exec.OutputOrdering
@@ -2166,6 +2188,7 @@ type showTraceArgs struct {
 type insertArgs struct {
 	Input              *Node
 	Table              cat.Table
+	ActorName          string
 	ArbiterIndexes     cat.IndexOrdinals
 	ArbiterConstraints cat.UniqueOrdinals
 	InsertCols         exec.TableColumnOrdinalSet
@@ -2177,6 +2200,7 @@ type insertArgs struct {
 type insertFastPathArgs struct {
 	Rows       [][]tree.TypedExpr
 	Table      cat.Table
+	ActorName  string
 	InsertCols exec.TableColumnOrdinalSet
 	ReturnCols exec.TableColumnOrdinalSet
 	CheckCols  exec.CheckOrdinalSet
@@ -2187,6 +2211,7 @@ type insertFastPathArgs struct {
 type updateArgs struct {
 	Input       *Node
 	Table       cat.Table
+	ActorName   string
 	FetchCols   exec.TableColumnOrdinalSet
 	UpdateCols  exec.TableColumnOrdinalSet
 	ReturnCols  exec.TableColumnOrdinalSet
@@ -2198,6 +2223,7 @@ type updateArgs struct {
 type upsertArgs struct {
 	Input              *Node
 	Table              cat.Table
+	ActorName          string
 	ArbiterIndexes     cat.IndexOrdinals
 	ArbiterConstraints cat.UniqueOrdinals
 	CanaryCol          exec.NodeColumnOrdinal
@@ -2212,6 +2238,7 @@ type upsertArgs struct {
 type deleteArgs struct {
 	Input      *Node
 	Table      cat.Table
+	ActorName  string
 	FetchCols  exec.TableColumnOrdinalSet
 	ReturnCols exec.TableColumnOrdinalSet
 	AutoCommit bool
@@ -2219,6 +2246,7 @@ type deleteArgs struct {
 
 type deleteRangeArgs struct {
 	Table           cat.Table
+	ActorName       string
 	Needed          exec.TableColumnOrdinalSet
 	IndexConstraint *constraint.Constraint
 	AutoCommit      bool

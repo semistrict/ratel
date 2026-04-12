@@ -326,6 +326,7 @@ func newInvertedJoiner(
 		flowCtx, ij.desc, int(spec.IndexIdx), false, /* reverse */
 		allIndexCols, flowCtx.EvalCtx.Mon, &ij.alloc,
 		descpb.ScanLockingStrength_FOR_NONE, descpb.ScanLockingWaitPolicy_BLOCK,
+		spec.ActorName,
 		false, /* withSystemColumns */
 	)
 	if err != nil {
@@ -341,7 +342,7 @@ func newInvertedJoiner(
 		ij.fetcher = fetcher
 	}
 
-	ij.spanBuilder.Init(flowCtx.EvalCtx, flowCtx.Codec(), ij.desc, ij.index)
+	ij.spanBuilder.Init(flowCtx.EvalCtx, flowCtx.TableDataCodecForActor(spec.ActorName), ij.desc, ij.index)
 
 	// Initialize memory monitors and row container for index rows.
 	ctx := flowCtx.EvalCtx.Ctx()

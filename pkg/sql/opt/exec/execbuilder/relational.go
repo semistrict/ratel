@@ -664,6 +664,7 @@ func (b *Builder) scanParams(
 		Locking:            locking,
 		EstimatedRowCount:  rowCount,
 		LocalityOptimized:  scan.LocalityOptimized,
+		ActorName:          scan.ActorName,
 	}, outputMap, nil
 }
 
@@ -1906,7 +1907,7 @@ func (b *Builder) buildIndexJoin(join *memo.IndexJoinExpr) (execPlan, error) {
 	res := execPlan{outputCols: output}
 	b.recordJoinAlgorithm(exec.IndexJoin)
 	res.root, err = b.factory.ConstructIndexJoin(
-		input.root, tab, keyCols, needed, res.reqOrdering(join), join.RequiredPhysical().LimitHintInt64(),
+		input.root, tab, join.ActorName, keyCols, needed, res.reqOrdering(join), join.RequiredPhysical().LimitHintInt64(),
 	)
 	if err != nil {
 		return execPlan{}, err

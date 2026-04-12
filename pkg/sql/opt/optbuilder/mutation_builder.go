@@ -64,6 +64,12 @@ type mutationBuilder struct {
 	// fetchScope contains the set of columns fetched from the target table.
 	fetchScope *scope
 
+	// actorName holds the actor identity extracted from the WHERE clause or
+	// inherited from the session scope. Stored here because outScope may be
+	// reassigned during plan construction (e.g. to a projectionsScope that
+	// doesn't inherit actorName).
+	actorName string
+
 	// insertExpr is the expression that produces the values which will be
 	// inserted into the target table. It is only populated for INSERT
 	// expressions. It is currently used to inline constant insert values into
@@ -300,6 +306,7 @@ func (mb *mutationBuilder) buildInputForUpdate(
 		noRowLocking,
 		inScope,
 	)
+	mb.actorName = inScope.actorName
 
 	// Set list of columns that will be fetched by the input expression.
 	mb.setFetchColIDs(mb.fetchScope.cols)
@@ -416,6 +423,7 @@ func (mb *mutationBuilder) buildInputForDelete(
 		inScope,
 	)
 	mb.outScope = mb.fetchScope
+	mb.actorName = inScope.actorName
 
 	// WHERE
 	mb.b.buildWhere(where, mb.outScope)
@@ -916,6 +924,7 @@ func (mb *mutationBuilder) makeMutationPrivate(needResults bool) *memo.MutationP
 		PartialIndexPutCols: checkEmptyList(mb.partialIndexPutColIDs),
 		PartialIndexDelCols: checkEmptyList(mb.partialIndexDelColIDs),
 		FKCascades:          mb.cascades,
+		ActorName:           mb.b.resolveActorNameForTable(mb.actorName, mb.tab),
 	}
 
 	// If we didn't actually plan any checks or cascades, don't buffer the input.

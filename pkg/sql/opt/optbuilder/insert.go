@@ -188,6 +188,9 @@ func (b *Builder) buildInsert(ins *tree.Insert, inScope *scope) (outScope *scope
 	// Find which table we're working on, check the permissions.
 	tab, depName, alias, refColumns := b.resolveTableForMutation(ins.Table, privilege.INSERT)
 
+	// Extract actor from the table reference (actor('name').table syntax).
+	inScope = b.applyActorFromTableRef(ins.Table, inScope)
+
 	// It is possible to insert into specific columns using table reference
 	// syntax:
 	// INSERT INTO [<table_id>(<col1_id>,<col2_id>) AS <alias>] ...
@@ -563,6 +566,8 @@ func (mb *mutationBuilder) addTargetTableColsForInsert(maxCols int) {
 // buildInputForInsert constructs the memo group for the input expression and
 // constructs a new output scope containing that expression's output columns.
 func (mb *mutationBuilder) buildInputForInsert(inScope *scope, inputRows *tree.Select) {
+	mb.actorName = mb.b.resolveActorName(inScope.actorName)
+
 	// Handle DEFAULT VALUES case by creating a single empty row as input.
 	if inputRows == nil {
 		mb.outScope = inScope.push()

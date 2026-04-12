@@ -1130,11 +1130,7 @@ func getZoneConfigRaw(
 	if kv.Value == nil {
 		return nil, nil
 	}
-	var zone zonepb.ZoneConfig
-	if err := kv.ValueProto(&zone); err != nil {
-		return nil, err
-	}
-	return &zone, nil
+	return config.DecodeZoneConfigValue(kv.Value)
 }
 
 // getZoneConfigRawBatch looks up the zone config with the given IDs.
@@ -1159,15 +1155,15 @@ func getZoneConfigRawBatch(
 		if r.Err != nil {
 			return nil, r.Err
 		}
-		var zone zonepb.ZoneConfig
 		row := r.Rows[0]
 		if row.Value == nil {
 			continue
 		}
-		if err := row.ValueProto(&zone); err != nil {
+		zone, err := config.DecodeZoneConfigValue(row.Value)
+		if err != nil {
 			return nil, err
 		}
-		ret[ids[idx]] = &zone
+		ret[ids[idx]] = zone
 	}
 	return ret, nil
 }

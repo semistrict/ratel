@@ -17,7 +17,10 @@
 // — is derived from a single storage URL.
 package main
 
-import "github.com/semistrict/ratel/pkg/cli"
+import (
+	"github.com/semistrict/ratel/pkg/cli"
+	_ "github.com/semistrict/ratel/pkg/ui/distoss" // web UI init hooks
+)
 
 func main() {
 	cli.RatelMain()

@@ -44,6 +44,9 @@ func lockTableKey(key roachpb.Key) roachpb.Key {
 func TestPrettyPrint(t *testing.T) {
 	tenSysCodec := keys.SystemSQLCodec
 	ten5Codec := keys.MakeSQLCodec(roachpb.MakeTenantID(5))
+	actorAlphaSysCodec := keys.MakeActorSQLCodec(tenSysCodec, "alpha")
+	actorAlphaTen5Codec := keys.MakeActorSQLCodec(ten5Codec, "alpha")
+	actorAlphaHash := keys.ActorHash("alpha")
 	tm, _ := time.Parse(time.RFC3339Nano, "2016-03-30T13:40:35.053725008Z")
 	duration := duration.MakeDuration(1*time.Second.Nanoseconds(), 1, 1)
 	durationAsc, _ := encoding.EncodeDurationAscending(nil, duration)
@@ -122,7 +125,10 @@ func TestPrettyPrint(t *testing.T) {
 		// table
 		{keys.SystemConfigSpan.Key, "/Table/SystemConfigSpan/Start", revertSupportUnknown},
 		{tenSysCodec.TablePrefix(111), "/Table/111", revertMustSupport},
+		{actorAlphaSysCodec.TablePrefix(111), fmt.Sprintf("/Actor/%x/Table/111", actorAlphaHash), revertMustSupport},
 		{makeKey(tenSysCodec.TablePrefix(42), encoding.EncodeUvarintAscending(nil, 1)), `/Table/42/1`, revertMustSupport},
+		{makeKey(actorAlphaSysCodec.TablePrefix(42), encoding.EncodeUvarintAscending(nil, 1)),
+			fmt.Sprintf("/Actor/%x/Table/42/1", actorAlphaHash), revertMustSupport},
 		{makeKey(tenSysCodec.TablePrefix(42), roachpb.RKey("foo")), `/Table/42/"foo"`, revertSupportUnknown},
 		{makeKey(tenSysCodec.TablePrefix(42),
 			roachpb.RKey(encoding.EncodeFloatAscending(nil, float64(233.221112)))),
@@ -199,6 +205,7 @@ func TestPrettyPrint(t *testing.T) {
 		{ten5Codec.TenantPrefix(), "/Tenant/5", revertMustSupport},
 		{ten5Codec.TablePrefix(0), "/Tenant/5/Table/SystemConfigSpan/Start", revertSupportUnknown},
 		{ten5Codec.TablePrefix(50), "/Tenant/5/Table/50", revertMustSupport},
+		{actorAlphaTen5Codec.TablePrefix(50), fmt.Sprintf("/Tenant/5/Actor/%x/Table/50", actorAlphaHash), revertMustSupport},
 		{ten5Codec.TablePrefix(111), "/Tenant/5/Table/111", revertMustSupport},
 		{makeKey(ten5Codec.TablePrefix(42), encoding.EncodeUvarintAscending(nil, 1)), `/Tenant/5/Table/42/1`, revertMustSupport},
 		{makeKey(ten5Codec.TablePrefix(42), roachpb.RKey("foo")), `/Tenant/5/Table/42/"foo"`, revertSupportUnknown},

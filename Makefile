@@ -650,9 +650,9 @@ build/defs.mk.sig: sig = $(PATH):$(CURDIR):$(GO):$(CC):$(CXX):$(TARGET_TRIPLE):$
 build/defs.mk.sig: .ALWAYS_REBUILD
 	@echo '$(sig)' | cmp -s - $@ || echo '$(sig)' > $@
 
-COCKROACHOSS   := ./cockroachoss$(SUFFIX)
-COCKROACHSHORT := ./cockroachshort$(SUFFIX)
-COCKROACHSQL   := ./cockroach-sql$(SUFFIX)
+COCKROACHOSS   := ./oldcockroachoss$(SUFFIX)
+COCKROACHSHORT := ./oldcockroachshort$(SUFFIX)
+COCKROACHSQL   := ./oldcockroach-sql$(SUFFIX)
 RATEL          := ./ratel$(SUFFIX)
 
 LOG_TARGETS = \
@@ -806,7 +806,7 @@ go-targets := $(COCKROACHOSS) $(COCKROACHSHORT) $(COCKROACHSQL) $(RATEL) \
 	lint lintshort
 
 .DEFAULT_GOAL := all
-all: buildoss
+all: buildratel
 
 .PHONY: c-deps
 c-deps: $(C_LIBS_OSS) | $(C_LIBS_DYNAMIC)
@@ -825,8 +825,7 @@ $(COCKROACHSHORT): $(C_LIBS_SHORT) | $(C_LIBS_DYNAMIC)
 $(COCKROACHSQL): BUILDTARGET = ./pkg/cmd/cockroach-sql
 
 $(RATEL): BUILDTARGET = ./pkg/cmd/ratel
-$(RATEL): TAGS += short
-$(RATEL): $(C_LIBS_SHORT) | $(C_LIBS_DYNAMIC)
+$(RATEL): $(C_LIBS_OSS) pkg/ui/assets.oss.installed | $(C_LIBS_DYNAMIC)
 
 # For test targets, add a tag (used to enable extra assertions).
 $(test-targets): TAGS += crdb_test
@@ -853,10 +852,10 @@ $(go-targets): override LINKFLAGS += \
 # The build.utcTime format must remain in sync with TimeFormat in
 # pkg/build/info.go. It is not installed in tests or in `buildshort` to avoid
 # busting the cache on every rebuild.
-$(COCKROACHOSS) go-install: override LINKFLAGS += \
+$(COCKROACHOSS) $(RATEL) go-install: override LINKFLAGS += \
 	-X "github.com/semistrict/ratel/pkg/build.utcTime=$(shell date -u '+%Y/%m/%d %H:%M:%S')"
 
-settings-doc-gen = $(if $(filter buildshort,$(MAKECMDGOALS)),$(COCKROACHSHORT),$(COCKROACHOSS))
+settings-doc-gen = $(if $(filter oldbuildshort,$(MAKECMDGOALS)),$(COCKROACHSHORT),$(COCKROACHOSS))
 
 docs/generated/settings/settings.html: $(settings-doc-gen)
 	@$(settings-doc-gen) gen settings-list --format=rawhtml > $@
@@ -874,12 +873,12 @@ SETTINGS_DOC_PAGES := docs/generated/settings/settings.html docs/generated/setti
 $(COCKROACHOSS) $(COCKROACHSHORT) $(COCKROACHSQL) $(RATEL) go-install:
 	 $(xgo) $(build-mode) -v $(GOFLAGS) $(GOMODVENDORFLAGS) -tags '$(TAGS)' -ldflags '$(LINKFLAGS)' $(BUILDTARGET)
 
-.PHONY: buildoss buildshort buildratel
-buildoss: ## Build the CockroachDB binary.
-buildshort: ## Build the CockroachDB binary without the admin UI and RocksDB.
-buildratel: ## Build the ratel binary (S3-native CockroachDB).
-buildoss: $(COCKROACHOSS)
-buildshort: $(COCKROACHSHORT)
+.PHONY: oldbuildoss oldbuildshort buildratel
+oldbuildoss: ## Build the old CockroachDB binary.
+oldbuildshort: ## Build the old CockroachDB binary without the admin UI.
+buildratel: ## Build the ratel binary.
+oldbuildoss: $(COCKROACHOSS)
+oldbuildshort: $(COCKROACHSHORT)
 buildratel: $(RATEL)
 
 .PHONY: install

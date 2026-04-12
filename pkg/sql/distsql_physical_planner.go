@@ -1226,6 +1226,7 @@ func initTableReaderSpecTemplate(
 		TableDescriptorModificationTime: n.desc.GetModificationTime(),
 		LockingStrength:                 n.lockingStrength,
 		LockingWaitPolicy:               n.lockingWaitPolicy,
+		ActorName:                       n.actorName,
 	}
 	if err := rowenc.InitIndexFetchSpec(&s.FetchSpec, codec, n.desc, n.index, colIDs); err != nil {
 		return nil, execinfrapb.PostProcessSpec{}, err
@@ -1238,6 +1239,10 @@ func initTableReaderSpecTemplate(
 		s.LimitHint = n.softLimit
 	}
 	return s, post, nil
+}
+
+func scanNodeCodec(base keys.SQLCodec, n *scanNode) keys.SQLCodec {
+	return keys.MakeActorSQLCodec(base, n.actorName)
 }
 
 // tableOrdinal returns the index of a column with the given ID.
@@ -1339,7 +1344,7 @@ func (dsp *DistSQLPlanner) CheckInstanceHealthAndVersion(
 func (dsp *DistSQLPlanner) createTableReaders(
 	ctx context.Context, planCtx *PlanningCtx, n *scanNode,
 ) (*PhysicalPlan, error) {
-	spec, post, err := initTableReaderSpecTemplate(n, planCtx.ExtendedEvalCtx.Codec)
+	spec, post, err := initTableReaderSpecTemplate(n, scanNodeCodec(planCtx.ExtendedEvalCtx.Codec, n))
 	if err != nil {
 		return nil, err
 	}
@@ -2257,6 +2262,7 @@ func (dsp *DistSQLPlanner) createPlanForIndexJoin(
 		LockingWaitPolicy: n.table.lockingWaitPolicy,
 		MaintainOrdering:  len(n.reqOrdering) > 0,
 		LimitHint:         n.limitHint,
+		ActorName:         n.table.actorName,
 	}
 
 	fetchColIDs := make([]descpb.ColumnID, len(n.cols))
@@ -2266,7 +2272,7 @@ func (dsp *DistSQLPlanner) createPlanForIndexJoin(
 	index := n.table.desc.GetPrimaryIndex()
 	if err := rowenc.InitIndexFetchSpec(
 		&joinReaderSpec.FetchSpec,
-		planCtx.ExtendedEvalCtx.Codec,
+		scanNodeCodec(planCtx.ExtendedEvalCtx.Codec, n.table),
 		n.table.desc,
 		index,
 		fetchColIDs,
@@ -2321,6 +2327,7 @@ func (dsp *DistSQLPlanner) createPlanForLookupJoin(
 		OutputGroupContinuationForLeftRow: n.isFirstJoinInPairedJoiner,
 		LookupBatchBytesLimit:             dsp.distSQLSrv.TestingKnobs.JoinReaderBatchBytesLimit,
 		LimitHint:                         n.limitHint,
+		ActorName:                         n.table.actorName,
 	}
 
 	fetchColIDs := make([]descpb.ColumnID, len(n.table.cols))
@@ -2329,7 +2336,7 @@ func (dsp *DistSQLPlanner) createPlanForLookupJoin(
 	}
 	if err := rowenc.InitIndexFetchSpec(
 		&joinReaderSpec.FetchSpec,
-		planCtx.ExtendedEvalCtx.Codec,
+		scanNodeCodec(planCtx.ExtendedEvalCtx.Codec, n.table),
 		n.table.desc,
 		n.table.index,
 		fetchColIDs,
@@ -2520,6 +2527,7 @@ func (dsp *DistSQLPlanner) createPlanForInvertedJoin(
 		Type:                              n.joinType,
 		MaintainOrdering:                  len(n.reqOrdering) > 0,
 		OutputGroupContinuationForLeftRow: n.isFirstJoinInPairedJoiner,
+		ActorName:                         n.table.actorName,
 	}
 	invertedJoinerSpec.IndexIdx, err = getIndexIdx(n.table.index, n.table.desc)
 	if err != nil {
@@ -2589,6 +2597,7 @@ func (dsp *DistSQLPlanner) createPlanForZigzagJoin(
 			cols:        side.scan.cols,
 			eqCols:      side.eqCols,
 			fixedValues: valuesSpec,
+			actorName:   side.scan.actorName,
 		}
 	}
 
@@ -2606,6 +2615,7 @@ type zigzagPlanningSide struct {
 	cols        []catalog.Column
 	eqCols      []int
 	fixedValues *execinfrapb.ValuesCoreSpec
+	actorName   string
 }
 
 type zigzagPlanningInfo struct {
@@ -2626,6 +2636,9 @@ func (dsp *DistSQLPlanner) planZigzagJoin(
 	fixedValues := make([]*execinfrapb.ValuesCoreSpec, len(pi.sides))
 
 	for i, side := range pi.sides {
+		if i > 0 && side.actorName != pi.sides[0].actorName {
+			return nil, errors.AssertionFailedf("zigzag join sides must use the same actor scope")
+		}
 		tables[i] = *side.desc.TableDesc()
 		indexOrdinals[i], err = getIndexIdx(side.index, side.desc)
 		if err != nil {
@@ -2647,6 +2660,7 @@ func (dsp *DistSQLPlanner) planZigzagJoin(
 		IndexOrdinals: indexOrdinals,
 		FixedValues:   fixedValues,
 		Type:          descpb.InnerJoin,
+		ActorName:     pi.sides[0].actorName,
 	}
 
 	// The internal schema of the zigzag joiner is:

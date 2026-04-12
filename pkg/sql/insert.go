@@ -54,6 +54,7 @@ var _ mutationPlanNode = &insertNode{}
 type insertRun struct {
 	ti         tableInserter
 	rowsNeeded bool
+	actorName  string
 
 	checkOrds checkSet
 
@@ -86,6 +87,8 @@ type insertRun struct {
 
 	// traceKV caches the current KV tracing flag.
 	traceKV bool
+
+	actorEnsured bool
 }
 
 func (r *insertRun) initRowContainer(params runParams, columns colinfo.ResultColumns) {
@@ -127,6 +130,12 @@ func (r *insertRun) initRowContainer(params runParams, columns colinfo.ResultCol
 // processSourceRow processes one row from the source for insertion and, if
 // result rows are needed, saves it in the result row container.
 func (r *insertRun) processSourceRow(params runParams, rowVals tree.Datums) error {
+	if !r.actorEnsured {
+		if err := params.p.ensureActorExists(params.ctx, r.actorName); err != nil {
+			return err
+		}
+		r.actorEnsured = true
+	}
 	if err := enforceLocalColumnConstraints(rowVals, r.insertCols); err != nil {
 		return err
 	}

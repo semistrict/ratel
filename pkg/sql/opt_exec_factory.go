@@ -108,14 +108,16 @@ func (ef *execFactory) ConstructScan(
 
 	scan.reverse = params.Reverse
 	scan.parallelize = params.Parallelize
+	scan.actorName = params.ActorName
+	codec := keys.MakeActorSQLCodec(ef.planner.ExecCfg().Codec, params.ActorName)
 	var err error
-	scan.spans, err = generateScanSpans(ef.planner.EvalContext(), ef.planner.ExecCfg().Codec, tabDesc, idx, params)
+	scan.spans, err = generateScanSpans(ef.planner.EvalContext(), codec, tabDesc, idx, params)
 	if err != nil {
 		return nil, err
 	}
 
 	scan.isFull = len(scan.spans) == 1 && scan.spans[0].EqualValue(
-		scan.desc.IndexSpan(ef.planner.ExecCfg().Codec, scan.index.GetID()),
+		scan.desc.IndexSpan(codec, scan.index.GetID()),
 	)
 	if err = colCfg.assertValidReqOrdering(reqOrdering); err != nil {
 		return nil, err
@@ -598,6 +600,7 @@ func (ef *execFactory) ConstructOrdinality(input exec.Node, colName string) (exe
 func (ef *execFactory) ConstructIndexJoin(
 	input exec.Node,
 	table cat.Table,
+	actorName string,
 	keyCols []exec.NodeColumnOrdinal,
 	tableCols exec.TableColumnOrdinalSet,
 	reqOrdering exec.OutputOrdering,
@@ -616,6 +619,7 @@ func (ef *execFactory) ConstructIndexJoin(
 
 	idx := tabDesc.GetPrimaryIndex()
 	tableScan.index = idx
+	tableScan.actorName = actorName
 	tableScan.disableBatchLimit()
 
 	if !ef.isExplain && !(ef.planner.isInternalPlanner || ef.planner.SessionData().Internal) {
@@ -1296,6 +1300,7 @@ func (ef *execFactory) ConstructShowTrace(typ tree.ShowTraceType, compact bool) 
 func (ef *execFactory) ConstructInsert(
 	input exec.Node,
 	table cat.Table,
+	actorName string,
 	arbiterIndexes cat.IndexOrdinals,
 	arbiterConstraints cat.UniqueOrdinals,
 	insertColOrdSet exec.TableColumnOrdinalSet,
@@ -1316,10 +1321,11 @@ func (ef *execFactory) ConstructInsert(
 
 	// Create the table inserter, which does the bulk of the work.
 	internal := ef.planner.SessionData().Internal
+	codec := keys.MakeActorSQLCodec(ef.planner.ExecCfg().Codec, actorName)
 	ri, err := row.MakeInserter(
 		ctx,
 		ef.planner.txn,
-		ef.planner.ExecCfg().Codec,
+		codec,
 		tabDesc,
 		cols,
 		ef.planner.alloc,
@@ -1337,6 +1343,7 @@ func (ef *execFactory) ConstructInsert(
 		source: input.(planNode),
 		run: insertRun{
 			ti:         tableInserter{ri: ri},
+			actorName:  actorName,
 			checkOrds:  checkOrdSet,
 			insertCols: ri.InsertCols,
 		},
@@ -1372,6 +1379,7 @@ func (ef *execFactory) ConstructInsert(
 func (ef *execFactory) ConstructInsertFastPath(
 	rows [][]tree.TypedExpr,
 	table cat.Table,
+	actorName string,
 	insertColOrdSet exec.TableColumnOrdinalSet,
 	returnColOrdSet exec.TableColumnOrdinalSet,
 	checkOrdSet exec.CheckOrdinalSet,
@@ -1391,10 +1399,11 @@ func (ef *execFactory) ConstructInsertFastPath(
 
 	// Create the table inserter, which does the bulk of the work.
 	internal := ef.planner.SessionData().Internal
+	codec := keys.MakeActorSQLCodec(ef.planner.ExecCfg().Codec, actorName)
 	ri, err := row.MakeInserter(
 		ctx,
 		ef.planner.txn,
-		ef.planner.ExecCfg().Codec,
+		codec,
 		tabDesc,
 		cols,
 		ef.planner.alloc,
@@ -1411,8 +1420,10 @@ func (ef *execFactory) ConstructInsertFastPath(
 	*ins = insertFastPathNode{
 		input: rows,
 		run: insertFastPathRun{
+			actorName: actorName,
 			insertRun: insertRun{
 				ti:         tableInserter{ri: ri},
+				actorName:  actorName,
 				checkOrds:  checkOrdSet,
 				insertCols: ri.InsertCols,
 			},
@@ -1460,6 +1471,7 @@ func (ef *execFactory) ConstructInsertFastPath(
 func (ef *execFactory) ConstructUpdate(
 	input exec.Node,
 	table cat.Table,
+	actorName string,
 	fetchColOrdSet exec.TableColumnOrdinalSet,
 	updateColOrdSet exec.TableColumnOrdinalSet,
 	returnColOrdSet exec.TableColumnOrdinalSet,
@@ -1497,10 +1509,11 @@ func (ef *execFactory) ConstructUpdate(
 
 	// Create the table updater, which does the bulk of the work.
 	internal := ef.planner.SessionData().Internal
+	codec := keys.MakeActorSQLCodec(ef.planner.ExecCfg().Codec, actorName)
 	ru, err := row.MakeUpdater(
 		ctx,
 		ef.planner.txn,
-		ef.planner.ExecCfg().Codec,
+		codec,
 		tabDesc,
 		updateCols,
 		fetchCols,
@@ -1527,6 +1540,7 @@ func (ef *execFactory) ConstructUpdate(
 		source: input.(planNode),
 		run: updateRun{
 			tu:        tableUpdater{ru: ru},
+			actorName: actorName,
 			checkOrds: checks,
 			iVarContainerForComputedCols: schemaexpr.RowIndexedVarContainer{
 				CurSourceRow: make(tree.Datums, len(ru.FetchCols)),
@@ -1578,6 +1592,7 @@ func (ef *execFactory) ConstructUpdate(
 func (ef *execFactory) ConstructUpsert(
 	input exec.Node,
 	table cat.Table,
+	actorName string,
 	arbiterIndexes cat.IndexOrdinals,
 	arbiterConstraints cat.UniqueOrdinals,
 	canaryCol exec.NodeColumnOrdinal,
@@ -1603,10 +1618,11 @@ func (ef *execFactory) ConstructUpsert(
 
 	// Create the table inserter, which does the bulk of the insert-related work.
 	internal := ef.planner.SessionData().Internal
+	codec := keys.MakeActorSQLCodec(ef.planner.ExecCfg().Codec, actorName)
 	ri, err := row.MakeInserter(
 		ctx,
 		ef.planner.txn,
-		ef.planner.ExecCfg().Codec,
+		codec,
 		tabDesc,
 		insertCols,
 		ef.planner.alloc,
@@ -1622,7 +1638,7 @@ func (ef *execFactory) ConstructUpsert(
 	ru, err := row.MakeUpdater(
 		ctx,
 		ef.planner.txn,
-		ef.planner.ExecCfg().Codec,
+		codec,
 		tabDesc,
 		updateCols,
 		fetchCols,
@@ -1641,6 +1657,7 @@ func (ef *execFactory) ConstructUpsert(
 	*ups = upsertNode{
 		source: input.(planNode),
 		run: upsertRun{
+			actorName:  actorName,
 			checkOrds:  checks,
 			insertCols: ri.InsertCols,
 			tw: optTableUpserter{
@@ -1685,6 +1702,7 @@ func (ef *execFactory) ConstructUpsert(
 func (ef *execFactory) ConstructDelete(
 	input exec.Node,
 	table cat.Table,
+	actorName string,
 	fetchColOrdSet exec.TableColumnOrdinalSet,
 	returnColOrdSet exec.TableColumnOrdinalSet,
 	autoCommit bool,
@@ -1703,8 +1721,9 @@ func (ef *execFactory) ConstructDelete(
 	// CBO will have already determined the set of fetch columns, and passes
 	// those sets into the deleter (which will basically be a no-op).
 	internal := ef.planner.SessionData().Internal
+	codec := keys.MakeActorSQLCodec(ef.planner.ExecCfg().Codec, actorName)
 	rd := row.MakeDeleter(
-		ef.planner.ExecCfg().Codec,
+		codec,
 		tabDesc,
 		fetchCols,
 		&ef.planner.ExecCfg().Settings.SV,
@@ -1717,6 +1736,7 @@ func (ef *execFactory) ConstructDelete(
 	*del = deleteNode{
 		source: input.(planNode),
 		run: deleteRun{
+			actorName:                 actorName,
 			td:                        tableDeleter{rd: rd, alloc: ef.planner.alloc},
 			partialIndexDelValsOffset: len(rd.FetchCols),
 		},
@@ -1751,13 +1771,15 @@ func (ef *execFactory) ConstructDelete(
 
 func (ef *execFactory) ConstructDeleteRange(
 	table cat.Table,
+	actorName string,
 	needed exec.TableColumnOrdinalSet,
 	indexConstraint *constraint.Constraint,
 	autoCommit bool,
 ) (exec.Node, error) {
 	tabDesc := table.(*optTable).desc
 	var sb span.Builder
-	sb.Init(ef.planner.EvalContext(), ef.planner.ExecCfg().Codec, tabDesc, tabDesc.GetPrimaryIndex())
+	codec := keys.MakeActorSQLCodec(ef.planner.ExecCfg().Codec, actorName)
+	sb.Init(ef.planner.EvalContext(), codec, tabDesc, tabDesc.GetPrimaryIndex())
 
 	if err := ef.planner.maybeSetSystemConfig(tabDesc.GetID()); err != nil {
 		return nil, err
@@ -1770,6 +1792,7 @@ func (ef *execFactory) ConstructDeleteRange(
 
 	dr := &deleteRangeNode{
 		spans:             spans,
+		actorName:         actorName,
 		desc:              tabDesc,
 		autoCommitEnabled: autoCommit,
 	}

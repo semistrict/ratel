@@ -339,9 +339,15 @@ var (
 	TableDataMin = SystemSQLCodec.TablePrefix(0)
 	// TableDataMax is the end of the range of table data keys.
 	TableDataMax = SystemSQLCodec.TablePrefix(math.MaxUint32).PrefixEnd()
+	// ActorDataMin is the start of the range of actor-scoped system-tenant SQL
+	// table data keys.
+	ActorDataMin = roachpb.Key{ActorPrefixByte}
+	// ActorDataMax is the end of the range of actor-scoped system-tenant SQL
+	// table data keys.
+	ActorDataMax = ActorDataMin.PrefixEnd()
 	// ScratchRangeMin is a key used in tests to write arbitrary data without
 	// overlapping with meta, system or tenant ranges.
-	ScratchRangeMin = TableDataMax
+	ScratchRangeMin = ActorDataMax
 	ScratchRangeMax = TenantPrefix
 	//
 	// SystemConfigSplitKey is the key to split at immediately prior to the
@@ -465,6 +471,7 @@ const (
 	SQLInstancesTableID                 = 46
 	SpanConfigurationsTableID           = 47
 	WasmFunctionsTableID                = 48
+	ActorsTableID                       = 49
 )
 
 // CommentType the type of the schema object on which a comment has been

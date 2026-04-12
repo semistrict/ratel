@@ -33,10 +33,10 @@ COMMIT;
 
 **Key properties:**
 
-- Each actor is a contiguous key prefix (truncated SHA-256 hash) that cannot be
-  split internally -- one actor = one Raft range.
-- Actor ranges are created on first write with sticky splits at the actor
-  boundary.
+- Each actor is a contiguous key prefix (truncated SHA-256 hash). On first
+  write, a sticky split creates a dedicated Raft range for the actor. From that
+  point on, the actor cannot be split internally and cannot be merged with
+  adjacent actors -- one actor, one range.
 - `kv.actor.max_size` cluster setting (default 4 GiB) rejects writes that would
   exceed the limit via KV backpressure.
 - The `system.actors` table provides a registry for collision detection and

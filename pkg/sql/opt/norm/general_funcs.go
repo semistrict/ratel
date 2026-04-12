@@ -1476,11 +1476,12 @@ func (c *CustomFuncs) DatumsEqual(first, second tree.Datum) bool {
 func (c *CustomFuncs) DuplicateScanPrivate(sp *memo.ScanPrivate) *memo.ScanPrivate {
 	table, cols := c.DuplicateColumnIDs(sp.Table, sp.Cols)
 	return &memo.ScanPrivate{
-		Table:   table,
-		Index:   sp.Index,
-		Cols:    cols,
-		Flags:   sp.Flags,
-		Locking: sp.Locking,
+		Table:     table,
+		Index:     sp.Index,
+		Cols:      cols,
+		Flags:     sp.Flags,
+		Locking:   sp.Locking,
+		ActorName: sp.ActorName,
 	}
 }
 

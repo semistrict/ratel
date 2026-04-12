@@ -1,27 +1,31 @@
 // Copyright 2018 The Cockroach Authors.
 //
-// Use of this software is governed by the Business Source License
-// included in the file licenses/BSL.txt.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// As of the Change Date specified in that file, in accordance with
-// the Business Source License, use of this software will be governed
-// by the Apache License, Version 2.0, included in the file
-// licenses/APL.txt.
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// permissions and limitations under the License.
 
 package optbuilder
 
 import (
 	"fmt"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/opt"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/memo"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/privilege"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlerrors"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/sql/opt"
+	"github.com/semistrict/ratel/pkg/sql/opt/memo"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
+	"github.com/semistrict/ratel/pkg/sql/privilege"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/sqlerrors"
+	"github.com/semistrict/ratel/pkg/sql/types"
 )
 
 // buildUpdate builds a memo group for an UpdateOp expression. First, an input
@@ -77,11 +81,8 @@ func (b *Builder) buildUpdate(upd *tree.Update, inScope *scope) (outScope *scope
 	// Find which table we're working on, check the permissions.
 	tab, depName, alias, refColumns := b.resolveTableForMutation(upd.Table, privilege.UPDATE)
 
-	if tab.IsVirtualTable() {
-		panic(pgerror.Newf(pgcode.ObjectNotInPrerequisiteState,
-			"cannot update view \"%s\"", tab.Name(),
-		))
-	}
+	// Extract actor from the table reference (actor('name').table syntax).
+	inScope = b.applyActorFromTableRef(upd.Table, inScope)
 
 	if refColumns != nil {
 		panic(pgerror.Newf(pgcode.Syntax,
@@ -114,7 +115,7 @@ func (b *Builder) buildUpdate(upd *tree.Update, inScope *scope) (outScope *scope
 
 	// Build the final update statement, including any returned expressions.
 	if resultsNeeded(upd.Returning) {
-		mb.buildUpdate(upd.Returning.(*tree.ReturningExprs))
+		mb.buildUpdate(*upd.Returning.(*tree.ReturningExprs))
 	} else {
 		mb.buildUpdate(nil /* returning */)
 	}
@@ -214,7 +215,7 @@ func (mb *mutationBuilder) addUpdateCols(exprs tree.UpdateExprs) {
 			// TODO(janexing): Implement the OVERRIDING SYSTEM VALUE syntax for
 			// INSERT which allows a GENERATED ALWAYS AS IDENTITY column to be
 			// overwritten.
-			// See https://github.com/cockroachdb/cockroach/issues/68201.
+			// See https://github.com/semistrict/ratel/issues/68201.
 			if targetCol.IsGeneratedAlwaysAsIdentity() {
 				panic(sqlerrors.NewGeneratedAlwaysAsIdentityColumnUpdateError(string(targetCol.ColName())))
 			}
@@ -332,7 +333,7 @@ func (mb *mutationBuilder) addSynthesizedColsForUpdate() {
 
 // buildUpdate constructs an Update operator, possibly wrapped by a Project
 // operator that corresponds to the given RETURNING clause.
-func (mb *mutationBuilder) buildUpdate(returning *tree.ReturningExprs) {
+func (mb *mutationBuilder) buildUpdate(returning tree.ReturningExprs) {
 	// Disambiguate names so that references in any expressions, such as a
 	// check constraint, refer to the correct columns.
 	mb.disambiguateColumns()

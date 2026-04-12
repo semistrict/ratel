@@ -81,7 +81,9 @@ type zoneEntry struct {
 	combined *zonepb.ZoneConfig
 }
 
-func decodeZoneConfigValue(v *roachpb.Value) (*zonepb.ZoneConfig, error) {
+// DecodeZoneConfigValue decodes a zone config from a roachpb.Value, handling
+// both legacy BYTES encoding and post-row-group-migration TUPLE encoding.
+func DecodeZoneConfigValue(v *roachpb.Value) (*zonepb.ZoneConfig, error) {
 	var zone zonepb.ZoneConfig
 	switch v.GetTag() {
 	case roachpb.ValueType_BYTES:
@@ -624,7 +626,7 @@ func (s *SystemConfig) systemTenantTableBoundarySplitKey(
 			if zoneVal == nil {
 				continue
 			}
-			zone, err := decodeZoneConfigValue(zoneVal)
+			zone, err := DecodeZoneConfigValue(zoneVal)
 			if err != nil {
 				// An error while decoding the zone proto is unfortunate, but logging a
 				// message here would be excessively spammy. Just move on, which

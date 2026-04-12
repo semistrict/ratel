@@ -1,16 +1,24 @@
 // Copyright 2017 The Cockroach Authors.
 //
-// Use of this software is governed by the Business Source License
-// included in the file licenses/BSL.txt.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// As of the Change Date specified in that file, in accordance with
-// the Business Source License, use of this software will be governed
-// by the Apache License, Version 2.0, included in the file
-// licenses/APL.txt.
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// permissions and limitations under the License.
 
 package catconstants
 
-import "math"
+import (
+	"math"
+
+	"github.com/semistrict/ratel/pkg/settings"
+)
 
 // ReportableAppNamePrefix indicates that the application name can be
 // reported in telemetry without scrubbing. (Note this only applies to
@@ -26,7 +34,7 @@ const InternalAppNamePrefix = ReportableAppNamePrefix + "internal"
 // DelegatedAppNamePrefix is added to a regular client application
 // name for SQL queries that are ran internally on behalf of other SQL
 // queries inside that application. This is not the same as
-// ReportableAppNamePrefix; in particular the application name with
+// RepotableAppNamePrefix; in particular the application name with
 // DelegatedAppNamePrefix should be scrubbed in reporting.
 const DelegatedAppNamePrefix = "$$ "
 
@@ -40,9 +48,6 @@ const SystemDatabaseName = "system"
 // SystemTableName is a type for system table names.
 type SystemTableName string
 
-// SystemTenantName is the tenant name of the system tenant.
-const SystemTenantName = "system"
-
 // Names of tables in the system database.
 const (
 	NamespaceTableName                     SystemTableName = "namespace"
@@ -51,7 +56,6 @@ const (
 	ZonesTableName                         SystemTableName = "zones"
 	SettingsTableName                      SystemTableName = "settings"
 	DescIDSequenceTableName                SystemTableName = "descriptor_id_seq"
-	TenantIDSequenceTableName              SystemTableName = "tenant_id_seq"
 	TenantsTableName                       SystemTableName = "tenants"
 	LeaseTableName                         SystemTableName = "lease"
 	EventLogTableName                      SystemTableName = "eventlog"
@@ -79,24 +83,14 @@ const (
 	JoinTokensTableName                    SystemTableName = "join_tokens"
 	StatementStatisticsTableName           SystemTableName = "statement_statistics"
 	TransactionStatisticsTableName         SystemTableName = "transaction_statistics"
-	StatementActivityTableName             SystemTableName = "statement_activity"
-	TransactionActivityTableName           SystemTableName = "transaction_activity"
 	DatabaseRoleSettingsTableName          SystemTableName = "database_role_settings"
 	TenantUsageTableName                   SystemTableName = "tenant_usage"
 	SQLInstancesTableName                  SystemTableName = "sql_instances"
 	SpanConfigurationsTableName            SystemTableName = "span_configurations"
-	TaskPayloadsTableName                  SystemTableName = "task_payloads"
 	TenantSettingsTableName                SystemTableName = "tenant_settings"
-	TenantTasksTableName                   SystemTableName = "tenant_tasks"
 	SpanCountTableName                     SystemTableName = "span_count"
-	SystemPrivilegeTableName               SystemTableName = "privileges"
-	SystemExternalConnectionsTableName     SystemTableName = "external_connections"
-	RoleIDSequenceName                     SystemTableName = "role_id_seq"
-	SystemJobInfoTableName                 SystemTableName = "job_info"
-	SpanStatsUniqueKeys                    SystemTableName = "span_stats_unique_keys"
-	SpanStatsBuckets                       SystemTableName = "span_stats_buckets"
-	SpanStatsSamples                       SystemTableName = "span_stats_samples"
-	SpanStatsTenantBoundaries              SystemTableName = "span_stats_tenant_boundaries"
+	WasmFunctionsTableName                 SystemTableName = "wasm_functions"
+	ActorsTableName                        SystemTableName = "actors"
 )
 
 // Oid for virtual database and table.
@@ -105,19 +99,11 @@ const (
 	CrdbInternalBackwardDependenciesTableID
 	CrdbInternalBuildInfoTableID
 	CrdbInternalBuiltinFunctionsTableID
-	CrdbInternalBuiltinFunctionCommentsTableID
-	CrdbInternalCatalogCommentsTableID
-	CrdbInternalCatalogDescriptorTableID
-	CrdbInternalCatalogNamespaceTableID
-	CrdbInternalCatalogZonesTableID
 	CrdbInternalClusterContendedIndexesViewID
 	CrdbInternalClusterContendedKeysViewID
 	CrdbInternalClusterContendedTablesViewID
 	CrdbInternalClusterContentionEventsTableID
 	CrdbInternalClusterDistSQLFlowsTableID
-	CrdbInternalClusterExecutionInsightsTableID
-	CrdbInternalClusterTxnExecutionInsightsTableID
-	CrdbInternalNodeTxnExecutionInsightsTableID
 	CrdbInternalClusterLocksTableID
 	CrdbInternalClusterQueriesTableID
 	CrdbInternalClusterTransactionsTableID
@@ -125,7 +111,6 @@ const (
 	CrdbInternalClusterSettingsTableID
 	CrdbInternalClusterStmtStatsTableID
 	CrdbInternalClusterTxnStatsTableID
-	CrdbInternalCreateFunctionStmtsTableID
 	CrdbInternalCreateSchemaStmtsTableID
 	CrdbInternalCreateStmtsTableID
 	CrdbInternalCreateTypeStmtsTableID
@@ -139,17 +124,14 @@ const (
 	CrdbInternalGossipNetworkTableID
 	CrdbInternalTransactionContentionEvents
 	CrdbInternalIndexColumnsTableID
-	CrdbInternalIndexSpansTableID
 	CrdbInternalIndexUsageStatisticsTableID
 	CrdbInternalInflightTraceSpanTableID
 	CrdbInternalJobsTableID
-	CrdbInternalSystemJobsTableID
 	CrdbInternalKVNodeStatusTableID
 	CrdbInternalKVStoreStatusTableID
 	CrdbInternalLeasesTableID
 	CrdbInternalLocalContentionEventsTableID
 	CrdbInternalLocalDistSQLFlowsTableID
-	CrdbInternalNodeExecutionInsightsTableID
 	CrdbInternalLocalQueriesTableID
 	CrdbInternalLocalTransactionsTableID
 	CrdbInternalLocalSessionsTableID
@@ -158,26 +140,22 @@ const (
 	CrdbInternalNodeStmtStatsTableID
 	CrdbInternalNodeTxnStatsTableID
 	CrdbInternalPartitionsTableID
+	CrdbInternalPredefinedCommentsTableID
 	CrdbInternalRangesNoLeasesTableID
 	CrdbInternalRangesViewID
 	CrdbInternalRuntimeInfoTableID
 	CrdbInternalSchemaChangesTableID
 	CrdbInternalSessionTraceTableID
 	CrdbInternalSessionVariablesTableID
-	CrdbInternalStmtActivityTableID
 	CrdbInternalStmtStatsTableID
 	CrdbInternalStmtStatsPersistedTableID
-	CrdbInternalStmtStatsPersistedV22_2TableID
 	CrdbInternalTableColumnsTableID
 	CrdbInternalTableIndexesTableID
-	CrdbInternalTableSpansTableID
 	CrdbInternalTablesTableID
 	CrdbInternalTablesTableLastStatsID
 	CrdbInternalTransactionStatsTableID
-	CrdbInternalTxnActivityTableID
 	CrdbInternalTxnStatsTableID
 	CrdbInternalTxnStatsPersistedTableID
-	CrdbInternalTxnStatsPersistedV22_2TableID
 	CrdbInternalZonesTableID
 	CrdbInternalInvalidDescriptorsTableID
 	CrdbInternalClusterDatabasePrivilegesTableID
@@ -190,11 +168,6 @@ const (
 	CrdbInternalTenantUsageDetailsViewID
 	CrdbInternalPgCatalogTableIsImplementedTableID
 	CrdbInternalSuperRegions
-	CrdbInternalDroppedRelationsViewID
-	CrdbInternalShowTenantCapabilitiesCacheTableID
-	CrdbInternalInheritedRoleMembersTableID
-	CrdbInternalKVSystemPrivilegesViewID
-	CrdbInternalRepairableCatalogCorruptionsViewID
 	InformationSchemaID
 	InformationSchemaAdministrableRoleAuthorizationsID
 	InformationSchemaApplicableRolesID
@@ -419,21 +392,13 @@ const (
 	MinVirtualID = PgExtensionSpatialRefSysTableID
 )
 
-// ConstraintType is used to identify the type of a constraint.
-type ConstraintType string
-
-const (
-	// ConstraintTypePK identifies a PRIMARY KEY constraint.
-	ConstraintTypePK ConstraintType = "PRIMARY KEY"
-	// ConstraintTypeFK identifies a FOREIGN KEY constraint.
-	ConstraintTypeFK ConstraintType = "FOREIGN KEY"
-	// ConstraintTypeUnique identifies a UNIQUE constraint.
-	ConstraintTypeUnique ConstraintType = "UNIQUE"
-	// ConstraintTypeCheck identifies a CHECK constraint.
-	ConstraintTypeCheck ConstraintType = "CHECK"
-	// ConstraintTypeUniqueWithoutIndex identifies a UNIQUE_WITHOUT_INDEX constraint.
-	ConstraintTypeUniqueWithoutIndex ConstraintType = "UNIQUE WITHOUT INDEX"
-)
-
-// SafeValue implements the redact.SafeValue interface.
-func (ConstraintType) SafeValue() {}
+// DefaultHashShardedIndexBucketCount is the cluster setting of default bucket
+// count for hash sharded index when bucket count is not specified in index
+// definition.
+var DefaultHashShardedIndexBucketCount = settings.RegisterIntSetting(
+	settings.TenantWritable,
+	"sql.defaults.default_hash_sharded_index_bucket_count",
+	"used as bucket count if bucket count is not specified in hash sharded index definition",
+	16,
+	settings.NonNegativeInt,
+).WithPublic()

@@ -1,21 +1,25 @@
 // Copyright 2021 The Cockroach Authors.
 //
-// Use of this software is governed by the Business Source License
-// included in the file licenses/BSL.txt.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// As of the Change Date specified in that file, in accordance with
-// the Business Source License, use of this software will be governed
-// by the Apache License, Version 2.0, included in the file
-// licenses/APL.txt.
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// permissions and limitations under the License.
 
 package catprivilege
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/privilege"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/catconstants"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/sql/catalog"
+	"github.com/semistrict/ratel/pkg/sql/catalog/catconstants"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	"github.com/semistrict/ratel/pkg/sql/privilege"
 )
 
 var (
@@ -23,14 +27,13 @@ var (
 		catconstants.NamespaceTableName,
 		catconstants.DescriptorTableName,
 		catconstants.DescIDSequenceTableName,
-		catconstants.TenantIDSequenceTableName,
 		catconstants.TenantsTableName,
 		catconstants.ProtectedTimestampsMetaTableName,
 		catconstants.ProtectedTimestampsRecordsTableName,
 		catconstants.StatementStatisticsTableName,
 		catconstants.TransactionStatisticsTableName,
-		catconstants.StatementActivityTableName,
-		catconstants.TransactionActivityTableName,
+		// TODO(postamar): remove in 21.2
+		catconstants.PreMigrationNamespaceTableName,
 	}
 
 	readWriteSystemTables = []catconstants.SystemTableName{
@@ -63,22 +66,19 @@ var (
 		catconstants.TenantUsageTableName,
 		catconstants.SQLInstancesTableName,
 		catconstants.SpanConfigurationsTableName,
-		catconstants.TaskPayloadsTableName,
 		catconstants.TenantSettingsTableName,
-		catconstants.TenantTasksTableName,
 		catconstants.SpanCountTableName,
-		catconstants.SystemPrivilegeTableName,
-		catconstants.SystemExternalConnectionsTableName,
-		catconstants.SystemJobInfoTableName,
-		catconstants.SpanStatsUniqueKeys,
-		catconstants.SpanStatsBuckets,
-		catconstants.SpanStatsSamples,
-		catconstants.SpanStatsTenantBoundaries,
+		catconstants.WasmFunctionsTableName,
+		catconstants.ActorsTableName,
 	}
 
-	readWriteSystemSequences = []catconstants.SystemTableName{
-		catconstants.RoleIDSequenceName,
-	}
+	// RestoreCopySystemTablePrefix is the prefix of the table name that we give
+	// to the copy of the system table we are moving to a higher ID during
+	// restore.
+	//
+	// TODO(adityamaru,dt): Remove once we fix the handling of dynamic system
+	// table IDs during restore.
+	RestoreCopySystemTablePrefix = "crdb_internal_copy"
 
 	systemSuperuserPrivileges = func() map[descpb.NameInfo]privilege.List {
 		m := make(map[descpb.NameInfo]privilege.List)
@@ -93,10 +93,6 @@ var (
 		for _, r := range readSystemTables {
 			tableKey.Name = string(r)
 			m[tableKey] = privilege.ReadData
-		}
-		for _, r := range readWriteSystemSequences {
-			tableKey.Name = string(r)
-			m[tableKey] = privilege.ReadWriteSequenceData
 		}
 		m[descpb.NameInfo{Name: catconstants.SystemDatabaseName}] = privilege.List{privilege.CONNECT}
 		return m

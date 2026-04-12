@@ -141,6 +141,12 @@ message TableReaderSpec {
   // column and projected away by the table reader's PostProcessSpec.
   optional ArrayEqualsAnyFilterSpec array_equals_any_filter = 22;
 
+  // ActorName selects the actor whose table data should be accessed by this
+  // table reader. If empty, the session actor scope applies. The spans in
+  // this spec are already built with the actor-scoped prefix; this field is
+  // carried for consistency with other processor specs and for observability.
+  optional string actor_name = 23 [(gogoproto.nullable) = false];
+
   reserved 1, 2, 4, 6, 7, 8, 13, 14, 15, 16, 19;
 }
 
@@ -390,6 +396,10 @@ message JoinReaderSpec {
   // DistSender-parallelism or not.
   optional int64 lookup_batch_bytes_limit = 18 [(gogoproto.nullable) = false];
 
+  // ActorName selects the actor whose table data should be accessed for this
+  // join reader. If empty, the session actor scope applies.
+  optional string actor_name = 20 [(gogoproto.nullable) = false];
+
   // A hint for how many rows the consumer of the join reader output might
   // need. This is used to size the initial batches of input rows to try to
   // avoid reading many more rows than needed by the processor receiving the
@@ -496,6 +506,10 @@ message ZigzagJoinerSpec {
   repeated ValuesCoreSpec fixed_values = 5;
 
   optional sqlbase.JoinType type = 6 [(gogoproto.nullable) = false];
+
+  // ActorName selects the actor whose table data should be accessed by this
+  // zigzag joiner. If empty, the session actor scope applies.
+  optional string actor_name = 7 [(gogoproto.nullable) = false];
 }
 
 // MergeJoinerSpec is the specification for a merge join processor. The processor
@@ -719,6 +733,10 @@ message InvertedJoinerSpec {
   // prefix_equality_columns should be equal to the number of non-inverted
   // prefix columns in the index.
   repeated uint32 prefix_equality_columns = 9 [packed = true];
+
+  // ActorName selects the actor whose table data should be accessed by this
+  // inverted joiner. If empty, the session actor scope applies.
+  optional string actor_name = 10 [(gogoproto.nullable) = false];
 }
 
 // InvertedFiltererSpec is the specification of a processor that does filtering

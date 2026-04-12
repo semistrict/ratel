@@ -1961,10 +1961,11 @@ func (c *CustomFuncs) MakeSetPrivate(left, right, out opt.ColSet) *memo.SetPriva
 func (c *CustomFuncs) AddPrimaryKeyColsToScanPrivate(sp *memo.ScanPrivate) *memo.ScanPrivate {
 	keyCols := c.PrimaryKeyCols(sp.Table)
 	return &memo.ScanPrivate{
-		Table:   sp.Table,
-		Cols:    sp.Cols.Union(keyCols),
-		Flags:   sp.Flags,
-		Locking: sp.Locking,
+		Table:     sp.Table,
+		Cols:      sp.Cols.Union(keyCols),
+		Flags:     sp.Flags,
+		Locking:   sp.Locking,
+		ActorName: sp.ActorName,
 	}
 }
 

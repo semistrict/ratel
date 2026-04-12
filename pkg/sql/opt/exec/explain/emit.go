@@ -576,6 +576,9 @@ func (e *emitter) emitNodeAttributes(n *Node) error {
 			))
 		}
 		e.emitTableAndIndex("table", a.Table, a.Index, suffix)
+		if a.Params.ActorName != "" {
+			ob.Attr("actor", a.Params.ActorName)
+		}
 		// Omit spans for virtual tables, unless we actually have a constraint.
 		if a.Table != nil && !(a.Table.IsVirtualTable() && a.Params.IndexConstraint == nil) {
 			e.emitSpans("spans", a.Table, a.Index, a.Params)
@@ -642,6 +645,9 @@ func (e *emitter) emitNodeAttributes(n *Node) error {
 	case indexJoinOp:
 		a := n.args.(*indexJoinArgs)
 		ob.Attrf("table", "%s@%s", a.Table.Name(), a.Table.Index(0).Name())
+		if a.ActorName != "" {
+			ob.Attr("actor", a.ActorName)
+		}
 		cols := make([]string, len(a.KeyCols))
 		inputCols := a.Input.Columns()
 		for i, c := range a.KeyCols {
@@ -810,6 +816,9 @@ func (e *emitter) emitNodeAttributes(n *Node) error {
 
 	case insertOp:
 		a := n.args.(*insertArgs)
+		if a.ActorName != "" {
+			ob.Attr("actor", a.ActorName)
+		}
 		ob.Attrf(
 			"into", "%s(%s)",
 			a.Table.Name(),
@@ -843,6 +852,9 @@ func (e *emitter) emitNodeAttributes(n *Node) error {
 
 	case insertFastPathOp:
 		a := n.args.(*insertFastPathArgs)
+		if a.ActorName != "" {
+			ob.Attr("actor", a.ActorName)
+		}
 		ob.Attrf(
 			"into", "%s(%s)",
 			a.Table.Name(),
@@ -862,6 +874,9 @@ func (e *emitter) emitNodeAttributes(n *Node) error {
 
 	case upsertOp:
 		a := n.args.(*upsertArgs)
+		if a.ActorName != "" {
+			ob.Attr("actor", a.ActorName)
+		}
 		ob.Attrf(
 			"into", "%s(%s)",
 			a.Table.Name(),
@@ -895,6 +910,9 @@ func (e *emitter) emitNodeAttributes(n *Node) error {
 
 	case updateOp:
 		a := n.args.(*updateArgs)
+		if a.ActorName != "" {
+			ob.Attr("actor", a.ActorName)
+		}
 		ob.Attrf("table", "%s", a.Table.Name())
 		ob.Attr("set", printColumns(tableColumns(a.Table, a.UpdateCols)))
 		if a.AutoCommit {
@@ -903,6 +921,9 @@ func (e *emitter) emitNodeAttributes(n *Node) error {
 
 	case deleteOp:
 		a := n.args.(*deleteArgs)
+		if a.ActorName != "" {
+			ob.Attr("actor", a.ActorName)
+		}
 		ob.Attrf("from", "%s", a.Table.Name())
 		if a.AutoCommit {
 			ob.Attr("auto commit", "")
@@ -910,6 +931,9 @@ func (e *emitter) emitNodeAttributes(n *Node) error {
 
 	case deleteRangeOp:
 		a := n.args.(*deleteRangeArgs)
+		if a.ActorName != "" {
+			ob.Attr("actor", a.ActorName)
+		}
 		ob.Attrf("from", "%s", a.Table.Name())
 		if a.AutoCommit {
 			ob.Attr("auto commit", "")

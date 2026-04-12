@@ -813,6 +813,10 @@ func DecodeTableIDIndexID(key []byte) ([]byte, uint32, uint32, error) {
 	var indexID uint64
 	var err error
 
+	key, _, err = DecodeActorPrefix(key)
+	if err != nil {
+		return nil, 0, 0, err
+	}
 	key, tableID, err = encoding.DecodeUvarintAscending(key)
 	if err != nil {
 		return nil, 0, 0, err
@@ -834,6 +838,10 @@ func GetRowPrefixLength(key roachpb.Key) (int, error) {
 
 	// Strip tenant ID prefix to get a "SQL key" starting with a table ID.
 	sqlKey, _, err := DecodeTenantPrefix(key)
+	if err != nil {
+		return 0, errors.Errorf("%s: not a valid table key", key)
+	}
+	sqlKey, _, err = DecodeActorPrefix(sqlKey)
 	if err != nil {
 		return 0, errors.Errorf("%s: not a valid table key", key)
 	}

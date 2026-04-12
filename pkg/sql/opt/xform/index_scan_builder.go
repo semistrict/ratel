@@ -1,22 +1,26 @@
 // Copyright 2018 The Cockroach Authors.
 //
-// Use of this software is governed by the Business Source License
-// included in the file licenses/BSL.txt.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// As of the Change Date specified in that file, in accordance with
-// the Business Source License, use of this software will be governed
-// by the Apache License, Version 2.0, included in the file
-// licenses/APL.txt.
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// permissions and limitations under the License.
 
 package xform
 
 import (
-	"github.com/cockroachdb/cockroach/pkg/sql/inverted"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/invertedexpr"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/memo"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/norm"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/sql/inverted"
+	"github.com/semistrict/ratel/pkg/sql/opt"
+	"github.com/semistrict/ratel/pkg/sql/opt/invertedexpr"
+	"github.com/semistrict/ratel/pkg/sql/opt/memo"
+	"github.com/semistrict/ratel/pkg/sql/opt/norm"
 )
 
 // indexScanBuilder composes a constrained, limited scan over a table index.
@@ -172,9 +176,9 @@ func (b *indexScanBuilder) AddIndexJoin(cols opt.ColSet) {
 		panic(errors.AssertionFailedf("cannot call AddIndexJoin after an outer filter has been added"))
 	}
 	b.indexJoinPrivate = memo.IndexJoinPrivate{
-		Table:   b.tabID,
-		Cols:    cols,
-		Locking: b.scanPrivate.Locking,
+		Table:     b.tabID,
+		ActorName: b.scanPrivate.ActorName,
+		Cols:      cols,
 	}
 }
 
@@ -238,11 +242,7 @@ func (b *indexScanBuilder) BuildNewExpr() (output memo.RelExpr) {
 func (b *indexScanBuilder) Build(grp memo.RelExpr) {
 	// 1. Only scan.
 	if !b.hasConstProjections() && !b.hasInnerFilters() && !b.hasInvertedFilter() && !b.hasIndexJoin() {
-		scan := &memo.ScanExpr{ScanPrivate: b.scanPrivate}
-		md := b.mem.Metadata()
-		tabMeta := md.TableMeta(scan.Table)
-		scan.Distribution.FromIndexScan(b.c.e.ctx, b.c.e.evalCtx, tabMeta, scan.Index, scan.Constraint)
-		b.mem.AddScanToGroup(scan, grp)
+		b.mem.AddScanToGroup(&memo.ScanExpr{ScanPrivate: b.scanPrivate}, grp)
 		return
 	}
 

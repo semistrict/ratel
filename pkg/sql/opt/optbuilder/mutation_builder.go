@@ -1,12 +1,16 @@
 // Copyright 2018 The Cockroach Authors.
 //
-// Use of this software is governed by the Business Source License
-// included in the file licenses/BSL.txt.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// As of the Change Date specified in that file, in accordance with
-// the Business Source License, use of this software will be governed
-// by the Apache License, Version 2.0, included in the file
-// licenses/APL.txt.
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// permissions and limitations under the License.
 
 package optbuilder
 
@@ -14,27 +18,27 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/server/telemetry"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/schemaexpr"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/cat"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/memo"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/props"
-	"github.com/cockroachdb/cockroach/pkg/sql/parser"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/cast"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqlerrors"
-	"github.com/cockroachdb/cockroach/pkg/sql/sqltelemetry"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/util/intsets"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/server/telemetry"
+	"github.com/semistrict/ratel/pkg/sql/catalog/colinfo"
+	"github.com/semistrict/ratel/pkg/sql/catalog/schemaexpr"
+	"github.com/semistrict/ratel/pkg/sql/opt"
+	"github.com/semistrict/ratel/pkg/sql/opt/cat"
+	"github.com/semistrict/ratel/pkg/sql/opt/memo"
+	"github.com/semistrict/ratel/pkg/sql/opt/props"
+	"github.com/semistrict/ratel/pkg/sql/parser"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/sqlerrors"
+	"github.com/semistrict/ratel/pkg/sql/sqltelemetry"
+	"github.com/semistrict/ratel/pkg/sql/types"
+	"github.com/semistrict/ratel/pkg/util"
 )
 
 // mutationBuilder is a helper struct that supports building Insert, Update,
 // Upsert, and Delete operators in stages.
+// TODO(andyk): Add support for Delete.
 type mutationBuilder struct {
 	b  *Builder
 	md *opt.Metadata
@@ -59,6 +63,12 @@ type mutationBuilder struct {
 
 	// fetchScope contains the set of columns fetched from the target table.
 	fetchScope *scope
+
+	// actorName holds the actor identity extracted from the WHERE clause or
+	// inherited from the session scope. Stored here because outScope may be
+	// reassigned during plan construction (e.g. to a projectionsScope that
+	// doesn't inherit actorName).
+	actorName string
 
 	// insertExpr is the expression that produces the values which will be
 	// inserted into the target table. It is only populated for INSERT
@@ -184,9 +194,8 @@ type mutationBuilder struct {
 
 	// extraAccessibleCols stores all the columns that are available to the
 	// mutation that are not part of the target table. This is useful for
-	// UPDATE ... FROM queries and DELETE ... USING queries, as the columns
-	// from the FROM and USING tables must be made accessible to the
-	// RETURNING clause, respectively.
+	// UPDATE ... FROM queries, as the columns from the FROM tables must be
+	// made accessible to the RETURNING clause.
 	extraAccessibleCols []scopeColumn
 
 	// fkCheckHelper is used to prevent allocating the helper separately.
@@ -296,8 +305,8 @@ func (mb *mutationBuilder) buildInputForUpdate(
 		indexFlags,
 		noRowLocking,
 		inScope,
-		false, /* disableNotVisibleIndex */
 	)
+	mb.actorName = inScope.actorName
 
 	// Set list of columns that will be fetched by the input expression.
 	mb.setFetchColIDs(mb.fetchScope.cols)
@@ -347,18 +356,29 @@ func (mb *mutationBuilder) buildInputForUpdate(
 
 	mb.outScope = projectionsScope
 
-	// Build a distinct-on operator on the primary key columns to ensure there
-	// is at most one row in the joined output for every row in the target
-	// table.
+	// Build a distinct on to ensure there is at most one row in the joined output
+	// for every row in the table.
 	if fromClausePresent {
 		var pkCols opt.ColSet
+
+		// We need to ensure that the join has a maximum of one row for every row
+		// in the table and we ensure this by constructing a distinct on the primary
+		// key columns.
 		primaryIndex := mb.tab.Index(cat.PrimaryIndex)
 		for i := 0; i < primaryIndex.KeyColumnCount(); i++ {
-			col := primaryIndex.Column(i)
-			pkCols.Add(mb.fetchColIDs[col.Ordinal()])
+			// If the primary key column is hidden, then we don't need to use it
+			// for the distinct on.
+			// TODO(radu): this logic seems fragile, is it assuming that only an
+			// implicit `rowid` column can be a hidden PK column?
+			if col := primaryIndex.Column(i); col.Visibility() != cat.Hidden {
+				pkCols.Add(mb.fetchColIDs[col.Ordinal()])
+			}
 		}
-		mb.outScope = mb.b.buildDistinctOn(
-			pkCols, mb.outScope, false /* nullsAreDistinct */, "" /* errorOnDup */)
+
+		if !pkCols.Empty() {
+			mb.outScope = mb.b.buildDistinctOn(
+				pkCols, mb.outScope, false /* nullsAreDistinct */, "" /* errorOnDup */)
+		}
 	}
 }
 
@@ -366,7 +386,7 @@ func (mb *mutationBuilder) buildInputForUpdate(
 // the Delete operator, similar to this:
 //
 //	SELECT <cols>
-//	FROM <table> [, <using-tables>]
+//	FROM <table>
 //	WHERE <where>
 //	ORDER BY <order-by>
 //	LIMIT <limit>
@@ -374,12 +394,7 @@ func (mb *mutationBuilder) buildInputForUpdate(
 // All columns from the table to update are added to fetchColList.
 // TODO(andyk): Do needed column analysis to project fewer columns if possible.
 func (mb *mutationBuilder) buildInputForDelete(
-	inScope *scope,
-	texpr tree.TableExpr,
-	where *tree.Where,
-	using tree.TableExprs,
-	limit *tree.Limit,
-	orderBy tree.OrderBy,
+	inScope *scope, texpr tree.TableExpr, where *tree.Where, limit *tree.Limit, orderBy tree.OrderBy,
 ) {
 	var indexFlags *tree.IndexFlags
 	if source, ok := texpr.(*tree.AliasedTableExpr); ok && source.IndexFlags != nil {
@@ -406,41 +421,9 @@ func (mb *mutationBuilder) buildInputForDelete(
 		indexFlags,
 		noRowLocking,
 		inScope,
-		false, /* disableNotVisibleIndex */
 	)
-
-	// Set list of columns that will be fetched by the input expression.
-	mb.setFetchColIDs(mb.fetchScope.cols)
-
-	// USING
-	usingClausePresent := len(using) > 0
-	if usingClausePresent {
-		usingScope := mb.b.buildFromTables(using, noRowLocking, inScope)
-
-		// Check that the same table name is not used multiple times
-		mb.b.validateJoinTableNames(mb.fetchScope, usingScope)
-
-		// The USING table columns can be accessed by the RETURNING clause of the
-		// query and so we have to make them accessible.
-		mb.extraAccessibleCols = usingScope.cols
-
-		// Add the columns to the USING scope.
-		// We create a new scope so that fetchScope is not modified
-		// as fetchScope contains the set of columns from the target
-		// table specified by USING. This will be used later with partial
-		// index predicate expressions and will prevent ambiguities with
-		// column names in the USING clause.
-		mb.outScope = mb.fetchScope.replace()
-		mb.outScope.appendColumnsFromScope(mb.fetchScope)
-		mb.outScope.appendColumnsFromScope(usingScope)
-
-		left := mb.fetchScope.expr
-		right := usingScope.expr
-
-		mb.outScope.expr = mb.b.factory.ConstructInnerJoin(left, right, memo.TrueFilter, memo.EmptyJoinPrivate)
-	} else {
-		mb.outScope = mb.fetchScope
-	}
+	mb.outScope = mb.fetchScope
+	mb.actorName = inScope.actorName
 
 	// WHERE
 	mb.b.buildWhere(where, mb.outScope)
@@ -459,23 +442,8 @@ func (mb *mutationBuilder) buildInputForDelete(
 
 	mb.outScope = projectionsScope
 
-	// Build a distinct on to ensure there is at most one row in the joined output
-	// for every row in the table
-	if usingClausePresent {
-		var pkCols opt.ColSet
-
-		// We need to ensure that the join has a maximum of one row for every row
-		// in the table and we ensure this by constructing a distinct on the primary
-		// key columns.
-		primaryIndex := mb.tab.Index(cat.PrimaryIndex)
-		for i := 0; i < primaryIndex.KeyColumnCount(); i++ {
-			col := primaryIndex.Column(i)
-			pkCols.Add(mb.fetchColIDs[col.Ordinal()])
-		}
-
-		mb.outScope = mb.b.buildDistinctOn(
-			pkCols, mb.outScope, false /* nullsAreDistinct */, "" /* errorOnDup */)
-	}
+	// Set list of columns that will be fetched by the input expression.
+	mb.setFetchColIDs(mb.outScope.cols)
 }
 
 // addTargetColsByName adds one target column for each of the names in the given
@@ -562,7 +530,7 @@ func (mb *mutationBuilder) extractValuesInput(inputRows *tree.Select) *tree.Valu
 // or just the unchanged input expression if there are no DEFAULT values.
 func (mb *mutationBuilder) replaceDefaultExprs(inRows *tree.Select) (outRows *tree.Select) {
 	values := mb.extractValuesInput(inRows)
-	if values == nil || len(values.Rows) == 0 {
+	if values == nil {
 		return inRows
 	}
 
@@ -723,16 +691,6 @@ func (mb *mutationBuilder) addSynthesizedComputedCols(colIDs opt.OptionalColList
 		// Skip columns that are already specified (this is possible for upserts).
 		if colIDs[i] != 0 {
 			continue
-		}
-
-		// Create a new scope for resolving column references in computed column
-		// expressions. We cannot use mb.outScope because columns in that scope
-		// may be ambiguous, by design. We build a scope that contains a single
-		// column for each column in the target table, representing either an
-		// existing value (a column from mb.fetchColIDs) or a new value (a
-		// column from mb.upsertColIDs, mb.updateColIDs, or mb.insertColIDs).
-		if !pb.HasResolveScope() {
-			pb.SetResolveScope(mb.computedColumnScope())
 		}
 
 		tabColID := mb.tabID.ColumnID(i)
@@ -921,39 +879,6 @@ func (mb *mutationBuilder) projectPartialIndexColsImpl(putScope, delScope *scope
 	}
 }
 
-// computedColumnScope returns a new scope that can be used to build computed
-// column expressions. Columns will never be ambiguous because each column in
-// the returned scope maps to a single column in the target table.
-//
-// The columns included in the scope depend on the state of mb.upsertColIDs,
-// mb.updateColIDs, mb.fetchColIDs, and mb.insertColIDs, using the same order of
-// preference as disambiguateColumns (see mapToReturnColID). Therefore, this
-// function will return different scopes at different stages of building a
-// mutation statement. For example, when building the scan portion of an UPDATE,
-// the scope will include columns from mb.fetchColIDs, while it will include
-// columns from mb.updateColIDs or mb.fetchColIDs when building the SET portion
-// of an UPDATE.
-func (mb *mutationBuilder) computedColumnScope() *scope {
-	s := mb.b.allocScope()
-	for i, n := 0, mb.tab.ColumnCount(); i < n; i++ {
-		colID := mb.mapToReturnColID(i)
-		if colID == 0 {
-			continue
-		}
-		col := mb.outScope.getColumn(colID)
-		if col == nil {
-			panic(errors.AssertionFailedf("expected to find column %d in scope", colID))
-		}
-		targetCol := mb.tab.Column(i)
-		s.cols = append(s.cols, scopeColumn{
-			name: scopeColName(targetCol.ColName()),
-			typ:  col.typ,
-			id:   col.id,
-		})
-	}
-	return s
-}
-
 // disambiguateColumns ranges over the scope and ensures that at most one column
 // has each table column name, and that name refers to the column with the final
 // value that the mutation applies.
@@ -999,6 +924,7 @@ func (mb *mutationBuilder) makeMutationPrivate(needResults bool) *memo.MutationP
 		PartialIndexPutCols: checkEmptyList(mb.partialIndexPutColIDs),
 		PartialIndexDelCols: checkEmptyList(mb.partialIndexDelColIDs),
 		FKCascades:          mb.cascades,
+		ActorName:           mb.b.resolveActorNameForTable(mb.actorName, mb.tab),
 	}
 
 	// If we didn't actually plan any checks or cascades, don't buffer the input.
@@ -1062,7 +988,7 @@ func (mb *mutationBuilder) mapToReturnColID(tabOrd int) opt.ColumnID {
 
 // buildReturning wraps the input expression with a Project operator that
 // projects the given RETURNING expressions.
-func (mb *mutationBuilder) buildReturning(returning *tree.ReturningExprs) {
+func (mb *mutationBuilder) buildReturning(returning tree.ReturningExprs) {
 	// Handle case of no RETURNING clause.
 	if returning == nil {
 		expr := mb.outScope.expr
@@ -1086,9 +1012,8 @@ func (mb *mutationBuilder) buildReturning(returning *tree.ReturningExprs) {
 
 	// extraAccessibleCols contains all the columns that the RETURNING
 	// clause can refer to in addition to the table columns. This is useful for
-	// UPDATE ... FROM and DELETE ... USING statements, where all columns from
-	// tables in the FROM clause and USING clause are in scope for the RETURNING
-	// clause, respectively.
+	// UPDATE ... FROM statements, where all columns from tables in the FROM clause
+	// are in scope for the RETURNING clause.
 	inScope.appendColumns(mb.extraAccessibleCols)
 
 	// Construct the Project operator that projects the RETURNING expressions.
@@ -1146,7 +1071,7 @@ func (mb *mutationBuilder) parseDefaultExpr(colID opt.ColumnID) tree.Expr {
 			// Synthesize default value for NOT NULL mutation column so that it can be
 			// set when in the write-only state. This is only used when no other value
 			// is possible (no default value available, NULL not allowed).
-			datum, err := tree.NewDefaultDatum(&mb.b.evalCtx.CollationEnv, col.DatumType())
+			datum, err := tree.NewDefaultDatum(mb.b.evalCtx, col.DatumType())
 			if err != nil {
 				panic(err)
 			}
@@ -1257,8 +1182,8 @@ func (mb *mutationBuilder) parseUniqueConstraintPredicateExpr(uniq cat.UniqueOrd
 // getIndexLaxKeyOrdinals returns the ordinals of all lax key columns in the
 // given index. A column's ordinal is the ordered position of that column in the
 // owning table.
-func getIndexLaxKeyOrdinals(index cat.Index) intsets.Fast {
-	var keyOrds intsets.Fast
+func getIndexLaxKeyOrdinals(index cat.Index) util.FastIntSet {
+	var keyOrds util.FastIntSet
 	for i, n := 0, index.LaxKeyColumnCount(); i < n; i++ {
 		keyOrds.Add(index.Column(i).Ordinal())
 	}
@@ -1268,8 +1193,8 @@ func getIndexLaxKeyOrdinals(index cat.Index) intsets.Fast {
 // getUniqueConstraintOrdinals returns the ordinals of all columns in the given
 // unique constraint. A column's ordinal is the ordered position of that column
 // in the owning table.
-func getUniqueConstraintOrdinals(tab cat.Table, uc cat.UniqueConstraint) intsets.Fast {
-	var ucOrds intsets.Fast
+func getUniqueConstraintOrdinals(tab cat.Table, uc cat.UniqueConstraint) util.FastIntSet {
+	var ucOrds util.FastIntSet
 	for i, n := 0, uc.ColumnCount(); i < n; i++ {
 		ucOrds.Add(uc.ColumnOrdinal(tab, i))
 	}
@@ -1279,10 +1204,10 @@ func getUniqueConstraintOrdinals(tab cat.Table, uc cat.UniqueConstraint) intsets
 // getExplicitPrimaryKeyOrdinals returns the ordinals of the primary key
 // columns, excluding any implicit partitioning or hash-shard columns in the
 // primary index.
-func getExplicitPrimaryKeyOrdinals(tab cat.Table) intsets.Fast {
+func getExplicitPrimaryKeyOrdinals(tab cat.Table) util.FastIntSet {
 	index := tab.Index(cat.PrimaryIndex)
 	skipCols := index.ImplicitColumnCount()
-	var keyOrds intsets.Fast
+	var keyOrds util.FastIntSet
 	for i, n := skipCols, index.LaxKeyColumnCount(); i < n; i++ {
 		keyOrds.Add(index.Column(i).Ordinal())
 	}
@@ -1346,7 +1271,7 @@ func (mb *mutationBuilder) addAssignmentCasts(srcCols opt.OptionalColList) {
 
 		// Check if an assignment cast is available from the inScope column
 		// type to the out type.
-		if !cast.ValidCast(srcType, targetType, cast.ContextAssignment) {
+		if !tree.ValidCast(srcType, targetType, tree.CastContextAssignment) {
 			panic(sqlerrors.NewInvalidAssignmentCastError(srcType, targetType, string(targetCol.ColName())))
 		}
 

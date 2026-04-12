@@ -12,6 +12,7 @@ package sessiondata
 
 import (
 	"testing"
+	"time"
 
 	"github.com/cockroachdb/cockroach/pkg/sql/sessiondatapb"
 	"github.com/stretchr/testify/require"
@@ -82,4 +83,26 @@ func TestStack(t *testing.T) {
 	copiedElem.Database = "some other value"
 	require.Equal(t, s.Elems(), []*SessionData{initialElem, secondElem, copiedElem})
 	require.Equal(t, s.Base(), initialElem)
+}
+
+func TestMarshalUnmarshalNonLocalActorScope(t *testing.T) {
+	sd := &SessionData{
+		SessionData: sessiondatapb.SessionData{
+			ApplicationName: "app",
+			Database:        "defaultdb",
+			ActorScope:      "alpha",
+		},
+		Location:      time.UTC,
+		SearchPath:    MakeSearchPath([]string{"public"}),
+		SequenceState: NewSequenceState(),
+	}
+	var proto sessiondatapb.SessionData
+	proto = sd.SessionData
+	MarshalNonLocal(sd, &proto)
+
+	decoded, err := UnmarshalNonLocal(proto)
+	require.NoError(t, err)
+	require.Equal(t, "app", decoded.ApplicationName)
+	require.Equal(t, "defaultdb", decoded.Database)
+	require.Equal(t, "alpha", decoded.ActorScope)
 }

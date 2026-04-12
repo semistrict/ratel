@@ -16,12 +16,20 @@ package keys
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"math"
 
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/util/encoding"
 	"github.com/cockroachdb/errors"
 )
+
+// ActorPrefixByte is a reserved SQL keyspace marker for actor-scoped table
+// data. It is not a descriptor-backed table ID.
+const ActorPrefixByte byte = '\xfb'
+
+// ActorHashLen is the number of bytes used in actor-scoped key prefixes.
+const ActorHashLen = 16
 
 // MakeTenantPrefix creates the key prefix associated with the specified tenant.
 func MakeTenantPrefix(tenID roachpb.TenantID) roachpb.Key {
@@ -85,6 +93,38 @@ func MakeSQLCodec(tenID roachpb.TenantID) SQLCodec {
 	}
 }
 
+// ActorHash deterministically derives the fixed-width key prefix component for
+// an actor name.
+func ActorHash(name string) [ActorHashLen]byte {
+	sum := sha256.Sum256([]byte(name))
+	var out [ActorHashLen]byte
+	copy(out[:], sum[:ActorHashLen])
+	return out
+}
+
+// MakeActorPrefix returns the actor-scoped prefix for table data within the
+// given tenant prefix.
+func MakeActorPrefix(tenantPrefix roachpb.Key, actorName string) roachpb.Key {
+	hash := ActorHash(actorName)
+	k := append(tenantPrefix, ActorPrefixByte)
+	return append(k, hash[:]...)
+}
+
+// MakeActorSQLCodec constructs a codec whose tenant prefix is extended with the
+// actor-scoped prefix. This codec must only be used for user table/index data,
+// not for shared schema or system metadata.
+func MakeActorSQLCodec(base SQLCodec, actorName string) SQLCodec {
+	if actorName == "" {
+		return base
+	}
+	k := MakeActorPrefix(base.TenantPrefix(), actorName)
+	k = k[:len(k):len(k)] // bound capacity, avoid aliasing
+	return SQLCodec{
+		sqlEncoder: sqlEncoder{&k},
+		sqlDecoder: sqlDecoder{&k},
+	}
+}
+
 // SystemSQLCodec is a SQL key codec for the system tenant.
 var SystemSQLCodec = MakeSQLCodec(roachpb.SystemTenantID)
 
@@ -101,6 +141,15 @@ func (e sqlEncoder) ForSystemTenant() bool {
 // TenantPrefix returns the key prefix used for the tenants's data.
 func (e sqlEncoder) TenantPrefix() roachpb.Key {
 	return *e.buf
+}
+
+// TenantID returns the tenant associated with the codec.
+func (e sqlEncoder) TenantID() roachpb.TenantID {
+	_, tenID, err := DecodeTenantPrefix(e.TenantPrefix())
+	if err != nil {
+		panic(err)
+	}
+	return tenID
 }
 
 // TablePrefix returns the key prefix used for the table's data.
@@ -203,11 +252,66 @@ func (d sqlDecoder) DecodeTablePrefix(key roachpb.Key) ([]byte, uint32, error) {
 	if err != nil {
 		return nil, 0, err
 	}
+	key, _, err = DecodeActorPrefix(key)
+	if err != nil {
+		return nil, 0, err
+	}
 	if encoding.PeekType(key) != encoding.Int {
 		return nil, 0, errors.Errorf("invalid key prefix: %q", key)
 	}
 	key, tableID, err := encoding.DecodeUvarintAscending(key)
 	return key, uint32(tableID), err
+}
+
+// DecodeActorPrefix strips an actor-scoped SQL data prefix from key if one is
+// present. The returned hash is only meaningful when stripped is true.
+func DecodeActorPrefix(key []byte) (remaining []byte, hash [ActorHashLen]byte, err error) {
+	if len(key) == 0 || key[0] != ActorPrefixByte {
+		return key, hash, nil
+	}
+	if len(key) < 1+ActorHashLen {
+		return nil, hash, errors.Errorf("malformed actor prefix: %q", key)
+	}
+	copy(hash[:], key[1:1+ActorHashLen])
+	return key[1+ActorHashLen:], hash, nil
+}
+
+// ActorPrefixFromKey returns the full actor-scoped prefix for the given key if
+// the key is actor-scoped.
+func ActorPrefixFromKey(key roachpb.Key) (roachpb.Key, bool, error) {
+	rem, tenID, err := DecodeTenantPrefix(key)
+	if err != nil {
+		return nil, false, err
+	}
+	if len(rem) == 0 || rem[0] != ActorPrefixByte {
+		return nil, false, nil
+	}
+	if len(rem) < 1+ActorHashLen {
+		return nil, false, errors.Errorf("malformed actor prefix: %q", key)
+	}
+	prefix := append(roachpb.Key(nil), MakeTenantPrefix(tenID)...)
+	prefix = append(prefix, rem[:1+ActorHashLen]...)
+	return prefix, true, nil
+}
+
+// ActorSpanFromKey returns the full actor keyspan containing the given key if
+// the key is actor-scoped.
+func ActorSpanFromKey(key roachpb.Key) (roachpb.Span, bool, error) {
+	prefix, ok, err := ActorPrefixFromKey(key)
+	if err != nil || !ok {
+		return roachpb.Span{}, ok, err
+	}
+	return roachpb.Span{Key: prefix, EndKey: prefix.PrefixEnd()}, true, nil
+}
+
+// IsInteriorActorSplitKey returns true if the given key lies strictly inside an
+// actor keyspan, rather than on one of its boundaries.
+func IsInteriorActorSplitKey(key roachpb.Key) (bool, error) {
+	span, ok, err := ActorSpanFromKey(key)
+	if err != nil || !ok {
+		return false, err
+	}
+	return !key.Equal(span.Key) && !key.Equal(span.EndKey), nil
 }
 
 // DecodeIndexPrefix validates that the given key has a table ID followed by an

@@ -137,6 +137,25 @@ func (flowCtx *FlowCtx) Codec() keys.SQLCodec {
 	return flowCtx.EvalCtx.Codec
 }
 
+// TableDataCodec returns the SQL codec to use for user table/index KV access
+// within this flow. Shared schema/system keys continue to use the base codec.
+func (ctx *FlowCtx) TableDataCodec() keys.SQLCodec {
+	return ctx.TableDataCodecForActor("")
+}
+
+// TableDataCodecForActor returns the SQL codec to use for user table/index KV
+// access within this flow, overriding the session actor scope when actorName
+// is non-empty.
+func (ctx *FlowCtx) TableDataCodecForActor(actorName string) keys.SQLCodec {
+	if actorName == "" {
+		actorName = ctx.EvalCtx.SessionData().ActorScope
+	}
+	if actorName == "" {
+		return ctx.Codec()
+	}
+	return keys.MakeActorSQLCodec(ctx.Codec(), actorName)
+}
+
 // TableDescriptor returns a catalog.TableDescriptor object for the given
 // descriptor proto, using the descriptors collection if it is available.
 func (flowCtx *FlowCtx) TableDescriptor(

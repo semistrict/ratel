@@ -43,6 +43,7 @@ var _ mutationPlanNode = &upsertNode{}
 type upsertRun struct {
 	tw        optTableUpserter
 	checkOrds checkSet
+	actorName string
 
 	// insertCols are the columns being inserted/upserted into.
 	insertCols []catalog.Column
@@ -53,6 +54,8 @@ type upsertRun struct {
 
 	// traceKV caches the current KV tracing flag.
 	traceKV bool
+
+	actorEnsured bool
 }
 
 func (n *upsertNode) startExec(params runParams) error {
@@ -138,6 +141,12 @@ func (n *upsertNode) BatchedNext(params runParams) (bool, error) {
 // processSourceRow processes one row from the source for upsertion.
 // The table writer is in charge of accumulating the result rows.
 func (n *upsertNode) processSourceRow(params runParams, rowVals tree.Datums) error {
+	if !n.run.actorEnsured {
+		if err := params.p.ensureActorExists(params.ctx, n.run.actorName); err != nil {
+			return err
+		}
+		n.run.actorEnsured = true
+	}
 	if err := enforceLocalColumnConstraints(rowVals, n.run.insertCols); err != nil {
 		return err
 	}

@@ -81,6 +81,10 @@ type ScanParams struct {
 	// to work correctly, the execution engine must create a local DistSQL plan
 	// for the main query (subqueries and postqueries need not be local).
 	LocalityOptimized bool
+
+	// ActorName identifies the actor whose table data is being scanned. An empty
+	// string indicates the legacy unscoped tenant keyspace.
+	ActorName string
 }
 
 // ArrayAnyFilter describes a scan-local filter of the form

@@ -252,6 +252,7 @@ define Ordinality {
 define IndexJoin {
     Input exec.Node
     Table cat.Table
+    ActorName string
     KeyCols []exec.NodeColumnOrdinal
     TableCols exec.TableColumnOrdinalSet
     ReqOrdering exec.OutputOrdering
@@ -443,6 +444,7 @@ define ShowTrace {
 define Insert {
     Input exec.Node
     Table cat.Table
+    ActorName string
     ArbiterIndexes cat.IndexOrdinals
     ArbiterConstraints cat.UniqueOrdinals
     InsertCols exec.TableColumnOrdinalSet
@@ -471,6 +473,7 @@ define Insert {
 define InsertFastPath {
     Rows [][]tree.TypedExpr
     Table cat.Table
+    ActorName string
     InsertCols exec.TableColumnOrdinalSet
     ReturnCols exec.TableColumnOrdinalSet
     CheckCols exec.CheckOrdinalSet
@@ -505,6 +508,7 @@ define InsertFastPath {
 define Update {
     Input exec.Node
     Table cat.Table
+    ActorName string
     FetchCols exec.TableColumnOrdinalSet
     UpdateCols exec.TableColumnOrdinalSet
     ReturnCols exec.TableColumnOrdinalSet
@@ -542,6 +546,7 @@ define Update {
 define Upsert {
     Input exec.Node
     Table cat.Table
+    ActorName string
     ArbiterIndexes cat.IndexOrdinals
     ArbiterConstraints cat.UniqueOrdinals
     CanaryCol exec.NodeColumnOrdinal
@@ -572,6 +577,7 @@ define Upsert {
 define Delete {
     Input exec.Node
     Table cat.Table
+    ActorName string
     FetchCols exec.TableColumnOrdinalSet
     ReturnCols exec.TableColumnOrdinalSet
     Passthrough colinfo.ResultColumns
@@ -595,6 +601,7 @@ define Delete {
 # single operator.
 define DeleteRange {
     Table cat.Table
+    ActorName string
     Needed exec.TableColumnOrdinalSet
     IndexConstraint *constraint.Constraint
 

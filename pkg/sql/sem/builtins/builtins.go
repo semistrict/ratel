@@ -4620,6 +4620,58 @@ value if you rely on the HLC for accuracy.`,
 		},
 	),
 
+	"crdb_internal.delete_actor": makeBuiltin(
+		tree.FunctionProperties{Category: categorySystemInfo},
+		tree.Overload{
+			Types:      tree.ArgTypes{{"actor_name", types.String}},
+			ReturnType: tree.FixedReturnType(types.Bool),
+			Fn: func(evalCtx *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
+				actorName := string(tree.MustBeDString(args[0]))
+				ctx := evalCtx.Ctx()
+				codec := evalCtx.Codec
+				tenantID := codec.TenantID()
+				actorPrefix := keys.MakeActorPrefix(codec.TenantPrefix(), actorName)
+
+				// Delete all actor-scoped KV data.
+				if _, err := evalCtx.DB.DelRange(ctx, actorPrefix, actorPrefix.PrefixEnd(), false /* returnKeys */); err != nil {
+					return nil, err
+				}
+
+				// Remove the registry entry.
+				if _, err := evalCtx.Planner.QueryRowEx(
+					ctx, "delete-actor-registry",
+					evalCtx.Txn,
+					sessiondata.InternalExecutorOverride{
+						User:     security.RootUserName(),
+						Database: "system",
+					},
+					`DELETE FROM system.actors WHERE tenant_id = $1 AND actor_name = $2 RETURNING actor_name`,
+					tenantID.ToUint64(),
+					actorName,
+				); err != nil {
+					return nil, err
+				}
+				return tree.DBoolTrue, nil
+			},
+			Info:       "Deletes the named actor, removing all its data and registry entry.",
+			Volatility: tree.VolatilityVolatile,
+		},
+	),
+
+	"actor_id": makeBuiltin(
+		tree.FunctionProperties{Category: categorySystemInfo},
+		tree.Overload{
+			Types:      tree.ArgTypes{{"actor_name", types.String}},
+			ReturnType: tree.FixedReturnType(types.Bytes),
+			Fn: func(_ *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
+				hash := keys.ActorHash(string(tree.MustBeDString(args[0])))
+				return tree.NewDBytes(tree.DBytes(hash[:])), nil
+			},
+			Info:       "Returns the deterministic 16-byte actor identifier for the given actor name.",
+			Volatility: tree.VolatilityImmutable,
+		},
+	),
+
 	// https://www.postgresql.org/docs/10/static/functions-info.html
 	//
 	// Note that in addition to what the pg doc says ("current_schema =

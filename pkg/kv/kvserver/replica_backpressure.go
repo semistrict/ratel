@@ -1,12 +1,16 @@
 // Copyright 2018 The Cockroach Authors.
 //
-// Use of this software is governed by the Business Source License
-// included in the file licenses/BSL.txt.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// As of the Change Date specified in that file, in accordance with
-// the Business Source License, use of this software will be governed
-// by the Apache License, Version 2.0, included in the file
-// licenses/APL.txt.
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// permissions and limitations under the License.
 
 package kvserver
 
@@ -14,12 +18,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvpb"
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/settings"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverbase"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/settings"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 var backpressureLogLimiter = log.Every(500 * time.Millisecond)
@@ -28,7 +32,7 @@ var backpressureLogLimiter = log.Every(500 * time.Millisecond)
 // range's size must grow to before backpressure will be applied on writes. Set
 // to 0 to disable backpressure altogether.
 var backpressureRangeSizeMultiplier = settings.RegisterFloatSetting(
-	settings.SystemOnly,
+	settings.TenantWritable,
 	"kv.range.backpressure_range_size_multiplier",
 	"multiple of range_max_bytes that a range is allowed to grow to without "+
 		"splitting before writes to that range are blocked, or 0 to disable",
@@ -66,7 +70,7 @@ var backpressureRangeSizeMultiplier = settings.RegisterFloatSetting(
 //     currently backpressuring than ranges which are larger but are not
 //     applying backpressure.
 var backpressureByteTolerance = settings.RegisterByteSizeSetting(
-	settings.SystemOnly,
+	settings.TenantWritable,
 	"kv.range.backpressure_byte_tolerance",
 	"defines the number of bytes above the product of "+
 		"backpressure_range_size_multiplier and the range_max_size at which "+
@@ -85,7 +89,7 @@ var backpressurableSpans = []roachpb.Span{
 
 // canBackpressureBatch returns whether the provided BatchRequest is eligible
 // for backpressure.
-func canBackpressureBatch(ba *kvpb.BatchRequest) bool {
+func canBackpressureBatch(ba *roachpb.BatchRequest) bool {
 	// Don't backpressure splits themselves.
 	if ba.Txn != nil && ba.Txn.Name == splitTxnName {
 		return false
@@ -95,7 +99,7 @@ func canBackpressureBatch(ba *kvpb.BatchRequest) bool {
 	// method that is within a "backpressurable" key span.
 	for _, ru := range ba.Requests {
 		req := ru.GetInner()
-		if !kvpb.CanBackpressure(req) {
+		if !roachpb.CanBackpressure(req) {
 			continue
 		}
 
@@ -113,10 +117,10 @@ func canBackpressureBatch(ba *kvpb.BatchRequest) bool {
 // poison.Policy_Wait, in which case it's a neverTripSignaller. In particular,
 // `(signaller).C() == nil` signals that the request bypasses the circuit
 // breakers.
-func (r *Replica) signallerForBatch(ba *kvpb.BatchRequest) signaller {
+func (r *Replica) signallerForBatch(ba *roachpb.BatchRequest) signaller {
 	for _, ru := range ba.Requests {
 		req := ru.GetInner()
-		if kvpb.BypassesReplicaCircuitBreaker(req) {
+		if roachpb.BypassesReplicaCircuitBreaker(req) {
 			return neverTripSignaller{}
 		}
 	}
@@ -150,7 +154,13 @@ func (r *Replica) shouldBackpressureWrites() bool {
 
 // maybeBackpressureBatch blocks to apply backpressure if the replica deems
 // that backpressure is necessary.
-func (r *Replica) maybeBackpressureBatch(ctx context.Context, ba *kvpb.BatchRequest) error {
+func (r *Replica) maybeBackpressureBatch(ctx context.Context, ba *roachpb.BatchRequest) error {
+	// Actor size rejection runs unconditionally — actor keys live outside the
+	// backpressurable span list (which ends at TableDataMax), so the
+	// canBackpressureBatch guard below would skip them.
+	if err := r.maybeRejectActorWriteBatch(ba); err != nil {
+		return err
+	}
 	if !canBackpressureBatch(ba) {
 		return nil
 	}
@@ -181,23 +191,42 @@ func (r *Replica) maybeBackpressureBatch(ctx context.Context, ba *kvpb.BatchRequ
 			return nil
 		}
 
-		const errHint = `For help understanding this error and troubleshooting, visit:
-
-    https://www.cockroachlabs.com/docs/stable/common-errors.html#split-failed-while-applying-backpressure-are-rows-updated-in-a-tight-loop`
-
 		// Wait for the callback to be called.
 		select {
 		case <-ctx.Done():
-			return errors.WithHint(errors.Wrapf(
+			return errors.Wrapf(
 				ctx.Err(), "aborted while applying backpressure to %s on range %s", ba, r.Desc(),
-			), errHint)
+			)
 		case err := <-splitC:
 			if err != nil {
-				return errors.WithHint(errors.Wrapf(
+				return errors.Wrapf(
 					err, "split failed while applying backpressure to %s on range %s", ba, r.Desc(),
-				), errHint)
+				)
 			}
 		}
 	}
 	return nil
+}
+
+func (r *Replica) maybeRejectActorWriteBatch(ba *roachpb.BatchRequest) error {
+	if _, ok, err := actorSpanForRange(r.Desc()); err != nil {
+		return err
+	} else if !ok {
+		return nil
+	}
+
+	limit := kvserverbase.ActorMaxSize.Get(&r.store.cfg.Settings.SV)
+	if limit <= 0 {
+		return nil
+	}
+	currentSize := r.GetMVCCStats().Total()
+	projectedSize := currentSize + int64(ba.Size())
+	if projectedSize <= limit {
+		return nil
+	}
+	return errors.Newf(
+		"actor range is at %d bytes and cannot exceed kv.actor.max_size=%d without splitting",
+		currentSize,
+		limit,
+	)
 }

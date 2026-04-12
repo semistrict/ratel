@@ -594,12 +594,22 @@ type AliasedTableExpr struct {
 	Ordinality bool
 	Lateral    bool
 	As         AliasClause
+
+	// ActorName, when non-empty, scopes the table reference to the named actor.
+	// Set by the parser for actor('name').table syntax.
+	ActorName string
 }
 
 // Format implements the NodeFormatter interface.
 func (node *AliasedTableExpr) Format(ctx *FmtCtx) {
 	if node.Lateral {
 		ctx.WriteString("LATERAL ")
+	}
+	if node.ActorName != "" {
+		ctx.WriteString("actor(")
+		s := DString(node.ActorName)
+		ctx.FormatNode(&s)
+		ctx.WriteString(").")
 	}
 	ctx.FormatNode(node.Expr)
 	if node.IndexFlags != nil {

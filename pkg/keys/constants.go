@@ -1,19 +1,23 @@
 // Copyright 2015 The Cockroach Authors.
 //
-// Use of this software is governed by the Business Source License
-// included in the file licenses/BSL.txt.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// As of the Change Date specified in that file, in accordance with
-// the Business Source License, use of this software will be governed
-// by the Apache License, Version 2.0, included in the file
-// licenses/APL.txt.
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// permissions and limitations under the License.
 
 package keys
 
 import (
 	"math"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
 // For a high-level overview of the keyspace layout, see the package comment in
@@ -28,6 +32,13 @@ const (
 	systemPrefixByte = metaMaxByte
 	systemMaxByte    = '\x05'
 	tenantPrefixByte = '\xfe'
+)
+
+// Constants to subdivide unsafe loss of quorum recovery data into groups.
+// Currently we only store keys as they are applied, but might benefit from
+// archiving them to make them more "durable".
+const (
+	appliedUnsafeReplicaRecoveryPrefix = "applied"
 )
 
 // Constants for system-reserved keys in the KV map.
@@ -85,8 +96,6 @@ var (
 	// LocalRaftTruncatedStateSuffix for the corresponding unreplicated
 	// RaftTruncatedState.
 	_ = []byte("rftt")
-	// LocalRangeGCHintSuffix is the suffix for the GC hint struct.
-	LocalRangeGCHintSuffix = []byte("rgch")
 	// LocalRangeLeaseSuffix is the suffix for a range lease.
 	LocalRangeLeaseSuffix = []byte("rll-")
 	// LocalRangePriorReadSummarySuffix is the suffix for a range's prior read
@@ -128,10 +137,6 @@ var (
 	// LocalRangeLastReplicaGCTimestampSuffix is the suffix for a range's last
 	// replica GC timestamp (for GC of old replicas).
 	LocalRangeLastReplicaGCTimestampSuffix = []byte("rlrt")
-	// LocalRangeMVCCRangeKeyGCLockSuffix is the suffix for a lock obtained
-	// by range tombstone operations to ensure they don't overlap with
-	// GC requests while allowing point traffic to go through unobstructed.
-	LocalRangeMVCCRangeKeyGCLockSuffix = []byte("rltu")
 	// localRangeLastVerificationTimestampSuffix is DEPRECATED and remains to
 	// prevent reuse.
 	localRangeLastVerificationTimestampSuffix = []byte("rlvt")
@@ -174,31 +179,18 @@ var (
 	// localStoreIdentSuffix stores an immutable identifier for this
 	// store, created when the store is first bootstrapped.
 	localStoreIdentSuffix = []byte("iden")
-	// localStoreLossOfQuorumRecoveryInfix is an infix for the group of keys used
-	// by loss of quorum recovery operations to track progress and outcome.
-	// This infix is followed by the suffix defining type of recovery key.
-	localStoreLossOfQuorumRecoveryInfix = []byte("loqr")
 	// LocalStoreUnsafeReplicaRecoverySuffix is a suffix for temporary record
 	// entries put when loss of quorum recovery operations are performed offline
 	// on the store.
 	// See StoreUnsafeReplicaRecoveryKey for details.
-	localStoreUnsafeReplicaRecoverySuffix = makeKey(localStoreLossOfQuorumRecoveryInfix,
-		[]byte("applied"))
+	localStoreUnsafeReplicaRecoverySuffix = makeKey([]byte("loqr"),
+		[]byte(appliedUnsafeReplicaRecoveryPrefix))
 	// LocalStoreUnsafeReplicaRecoveryKeyMin is the start of keyspace used to store
 	// loss of quorum recovery record entries.
 	LocalStoreUnsafeReplicaRecoveryKeyMin = MakeStoreKey(localStoreUnsafeReplicaRecoverySuffix, nil)
 	// LocalStoreUnsafeReplicaRecoveryKeyMax is the end of keyspace used to store
 	// loss of quorum recovery record entries.
 	LocalStoreUnsafeReplicaRecoveryKeyMax = LocalStoreUnsafeReplicaRecoveryKeyMin.PrefixEnd()
-	// localStoreLossOfQuorumRecoveryStatusSuffix is a local key store suffix to
-	// store results of loss of quorum recovery plan application.
-	localStoreLossOfQuorumRecoveryStatusSuffix = makeKey(localStoreLossOfQuorumRecoveryInfix,
-		[]byte("status"))
-	// localStoreLossOfQuorumRecoveryCleanupActionsSuffix is a local key store
-	// suffix to store information for loss of quorum recovery cleanup actions
-	// performed after node restart.
-	localStoreLossOfQuorumRecoveryCleanupActionsSuffix = makeKey(localStoreLossOfQuorumRecoveryInfix,
-		[]byte("cleanup"))
 	// localStoreNodeTombstoneSuffix stores key value pairs that map
 	// nodeIDs to time of removal from cluster.
 	localStoreNodeTombstoneSuffix = []byte("ntmb")
@@ -278,7 +270,7 @@ var (
 	// keyspace in order to limit the number of ranges which must use
 	// expiration-based range leases instead of the more efficient
 	// node-liveness epoch-based range leases (see
-	// https://github.com/cockroachdb/cockroach/blob/master/docs/RFCS/20160210_range_leases.md)
+	// https://github.com/semistrict/ratel/blob/master/docs/RFCS/20160210_range_leases.md)
 	NodeLivenessPrefix = roachpb.Key(makeKey(SystemPrefix, roachpb.RKey("\x00liveness-")))
 	// NodeLivenessKeyMax is the maximum value for any node liveness key.
 	NodeLivenessKeyMax = NodeLivenessPrefix.PrefixEnd()
@@ -286,29 +278,29 @@ var (
 	// BootstrapVersionKey is the key at which clusters bootstrapped with a version
 	// > 1.0 persist the version at which they were bootstrapped.
 	BootstrapVersionKey = roachpb.Key(makeKey(SystemPrefix, roachpb.RKey("bootstrap-version")))
-	// GracePeriodInitTimestamp is used for license enforcement. It marks the timestamp
-	// set during cluster initialization, by which a license must be installed to avoid
-	// throttling. The value is stored as the number of seconds since the Unix epoch.
-	GracePeriodInitTimestamp = roachpb.Key(makeKey(SystemPrefix, roachpb.RKey("lic-gpi-ts")))
 	//
-	// LegacyDescIDGenerator is the legacy global descriptor ID generator sequence
-	// used for table and namespace IDs for the system tenant in clusters <23.1.
-	// Otherwise, a SQL sequence is used for this purpose.
-	//
-	// TODO(postamar): remove along with clusterversion.V23_1DescIDSequenceForSystemTenant
-	LegacyDescIDGenerator = roachpb.Key(makeKey(SystemPrefix, roachpb.RKey("desc-idgen")))
+	// descIDGenerator is the global descriptor ID generator sequence used for
+	// table and namespace IDs for the system tenant. All other tenants use a
+	// SQL sequence for this purpose. See sqlEncoder.DescIDSequenceKey.
+	descIDGenerator = roachpb.Key(makeKey(SystemPrefix, roachpb.RKey("desc-idgen")))
 	// NodeIDGenerator is the global node ID generator sequence.
 	NodeIDGenerator = roachpb.Key(makeKey(SystemPrefix, roachpb.RKey("node-idgen")))
 	// RangeIDGenerator is the global range ID generator sequence.
 	RangeIDGenerator = roachpb.Key(makeKey(SystemPrefix, roachpb.RKey("range-idgen")))
 	// StoreIDGenerator is the global store ID generator sequence.
 	StoreIDGenerator = roachpb.Key(makeKey(SystemPrefix, roachpb.RKey("store-idgen")))
+	//
 	// StatusPrefix specifies the key prefix to store all status details.
 	StatusPrefix = roachpb.Key(makeKey(SystemPrefix, roachpb.RKey("status-")))
 	// StatusNodePrefix stores all status info for nodes.
 	StatusNodePrefix = roachpb.Key(makeKey(StatusPrefix, roachpb.RKey("node-")))
-	// StartupMigrationPrefix specifies the key prefix to store all migration details.
-	StartupMigrationPrefix = roachpb.Key(makeKey(SystemPrefix, roachpb.RKey("system-version/")))
+	//
+	// MigrationPrefix specifies the key prefix to store all migration details.
+	MigrationPrefix = roachpb.Key(makeKey(SystemPrefix, roachpb.RKey("system-version/")))
+	// MigrationLease is the key that nodes must take a lease on in order to run
+	// system migrations on the cluster.
+	MigrationLease = roachpb.Key(makeKey(MigrationPrefix, roachpb.RKey("lease")))
+	//
 	// TimeseriesPrefix is the key prefix for all timeseries data.
 	TimeseriesPrefix = roachpb.Key(makeKey(SystemPrefix, roachpb.RKey("tsd")))
 	// TimeseriesKeyMax is the maximum value for any timeseries data.
@@ -347,9 +339,15 @@ var (
 	TableDataMin = SystemSQLCodec.TablePrefix(0)
 	// TableDataMax is the end of the range of table data keys.
 	TableDataMax = SystemSQLCodec.TablePrefix(math.MaxUint32).PrefixEnd()
+	// ActorDataMin is the start of the range of actor-scoped system-tenant SQL
+	// table data keys.
+	ActorDataMin = roachpb.Key{ActorPrefixByte}
+	// ActorDataMax is the end of the range of actor-scoped system-tenant SQL
+	// table data keys.
+	ActorDataMax = ActorDataMin.PrefixEnd()
 	// ScratchRangeMin is a key used in tests to write arbitrary data without
 	// overlapping with meta, system or tenant ranges.
-	ScratchRangeMin = TableDataMax
+	ScratchRangeMin = ActorDataMax
 	ScratchRangeMax = TenantPrefix
 	//
 	// SystemConfigSplitKey is the key to split at immediately prior to the
@@ -357,7 +355,7 @@ var (
 	// TODO(bdarnell): this should be either roachpb.Key or RKey, not []byte.
 	SystemConfigSplitKey = []byte(TableDataMin)
 	// SystemConfigTableDataMax is the end key of system config span.
-	SystemConfigTableDataMax = SystemSQLCodec.TablePrefix(DeprecatedMaxSystemConfigDescID + 1)
+	SystemConfigTableDataMax = SystemSQLCodec.TablePrefix(MaxSystemConfigDescID + 1)
 	//
 	// NamespaceTableMin is the start key of system.namespace, which is a system
 	// table that does not reside in the same range as other system tables.
@@ -376,10 +374,10 @@ var (
 // Various IDs used by the structured data layer.
 // NOTE: these must not change during the lifetime of a cluster.
 const (
-	// DeprecatedMaxSystemConfigDescID is the maximum system descriptor ID that will be
+	// MaxSystemConfigDescID is the maximum system descriptor ID that will be
 	// gossiped as part of the SystemConfig. Be careful adding new descriptors to
 	// this ID range.
-	DeprecatedMaxSystemConfigDescID = 10
+	MaxSystemConfigDescID = 10
 
 	// MaxReservedDescID is the maximum descriptor ID in the reserved range.
 	// In practice, what this means is that this is the highest-possible value
@@ -393,7 +391,7 @@ const (
 
 	// SystemDatabaseID and following are the database/table IDs for objects
 	// in the system span.
-	// NOTE: IDs must be <= DeprecatedMaxSystemConfigDescID.
+	// NOTE: IDs must be <= MaxSystemConfigDescID.
 	SystemDatabaseID = 1
 	// DeprecatedNamespaceTableID was the tableID for the system.namespace table
 	// for pre-20.1 clusters.
@@ -416,8 +414,6 @@ const (
 	DescriptorTableDescriptorColFamID        = 2
 	TenantsTablePrimaryKeyIndexID            = 1
 	SpanConfigurationsTablePrimaryKeyIndexID = 1
-	CommentsTablePrimaryKeyIndexID           = 1
-	CommentsTableCommentColFamID             = 4
 
 	// Reserved IDs for other system tables. Note that some of these IDs refer
 	// to "Ranges" instead of a Table - these IDs are needed to store custom
@@ -474,20 +470,30 @@ const (
 	TenantUsageTableID                  = 45
 	SQLInstancesTableID                 = 46
 	SpanConfigurationsTableID           = 47
-	RoleIDSequenceID                    = 48
-
-	// reservedSystemTableID is a sentinel constant to reserve the use of the
-	// last remaining constant reserved descriptor ID. In 22.1, we added support
-	// for creating system tables with dynamically allocated IDs. Use of this ID
-	// should be well motivated. There are cases where having a constant ID can
-	// dramatically simplify cluster bootstrap. Any table which is not going to
-	// be used quite early in the server startup process should not need a
-	// constant ID. Note that there are some values we could reclaim, like 9 and
-	// 10, but let's not go there unless we need to.
-	reservedSystemTableID = 49
+	WasmFunctionsTableID                = 48
+	ActorsTableID                       = 49
 )
 
-var _ = reservedSystemTableID // defeat the unused linter
+// CommentType the type of the schema object on which a comment has been
+// applied.
+type CommentType int
+
+//go:generate stringer --type CommentType
+
+const (
+	// DatabaseCommentType comment on a database.
+	DatabaseCommentType CommentType = 0
+	// TableCommentType comment on a table/view/sequence.
+	TableCommentType CommentType = 1
+	// ColumnCommentType comment on a column.
+	ColumnCommentType CommentType = 2
+	// IndexCommentType comment on an index.
+	IndexCommentType CommentType = 3
+	// SchemaCommentType comment on a schema.
+	SchemaCommentType CommentType = 4
+	// ConstraintCommentType comment on a constraint.
+	ConstraintCommentType CommentType = 5
+)
 
 const (
 	// SequenceIndexID is the ID of the single index on each special single-column,
@@ -510,7 +516,7 @@ var PseudoTableIDs = []uint32{
 	SystemRangesID,
 	TimeseriesRangesID,
 	LivenessRangesID,
-	SystemPublicSchemaID,
+	PublicSchemaID,
 	TenantsRangesID,
 }
 
@@ -524,13 +530,3 @@ var MaxPseudoTableID = func() uint32 {
 	}
 	return max
 }()
-
-// IsPseudoTableID returns true if id is in PseudoTableIDs.
-func IsPseudoTableID(id uint32) bool {
-	for _, pseudoTableID := range PseudoTableIDs {
-		if id == pseudoTableID {
-			return true
-		}
-	}
-	return false
-}

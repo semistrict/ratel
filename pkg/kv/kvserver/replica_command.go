@@ -387,6 +387,11 @@ func (r *Replica) adminSplitWithDescriptor(
 		if !splitKey.Equal(foundSplitKey) {
 			return reply, errors.Errorf("cannot split range at range-local key %s", splitKey)
 		}
+		if insideActor, err := keys.IsInteriorActorSplitKey(splitKey.AsRawKey()); err != nil {
+			return reply, err
+		} else if insideActor {
+			return reply, errors.Errorf("cannot split actor range at interior key %s", splitKey)
+		}
 		if !storage.IsValidSplitKey(foundSplitKey) {
 			return reply, errors.Errorf("cannot split range at key %s", splitKey)
 		}
@@ -645,6 +650,11 @@ func (r *Replica) AdminMerge(
 		}
 		if err := dbRightDescKV.ValueProto(&rightDesc); err != nil {
 			return err
+		}
+		if sameActor, err := sameActorRange(origLeftDesc.StartKey, rightDesc.StartKey); err != nil {
+			return err
+		} else if !sameActor {
+			return errors.New("cannot merge across actor boundaries")
 		}
 
 		// Verify that the two ranges are mergeable.

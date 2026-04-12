@@ -79,6 +79,10 @@ type scope struct {
 	// expr is the SQL node built with this scope.
 	expr memo.RelExpr
 
+	// actorName is the actor selected for scans and mutations built in this
+	// scope. An empty string indicates the legacy unscoped tenant keyspace.
+	actorName string
+
 	// Desired number of columns for subqueries found during name resolution and
 	// type checking. This only applies to the top-level subqueries that are
 	// anchored directly to a relational expression.

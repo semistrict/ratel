@@ -102,6 +102,7 @@ func (b *Builder) buildInsert(ins *memo.InsertExpr) (execPlan, error) {
 	node, err := b.factory.ConstructInsert(
 		input.root,
 		tab,
+		ins.ActorName,
 		ins.ArbiterIndexes,
 		ins.ArbiterConstraints,
 		insertOrds,
@@ -265,6 +266,7 @@ func (b *Builder) tryBuildFastPathInsert(ins *memo.InsertExpr) (_ execPlan, ok b
 	node, err := b.factory.ConstructInsertFastPath(
 		rows,
 		tab,
+		ins.ActorName,
 		insertOrds,
 		returnOrds,
 		checkOrds,
@@ -365,6 +367,7 @@ func (b *Builder) buildUpdate(upd *memo.UpdateExpr) (execPlan, error) {
 	node, err := b.factory.ConstructUpdate(
 		input.root,
 		tab,
+		upd.ActorName,
 		fetchColOrds,
 		updateColOrds,
 		returnColOrds,
@@ -452,6 +455,7 @@ func (b *Builder) buildUpsert(ups *memo.UpsertExpr) (execPlan, error) {
 	node, err := b.factory.ConstructUpsert(
 		input.root,
 		tab,
+		ups.ActorName,
 		ups.ArbiterIndexes,
 		ups.ArbiterConstraints,
 		canaryCol,
@@ -532,6 +536,7 @@ func (b *Builder) buildDelete(del *memo.DeleteExpr) (execPlan, error) {
 	node, err := b.factory.ConstructDelete(
 		input.root,
 		tab,
+		del.ActorName,
 		fetchColOrds,
 		returnColOrds,
 		passthroughCols,
@@ -636,6 +641,7 @@ func (b *Builder) buildDeleteRange(del *memo.DeleteExpr) (execPlan, error) {
 
 	root, err := b.factory.ConstructDeleteRange(
 		tab,
+		del.ActorName,
 		needed,
 		scan.Constraint,
 		autoCommit,

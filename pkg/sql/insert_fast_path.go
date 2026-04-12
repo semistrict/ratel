@@ -18,19 +18,20 @@ import (
 	"context"
 	"sync"
 
-	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/opt/exec"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
-	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/row"
-	"github.com/cockroachdb/cockroach/pkg/sql/rowenc"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/span"
-	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/errors"
+	"github.com/semistrict/ratel/pkg/keys"
+	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/semistrict/ratel/pkg/sql/catalog"
+	"github.com/semistrict/ratel/pkg/sql/catalog/colinfo"
+	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
+	"github.com/semistrict/ratel/pkg/sql/opt/exec"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
+	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
+	"github.com/semistrict/ratel/pkg/sql/row"
+	"github.com/semistrict/ratel/pkg/sql/rowenc"
+	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/semistrict/ratel/pkg/sql/span"
+	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 var insertFastPathNodePool = sync.Pool{
@@ -60,6 +61,8 @@ var _ mutationPlanNode = &insertFastPathNode{}
 type insertFastPathRun struct {
 	insertRun
 
+	actorName string
+
 	fkChecks []insertFastPathFKCheck
 
 	numInputCols int
@@ -78,6 +81,8 @@ type insertFastPathRun struct {
 	// fkSpanMap is used to de-duplicate FK existence checks. Only used if there
 	// is more than one input row.
 	fkSpanMap map[string]struct{}
+
+	actorEnsured bool
 }
 
 // insertFastPathFKSpanInfo records information about each Request in the
@@ -100,12 +105,12 @@ type insertFastPathFKCheck struct {
 	spanSplitter span.Splitter
 }
 
-func (c *insertFastPathFKCheck) init(params runParams) error {
+func (c *insertFastPathFKCheck) init(params runParams, actorName string) error {
 	idx := c.ReferencedIndex.(*optIndex)
 	c.tabDesc = c.ReferencedTable.(*optTable).desc
 	c.idx = idx.idx
 
-	codec := params.ExecCfg().Codec
+	codec := keys.MakeActorSQLCodec(params.ExecCfg().Codec, actorName)
 	c.keyPrefix = rowenc.MakeIndexKeyPrefix(codec, c.tabDesc.GetID(), c.idx.GetID())
 	c.spanBuilder.Init(params.EvalContext(), codec, c.tabDesc, c.idx)
 	c.spanSplitter = span.NoopSplitter()
@@ -234,6 +239,10 @@ func (n *insertFastPathNode) startExec(params runParams) error {
 
 	n.run.initRowContainer(params, n.columns)
 
+	if err := params.p.ensureActorExists(params.ctx, n.run.actorName); err != nil {
+		return err
+	}
+
 	n.run.numInputCols = len(n.input[0])
 	n.run.inputBuf = make(tree.Datums, len(n.input)*n.run.numInputCols)
 
@@ -243,7 +252,7 @@ func (n *insertFastPathNode) startExec(params runParams) error {
 
 	if len(n.run.fkChecks) > 0 {
 		for i := range n.run.fkChecks {
-			if err := n.run.fkChecks[i].init(params); err != nil {
+			if err := n.run.fkChecks[i].init(params, n.run.actorName); err != nil {
 				return err
 			}
 		}

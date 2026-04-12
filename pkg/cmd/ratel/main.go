@@ -1,4 +1,4 @@
-// Copyright 2026 The Ratel Authors.
+// Copyright 2024 The Cockroach Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,11 +12,15 @@
 // implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-// Package main is the entry point for the ratel binary, a CockroachDB
-// distribution that uses a storage URL as the cluster identity.
+// ratel is a CockroachDB binary that uses an S3 URL as the cluster identity.
+// All cluster configuration — certificates, node discovery, and shared storage
+// — is derived from a single storage URL.
 package main
 
-import "github.com/cockroachdb/cockroach/pkg/cli"
+import (
+	"github.com/semistrict/ratel/pkg/cli"
+	_ "github.com/semistrict/ratel/pkg/ui/distoss" // web UI init hooks
+)
 
 func main() {
 	cli.RatelMain()

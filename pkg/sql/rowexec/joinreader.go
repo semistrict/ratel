@@ -227,6 +227,8 @@ type joinReader struct {
 	// of hard and soft limits.
 	limitHintHelper execinfra.LimitHintHelper
 
+	actorName string
+
 	// scanStats is collected from the trace after we finish doing work for this
 	// join.
 	scanStats execinfra.ScanStats
@@ -326,6 +328,7 @@ func newJoinReader(
 		usesStreamer:                      useStreamer,
 		lookupBatchBytesLimit:             rowinfra.BytesLimit(spec.LookupBatchBytesLimit),
 		limitHintHelper:                   execinfra.MakeLimitHintHelper(spec.LimitHint, post),
+		actorName:                         spec.ActorName,
 	}
 	if readerType != indexJoinReaderType {
 		jr.groupingState = &inputBatchGroupingState{doGrouping: spec.LeftJoinWithPairedJoiner}
@@ -503,6 +506,7 @@ func (jr *joinReader) initJoinReaderStrategy(
 ) error {
 	strategyMemAcc := jr.MemMonitor.MakeBoundAccount()
 	spanGeneratorMemAcc := jr.MemMonitor.MakeBoundAccount()
+	codec := flowCtx.TableDataCodecForActor(jr.actorName)
 	var generator joinReaderSpanGenerator
 	if jr.lookupExpr.Expr == nil {
 		var keyToInputRowIndices map[string][]int
@@ -514,7 +518,7 @@ func (jr *joinReader) initJoinReaderStrategy(
 		defGen := &defaultSpanGenerator{}
 		if err := defGen.init(
 			flowCtx.EvalCtx,
-			flowCtx.Codec(),
+			codec,
 			&jr.fetchSpec,
 			keyToInputRowIndices,
 			jr.lookupCols,
@@ -547,7 +551,7 @@ func (jr *joinReader) initJoinReaderStrategy(
 			multiSpanGen := &multiSpanGenerator{}
 			if err := multiSpanGen.init(
 				flowCtx.EvalCtx,
-				flowCtx.Codec(),
+				codec,
 				&jr.fetchSpec,
 				len(jr.input.OutputTypes()),
 				&jr.lookupExpr,
@@ -562,7 +566,7 @@ func (jr *joinReader) initJoinReaderStrategy(
 			remoteSpanGenMemAcc := jr.MemMonitor.MakeBoundAccount()
 			if err := localityOptSpanGen.init(
 				flowCtx.EvalCtx,
-				flowCtx.Codec(),
+				codec,
 				&jr.fetchSpec,
 				len(jr.input.OutputTypes()),
 				&jr.lookupExpr,

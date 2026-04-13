@@ -881,6 +881,16 @@ oldbuildoss: $(COCKROACHOSS)
 oldbuildshort: $(COCKROACHSHORT)
 buildratel: $(RATEL)
 
+WORKERD_BIN := c-deps/workerd/bazel-bin/src/workerd/server/workerd
+WORKERD_EMBED_DST := pkg/server/workerd_bin/workerd.zst
+
+.PHONY: workerd-embed
+workerd-embed: ## Compress the workerd binary for embedding into ratel.
+workerd-embed: $(WORKERD_EMBED_DST)
+
+$(WORKERD_EMBED_DST): $(WORKERD_BIN)
+	zstd -19 -f -o $@ $<
+
 .PHONY: install
 install: ## Install the CockroachDB binary.
 install: $(COCKROACHOSS)

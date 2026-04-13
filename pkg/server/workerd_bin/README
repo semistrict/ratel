@@ -1,0 +1,2 @@
+Place workerd.zst here to embed the workerd binary into ratel.
+Run: make workerd-embed

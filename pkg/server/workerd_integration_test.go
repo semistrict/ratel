@@ -25,7 +25,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -55,13 +54,13 @@ var (
 	testWorkerCounterBindings string
 )
 
-// workerdBinPath returns the workerd binary path from RATEL_WORKERD_BIN or PATH.
+// workerdBinPath returns the workerd binary path from RATEL_WORKERD_BIN,
+// embedded binary, or PATH.
 func workerdBinPath() string {
 	if p := os.Getenv("RATEL_WORKERD_BIN"); p != "" {
 		return p
 	}
-	p, _ := exec.LookPath("workerd")
-	return p
+	return resolveWorkerdBinary()
 }
 
 // skipIfNoWorkerd skips the test if the workerd binary is not available.
@@ -73,6 +72,26 @@ func skipIfNoWorkerd(t *testing.T) {
 }
 
 // --- Unit tests (no server needed) ---
+
+func TestExtractEmbeddedWorkerd(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+	defer log.Scope(t).Close(t)
+
+	path, err := extractEmbeddedWorkerd()
+	if err != nil {
+		t.Skipf("no embedded workerd binary: %v", err)
+	}
+
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	require.True(t, info.Mode()&0111 != 0, "extracted binary should be executable")
+	require.Greater(t, info.Size(), int64(1024*1024), "extracted binary should be >1MB")
+
+	// Second call should return cached path.
+	path2, err := extractEmbeddedWorkerd()
+	require.NoError(t, err)
+	require.Equal(t, path, path2)
+}
 
 func TestWorkerdConfigGeneration(t *testing.T) {
 	workers := []WorkerDef{

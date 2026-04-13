@@ -81,11 +81,10 @@ func NewWorkerdSidecar(
 	cfg WorkerdConfig, db *kv.DB, codec keys.SQLCodec, tracer *tracing.Tracer, stopper *stop.Stopper,
 ) (*WorkerdSidecar, error) {
 	if cfg.BinaryPath == "" {
-		path, err := exec.LookPath("workerd")
-		if err != nil {
-			return nil, errors.Wrap(err, "workerd binary not found; set WorkerdConfig.BinaryPath")
+		cfg.BinaryPath = resolveWorkerdBinary()
+		if cfg.BinaryPath == "" {
+			return nil, errors.New("workerd binary not found: not embedded and not in PATH; set WorkerdConfig.BinaryPath")
 		}
-		cfg.BinaryPath = path
 	}
 
 	workDir := cfg.WorkDir
@@ -383,6 +382,19 @@ func (w *WorkerdSidecar) fetchWorkerDefs(ctx context.Context) ([]WorkerDef, erro
 		})
 	}
 	return workers, nil
+}
+
+// resolveWorkerdBinary returns the path to the workerd binary. It tries the
+// embedded binary first (extracting to a cache directory if needed), then
+// falls back to looking for workerd in PATH. Returns empty string if not found.
+func resolveWorkerdBinary() string {
+	if path, err := extractEmbeddedWorkerd(); err == nil {
+		return path
+	}
+	if path, err := exec.LookPath("workerd"); err == nil {
+		return path
+	}
+	return ""
 }
 
 // pickFreePort binds to port 0, reads the assigned port, and closes the

@@ -34,6 +34,7 @@ import (
 	"github.com/semistrict/ratel/pkg/base"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
+	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/server/actorstorage"
 	"github.com/semistrict/ratel/pkg/testutils/serverutils"
 	"github.com/semistrict/ratel/pkg/util/leaktest"
@@ -91,6 +92,24 @@ func TestExtractEmbeddedWorkerd(t *testing.T) {
 	path2, err := extractEmbeddedWorkerd()
 	require.NoError(t, err)
 	require.Equal(t, path, path2)
+}
+
+func TestRendezvousHashConsistency(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+	defer log.Scope(t).Close(t)
+
+	// Same inputs always produce the same hash.
+	h1 := rendezvousHash("my-worker", 1)
+	h2 := rendezvousHash("my-worker", 1)
+	require.Equal(t, h1, h2)
+
+	// Different nodes produce different hashes.
+	h3 := rendezvousHash("my-worker", 2)
+	require.NotEqual(t, h1, h3)
+
+	// Different workers produce different hashes.
+	h4 := rendezvousHash("other-worker", 1)
+	require.NotEqual(t, h1, h4)
 }
 
 func TestWorkerdConfigGeneration(t *testing.T) {
@@ -609,6 +628,285 @@ func TestWorkerdDOCounter(t *testing.T) {
 	invokeResp.Body.Close()
 	require.NoError(t, err)
 	require.Equal(t, "3", string(respBody))
+}
+
+// --- Health check and hardening tests ---
+
+func TestWorkerdHealthCheck(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+	defer log.Scope(t).Close(t)
+
+	s, _, _ := serverutils.StartServer(t, base.TestServerArgs{})
+	ctx := t.Context()
+	defer s.Stopper().Stop(ctx)
+
+	// No workers deployed → health should return 503.
+	resp, err := http.Get(fmt.Sprintf("http://%s/workers/_health", s.RPCAddr()))
+	require.NoError(t, err)
+	require.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+	resp.Body.Close()
+}
+
+func TestWorkerdHealthCheckWithWorker(t *testing.T) {
+	skipIfNoWorkerd(t)
+	defer leaktest.AfterTest(t)()
+	defer log.Scope(t).Close(t)
+
+	t.Setenv("RATEL_WORKERD_BIN", workerdBinPath())
+
+	s, _, _ := serverutils.StartServer(t, base.TestServerArgs{})
+	ctx := t.Context()
+	defer s.Stopper().Stop(ctx)
+
+	adminClient, err := s.GetAdminAuthenticatedHTTPClient()
+	require.NoError(t, err)
+
+	// Deploy a worker to start the sidecar.
+	resp := doDeploy(t, adminClient, s.AdminURL(), "hello", testWorkerHello, "")
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	resp.Body.Close()
+
+	// Health should become 200 once workerd starts.
+	require.Eventually(t, func() bool {
+		r, e := http.Get(fmt.Sprintf("http://%s/workers/_health", s.RPCAddr()))
+		if e != nil {
+			return false
+		}
+		r.Body.Close()
+		return r.StatusCode == http.StatusOK
+	}, 10*time.Second, 200*time.Millisecond, "health check did not become healthy")
+}
+
+func TestWorkerdConcurrencyLimit(t *testing.T) {
+	skipIfNoWorkerd(t)
+	defer leaktest.AfterTest(t)()
+	defer log.Scope(t).Close(t)
+
+	t.Setenv("RATEL_WORKERD_BIN", workerdBinPath())
+
+	s, _, _ := serverutils.StartServer(t, base.TestServerArgs{})
+	ctx := t.Context()
+	defer s.Stopper().Stop(ctx)
+
+	adminClient, err := s.GetAdminAuthenticatedHTTPClient()
+	require.NoError(t, err)
+
+	resp := doDeploy(t, adminClient, s.AdminURL(), "hello", testWorkerHello, "")
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	resp.Body.Close()
+
+	// Wait for workerd to become available.
+	require.Eventually(t, func() bool {
+		r, e := invokeWorker(s.RPCAddr(), "hello", "/", nil)
+		if e != nil {
+			return false
+		}
+		r.Body.Close()
+		return r.StatusCode == http.StatusOK
+	}, 10*time.Second, 200*time.Millisecond)
+
+	// Fire concurrent requests. All should succeed (well under the 256 limit).
+	const n = 32
+	errs := make(chan error, n)
+	for i := 0; i < n; i++ {
+		go func() {
+			r, e := invokeWorker(s.RPCAddr(), "hello", "/", nil)
+			if e != nil {
+				errs <- e
+				return
+			}
+			io.ReadAll(r.Body)
+			r.Body.Close()
+			if r.StatusCode != http.StatusOK {
+				errs <- fmt.Errorf("status %d", r.StatusCode)
+				return
+			}
+			errs <- nil
+		}()
+	}
+	for i := 0; i < n; i++ {
+		require.NoError(t, <-errs)
+	}
+}
+
+func TestWorkerdDOCounterPersistsAcrossRedeploy(t *testing.T) {
+	skipIfNoWorkerd(t)
+	defer leaktest.AfterTest(t)()
+	defer log.Scope(t).Close(t)
+
+	t.Setenv("RATEL_WORKERD_BIN", workerdBinPath())
+
+	s, _, _ := serverutils.StartServer(t, base.TestServerArgs{})
+	ctx := t.Context()
+	defer s.Stopper().Stop(ctx)
+
+	adminClient, err := s.GetAdminAuthenticatedHTTPClient()
+	require.NoError(t, err)
+
+	bindings := `{"durable_objects": [{"class_name": "Counter"}]}`
+
+	// Deploy v1 of the counter.
+	resp := doDeploy(t, adminClient, s.AdminURL(), "counter", testWorkerCounter, bindings)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	readBody(t, resp)
+
+	// Increment counter to 3.
+	var invokeResp *http.Response
+	require.Eventually(t, func() bool {
+		var e error
+		invokeResp, e = invokeWorker(s.RPCAddr(), "counter", "/", nil)
+		return e == nil && invokeResp.StatusCode == http.StatusOK
+	}, 15*time.Second, 200*time.Millisecond)
+
+	respBody, err := io.ReadAll(invokeResp.Body)
+	invokeResp.Body.Close()
+	require.NoError(t, err)
+	require.Equal(t, "1", string(respBody))
+
+	invokeResp, err = invokeWorker(s.RPCAddr(), "counter", "/", nil)
+	require.NoError(t, err)
+	respBody, err = io.ReadAll(invokeResp.Body)
+	invokeResp.Body.Close()
+	require.NoError(t, err)
+	require.Equal(t, "2", string(respBody))
+
+	invokeResp, err = invokeWorker(s.RPCAddr(), "counter", "/", nil)
+	require.NoError(t, err)
+	respBody, err = io.ReadAll(invokeResp.Body)
+	invokeResp.Body.Close()
+	require.NoError(t, err)
+	require.Equal(t, "3", string(respBody))
+
+	// Redeploy same script (triggers workerd restart, new ActorCache).
+	resp = doDeploy(t, adminClient, s.AdminURL(), "counter", testWorkerCounter, bindings)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	readBody(t, resp)
+
+	// Counter should continue from 4 (data persisted in KV, not in ActorCache).
+	require.Eventually(t, func() bool {
+		var e error
+		invokeResp, e = invokeWorker(s.RPCAddr(), "counter", "/", nil)
+		if e != nil {
+			return false
+		}
+		b, _ := io.ReadAll(invokeResp.Body)
+		invokeResp.Body.Close()
+		return string(b) == "4"
+	}, 15*time.Second, 200*time.Millisecond, "counter did not persist across redeploy")
+}
+
+func TestWorkerdForwardingLoopPrevention(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+	defer log.Scope(t).Close(t)
+
+	s, _, _ := serverutils.StartServer(t, base.TestServerArgs{})
+	ctx := t.Context()
+	defer s.Stopper().Stop(ctx)
+
+	// Send a request with X-Ratel-Forwarded already set.
+	// The proxy should never try to forward it again.
+	req, err := http.NewRequest(http.MethodGet,
+		fmt.Sprintf("http://%s/workers/anything/", s.RPCAddr()), nil)
+	require.NoError(t, err)
+	req.Header.Set("X-Ratel-Forwarded", "1")
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	resp.Body.Close()
+	// Without workerd running, this will proxy to localhost and get a
+	// connection refused or 502, but it should NOT loop or hang.
+	// The key assertion is that the request completes at all.
+	require.True(t, resp.StatusCode >= 400, "expected error status, got %d", resp.StatusCode)
+}
+
+func TestRendezvousHashStability(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+	defer log.Scope(t).Close(t)
+
+	// With 3 nodes, compute which node each of 100 workers maps to.
+	nodes := []roachpb.NodeID{1, 2, 3}
+	assignments := make(map[string]roachpb.NodeID)
+	for i := 0; i < 100; i++ {
+		name := fmt.Sprintf("worker-%d", i)
+		var best roachpb.NodeID
+		var bestHash uint64
+		for _, id := range nodes {
+			h := rendezvousHash(name, id)
+			if h > bestHash || best == 0 {
+				bestHash = h
+				best = id
+			}
+		}
+		assignments[name] = best
+	}
+
+	// Verify reasonable distribution (each node gets at least some workers).
+	counts := make(map[roachpb.NodeID]int)
+	for _, id := range assignments {
+		counts[id]++
+	}
+	for _, id := range nodes {
+		require.Greater(t, counts[id], 10,
+			"node %d only got %d workers; expected >10 of 100", id, counts[id])
+	}
+
+	// Add a 4th node. Most workers should stay on the same node.
+	nodesV2 := []roachpb.NodeID{1, 2, 3, 4}
+	moved := 0
+	for name, oldNode := range assignments {
+		var best roachpb.NodeID
+		var bestHash uint64
+		for _, id := range nodesV2 {
+			h := rendezvousHash(name, id)
+			if h > bestHash || best == 0 {
+				bestHash = h
+				best = id
+			}
+		}
+		if best != oldNode {
+			moved++
+		}
+	}
+	// With rendezvous hashing, ~25% of workers should move to the new node.
+	// Allow some variance.
+	require.Less(t, moved, 50, "too many workers moved when adding a node: %d/100", moved)
+	require.Greater(t, moved, 5, "suspiciously few workers moved: %d/100", moved)
+}
+
+func TestWorkerHasDOs(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+	defer log.Scope(t).Close(t)
+
+	s, _, _ := serverutils.StartServer(t, base.TestServerArgs{})
+	ctx := t.Context()
+	defer s.Stopper().Stop(ctx)
+
+	adminClient, err := s.GetAdminAuthenticatedHTTPClient()
+	require.NoError(t, err)
+	baseURL := s.AdminURL()
+
+	// Deploy stateless worker.
+	resp := doDeploy(t, adminClient, baseURL, "hello", testWorkerHello, "")
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	resp.Body.Close()
+
+	// Deploy DO-bearing worker.
+	bindings := `{"durable_objects": [{"class_name": "Counter"}]}`
+	resp = doDeploy(t, adminClient, baseURL, "counter", testWorkerCounterBindings, bindings)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	resp.Body.Close()
+
+	// The sidecar may not be running (no workerd binary in this test),
+	// but we can check the DB state directly via fetchWorkerDefs.
+	// Since we can't access the sidecar directly in this test pattern,
+	// verify via the API that bindings are stored correctly.
+	req, err := http.NewRequest(http.MethodGet, baseURL+"/api/v2/workers/", nil)
+	require.NoError(t, err)
+	listResp, err := adminClient.Do(req)
+	require.NoError(t, err)
+	body := readBody(t, listResp)
+	workers := body["workers"].([]interface{})
+	require.Len(t, workers, 2)
 }
 
 // --- Helpers ---

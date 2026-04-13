@@ -15,42 +15,64 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/semistrict/ratel/pkg/util/tracing"
 	"go.opentelemetry.io/otel/attribute"
 )
 
+const (
+	// maxConcurrentWorkerRequests limits in-flight worker invocations per node.
+	maxConcurrentWorkerRequests = 256
+
+	// workerRequestTimeout is the maximum time for a worker invocation.
+	workerRequestTimeout = 30 * time.Second
+)
+
 // workerdProxy is an HTTP handler that serves on the cmux HTTP/1.x listener.
 // It routes:
 //   - /workers/<name>/... → reverse proxy to local workerd (sets X-Worker-Name)
+//   - /workers/_health    → health check for the workerd sidecar
 //   - /api/v2/workers/... → passes through to the API v2 handler
+//
+// For multi-node clusters, requests for DO-bearing workers are routed to a
+// consistent node via rendezvous hashing (see workerRouter).
 type workerdProxy struct {
 	mux       *http.ServeMux
 	apiServer *apiV2Server
 	proxy     *httputil.ReverseProxy
 	tracer    *tracing.Tracer
+	sidecar   *WorkerdSidecar
+	router    *workerRouter
+
+	// sem limits concurrent worker invocations.
+	sem chan struct{}
 }
 
-func newWorkerdProxy(apiServer *apiV2Server, workerdPort int, tracer *tracing.Tracer) *workerdProxy {
-	// localhost URL parse cannot fail, but handle it defensively.
+func newWorkerdProxy(
+	apiServer *apiV2Server,
+	workerdPort int,
+	tracer *tracing.Tracer,
+	sidecar *WorkerdSidecar,
+	router *workerRouter,
+) *workerdProxy {
 	target, err := url.Parse(fmt.Sprintf("http://localhost:%d", workerdPort))
 	if err != nil {
 		panic(fmt.Sprintf("failed to parse workerd proxy target URL: %v", err))
 	}
 
 	proxy := httputil.NewSingleHostReverseProxy(target)
-	// Override the Director to set X-Worker-Name and strip the /workers/<name> prefix.
 	proxy.Director = func(req *http.Request) {
 		req.URL.Scheme = target.Scheme
 		req.URL.Host = target.Host
 		req.Host = target.Host
 
-		// Extract worker name from path: /workers/<name>/... → name, remainder
 		path := req.URL.Path
 		name, remainder := splitWorkerPath(path)
 		if name != "" {
@@ -67,7 +89,11 @@ func newWorkerdProxy(apiServer *apiV2Server, workerdPort int, tracer *tracing.Tr
 		apiServer: apiServer,
 		proxy:     proxy,
 		tracer:    tracer,
+		sidecar:   sidecar,
+		router:    router,
+		sem:       make(chan struct{}, maxConcurrentWorkerRequests),
 	}
+	wp.mux.HandleFunc("/workers/_health", wp.handleHealth)
 	wp.mux.HandleFunc("/workers/", wp.handleWorkers)
 	wp.mux.Handle("/api/v2/", apiServer)
 
@@ -80,14 +106,58 @@ func (wp *workerdProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (wp *workerdProxy) handleWorkers(w http.ResponseWriter, r *http.Request) {
 	name, _ := splitWorkerPath(r.URL.Path)
-	ctx, span := wp.tracer.StartSpanCtx(r.Context(), "worker.invoke",
+	if name == "" {
+		http.Error(w, "worker name required", http.StatusBadRequest)
+		return
+	}
+
+	// Enforce request timeout.
+	ctx, cancel := context.WithTimeout(r.Context(), workerRequestTimeout)
+	defer cancel()
+
+	ctx, span := wp.tracer.StartSpanCtx(ctx, "worker.invoke",
 		tracing.WithServerSpanKind,
 	)
-	if name != "" {
-		span.SetTag("worker.name", attribute.StringValue(name))
-	}
+	span.SetTag("worker.name", attribute.StringValue(name))
 	defer span.Finish()
+
+	// Multi-node routing: if this worker has DOs, route to the
+	// consistent owner node.
+	if wp.router != nil {
+		hasDOs := wp.workerHasDOs(name)
+		if wp.router.routeRequest(w, r.WithContext(ctx), name, hasDOs) {
+			return
+		}
+	}
+
+	// Acquire concurrency semaphore.
+	select {
+	case wp.sem <- struct{}{}:
+		defer func() { <-wp.sem }()
+	case <-ctx.Done():
+		http.Error(w, "request timeout waiting for capacity", http.StatusServiceUnavailable)
+		return
+	}
+
 	wp.proxy.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// handleHealth returns 200 if the workerd sidecar is running, 503 otherwise.
+func (wp *workerdProxy) handleHealth(w http.ResponseWriter, r *http.Request) {
+	if wp.sidecar == nil || !wp.sidecar.IsRunning() {
+		http.Error(w, "workerd not running", http.StatusServiceUnavailable)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, "ok")
+}
+
+// workerHasDOs returns true if the named worker has Durable Object classes.
+func (wp *workerdProxy) workerHasDOs(name string) bool {
+	if wp.sidecar == nil {
+		return false
+	}
+	return wp.sidecar.WorkerHasDOs(name)
 }
 
 // splitWorkerPath splits /workers/<name>/rest/of/path into (name, /rest/of/path).

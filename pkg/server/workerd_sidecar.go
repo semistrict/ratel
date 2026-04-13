@@ -22,6 +22,7 @@ import (
 	"os/exec"
 	"sync"
 	"syscall"
+	"time"
 
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/cockroachdb/errors"
@@ -59,10 +60,12 @@ type WorkerdSidecar struct {
 
 	mu struct {
 		sync.Mutex
-		cmd       *exec.Cmd
-		running   bool
-		cancelMon context.CancelFunc
-		rpcConn   *rpc.Conn // capnp RPC connection on the socketpair
+		cmd        *exec.Cmd
+		running    bool
+		cancelMon  context.CancelFunc
+		rpcConn    *rpc.Conn // capnp RPC connection on the socketpair
+		workerDefs []WorkerDef
+		waitDone   chan struct{} // closed when cmd.Wait() returns
 	}
 }
 
@@ -130,6 +133,25 @@ func (w *WorkerdSidecar) SetInternalExecutor(ie *sql.InternalExecutor) {
 // ListenPort returns the port the workerd sidecar listens on.
 func (w *WorkerdSidecar) ListenPort() int {
 	return w.listenPort
+}
+
+// IsRunning returns true if the workerd sidecar process is running.
+func (w *WorkerdSidecar) IsRunning() bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.mu.running
+}
+
+// WorkerHasDOs returns true if the named worker has Durable Object classes.
+func (w *WorkerdSidecar) WorkerHasDOs(name string) bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	for _, wd := range w.mu.workerDefs {
+		if wd.Name == name {
+			return len(wd.DOClasses) > 0
+		}
+	}
+	return false
 }
 
 // Start launches the workerd process if workers exist. It is a no-op if no
@@ -254,15 +276,20 @@ func (w *WorkerdSidecar) startProcess(ctx context.Context, workers []WorkerDef) 
 	w.mu.running = true
 	w.mu.cancelMon = monCancel
 	w.mu.rpcConn = rpcConn
+	w.mu.workerDefs = workers
+	w.mu.waitDone = waitDone
 	log.Infof(ctx, "workerd sidecar started (pid %d) with %d workers", cmd.Process.Pid, len(workers))
 	return nil
 }
 
+// gracefulStopTimeout is how long we wait after SIGTERM before SIGKILL.
+const gracefulStopTimeout = 5 * time.Second
+
 func (w *WorkerdSidecar) stopProcess() {
 	w.mu.Lock()
-	defer w.mu.Unlock()
 
 	if !w.mu.running || w.mu.cmd == nil || w.mu.cmd.Process == nil {
+		w.mu.Unlock()
 		return
 	}
 
@@ -272,14 +299,30 @@ func (w *WorkerdSidecar) stopProcess() {
 		w.mu.cancelMon = nil
 	}
 
-	w.mu.cmd.Process.Signal(os.Interrupt)
+	cmd := w.mu.cmd
+	waitDone := w.mu.waitDone
 	w.mu.running = false
 	w.mu.cmd = nil
+	w.mu.workerDefs = nil
+	w.mu.waitDone = nil
 
 	// Close the capnp RPC connection, which also closes the socketpair.
 	if w.mu.rpcConn != nil {
 		w.mu.rpcConn.Close()
 		w.mu.rpcConn = nil
+	}
+
+	w.mu.Unlock()
+
+	// Graceful shutdown: SIGTERM, wait up to gracefulStopTimeout, then SIGKILL.
+	cmd.Process.Signal(syscall.SIGTERM)
+	select {
+	case <-waitDone:
+		return
+	case <-time.After(gracefulStopTimeout):
+		log.Warningf(context.Background(), "workerd did not exit after %v; sending SIGKILL", gracefulStopTimeout)
+		cmd.Process.Kill()
+		<-waitDone
 	}
 }
 

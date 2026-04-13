@@ -1572,7 +1572,14 @@ func (s *Server) PreStart(ctx context.Context) error {
 		if s.workerdSidecar != nil {
 			workerdPort = s.workerdSidecar.ListenPort()
 		}
-		wp := newWorkerdProxy(apiServer, workerdPort, s.cfg.AmbientCtx.Tracer)
+
+		// Create the multi-node worker router for DO affinity.
+		var router *workerRouter
+		if s.nodeLiveness != nil && s.gossip != nil {
+			router = newWorkerRouter(s.NodeID(), s.gossip, s.nodeLiveness, s.rpcContext)
+		}
+
+		wp := newWorkerdProxy(apiServer, workerdPort, s.cfg.AmbientCtx.Tracer, s.workerdSidecar, router)
 		workersServer := &http.Server{Handler: wp}
 		s.stopper.AddCloser(stop.CloserFn(func() {
 			workersServer.Close()

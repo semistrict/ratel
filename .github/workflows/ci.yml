@@ -78,3 +78,7 @@ jobs:
         run: make testcompile
       - name: Smoketest
         run: make smoketest
+      - name: Workers platform tests
+        run: go test -mod=vendor -run 'TestWorkerd|TestDOStorage|TestRouterScript|TestSplitWorker' -v -count=1 -timeout 120s ./pkg/server/
+      - name: KV benchmarks (compile only)
+        run: go test -mod=vendor -bench 'BenchmarkSingleNode' -run '^$' -benchtime=1x -count=1 ./pkg/kv/kvserver/

@@ -18,6 +18,8 @@ import (
 	"context"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"sync"
@@ -149,6 +151,9 @@ type Server struct {
 	// account for and bound the memory used for request processing in the KV
 	// layer.
 	kvMemoryMonitor *mon.BytesMonitor
+
+	// workerdSidecar manages the workerd child process for the workers platform.
+	workerdSidecar *WorkerdSidecar
 
 	// The following fields are populated at start time, i.e. in `(*Server).Start`.
 	startTime time.Time
@@ -856,6 +861,25 @@ func NewServer(cfg Config, stopper *stop.Stopper) (*Server, error) {
 		kvMemoryMonitor:        kvMemoryMonitor,
 	}
 
+	// Create workerd sidecar if the binary is available.
+	// RATEL_WORKERD_BIN overrides PATH lookup (useful for tests and custom installs).
+	workerdBin := os.Getenv("RATEL_WORKERD_BIN")
+	if workerdBin == "" {
+		workerdBin, _ = exec.LookPath("workerd")
+	}
+	if workerdBin != "" {
+		workDir := filepath.Join(cfg.Stores.Specs[0].Path, "workerd")
+		sidecar, sidecarErr := NewWorkerdSidecar(
+			WorkerdConfig{BinaryPath: workerdBin, WorkDir: workDir},
+			db, keys.SystemSQLCodec, cfg.AmbientCtx.Tracer, stopper,
+		)
+		if sidecarErr != nil {
+			log.Warningf(ctx, "failed to create workerd sidecar: %v", sidecarErr)
+		} else {
+			lateBoundServer.workerdSidecar = sidecar
+		}
+	}
+
 	serverKnobs, _ := cfg.TestingKnobs.Server.(*TestingKnobs)
 	if serverKnobs == nil || !serverKnobs.DisableAuthSessionPurge {
 		// Begin an async task to periodically purge old sessions in the system.web_sessions table.
@@ -1117,7 +1141,7 @@ func (s *Server) PreStart(ctx context.Context) error {
 	// and dispatches the server worker for the RPC.
 	// The SQL listener is returned, to start the SQL server later
 	// below when the server has initialized.
-	pgL, startRPCServer, err := startListenRPCAndSQL(ctx, workersCtx, s.cfg.BaseConfig, s.stopper, s.grpc)
+	pgL, workersL, startRPCServer, err := startListenRPCAndSQL(ctx, workersCtx, s.cfg.BaseConfig, s.stopper, s.grpc)
 	if err != nil {
 		return err
 	}
@@ -1527,16 +1551,39 @@ func (s *Server) PreStart(ctx context.Context) error {
 	// Connect the HTTP endpoints. This also wraps the privileged HTTP
 	// endpoints served by gwMux by the HTTP cookie authentication
 	// check.
+	apiServer := newAPIV2Server(ctx, s)
 	if err := s.http.setupRoutes(ctx,
-		s.authentication,       /* authnServer */
-		s.adminAuthzCheck,      /* adminAuthzCheck */
-		s.recorder,             /* metricSource */
-		s.runtime,              /* runtimeStatsSampler */
-		gwMux,                  /* handleRequestsUnauthenticated */
-		s.debug,                /* handleDebugUnauthenticated */
-		newAPIV2Server(ctx, s), /* apiServer */
+		s.authentication,  /* authnServer */
+		s.adminAuthzCheck, /* adminAuthzCheck */
+		s.recorder,        /* metricSource */
+		s.runtime,         /* runtimeStatsSampler */
+		gwMux,             /* handleRequestsUnauthenticated */
+		s.debug,           /* handleDebugUnauthenticated */
+		apiServer,
 	); err != nil {
 		return err
+	}
+
+	// Serve the workers platform HTTP proxy on the cmux HTTP/1.x listener.
+	// This handles /workers/<name>/... (reverse proxy to workerd) and
+	// /api/v2/workers/... (deploy/list API).
+	{
+		workerdPort := defaultWorkerdListenPort
+		if s.workerdSidecar != nil {
+			workerdPort = s.workerdSidecar.ListenPort()
+		}
+		wp := newWorkerdProxy(apiServer, workerdPort, s.cfg.AmbientCtx.Tracer)
+		workersServer := &http.Server{Handler: wp}
+		s.stopper.AddCloser(stop.CloserFn(func() {
+			workersServer.Close()
+		}))
+		if err := s.stopper.RunAsyncTask(workersCtx, "serve-workers-http", func(ctx context.Context) {
+			if srvErr := workersServer.Serve(workersL); srvErr != nil && !errors.Is(srvErr, http.ErrServerClosed) {
+				log.Warningf(ctx, "workers HTTP server exited: %v", srvErr)
+			}
+		}); err != nil {
+			return err
+		}
 	}
 
 	// Record node start in telemetry. Get the right counter for this storage
@@ -1627,6 +1674,16 @@ func (s *Server) AcceptClients(ctx context.Context) error {
 		s.cfg.SocketFile,
 	); err != nil {
 		return err
+	}
+
+	// Start the workerd sidecar if configured. This runs after SQL is ready
+	// because the sidecar needs the internal executor to query worker_scripts.
+	if s.workerdSidecar != nil {
+		s.workerdSidecar.SetInternalExecutor(s.sqlServer.internalExecutor)
+		if err := s.workerdSidecar.Start(ctx); err != nil {
+			log.Warningf(ctx, "failed to start workerd sidecar: %v", err)
+			// Non-fatal: the server can run without workers.
+		}
 	}
 
 	log.Event(ctx, "server ready")

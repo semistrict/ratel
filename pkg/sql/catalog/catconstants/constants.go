@@ -91,6 +91,7 @@ const (
 	SpanCountTableName                     SystemTableName = "span_count"
 	WasmFunctionsTableName                 SystemTableName = "wasm_functions"
 	ActorsTableName                        SystemTableName = "actors"
+	WorkerScriptsTableName                 SystemTableName = "worker_scripts"
 )
 
 // Oid for virtual database and table.

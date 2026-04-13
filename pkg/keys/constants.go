@@ -384,7 +384,7 @@ const (
 	// for a hard-coded descriptor ID.
 	// Note that this is NO LONGER a higher bound on ALL POSSIBLE system
 	// descriptor IDs.
-	MaxReservedDescID = 49
+	MaxReservedDescID = 50
 
 	// RootNamespaceID is the ID of the root namespace.
 	RootNamespaceID = 0
@@ -472,6 +472,13 @@ const (
 	SpanConfigurationsTableID           = 47
 	WasmFunctionsTableID                = 48
 	ActorsTableID                       = 49
+	WorkerScriptsTableID                = 50
+
+	// DOKVTableID is a virtual table ID used inside actor-scoped key
+	// prefixes for Durable Object key-value storage. It is not backed
+	// by a descriptor; it exists solely to partition DO storage data
+	// within an actor's keyspace.
+	DOKVTableID = 51
 )
 
 // CommentType the type of the schema object on which a comment has been

@@ -103,15 +103,129 @@ The leaseholder node instantiates the DO class (loading the script from
 
 ### DO ID mapping
 
-Cloudflare's `DurableObjectNamespace.idFromName(name)` maps deterministically
-to an ID. Our implementation:
+The actor identity includes the DO class name. This gives each class its own
+isolated keyspace per instance, matching Cloudflare's model where each class
+has a separate storage namespace.
 
-- `idFromName(name)` computes `ActorHash(name)` -- same hash used by Ratel's
-  actor key encoding
-- `newUniqueId()` generates a random 16-byte ID
-- The ID IS the actor hash prefix in the key encoding
+The 16-byte actor hash is split into two parts to promote co-location of
+actors sharing the same entity name across different classes:
 
-This means DO ID = actor identity in Ratel. No separate mapping needed.
+```
+actor_hash = trunc96(SHA256(name)) ++ trunc32(SHA256(class + ":" + name))
+             ---- 12 bytes ----       ---- 4 bytes ----
+             range placement          class discriminator
+```
+
+- The first 12 bytes are derived from the **name alone**.
+  `OrderActor.idFromName("alice")` and `ChatActor.idFromName("alice")` share
+  this prefix and will land in the same Raft range.
+- The last 4 bytes are derived from **class+name**, giving each class its own
+  keyspace. The two actors have independent data despite sharing a range.
+- `newUniqueId()` generates a random hash within the caller's range (see
+  below). The class name is recorded in `system.actors` for observability.
+
+```
+idFromName("alice") in OrderActor  →  SHA256("alice")[0:12] ++ SHA256("OrderActor:alice")[0:4]
+idFromName("alice") in ChatActor   →  SHA256("alice")[0:12] ++ SHA256("ChatActor:alice")[0:4]
+                                      ^^^^ same prefix ^^^^    ^^^^ different suffix ^^^^
+```
+
+This means all of "alice"'s DOs — orders, chat, inventory — are co-located
+on the same node. Cross-DO calls between them are local.
+
+## Differences from Cloudflare Workers
+
+### PostgreSQL SQL syntax
+
+Ratel uses PostgreSQL-compatible SQL (CockroachDB dialect). DOs that use the
+SQL storage API (`storage.sql`) execute queries in PostgreSQL syntax, not
+SQLite syntax. This affects:
+
+- String concatenation: `||` (same in both)
+- Type system: PostgreSQL types (INT8, STRING, TIMESTAMPTZ, etc.)
+- JSON: `JSONB` type with PostgreSQL operators (`->`, `->>`, `@>`)
+- Upsert: `INSERT ... ON CONFLICT DO UPDATE` (same in both)
+- No `PRAGMA`, `AUTOINCREMENT`, or SQLite-specific features
+- Window functions, CTEs, and set operations follow PostgreSQL behavior
+
+Workers ported from Cloudflare that use `storage.sql` may need query
+adjustments. Workers that use only the KV API (`storage.get/put/delete/list`)
+are fully compatible.
+
+### Schema defined outside the worker
+
+On Cloudflare, each DO manages its own schema — the DO constructor typically
+runs `CREATE TABLE IF NOT EXISTS` on first instantiation. Tables are private
+to each DO instance (separate SQLite databases).
+
+On Ratel, schema is defined at the database level, outside and independent of
+any worker or DO:
+
+```sql
+-- Admin creates tables via psql / SQL client
+CREATE TABLE orders (id INT PRIMARY KEY, item STRING, price DECIMAL);
+CREATE TABLE inventory (sku STRING PRIMARY KEY, qty INT);
+```
+
+All actors (DOs) of a given class share the same table schema. Each actor sees
+only its own rows (isolated by the actor key prefix), but the columns and
+indexes are the same for all actors. This is the same as Ratel's existing
+actor model.
+
+Consequences:
+
+- **No DDL in DO code.** Workers cannot CREATE/ALTER/DROP tables. Schema
+  changes are an admin operation, applied once and shared by all actors.
+- **Schema is tenant-global.** All actors see the same tables, indexes, and
+  constraints. An actor cannot have a table that other actors don't have.
+- **Migrations are simpler.** One `ALTER TABLE` applies to all actors. No need
+  to run migrations inside each DO instance.
+- **DOs query real tables, not KV.** Instead of `storage.sql("SELECT * FROM
+  my_table")` creating an ad-hoc SQLite table per DO, the DO queries
+  Ratel tables that were defined by an admin. The actor scoping is implicit.
+
+Example DO accessing actor-scoped data:
+
+```javascript
+export class OrderActor {
+  constructor(state, env) {
+    this.state = state;
+    this.sql = state.storage.sql;
+  }
+
+  async fetch(request) {
+    // This query is scoped to the actor automatically.
+    // The 'orders' table was created by an admin via SQL.
+    const orders = this.sql`SELECT * FROM orders`;
+    return Response.json(orders);
+  }
+}
+```
+
+### newUniqueId() is range-local
+
+On Cloudflare, `newUniqueId()` produces a globally random ID. The new DO
+can land on any machine.
+
+On Ratel, `newUniqueId()` called from within a DO generates an ID whose
+actor hash falls within the caller's Raft range:
+
+```javascript
+// Inside a DO handler:
+const id = env.MY_DO.newUniqueId();
+const helper = env.MY_DO.get(id);
+await helper.fetch(req);  // same node, no network hop
+```
+
+Implementation: look up the range containing the current actor, determine
+the actor hash space it covers, generate a random hash within that space.
+
+This means DOs that create other DOs get locality by default. No opt-in
+required. The co-location holds as long as the range hasn't split between
+the two actors. For small actors this is durable in practice.
+
+`idFromName(name)` is deterministic and maps to a specific hash anywhere
+in the cluster. Use it when you need a well-known global identity.
 
 ## DO storage: local KV via actor-storage.capnp
 

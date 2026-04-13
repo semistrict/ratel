@@ -31,13 +31,14 @@ import (
 // startListenRPCAndSQL starts the RPC and SQL listeners.
 // It returns the SQL listener, which can be used
 // to start the SQL server when initialization has completed.
-// It also returns a function that starts the RPC server,
+// It also returns a workers HTTP/1.x listener (for the workers platform)
+// and a function that starts the RPC server,
 // when the cluster is known to have bootstrapped or
 // when waiting for init().
 // This does not start *accepting* connections just yet.
 func startListenRPCAndSQL(
 	ctx, workersCtx context.Context, cfg BaseConfig, stopper *stop.Stopper, grpc *grpcServer,
-) (sqlListener net.Listener, startRPCServer func(ctx context.Context), err error) {
+) (sqlListener net.Listener, workersListener net.Listener, startRPCServer func(ctx context.Context), err error) {
 	rpcChanName := "rpc/sql"
 	if cfg.SplitListenSQL {
 		rpcChanName = "rpc"
@@ -51,7 +52,7 @@ func startListenRPCAndSQL(
 		var err error
 		ln, err = ListenAndUpdateAddrs(ctx, &cfg.Addr, &cfg.AdvertiseAddr, rpcChanName)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		log.Eventf(ctx, "listening on port %s", cfg.Addr)
 	}
@@ -66,7 +67,7 @@ func startListenRPCAndSQL(
 		if pgL == nil {
 			pgL, err = ListenAndUpdateAddrs(ctx, &cfg.SQLAddr, &cfg.SQLAdvertiseAddr, "sql")
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 		}
 		// The SQL listener shutdown worker, which closes everything under
@@ -83,7 +84,7 @@ func startListenRPCAndSQL(
 		}
 		if err := stopper.RunAsyncTask(workersCtx, "wait-quiesce", waitQuiesce); err != nil {
 			waitQuiesce(workersCtx)
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		log.Eventf(ctx, "listening on sql port %s", cfg.SQLAddr)
 	}
@@ -106,6 +107,11 @@ func startListenRPCAndSQL(
 		cfg.SQLAddr = cfg.Addr
 		cfg.SQLAdvertiseAddr = cfg.AdvertiseAddr
 	}
+
+	// Match HTTP/1.x requests for the workers platform. This must come
+	// after pgwire (which also starts with a single byte) but before the
+	// gRPC catch-all.
+	workersL := m.Match(cmux.HTTP1())
 
 	anyL := m.Match(cmux.Any())
 	if serverTestKnobs, ok := cfg.TestingKnobs.Server.(*TestingKnobs); ok {
@@ -132,7 +138,7 @@ func startListenRPCAndSQL(
 	if err := stopper.RunAsyncTask(
 		workersCtx, "grpc-quiesce", waitForQuiesce,
 	); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// startRPCServer starts the RPC server. We do not do this
@@ -152,5 +158,5 @@ func startListenRPCAndSQL(
 		})
 	}
 
-	return pgL, startRPCServer, nil
+	return pgL, workersL, startRPCServer, nil
 }

@@ -92,6 +92,7 @@ type apiV2Server struct {
 	status           *statusServer
 	promRuleExporter *metric.PrometheusRuleExporter
 	mux              *mux.Router
+	sidecar          *WorkerdSidecar
 }
 
 // newAPIV2Server returns a new apiV2Server.
@@ -107,6 +108,7 @@ func newAPIV2Server(ctx context.Context, s *Server) *apiV2Server {
 		status:           s.status,
 		mux:              outerMux,
 		promRuleExporter: s.promRuleExporter,
+		sidecar:          s.workerdSidecar,
 	}
 	a.registerRoutes(innerMux, authMux)
 	return a
@@ -162,6 +164,10 @@ func (a *apiV2Server) registerRoutes(innerMux *mux.Router, authMux http.Handler)
 		{"rules/", a.listRules, false, regularRole, noOption},
 
 		{"sql/", a.execSQL, true, regularRole, noOption},
+
+		// Worker management.
+		{"workers/", a.listWorkers, true, adminRole, noOption},
+		{"workers/{name}/", a.deployWorker, true, adminRole, noOption},
 	}
 
 	// For all routes requiring authentication, have the outer mux (a.mux)

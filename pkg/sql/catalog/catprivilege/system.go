@@ -70,6 +70,7 @@ var (
 		catconstants.SpanCountTableName,
 		catconstants.WasmFunctionsTableName,
 		catconstants.ActorsTableName,
+		catconstants.WorkerScriptsTableName,
 	}
 
 	// RestoreCopySystemTablePrefix is the prefix of the table name that we give

@@ -9,3 +9,6 @@
 	path = c-deps/proj
 	url = https://github.com/oxidecomputer/PROJ.git
 	branch = 4.9.3-cockroach
+[submodule "c-deps/workerd"]
+	path = c-deps/workerd
+	url = git@github.com:semistrict/workerd.git

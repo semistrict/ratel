@@ -49,3 +49,4 @@ build/Railroad.jar
 **/gomock_reflect_*
 ratel
 fly-cluster
+pkg/server/workerd/

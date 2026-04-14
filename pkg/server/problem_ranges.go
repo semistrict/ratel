@@ -31,7 +31,7 @@ func (s *statusServer) ProblemRanges(
 	ctx = s.AnnotateCtx(ctx)
 
 	response := &serverpb.ProblemRangesResponse{
-		NodeID:           s.gossip.NodeID.Get(),
+		NodeID:           s.getNodeID(),
 		ProblemsByNodeID: make(map[roachpb.NodeID]serverpb.ProblemRangesResponse_NodeProblems),
 	}
 

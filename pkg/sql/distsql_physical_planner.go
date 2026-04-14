@@ -25,7 +25,6 @@ import (
 	"github.com/cockroachdb/redact"
 	"github.com/semistrict/ratel/pkg/base"
 	"github.com/semistrict/ratel/pkg/cloud"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/jobs"
 	"github.com/semistrict/ratel/pkg/jobs/jobspb"
 	"github.com/semistrict/ratel/pkg/keys"
@@ -107,9 +106,6 @@ type DistSQLPlanner struct {
 	// local flows errored out.
 	cancelFlowsCoordinator cancelFlowsCoordinator
 
-	// gossip handle used to check node version compatibility.
-	gossip gossip.OptionalGossip
-
 	// nodeDialer handles communication between SQL and KV nodes.
 	nodeDialer *nodedialer.Dialer
 
@@ -179,7 +175,6 @@ func NewDistSQLPlanner(
 	distSQLSrv *distsql.ServerImpl,
 	distSender *kvcoord.DistSender,
 	nodeDescs kvcoord.NodeDescStore,
-	gw gossip.OptionalGossip,
 	stopper *stop.Stopper,
 	isAvailable func(base.SQLInstanceID) bool,
 	nodeDialer *nodedialer.Dialer,
@@ -193,11 +188,9 @@ func NewDistSQLPlanner(
 		gatewaySQLInstanceID: sqlInstanceID,
 		stopper:              stopper,
 		distSQLSrv:           distSQLSrv,
-		gossip:               gw,
 		nodeDialer:           nodeDialer,
 		podNodeDialer:        podNodeDialer,
 		nodeHealth: distSQLNodeHealth{
-			gossip:      gw,
 			connHealth:  nodeDialer.ConnHealthTryDial,
 			isAvailable: isAvailable,
 		},
@@ -926,7 +919,6 @@ type SpanPartition struct {
 }
 
 type distSQLNodeHealth struct {
-	gossip      gossip.OptionalGossip
 	isAvailable func(base.SQLInstanceID) bool
 	connHealth  func(roachpb.NodeID, rpc.ConnectionClass) error
 }
@@ -951,27 +943,6 @@ func (h *distSQLNodeHealth) check(ctx context.Context, sqlInstanceID base.SQLIns
 	}
 	if !h.isAvailable(sqlInstanceID) {
 		return pgerror.Newf(pgcode.CannotConnectNow, "not using n%d since it is not available", sqlInstanceID)
-	}
-
-	// Check that the node is not draining.
-	if g, ok := h.gossip.Optional(distsql.MultiTenancyIssueNo); ok {
-		drainingInfo := &execinfrapb.DistSQLDrainingInfo{}
-		if err := g.GetInfoProto(gossip.MakeDistSQLDrainingKey(sqlInstanceID), drainingInfo); err != nil {
-			// Because draining info has no expiration, an error
-			// implies that we have not yet received a node's
-			// draining information. Since this information is
-			// written on startup, the most likely scenario is
-			// that the node is ready. We therefore return no
-			// error.
-			// TODO(ajwerner): Determine the expected error types and only filter those.
-			return nil //nolint:returnerrcheck
-		}
-
-		if drainingInfo.Draining {
-			err := errors.Newf("not using n%d because it is draining", sqlInstanceID)
-			log.VEventf(ctx, 1, "%v", err)
-			return err
-		}
 	}
 
 	return nil
@@ -1181,18 +1152,10 @@ func (dsp *DistSQLPlanner) partitionSpansTenant(
 }
 
 // nodeVersionIsCompatible decides whether a particular node's DistSQL version
-// is compatible with dsp.planVersion. It uses gossip to find out the node's
-// version range.
+// is compatible with dsp.planVersion. In a homogeneous binary deployment, all
+// nodes run the same version and are always compatible.
 func (dsp *DistSQLPlanner) nodeVersionIsCompatible(sqlInstanceID base.SQLInstanceID) bool {
-	g, ok := dsp.gossip.Optional(distsql.MultiTenancyIssueNo)
-	if !ok {
-		return true // no gossip - always compatible; only a single gateway running in Phase 2
-	}
-	var v execinfrapb.DistSQLVersionGossipInfo
-	if err := g.GetInfoProto(gossip.MakeDistSQLNodeVersionKey(sqlInstanceID), &v); err != nil {
-		return false
-	}
-	return distsql.FlowVerIsCompatible(dsp.planVersion, v.MinAcceptedVersion, v.Version)
+	return true
 }
 
 func getIndexIdx(index catalog.Index, desc catalog.TableDescriptor) (uint32, error) {

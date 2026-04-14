@@ -40,22 +40,15 @@ import (
 	"github.com/semistrict/ratel/pkg/base"
 	"github.com/semistrict/ratel/pkg/build"
 	"github.com/semistrict/ratel/pkg/cli/exit"
-	"github.com/semistrict/ratel/pkg/clusterversion"
-	"github.com/semistrict/ratel/pkg/config"
 	"github.com/semistrict/ratel/pkg/config/zonepb"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/kv/kvserver"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/liveness/livenesspb"
 	"github.com/semistrict/ratel/pkg/roachpb"
-	"github.com/semistrict/ratel/pkg/security"
 	"github.com/semistrict/ratel/pkg/server/serverpb"
 	"github.com/semistrict/ratel/pkg/server/status/statuspb"
-	"github.com/semistrict/ratel/pkg/settings/cluster"
 	"github.com/semistrict/ratel/pkg/sql"
-	"github.com/semistrict/ratel/pkg/sql/catalog/catalogkeys"
-	"github.com/semistrict/ratel/pkg/sql/catalog/dbdesc"
-	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
 	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 	"github.com/semistrict/ratel/pkg/storage"
 	"github.com/semistrict/ratel/pkg/testutils"
@@ -419,108 +412,9 @@ func TestAcceptEncoding(t *testing.T) {
 	require.Less(t, compressedSize, uncompressedSize, "Compressed response body must be smaller than uncompressed response body")
 }
 
-// TestSystemConfigGossip tests that system config gossip works in the mixed
-// version state. After the 22.1 release is finalized, system config gossip
-// will no longer occur.
-//
-// TODO(ajwerner): Delete this test in 22.2.
-func TestSystemConfigGossip(t *testing.T) {
-	defer leaktest.AfterTest(t)()
-	defer log.Scope(t).Close(t)
-
-	ctx := context.Background()
-	settings := cluster.MakeTestingClusterSettingsWithVersions(
-		clusterversion.TestingBinaryMinSupportedVersion,
-		clusterversion.TestingBinaryMinSupportedVersion,
-		false,
-	)
-	serverArgs := base.TestServerArgs{
-		Settings: settings,
-		Knobs: base.TestingKnobs{
-			Store: &kvserver.StoreTestingKnobs{
-				DisableMergeQueue: true,
-			},
-			Server: &TestingKnobs{
-				BinaryVersionOverride:          clusterversion.TestingBinaryMinSupportedVersion,
-				DisableAutomaticVersionUpgrade: make(chan struct{}),
-			},
-		},
-	}
-	s, _, kvDB := serverutils.StartServer(t, serverArgs)
-	defer s.Stopper().Stop(ctx)
-	ts := s.(*TestServer)
-
-	key := catalogkeys.MakeDescMetadataKey(keys.SystemSQLCodec, descpb.ID(keys.MaxSystemConfigDescID+1))
-	valAt := func(i int) *descpb.Descriptor {
-		return dbdesc.NewInitial(
-			descpb.ID(i), "foo", security.AdminRoleName(),
-		).DescriptorProto()
-	}
-
-	// Register a callback for gossip updates.
-	resultChan := ts.Gossip().DeprecatedRegisterSystemConfigChannel()
-
-	// The span gets gossiped when it first shows up.
-	select {
-	case <-resultChan:
-
-	case <-time.After(500 * time.Millisecond):
-		t.Fatal("did not receive gossip message")
-	}
-
-	// Write a system key with the transaction marked as having a Gossip trigger.
-	if err := kvDB.Txn(ctx, func(ctx context.Context, txn *kv.Txn) error {
-		if err := txn.DeprecatedSetSystemConfigTrigger(true /* forSystemTenant */); err != nil {
-			return err
-		}
-		return txn.Put(ctx, key, valAt(2))
-	}); err != nil {
-		t.Fatal(err)
-	}
-
-	// This has to be wrapped in a SucceedSoon because system migrations on the
-	// testserver's startup can trigger system config updates without the key we
-	// wrote.
-	testutils.SucceedsSoon(t, func() error {
-		// New system config received.
-		var systemConfig *config.SystemConfig
-		select {
-		case <-resultChan:
-			systemConfig = ts.gossip.DeprecatedGetSystemConfig()
-
-		case <-time.After(500 * time.Millisecond):
-			return errors.Errorf("did not receive gossip message")
-		}
-
-		// Now check the new config.
-		var val *roachpb.Value
-		for _, kv := range systemConfig.Values {
-			if bytes.Equal(key, kv.Key) {
-				val = &kv.Value
-				break
-			}
-		}
-		if val == nil {
-			return errors.Errorf("key not found in gossiped info")
-		}
-
-		// Make sure the returned value is valAt(2).
-		var got descpb.Descriptor
-		if err := val.GetProto(&got); err != nil {
-			return err
-		}
-
-		_, expected, _, _ := descpb.FromDescriptor(valAt(2))
-		_, db, _, _ := descpb.FromDescriptor(&got)
-		if db == nil {
-			panic(errors.Errorf("found nil database: %v", got))
-		}
-		if !reflect.DeepEqual(*db, *expected) {
-			panic(errors.Errorf("mismatch: expected %+v, got %+v", *expected, *db))
-		}
-		return nil
-	})
-}
+// TestSystemConfigGossip was deleted — it tested the deprecated gossip-based
+// system config distribution. System config is now distributed via
+// systemconfigwatcher (rangefeed on the system config span).
 
 func TestListenerFileCreation(t *testing.T) {
 	defer leaktest.AfterTest(t)()

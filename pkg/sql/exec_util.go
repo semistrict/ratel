@@ -38,7 +38,6 @@ import (
 	"github.com/semistrict/ratel/pkg/config"
 	"github.com/semistrict/ratel/pkg/config/zonepb"
 	"github.com/semistrict/ratel/pkg/featureflag"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/jobs"
 	"github.com/semistrict/ratel/pkg/jobs/jobspb"
 	"github.com/semistrict/ratel/pkg/keys"
@@ -1172,6 +1171,19 @@ type nodeStatusGenerator interface {
 	GenerateNodeStatus(ctx context.Context) *statuspb.NodeStatus
 }
 
+// NodeDescLookup provides access to node descriptors, replacing the former
+// gossip-based lookups.
+type NodeDescLookup interface {
+	GetNodeDescriptor(nodeID roachpb.NodeID) (*roachpb.NodeDescriptor, error)
+	GetAllNodeDescriptors() []*roachpb.NodeDescriptor
+}
+
+// StoreDescLookup provides access to store descriptors by store ID, replacing
+// the former gossip-based lookups.
+type StoreDescLookup interface {
+	GetStoreDescriptor(storeID roachpb.StoreID) (*roachpb.StoreDescriptor, error)
+}
+
 // An ExecutorConfig encompasses the auxiliary objects and configuration
 // required to create an executor.
 // All fields holding a pointer or an interface are required to create
@@ -1184,8 +1196,9 @@ type ExecutorConfig struct {
 	Locality          roachpb.Locality
 	AmbientCtx        log.AmbientContext
 	DB                *kv.DB
-	Gossip            gossip.OptionalGossip
 	NodeLiveness      optionalnodeliveness.Container
+	NodeDescLookup    NodeDescLookup
+	StoreDescLookup   StoreDescLookup
 	SystemConfig      config.SystemConfigProvider
 	DistSender        *kvcoord.DistSender
 	RPCContext        *rpc.Context

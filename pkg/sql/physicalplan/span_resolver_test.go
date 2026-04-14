@@ -22,7 +22,6 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/semistrict/ratel/pkg/base"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/kv/kvclient/kvcoord"
@@ -93,7 +92,7 @@ func TestSpanResolverUsesCaches(t *testing.T) {
 	lr := physicalplan.NewSpanResolver(
 		s3.Cfg.Settings,
 		s3.DistSenderI().(*kvcoord.DistSender),
-		s3.Gossip(),
+		s3.NodeDescStoreI().(kvcoord.NodeDescStore),
 		s3.GetNode().Descriptor, nil,
 		replicaoracle.BinPackingChoice)
 
@@ -202,7 +201,7 @@ func TestSpanResolver(t *testing.T) {
 	lr := physicalplan.NewSpanResolver(
 		s.(*server.TestServer).Cfg.Settings,
 		s.DistSenderI().(*kvcoord.DistSender),
-		s.GossipI().(*gossip.Gossip),
+		s.NodeDescStoreI().(kvcoord.NodeDescStore),
 		s.(*server.TestServer).GetNode().Descriptor, nil,
 		replicaoracle.BinPackingChoice)
 
@@ -298,7 +297,7 @@ func TestMixedDirections(t *testing.T) {
 	lr := physicalplan.NewSpanResolver(
 		s.(*server.TestServer).Cfg.Settings,
 		s.DistSenderI().(*kvcoord.DistSender),
-		s.GossipI().(*gossip.Gossip),
+		s.NodeDescStoreI().(kvcoord.NodeDescStore),
 		s.(*server.TestServer).GetNode().Descriptor,
 		nil,
 		replicaoracle.BinPackingChoice)

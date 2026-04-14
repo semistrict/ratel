@@ -25,14 +25,11 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/jackc/pgtype"
 	"github.com/semistrict/ratel/pkg/base"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/jobs"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/kv/kvserver"
 	"github.com/semistrict/ratel/pkg/roachpb"
-	"github.com/semistrict/ratel/pkg/security"
-	"github.com/semistrict/ratel/pkg/server/status/statuspb"
 	"github.com/semistrict/ratel/pkg/settings/cluster"
 	"github.com/semistrict/ratel/pkg/sql"
 	"github.com/semistrict/ratel/pkg/sql/catalog/catalogkeys"
@@ -43,7 +40,6 @@ import (
 	"github.com/semistrict/ratel/pkg/sql/distsql"
 	"github.com/semistrict/ratel/pkg/sql/parser"
 	"github.com/semistrict/ratel/pkg/sql/sem/tree"
-	"github.com/semistrict/ratel/pkg/sql/sessiondata"
 	"github.com/semistrict/ratel/pkg/sql/tests"
 	"github.com/semistrict/ratel/pkg/testutils"
 	"github.com/semistrict/ratel/pkg/testutils/serverutils"
@@ -139,42 +135,7 @@ func TestRangeLocalityBasedOnNodeIDs(t *testing.T) {
 	assert.Equal(t, "{node=1,node=3,node=2}", localities)
 }
 
-func TestGossipAlertsTable(t *testing.T) {
-	defer leaktest.AfterTest(t)()
-	defer log.Scope(t).Close(t)
-	params, _ := tests.CreateTestServerParams()
-	s, _, _ := serverutils.StartServer(t, params)
-	defer s.Stopper().Stop(context.Background())
-	ctx := context.Background()
-
-	if err := s.GossipI().(*gossip.Gossip).AddInfoProto(gossip.MakeNodeHealthAlertKey(456), &statuspb.HealthCheckResult{
-		Alerts: []statuspb.HealthAlert{{
-			StoreID:     123,
-			Category:    statuspb.HealthAlert_METRICS,
-			Description: "foo",
-			Value:       100.0,
-		}},
-	}, time.Hour); err != nil {
-		t.Fatal(err)
-	}
-
-	ie := s.InternalExecutor().(*sql.InternalExecutor)
-	row, err := ie.QueryRowEx(ctx, "test", nil, /* txn */
-		sessiondata.InternalExecutorOverride{User: security.RootUserName()},
-		"SELECT * FROM crdb_internal.gossip_alerts WHERE store_id = 123")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if a, e := len(row), 5; a != e {
-		t.Fatalf("got %d rows, wanted %d", a, e)
-	}
-	a := fmt.Sprintf("%v %v %v %v %v", row[0], row[1], row[2], row[3], row[4])
-	e := "456 123 'metrics' 'foo' 100.0"
-	if a != e {
-		t.Fatalf("got:\n%s\nexpected:\n%s", a, e)
-	}
-}
+// TestGossipAlertsTable was deleted — gossip_alerts table has been removed.
 
 // TestOldBitColumnMetadata checks that a pre-2.1 BIT columns
 // shows up properly in metadata post-2.1.

@@ -30,7 +30,6 @@ import (
 	"github.com/semistrict/ratel/pkg/build"
 	"github.com/semistrict/ratel/pkg/clusterversion"
 	"github.com/semistrict/ratel/pkg/config/zonepb"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/jobs"
 	"github.com/semistrict/ratel/pkg/jobs/jobspb"
 	"github.com/semistrict/ratel/pkg/keys"
@@ -38,11 +37,9 @@ import (
 	"github.com/semistrict/ratel/pkg/kv/kvclient"
 	"github.com/semistrict/ratel/pkg/kv/kvclient/kvcoord"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/concurrency/lock"
-	"github.com/semistrict/ratel/pkg/kv/kvserver/liveness/livenesspb"
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/security"
 	"github.com/semistrict/ratel/pkg/server/serverpb"
-	"github.com/semistrict/ratel/pkg/server/status/statuspb"
 	"github.com/semistrict/ratel/pkg/server/telemetry"
 	"github.com/semistrict/ratel/pkg/settings"
 	"github.com/semistrict/ratel/pkg/sql/catalog"
@@ -3687,39 +3684,23 @@ CREATE TABLE crdb_internal.zones (
 }
 
 func getAllNodeDescriptors(p *planner) ([]roachpb.NodeDescriptor, error) {
-	g, err := p.ExecCfg().Gossip.OptionalErr(47899)
-	if err != nil {
-		return nil, err
+	lookup := p.ExecCfg().NodeDescLookup
+	if lookup == nil {
+		return nil, nil
 	}
-	var descriptors []roachpb.NodeDescriptor
-	if err := g.IterateInfos(gossip.KeyNodeIDPrefix, func(key string, i gossip.Info) error {
-		bytes, err := i.Value.GetBytes()
-		if err != nil {
-			return errors.NewAssertionErrorWithWrappedErrf(err,
-				"failed to extract bytes for key %q", key)
-		}
-
-		var d roachpb.NodeDescriptor
-		if err := protoutil.Unmarshal(bytes, &d); err != nil {
-			return errors.NewAssertionErrorWithWrappedErrf(err,
-				"failed to parse value for key %q", key)
-		}
-
-		// Don't use node descriptors with NodeID 0, because that's meant to
-		// indicate that the node has been removed from the cluster.
-		if d.NodeID != 0 {
-			descriptors = append(descriptors, d)
-		}
-		return nil
-	}); err != nil {
-		return nil, err
+	ptrs := lookup.GetAllNodeDescriptors()
+	descs := make([]roachpb.NodeDescriptor, len(ptrs))
+	for i, d := range ptrs {
+		descs[i] = *d
 	}
-	return descriptors, nil
+	return descs, nil
 }
 
 // crdbInternalGossipNodesTable exposes local information about the cluster nodes.
+// With gossip removed, this table returns empty results. Use
+// crdb_internal.kv_node_status instead.
 var crdbInternalGossipNodesTable = virtualSchemaTable{
-	comment: "locally known gossiped node details (RAM; local node only)",
+	comment: "locally known gossiped node details (RAM; local node only) - deprecated, returns empty",
 	schema: `
 CREATE TABLE crdb_internal.gossip_nodes (
   node_id               INT NOT NULL,
@@ -3741,102 +3722,7 @@ CREATE TABLE crdb_internal.gossip_nodes (
 )
 	`,
 	populate: func(ctx context.Context, p *planner, _ catalog.DatabaseDescriptor, addRow func(...tree.Datum) error) error {
-		if err := p.RequireAdminRole(ctx, "read crdb_internal.gossip_nodes"); err != nil {
-			return err
-		}
-
-		g, err := p.ExecCfg().Gossip.OptionalErr(47899)
-		if err != nil {
-			return err
-		}
-
-		descriptors, err := getAllNodeDescriptors(p)
-		if err != nil {
-			return err
-		}
-
-		alive := make(map[roachpb.NodeID]tree.DBool)
-		for _, d := range descriptors {
-			if _, err := g.GetInfo(gossip.MakeGossipClientsKey(d.NodeID)); err == nil {
-				alive[d.NodeID] = true
-			}
-		}
-
-		sort.Slice(descriptors, func(i, j int) bool {
-			return descriptors[i].NodeID < descriptors[j].NodeID
-		})
-
-		type nodeStats struct {
-			ranges int32
-			leases int32
-		}
-
-		stats := make(map[roachpb.NodeID]nodeStats)
-		if err := g.IterateInfos(gossip.KeyStorePrefix, func(key string, i gossip.Info) error {
-			bytes, err := i.Value.GetBytes()
-			if err != nil {
-				return errors.NewAssertionErrorWithWrappedErrf(err,
-					"failed to extract bytes for key %q", key)
-			}
-
-			var desc roachpb.StoreDescriptor
-			if err := protoutil.Unmarshal(bytes, &desc); err != nil {
-				return errors.NewAssertionErrorWithWrappedErrf(err,
-					"failed to parse value for key %q", key)
-			}
-
-			s := stats[desc.Node.NodeID]
-			s.ranges += desc.Capacity.RangeCount
-			s.leases += desc.Capacity.LeaseCount
-			stats[desc.Node.NodeID] = s
-			return nil
-		}); err != nil {
-			return err
-		}
-
-		for _, d := range descriptors {
-			attrs := json.NewArrayBuilder(len(d.Attrs.Attrs))
-			for _, a := range d.Attrs.Attrs {
-				attrs.Add(json.FromString(a))
-			}
-
-			listenAddrRPC := d.Address
-			listenAddrSQL := d.CheckedSQLAddress()
-
-			advAddrRPC, err := g.GetNodeIDAddress(d.NodeID)
-			if err != nil {
-				return err
-			}
-			advAddrSQL, err := g.GetNodeIDSQLAddress(d.NodeID)
-			if err != nil {
-				return err
-			}
-
-			startTSDatum, err := tree.MakeDTimestamp(timeutil.Unix(0, d.StartedAt), time.Microsecond)
-			if err != nil {
-				return err
-			}
-			if err := addRow(
-				tree.NewDInt(tree.DInt(d.NodeID)),
-				tree.NewDString(listenAddrRPC.NetworkField),
-				tree.NewDString(listenAddrRPC.AddressField),
-				tree.NewDString(advAddrRPC.String()),
-				tree.NewDString(listenAddrSQL.NetworkField),
-				tree.NewDString(listenAddrSQL.AddressField),
-				tree.NewDString(advAddrSQL.String()),
-				tree.NewDJSON(attrs.Build()),
-				tree.NewDString(d.Locality.String()),
-				tree.NewDString(d.ClusterName),
-				tree.NewDString(d.ServerVersion.String()),
-				tree.NewDString(d.BuildTag),
-				startTSDatum,
-				tree.MakeDBool(alive[d.NodeID]),
-				tree.NewDInt(tree.DInt(stats[d.NodeID].ranges)),
-				tree.NewDInt(tree.DInt(stats[d.NodeID].leases)),
-			); err != nil {
-				return err
-			}
-		}
+		// Gossip has been removed. This table returns empty results.
 		return nil
 	},
 }
@@ -3890,14 +3776,10 @@ CREATE TABLE crdb_internal.kv_node_liveness (
 }
 
 // crdbInternalGossipLivenessTable exposes local information about the nodes'
-// liveness. The data exposed in this table can be stale/incomplete because
-// gossip doesn't provide guarantees around freshness or consistency.
-//
-// TODO(irfansharif): Remove this decommissioning field in v21.1. It's retained
-// for compatibility with v20.1 binaries where the `cockroach node` cli
-// processes make use of it.
+// liveness. With gossip removed, this table returns empty results. Use
+// crdb_internal.kv_node_liveness instead.
 var crdbInternalGossipLivenessTable = virtualSchemaTable{
-	comment: "locally known gossiped node liveness (RAM; local node only)",
+	comment: "locally known gossiped node liveness (RAM; local node only) - deprecated, returns empty",
 	schema: `
 CREATE TABLE crdb_internal.gossip_liveness (
   node_id          INT NOT NULL,
@@ -3910,76 +3792,15 @@ CREATE TABLE crdb_internal.gossip_liveness (
 )
 	`,
 	populate: func(ctx context.Context, p *planner, _ catalog.DatabaseDescriptor, addRow func(...tree.Datum) error) error {
-		// ATTENTION: The contents of this table should only access gossip data
-		// which is highly available. DO NOT CALL functions which require the
-		// cluster to be healthy, such as NodesStatusServer.ListNodesInternal().
-
-		if err := p.RequireAdminRole(ctx, "read crdb_internal.gossip_liveness"); err != nil {
-			return err
-		}
-
-		g, err := p.ExecCfg().Gossip.OptionalErr(47899)
-		if err != nil {
-			return err
-		}
-
-		type nodeInfo struct {
-			liveness  livenesspb.Liveness
-			updatedAt int64
-		}
-
-		var nodes []nodeInfo
-		if err := g.IterateInfos(gossip.KeyNodeLivenessPrefix, func(key string, i gossip.Info) error {
-			bytes, err := i.Value.GetBytes()
-			if err != nil {
-				return errors.NewAssertionErrorWithWrappedErrf(err,
-					"failed to extract bytes for key %q", key)
-			}
-
-			var l livenesspb.Liveness
-			if err := protoutil.Unmarshal(bytes, &l); err != nil {
-				return errors.NewAssertionErrorWithWrappedErrf(err,
-					"failed to parse value for key %q", key)
-			}
-			nodes = append(nodes, nodeInfo{
-				liveness:  l,
-				updatedAt: i.OrigStamp,
-			})
-			return nil
-		}); err != nil {
-			return err
-		}
-
-		sort.Slice(nodes, func(i, j int) bool {
-			return nodes[i].liveness.NodeID < nodes[j].liveness.NodeID
-		})
-
-		for i := range nodes {
-			n := &nodes[i]
-			l := &n.liveness
-			updatedTSDatum, err := tree.MakeDTimestamp(timeutil.Unix(0, n.updatedAt), time.Microsecond)
-			if err != nil {
-				return err
-			}
-			if err := addRow(
-				tree.NewDInt(tree.DInt(l.NodeID)),
-				tree.NewDInt(tree.DInt(l.Epoch)),
-				tree.NewDString(l.Expiration.String()),
-				tree.MakeDBool(tree.DBool(l.Draining)),
-				tree.MakeDBool(tree.DBool(!l.Membership.Active())),
-				tree.NewDString(l.Membership.String()),
-				updatedTSDatum,
-			); err != nil {
-				return err
-			}
-		}
+		// Gossip has been removed. This table returns empty results.
 		return nil
 	},
 }
 
 // crdbInternalGossipAlertsTable exposes current health alerts in the cluster.
+// With gossip removed, this table returns empty results.
 var crdbInternalGossipAlertsTable = virtualSchemaTable{
-	comment: "locally known gossiped health alerts (RAM; local node only)",
+	comment: "locally known gossiped health alerts (RAM; local node only) - deprecated, returns empty",
 	schema: `
 CREATE TABLE crdb_internal.gossip_alerts (
   node_id         INT NOT NULL,
@@ -3990,68 +3811,15 @@ CREATE TABLE crdb_internal.gossip_alerts (
 )
 	`,
 	populate: func(ctx context.Context, p *planner, _ catalog.DatabaseDescriptor, addRow func(...tree.Datum) error) error {
-		if err := p.RequireAdminRole(ctx, "read crdb_internal.gossip_alerts"); err != nil {
-			return err
-		}
-
-		g, err := p.ExecCfg().Gossip.OptionalErr(47899)
-		if err != nil {
-			return err
-		}
-
-		type resultWithNodeID struct {
-			roachpb.NodeID
-			statuspb.HealthCheckResult
-		}
-		var results []resultWithNodeID
-		if err := g.IterateInfos(gossip.KeyNodeHealthAlertPrefix, func(key string, i gossip.Info) error {
-			bytes, err := i.Value.GetBytes()
-			if err != nil {
-				return errors.NewAssertionErrorWithWrappedErrf(err,
-					"failed to extract bytes for key %q", key)
-			}
-
-			var d statuspb.HealthCheckResult
-			if err := protoutil.Unmarshal(bytes, &d); err != nil {
-				return errors.NewAssertionErrorWithWrappedErrf(err,
-					"failed to parse value for key %q", key)
-			}
-			nodeID, err := gossip.NodeIDFromKey(key, gossip.KeyNodeHealthAlertPrefix)
-			if err != nil {
-				return errors.NewAssertionErrorWithWrappedErrf(err,
-					"failed to parse node ID from key %q", key)
-			}
-			results = append(results, resultWithNodeID{nodeID, d})
-			return nil
-		}); err != nil {
-			return err
-		}
-
-		for _, result := range results {
-			for _, alert := range result.Alerts {
-				storeID := tree.DNull
-				if alert.StoreID != 0 {
-					storeID = tree.NewDInt(tree.DInt(alert.StoreID))
-				}
-				if err := addRow(
-					tree.NewDInt(tree.DInt(result.NodeID)),
-					storeID,
-					tree.NewDString(strings.ToLower(alert.Category.String())),
-					tree.NewDString(alert.Description),
-					tree.NewDFloat(tree.DFloat(alert.Value)),
-				); err != nil {
-					return err
-				}
-			}
-		}
+		// Gossip has been removed. This table returns empty results.
 		return nil
 	},
 }
 
-// crdbInternalGossipNetwork exposes the local view of the gossip network (i.e
-// the gossip client connections from source_id node to target_id node).
+// crdbInternalGossipNetworkTable exposes the local view of the gossip network.
+// With gossip removed, this table returns empty results.
 var crdbInternalGossipNetworkTable = virtualSchemaTable{
-	comment: "locally known edges in the gossip network (RAM; local node only)",
+	comment: "locally known edges in the gossip network (RAM; local node only) - deprecated, returns empty",
 	schema: `
 CREATE TABLE crdb_internal.gossip_network (
   source_id       INT NOT NULL,    -- source node of a gossip connection
@@ -4059,24 +3827,7 @@ CREATE TABLE crdb_internal.gossip_network (
 )
 	`,
 	populate: func(ctx context.Context, p *planner, _ catalog.DatabaseDescriptor, addRow func(...tree.Datum) error) error {
-		if err := p.RequireAdminRole(ctx, "read crdb_internal.gossip_network"); err != nil {
-			return err
-		}
-
-		g, err := p.ExecCfg().Gossip.OptionalErr(47899)
-		if err != nil {
-			return err
-		}
-
-		c := g.Connectivity()
-		for _, conn := range c.ClientConns {
-			if err := addRow(
-				tree.NewDInt(tree.DInt(conn.SourceID)),
-				tree.NewDInt(tree.DInt(conn.TargetID)),
-			); err != nil {
-				return err
-			}
-		}
+		// Gossip has been removed. This table returns empty results.
 		return nil
 	},
 }

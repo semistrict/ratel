@@ -24,7 +24,6 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/semistrict/ratel/pkg/base"
 	"github.com/semistrict/ratel/pkg/clusterversion"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverpb"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/liveness/livenesspb"
 	"github.com/semistrict/ratel/pkg/roachpb"
@@ -384,27 +383,18 @@ func newReplicateQueue(store *Store, allocator Allocator) *replicateQueue {
 		}
 	}
 
-	// Register gossip and node liveness callbacks to signal that
-	// replicas in purgatory might be retried.
-	if g := store.cfg.Gossip; g != nil { // gossip is nil for some unittests
-		g.RegisterCallback(gossip.MakePrefixPattern(gossip.KeyStorePrefix), func(key string, _ roachpb.Value) {
-			if !rq.store.IsStarted() {
-				return
-			}
-			// Because updates to our store's own descriptor won't affect
-			// replicas in purgatory, skip updating the purgatory channel
-			// in this case.
-			if storeID, err := gossip.StoreIDFromKey(key); err == nil && storeID == rq.store.StoreID() {
-				return
-			}
-			updateFn()
-		})
-	}
+	// Register node liveness callback to signal that replicas in
+	// purgatory might be retried.
 	if nl := store.cfg.NodeLiveness; nl != nil { // node liveness is nil for some unittests
 		nl.RegisterCallback(func(_ livenesspb.Liveness) {
 			updateFn()
 		})
 	}
+
+	// Register store descriptor update callback to wake purgatory when
+	// store capacity changes (e.g. a store gains space). This replaces
+	// the gossip callback that was removed.
+	store.cfg.StorePool.OnStoreDescUpdate(updateFn)
 
 	return rq
 }

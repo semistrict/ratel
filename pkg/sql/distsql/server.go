@@ -22,8 +22,6 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
-	"github.com/semistrict/ratel/pkg/base"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/server/telemetry"
@@ -50,16 +48,8 @@ import (
 )
 
 // minFlowDrainWait is the minimum amount of time a draining server allows for
-// any incoming flows to be registered. It acts as a grace period in which the
-// draining server waits for its gossiped draining state to be received by other
-// nodes.
+// any incoming flows to be registered.
 const minFlowDrainWait = 1 * time.Second
-
-// MultiTenancyIssueNo is the issue tracking DistSQL's Gossip and
-// NodeID dependencies.
-//
-// See https://github.com/semistrict/ratel/issues/47900.
-const MultiTenancyIssueNo = 47900
 
 var noteworthyMemoryUsageBytes = envutil.EnvOrDefaultInt64("COCKROACH_NOTEWORTHY_DISTSQL_MEMORY_USAGE", 1024*1024 /* 1MB */)
 
@@ -111,27 +101,6 @@ func NewServer(
 // initialized. For example, the initialization of the flow scheduler has to
 // happen in NewServer.
 func (ds *ServerImpl) Start() {
-	// Gossip the version info so that other nodes don't plan incompatible flows
-	// for us.
-	if g, ok := ds.ServerConfig.Gossip.Optional(MultiTenancyIssueNo); ok {
-		if nodeID, ok := ds.ServerConfig.NodeID.OptionalNodeID(); ok {
-			if err := g.AddInfoProto(
-				gossip.MakeDistSQLNodeVersionKey(base.SQLInstanceID(nodeID)),
-				&execinfrapb.DistSQLVersionGossipInfo{
-					Version:            execinfra.Version,
-					MinAcceptedVersion: execinfra.MinAcceptedVersion,
-				},
-				0, // ttl - no expiration
-			); err != nil {
-				panic(err)
-			}
-		}
-	}
-
-	if err := ds.setDraining(false); err != nil {
-		panic(err)
-	}
-
 	ds.flowScheduler.Start()
 }
 
@@ -162,49 +131,19 @@ var cancelRunningQueriesAfterFlowDrainWait = settings.RegisterBoolSetting(
 	false,
 )
 
-// Drain changes the node's draining state through gossip and drains the
-// server's flowRegistry. See flowRegistry.Drain for more details.
+// Drain drains the server's flowRegistry. See flowRegistry.Drain for more
+// details.
 func (ds *ServerImpl) Drain(
 	ctx context.Context, flowDrainWait time.Duration, reporter func(int, redact.SafeString),
 ) {
-	if err := ds.setDraining(true); err != nil {
-		log.Warningf(ctx, "unable to gossip distsql draining state: %v", err)
-	}
-
 	flowWait := flowDrainWait
 	minWait := minFlowDrainWait
 	if ds.ServerConfig.TestingKnobs.DrainFast {
 		flowWait = 0
 		minWait = 0
-	} else if g, ok := ds.Gossip.Optional(MultiTenancyIssueNo); !ok || len(g.Outgoing()) == 0 {
-		// If there is only one node in the cluster (us), there's no need to
-		// wait a minimum time for the draining state to be gossiped.
-		minWait = 0
 	}
 	cancelStillRunning := cancelRunningQueriesAfterFlowDrainWait.Get(&ds.Settings.SV)
 	ds.flowRegistry.Drain(flowWait, minWait, reporter, cancelStillRunning)
-}
-
-// setDraining changes the node's draining state through gossip to the provided
-// state.
-func (ds *ServerImpl) setDraining(drain bool) error {
-	nodeID, ok := ds.ServerConfig.NodeID.OptionalNodeID()
-	if !ok {
-		// Ignore draining requests when running on behalf of a tenant.
-		// NB: intentionally swallow the error or the server will fatal.
-		_ = MultiTenancyIssueNo // related issue
-		return nil
-	}
-	if g, ok := ds.ServerConfig.Gossip.Optional(MultiTenancyIssueNo); ok {
-		return g.AddInfoProto(
-			gossip.MakeDistSQLDrainingKey(base.SQLInstanceID(nodeID)),
-			&execinfrapb.DistSQLDrainingInfo{
-				Draining: drain,
-			},
-			0, // ttl - no expiration
-		)
-	}
-	return nil
 }
 
 // FlowVerIsCompatible checks a flow's version is compatible with this node's

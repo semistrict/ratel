@@ -20,8 +20,6 @@ import (
 	"time"
 
 	"github.com/semistrict/ratel/pkg/base"
-	"github.com/semistrict/ratel/pkg/config/zonepb"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverpb"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/liveness"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/liveness/livenesspb"
@@ -29,7 +27,6 @@ import (
 	"github.com/semistrict/ratel/pkg/util/hlc"
 	"github.com/semistrict/ratel/pkg/util/leaktest"
 	"github.com/semistrict/ratel/pkg/util/log"
-	"github.com/semistrict/ratel/pkg/util/metric"
 	"github.com/semistrict/ratel/pkg/util/stop"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -129,9 +126,7 @@ func TestReplicaLeaseStatus(t *testing.T) {
 	} {
 		t.Run("", func(t *testing.T) {
 			l := liveness.NewNodeLiveness(liveness.NodeLivenessOptions{
-				Clock: clock,
-				Gossip: gossip.NewTest(roachpb.NodeID(1), nil /* rpcContext */, nil, /* grpcServer */
-					stopper, metric.NewRegistry(), zonepb.DefaultZoneConfigRef()),
+				Clock:                   clock,
 				HistogramWindowInterval: base.DefaultHistogramWindowInterval(),
 			})
 			r := Replica{store: &Store{

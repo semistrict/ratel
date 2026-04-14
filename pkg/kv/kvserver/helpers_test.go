@@ -214,7 +214,6 @@ func NewTestStorePool(cfg StoreConfig) *StorePool {
 	return NewStorePool(
 		cfg.AmbientCtx,
 		cfg.Settings,
-		cfg.Gossip,
 		cfg.Clock,
 		// NodeCountFunc
 		func() int {

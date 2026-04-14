@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"net"
 	"reflect"
 	"sort"
 	"strings"
@@ -34,7 +35,6 @@ import (
 	"github.com/semistrict/ratel/pkg/clusterversion"
 	"github.com/semistrict/ratel/pkg/config"
 	"github.com/semistrict/ratel/pkg/config/zonepb"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/kv/kvclient/kvcoord"
@@ -56,7 +56,6 @@ import (
 	"github.com/semistrict/ratel/pkg/util/hlc"
 	"github.com/semistrict/ratel/pkg/util/leaktest"
 	"github.com/semistrict/ratel/pkg/util/log"
-	"github.com/semistrict/ratel/pkg/util/metric"
 	"github.com/semistrict/ratel/pkg/util/protoutil"
 	"github.com/semistrict/ratel/pkg/util/randutil"
 	"github.com/semistrict/ratel/pkg/util/retry"
@@ -169,15 +168,7 @@ func createTestStoreWithoutStart(
 			Settings: cfg.Settings,
 		})
 	stopper.SetTracer(cfg.AmbientCtx.Tracer)
-	server := rpc.NewServer(rpcContext) // never started
 
-	// Some tests inject their own Gossip and StorePool, via
-	// createTestAllocatorWithKnobs, at the time of writing
-	// TestChooseLeaseToTransfer and TestNoLeaseTransferToBehindReplicas. This is
-	// generally considered bad and should eventually be refactored away.
-	if cfg.Gossip == nil {
-		cfg.Gossip = gossip.NewTest(1, rpcContext, server, stopper, metric.NewRegistry(), zonepb.DefaultZoneConfigRef())
-	}
 	if cfg.StorePool == nil {
 		cfg.StorePool = NewTestStorePool(*cfg)
 	}
@@ -214,7 +205,9 @@ func createTestStoreWithoutStart(
 		NodeDescs:          mockNodeStore{desc: nodeDesc},
 		RPCContext:         rpcContext,
 		RPCRetryOptions:    &retry.Options{},
-		NodeDialer:         nodedialer.New(rpcContext, gossip.AddressResolver(cfg.Gossip)), // TODO
+		NodeDialer:         nodedialer.New(rpcContext, func(nodeID roachpb.NodeID) (net.Addr, error) {
+			return nil, errors.Errorf("node %d address resolution not available in test", nodeID)
+		}),
 		FirstRangeProvider: rangeProv,
 		TestingKnobs: kvcoord.ClientTestingKnobs{
 			TransportFactory: kvcoord.SenderTransportFactory(cfg.AmbientCtx.Tracer, &storeSender),
@@ -275,14 +268,6 @@ func createTestStoreWithConfig(
 	ctx context.Context, t testing.TB, stopper *stop.Stopper, opts testStoreOpts, cfg *StoreConfig,
 ) *Store {
 	store := createTestStoreWithoutStart(ctx, t, stopper, opts, cfg)
-	// Put an empty system config into gossip.
-	//
-	// TODO(ajwerner): Remove this in 22.2. It's possible it can be removed
-	// already.
-	if err := store.Gossip().AddInfoProto(gossip.KeyDeprecatedSystemConfig,
-		&config.SystemConfigEntries{}, 0); err != nil {
-		t.Fatal(err)
-	}
 	if err := store.Start(ctx, stopper); err != nil {
 		t.Fatal(err)
 	}

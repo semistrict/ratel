@@ -22,7 +22,6 @@ import (
 	"github.com/semistrict/ratel/pkg/base"
 	"github.com/semistrict/ratel/pkg/config"
 	"github.com/semistrict/ratel/pkg/config/zonepb"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/roachpb"
@@ -277,7 +276,6 @@ func startConnExecutor(
 	st := cluster.MakeTestingClusterSettings()
 	nodeID := base.TestingIDContainer
 	distSQLMetrics := execinfra.MakeDistSQLMetrics(time.Hour /* histogramWindow */)
-	gw := gossip.MakeOptionalGossip(nil)
 	tempEngine, tempFS, err := storage.NewTempEngine(ctx, base.DefaultTestTempStorageConfig(st), base.DefaultTestStoreSpec)
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
@@ -316,7 +314,6 @@ func startConnExecutor(
 			),
 			nil, /* distSender */
 			nil, /* nodeDescs */
-			gw,
 			stopper,
 			func(base.SQLInstanceID) bool { return true }, // everybody is available
 			nil, /* nodeDialer */
@@ -326,7 +323,7 @@ func startConnExecutor(
 		),
 		QueryCache:              querycache.New(0),
 		TestingKnobs:            ExecutorTestingKnobs{},
-		StmtDiagnosticsRecorder: stmtdiagnostics.NewRegistry(nil, nil, gw, st),
+		StmtDiagnosticsRecorder: stmtdiagnostics.NewRegistry(nil, nil, st),
 		HistogramWindowInterval: base.DefaultHistogramWindowInterval(),
 		CollectionFactory:       descs.NewBareBonesCollectionFactory(st, keys.SystemSQLCodec),
 	}

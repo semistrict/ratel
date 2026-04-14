@@ -22,7 +22,6 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
 	"github.com/semistrict/ratel/pkg/base"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/jobs"
 	"github.com/semistrict/ratel/pkg/jobs/jobsprotectedts"
 	"github.com/semistrict/ratel/pkg/keys"
@@ -506,7 +505,7 @@ func makeTenantSQLServerArgs(
 
 	recorder := status.NewMetricsRecorder(clock, nil, rpcContext, nil, st)
 
-	runtime := status.NewRuntimeStatSampler(startupCtx, clock)
+	runtime := status.NewRuntimeStatSampler(startupCtx, clock, nil)
 	registry.AddMetricStruct(runtime)
 
 	esb := &externalStorageBuilder{}
@@ -536,7 +535,6 @@ func makeTenantSQLServerArgs(
 		sqlServerOptionalKVArgs: sqlServerOptionalKVArgs{
 			nodesStatusServer: serverpb.MakeOptionalNodesStatusServer(nil),
 			nodeLiveness:      optionalnodeliveness.MakeContainer(nil),
-			gossip:            gossip.MakeOptionalGossip(nil),
 			grpcServer:        grpcServer.Server,
 			isMeta1Leaseholder: func(_ context.Context, _ hlc.ClockTimestamp) (bool, error) {
 				return false, errors.New("isMeta1Leaseholder is not available to secondary tenants")

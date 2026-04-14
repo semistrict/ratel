@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/kv/kvclient/rangecache"
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/rpc"
@@ -338,7 +337,7 @@ func sendBatch(
 ) (*roachpb.BatchResponse, error) {
 	stopper := stop.NewStopper()
 	defer stopper.Stop(ctx)
-	g := makeGossip(t, stopper, rpcContext)
+	g := makeNodeStore(t)
 
 	desc := new(roachpb.RangeDescriptor)
 	desc.StartKey = roachpb.RKeyMin
@@ -348,8 +347,7 @@ func sendBatch(
 			NodeID:  roachpb.NodeID(i + 1),
 			Address: util.MakeUnresolvedAddr(addr.Network(), addr.String()),
 		}
-		err := g.AddInfoProto(gossip.MakeNodeIDKey(nd.NodeID), nd, gossip.NodeDescriptorTTL)
-		require.NoError(t, err)
+		g.AddNode(nd)
 
 		desc.InternalReplicas = append(desc.InternalReplicas,
 			roachpb.ReplicaDescriptor{
@@ -365,7 +363,7 @@ func sendBatch(
 		NodeDescs:          g,
 		RPCContext:         rpcContext,
 		NodeDialer:         nodeDialer,
-		FirstRangeProvider: g,
+		FirstRangeProvider: &mockFirstRange{desc: desc},
 		TestingKnobs: ClientTestingKnobs{
 			TransportFactory: transportFactory,
 		},

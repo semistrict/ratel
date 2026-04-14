@@ -23,7 +23,6 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/semistrict/ratel/pkg/base"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/kv/kvserver"
@@ -625,9 +624,8 @@ func TestAdminRelocateRangeLaterallyAmongStores(t *testing.T) {
 	tc := testcluster.StartTestCluster(t, 5, args)
 	defer tc.Stopper().Stop(ctx)
 
-	for i := 0; i < tc.NumServers(); i++ {
-		tc.WaitForNStores(t, tc.NumServers()*2, tc.Server(i).GossipI().(*gossip.Gossip))
-	}
+	// Wait for all stores to be visible to the cluster.
+	require.NoError(t, tc.WaitForFullReplication())
 
 	scratchKey := keys.MustAddr(tc.ScratchRange(t))
 	// Place replicas for the scratch range on stores 1, 3, 5 (i.e. the first

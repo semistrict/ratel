@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -36,7 +35,7 @@ import (
 	"github.com/semistrict/ratel/pkg/clusterversion"
 	"github.com/semistrict/ratel/pkg/config"
 	"github.com/semistrict/ratel/pkg/config/zonepb"
-	"github.com/semistrict/ratel/pkg/gossip"
+
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/kv/kvclient/rangecache"
@@ -99,15 +98,6 @@ const (
 	// maxes out RaftMaxInflightMsgs, we want the receiving replica to still have
 	// some buffer for other messages, primarily heartbeats.
 	replicaQueueExtraSize = 10
-
-	defaultGossipWhenCapacityDeltaExceedsFraction = 0.01
-
-	// systemDataGossipInterval is the interval at which range lease
-	// holders verify that the most recent system data is gossiped.
-	// This ensures that system data is always eventually gossiped, even
-	// if a range lease holder experiences a failure causing a missed
-	// gossip update.
-	systemDataGossipInterval = 1 * time.Minute
 )
 
 var storeSchedulerConcurrency = envutil.EnvOrDefaultInt(
@@ -765,19 +755,6 @@ type Store struct {
 	protectedtsReader  spanconfig.ProtectedTSReader
 	ctSender           *sidetransport.Sender
 
-	// gossipRangeCountdown and leaseRangeCountdown are countdowns of
-	// changes to range and leaseholder counts, after which the store
-	// descriptor will be re-gossiped earlier than the normal periodic
-	// gossip interval. Updated atomically.
-	gossipRangeCountdown int32
-	gossipLeaseCountdown int32
-	// gossipQueriesPerSecondVal and gossipWritesPerSecond serve similar
-	// purposes, but simply record the most recently gossiped value so that we
-	// can tell if a newly measured value differs by enough to justify
-	// re-gossiping the store.
-	gossipQueriesPerSecondVal syncutil.AtomicFloat64
-	gossipWritesPerSecondVal  syncutil.AtomicFloat64
-
 	coalescedMu struct {
 		syncutil.Mutex
 		heartbeats         map[roachpb.StoreIdent][]kvserverpb.RaftHeartbeat
@@ -995,7 +972,10 @@ type StoreConfig struct {
 	Settings             *cluster.Settings
 	Clock                *hlc.Clock
 	DB                   *kv.DB
-	Gossip               *gossip.Gossip
+	// FirstRangeCallback, if set, is called when this store's replica of
+	// range 1 is the leaseholder and the range descriptor changes.
+	FirstRangeCallback func(*roachpb.RangeDescriptor)
+
 	NodeLiveness         *liveness.NodeLiveness
 	StorePool            *StorePool
 	Transport            *RaftTransport
@@ -1143,9 +1123,6 @@ func (sc *StoreConfig) SetDefaults() {
 			envutil.EnvOrDefaultInt("COCKROACH_CONCURRENT_SNAPSHOT_APPLY_LIMIT", 1)
 	}
 
-	if sc.TestingKnobs.GossipWhenCapacityDeltaExceedsFraction == 0 {
-		sc.TestingKnobs.GossipWhenCapacityDeltaExceedsFraction = defaultGossipWhenCapacityDeltaExceedsFraction
-	}
 }
 
 // GetStoreConfig exposes the config used for this store.
@@ -1310,7 +1287,7 @@ func NewStore(
 	queueAdditionOnSystemConfigUpdateBurst.SetOnChange(&cfg.Settings.SV,
 		updateSystemConfigUpdateQueueLimits)
 
-	if s.cfg.Gossip != nil {
+	{
 		// Add range scanner and configure with queues.
 		s.scanner = newReplicaScanner(
 			s.cfg.AmbientCtx, s.cfg.Clock, cfg.ScanInterval,
@@ -1827,11 +1804,6 @@ func (s *Store) Start(ctx context.Context, stopper *stop.Stopper) error {
 	if s.nodeDesc.NodeID != 0 && s.Ident.NodeID != s.nodeDesc.NodeID {
 		return errors.Errorf("node id:%d does not equal the one in node descriptor:%d", s.Ident.NodeID, s.nodeDesc.NodeID)
 	}
-	// Always set gossip NodeID before gossiping any info.
-	if s.cfg.Gossip != nil {
-		s.cfg.Gossip.NodeID.Set(ctx, s.Ident.NodeID)
-	}
-
 	// Create ID allocators.
 	idAlloc, err := idalloc.NewAllocator(idalloc.Options{
 		AmbientCtx:  s.cfg.AmbientCtx,
@@ -1990,27 +1962,23 @@ func (s *Store) Start(ctx context.Context, stopper *stop.Stopper) error {
 		})
 	}
 
-	// Gossip is only ever nil while bootstrapping a cluster and
-	// in unittests.
-	if s.cfg.Gossip != nil {
-
-		// Start a single goroutine in charge of periodically gossiping the
-		// sentinel and first range metadata if we have a first range.
-		// This may wake up ranges and requires everything to be set up and
-		// running.
-		s.startGossip()
-
-		// Start the scanner. The construction here makes sure that the scanner
-		// only starts after Gossip has connected, and that it does not block Start
-		// from returning (as doing so might prevent Gossip from ever connecting).
-		_ = s.stopper.RunAsyncTask(ctx, "scanner", func(context.Context) {
-			select {
-			case <-s.cfg.Gossip.Connected:
-				s.scanner.Start()
-			case <-s.stopper.ShouldQuiesce():
-				return
+	// Seed the first range descriptor synchronously before starting any
+	// background goroutines that might need it. The async
+	// startFirstRangeUpdates will maintain it afterwards.
+	if cb := s.cfg.FirstRangeCallback; cb != nil {
+		if repl := s.LookupReplica(roachpb.RKey(roachpb.KeyMin)); repl != nil {
+			if desc := repl.Desc(); desc != nil && desc.RangeID == 1 {
+				cb(desc)
 			}
-		})
+		}
+	}
+
+	// Start the periodic first-range notification loop (replaces gossip).
+	s.startFirstRangeUpdates()
+
+	// Start the scanner unconditionally.
+	if s.scanner != nil {
+		s.scanner.Start()
 	}
 
 	if !s.cfg.SpanConfigsDisabled {
@@ -2074,143 +2042,57 @@ func (s *Store) WaitForInit() {
 	s.initComplete.Wait()
 }
 
-var errPeriodicGossipsDisabled = errors.New("periodic gossip is disabled")
+// startFirstRangeUpdates runs a goroutine that periodically calls the
+// FirstRangeCallback when this store holds a replica of the first range.
+// This replaces the old startGossip loop.
+func (s *Store) startFirstRangeUpdates() {
+	// Add to waitgroup before launching goroutine to avoid a race where
+	// WaitForInit() is called before the goroutine starts.
+	s.initComplete.Add(1)
 
-// startGossip runs an infinite loop in a goroutine which regularly checks
-// whether the store has a first range or config replica and asks those ranges
-// to gossip accordingly.
-func (s *Store) startGossip() {
-	wakeReplica := func(ctx context.Context, repl *Replica) error {
-		// Acquire the range lease, which in turn triggers system data gossip
-		// functions (e.g. MaybeGossipSystemConfig or MaybeGossipNodeLiveness).
-		_, pErr := repl.getLeaseForGossip(ctx)
-		return pErr.GoError()
-	}
-	gossipFns := []struct {
-		key         roachpb.Key
-		fn          func(context.Context, *Replica) error
-		description redact.SafeString
-		interval    time.Duration
-	}{
-		{
-			key: roachpb.KeyMin,
-			fn: func(ctx context.Context, repl *Replica) error {
-				// The first range is gossiped by all replicas, not just the lease
-				// holder, so wakeReplica is not used here.
-				return repl.maybeGossipFirstRange(ctx).GoError()
-			},
-			description: "first range descriptor",
-			interval:    s.cfg.SentinelGossipTTL() / 2,
-		},
-		{
-			key:         keys.SystemConfigSpan.Key,
-			fn:          wakeReplica,
-			description: "system config",
-			interval:    systemDataGossipInterval,
-		},
-		{
-			key:         keys.NodeLivenessSpan.Key,
-			fn:          wakeReplica,
-			description: "node liveness",
-			interval:    systemDataGossipInterval,
-		},
+	if s.cfg.FirstRangeCallback == nil {
+		// No callback registered (tests, bootstrap). Signal init complete
+		// and return.
+		s.initComplete.Done()
+		return
 	}
 
-	cannotGossipEvery := log.Every(time.Minute)
-	cannotGossipEvery.ShouldLog() // only log next time after waiting out the delay
+	bgCtx := s.AnnotateCtx(context.Background())
+	if err := s.stopper.RunAsyncTask(bgCtx, "first-range-updates", func(ctx context.Context) {
+		const firstRangeInterval = 30 * time.Second
+		ticker := time.NewTicker(firstRangeInterval)
+		defer ticker.Stop()
 
-	runGossipFn := func(ctx context.Context, gossipFn struct {
-		key         roachpb.Key
-		fn          func(context.Context, *Replica) error
-		description redact.SafeString
-		interval    time.Duration
-	}) {
 		retryOptions := base.DefaultRetryOptions()
 		retryOptions.Closer = s.stopper.ShouldQuiesce()
-		for r := retry.Start(retryOptions); r.Next(); {
-			if repl := s.LookupReplica(roachpb.RKey(gossipFn.key)); repl != nil {
-				annotatedCtx := repl.AnnotateCtx(ctx)
-				if err := gossipFn.fn(annotatedCtx, repl); err != nil {
-					if cannotGossipEvery.ShouldLog() {
-						log.Infof(annotatedCtx, "could not gossip %s: %v", gossipFn.description, err)
-					}
-					if !errors.Is(err, errPeriodicGossipsDisabled) {
+
+		for first := true; ; {
+			for r := retry.Start(retryOptions); r.Next(); {
+				if repl := s.LookupReplica(roachpb.RKey(roachpb.KeyMin)); repl != nil {
+					annotatedCtx := repl.AnnotateCtx(ctx)
+					if err := repl.maybeGossipFirstRange(annotatedCtx).GoError(); err != nil {
+						log.Infof(annotatedCtx, "could not update first range: %v", err)
 						continue
 					}
 				}
+				break
 			}
-			break
-		}
-	}
-
-	runGossipFnOnce := func(ctx context.Context, gossipFn struct {
-		key         roachpb.Key
-		fn          func(context.Context, *Replica) error
-		description redact.SafeString
-		interval    time.Duration
-	}) {
-		if repl := s.LookupReplica(roachpb.RKey(gossipFn.key)); repl != nil {
-			annotatedCtx := repl.AnnotateCtx(ctx)
-			if gossipFn.key.Equal(roachpb.KeyMin) {
-				if repl.IsFirstRange() {
-					if err := repl.store.Gossip().AddClusterID(repl.store.ClusterID()); err != nil {
-						log.Errorf(annotatedCtx, "failed to gossip cluster ID: %+v", err)
-					}
-					repl.gossipFirstRange(annotatedCtx)
-				}
+			if first {
+				first = false
+				s.initComplete.Done()
+			}
+			select {
+			case <-ticker.C:
+			case <-s.stopper.ShouldQuiesce():
 				return
 			}
-			if err := gossipFn.fn(annotatedCtx, repl); err != nil && cannotGossipEvery.ShouldLog() {
-				log.Infof(annotatedCtx, "could not gossip %s: %v", gossipFn.description, err)
-			}
 		}
-	}
-
-	// Periodic updates run in a goroutine and signal a WaitGroup upon completion
-	// of their first iteration.
-	s.initComplete.Add(len(gossipFns))
-	if s.TestingKnobs().DisablePeriodicGossips {
-		for _, gossipFn := range gossipFns {
-			if !gossipFn.key.Equal(roachpb.KeyMin) {
-				s.initComplete.Done()
-				continue
-			}
-			gossipFn := gossipFn
-			bgCtx := s.AnnotateCtx(context.Background())
-			if err := s.stopper.RunAsyncTask(bgCtx, "store-gossip-once", func(ctx context.Context) {
-				runGossipFnOnce(ctx, gossipFn)
-				s.initComplete.Done()
-			}); err != nil {
-				s.initComplete.Done()
-			}
-		}
-		return
-	}
-	for _, gossipFn := range gossipFns {
-		gossipFn := gossipFn // per-iteration copy
-		bgCtx := s.AnnotateCtx(context.Background())
-		if err := s.stopper.RunAsyncTask(bgCtx, "store-gossip", func(ctx context.Context) {
-			ticker := time.NewTicker(gossipFn.interval)
-			defer ticker.Stop()
-			for first := true; ; {
-				runGossipFn(ctx, gossipFn)
-				if first {
-					first = false
-					s.initComplete.Done()
-				}
-				select {
-				case <-ticker.C:
-				case <-s.stopper.ShouldQuiesce():
-					return
-				}
-			}
-		}); err != nil {
-			s.initComplete.Done()
-		}
+	}); err != nil {
+		s.initComplete.Done()
 	}
 }
 
-var errSysCfgUnavailable = errors.New("system config not available in gossip")
+var errSysCfgUnavailable = errors.New("system config not available")
 
 // GetConfReader exposes access to a configuration reader.
 func (s *Store) GetConfReader(ctx context.Context) (spanconfig.StoreReader, error) {
@@ -2555,45 +2437,14 @@ func (s *Store) applyAllFromSpanConfigStore(ctx context.Context) {
 	})
 }
 
-func (s *Store) asyncGossipStore(ctx context.Context, reason string, useCached bool) {
-	if err := s.stopper.RunAsyncTask(
-		ctx, fmt.Sprintf("storage.Store: gossip on %s", reason),
-		func(ctx context.Context) {
-			if err := s.GossipStore(ctx, useCached); err != nil {
-				log.Warningf(ctx, "error gossiping on %s: %+v", reason, err)
-			}
-		}); err != nil {
-		log.Warningf(ctx, "unable to gossip on %s: %+v", reason, err)
-	}
-}
+// asyncGossipStore is a no-op. Store descriptors are now published by the
+// rangefeed-backed store descriptor store.
+func (s *Store) asyncGossipStore(ctx context.Context, reason string, useCached bool) {}
 
-// GossipStore broadcasts the store on the gossip network.
+// GossipStore is a no-op. Store descriptors are now published by the
+// rangefeed-backed store descriptor store.
 func (s *Store) GossipStore(ctx context.Context, useCached bool) error {
-	// Temporarily indicate that we're gossiping the store capacity to avoid
-	// recursively triggering a gossip of the store capacity.
-	syncutil.StoreFloat64(&s.gossipQueriesPerSecondVal, -1)
-	syncutil.StoreFloat64(&s.gossipWritesPerSecondVal, -1)
-
-	storeDesc, err := s.Descriptor(ctx, useCached)
-	if err != nil {
-		return errors.Wrapf(err, "problem getting store descriptor for store %+v", s.Ident)
-	}
-
-	// Set countdown target for re-gossiping capacity earlier than
-	// the usual periodic interval. Re-gossip more rapidly for RangeCount
-	// changes because allocators with stale information are much more
-	// likely to make bad decisions.
-	rangeCountdown := float64(storeDesc.Capacity.RangeCount) * s.cfg.TestingKnobs.GossipWhenCapacityDeltaExceedsFraction
-	atomic.StoreInt32(&s.gossipRangeCountdown, int32(math.Ceil(math.Min(rangeCountdown, 3))))
-	leaseCountdown := float64(storeDesc.Capacity.LeaseCount) * s.cfg.TestingKnobs.GossipWhenCapacityDeltaExceedsFraction
-	atomic.StoreInt32(&s.gossipLeaseCountdown, int32(math.Ceil(math.Max(leaseCountdown, 1))))
-	syncutil.StoreFloat64(&s.gossipQueriesPerSecondVal, storeDesc.Capacity.QueriesPerSecond)
-	syncutil.StoreFloat64(&s.gossipWritesPerSecondVal, storeDesc.Capacity.WritesPerSecond)
-
-	// Unique gossip key per store.
-	gossipStoreKey := gossip.MakeStoreKey(storeDesc.StoreID)
-	// Gossip store descriptor.
-	return s.cfg.Gossip.AddInfoProto(gossipStoreKey, storeDesc, gossip.StoreTTL)
+	return nil
 }
 
 type capacityChangeEvent int
@@ -2605,17 +2456,14 @@ const (
 	leaseRemoveEvent
 )
 
-// maybeGossipOnCapacityChange decrements the countdown on range
-// and leaseholder counts. If it reaches 0, then we trigger an
-// immediate gossip of this store's descriptor, to include updated
-// capacity information.
+// maybeGossipOnCapacityChange incrementally adjusts cached capacity stats.
+// Store descriptor distribution is now handled by the rangefeed-backed store
+// descriptor store, so no gossip broadcast is triggered.
 func (s *Store) maybeGossipOnCapacityChange(ctx context.Context, cce capacityChangeEvent) {
 	if s.cfg.TestingKnobs.DisableLeaseCapacityGossip && (cce == leaseAddEvent || cce == leaseRemoveEvent) {
 		return
 	}
 
-	// Incrementally adjust stats to keep them up to date even if the
-	// capacity is gossiped, but isn't due yet to be recomputed from scratch.
 	s.cachedCapacity.Lock()
 	switch cce {
 	case rangeAddEvent:
@@ -2628,47 +2476,11 @@ func (s *Store) maybeGossipOnCapacityChange(ctx context.Context, cce capacityCha
 		s.cachedCapacity.LeaseCount--
 	}
 	s.cachedCapacity.Unlock()
-
-	if ((cce == rangeAddEvent || cce == rangeRemoveEvent) && atomic.AddInt32(&s.gossipRangeCountdown, -1) == 0) ||
-		((cce == leaseAddEvent || cce == leaseRemoveEvent) && atomic.AddInt32(&s.gossipLeaseCountdown, -1) == 0) {
-		// Reset countdowns to avoid unnecessary gossiping.
-		atomic.StoreInt32(&s.gossipRangeCountdown, 0)
-		atomic.StoreInt32(&s.gossipLeaseCountdown, 0)
-		s.asyncGossipStore(ctx, "capacity change", true /* useCached */)
-	}
 }
 
-// recordNewPerSecondStats takes recently calculated values for the number of
-// queries and key writes the store is handling and decides whether either has
-// changed enough to justify re-gossiping the store's capacity.
-func (s *Store) recordNewPerSecondStats(newQPS, newWPS float64) {
-	oldQPS := syncutil.LoadFloat64(&s.gossipQueriesPerSecondVal)
-	oldWPS := syncutil.LoadFloat64(&s.gossipWritesPerSecondVal)
-	if oldQPS == -1 || oldWPS == -1 {
-		// Gossiping of store capacity is already ongoing.
-		return
-	}
-
-	const minAbsoluteChange = 100
-	updateForQPS := (newQPS < oldQPS*.5 || newQPS > oldQPS*1.5) && math.Abs(newQPS-oldQPS) > minAbsoluteChange
-	updateForWPS := (newWPS < oldWPS*.5 || newWPS > oldWPS*1.5) && math.Abs(newWPS-oldWPS) > minAbsoluteChange
-
-	if !updateForQPS && !updateForWPS {
-		return
-	}
-
-	var message string
-	if updateForQPS && updateForWPS {
-		message = "queries-per-second and writes-per-second change"
-	} else if updateForQPS {
-		message = "queries-per-second change"
-	} else {
-		message = "writes-per-second change"
-	}
-	// TODO(a-robinson): Use the provided values to avoid having to recalculate
-	// them in GossipStore.
-	s.asyncGossipStore(context.TODO(), message, false /* useCached */)
-}
+// recordNewPerSecondStats is a no-op. Store descriptor distribution is now
+// handled by the rangefeed-backed store descriptor store.
+func (s *Store) recordNewPerSecondStats(newQPS, newWPS float64) {}
 
 // VisitReplicasOption optionally modifies store.VisitReplicas.
 type VisitReplicasOption func(*storeReplicaVisitor)
@@ -2948,9 +2760,6 @@ func (s *Store) Engine() storage.Engine { return s.engine }
 
 // DB accessor.
 func (s *Store) DB() *kv.DB { return s.cfg.DB }
-
-// Gossip accessor.
-func (s *Store) Gossip() *gossip.Gossip { return s.cfg.Gossip }
 
 // Stopper accessor.
 func (s *Store) Stopper() *stop.Stopper { return s.stopper }

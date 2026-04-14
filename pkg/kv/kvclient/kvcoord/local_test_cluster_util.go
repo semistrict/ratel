@@ -16,10 +16,11 @@ package kvcoord
 
 import (
 	"context"
+	"net"
 	"time"
 
+	"github.com/cockroachdb/errors"
 	"github.com/semistrict/ratel/pkg/base"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/rpc"
@@ -59,7 +60,6 @@ func InitFactoryForLocalTestCluster(
 	latency time.Duration,
 	stores kv.Sender,
 	stopper *stop.Stopper,
-	gossip *gossip.Gossip,
 ) kv.TxnSenderFactory {
 	return NewTxnCoordSenderFactory(
 		TxnCoordSenderFactoryConfig{
@@ -68,7 +68,7 @@ func InitFactoryForLocalTestCluster(
 			Clock:      clock,
 			Stopper:    stopper,
 		},
-		NewDistSenderForLocalTestCluster(ctx, st, nodeDesc, tracer, clock, latency, stores, stopper, gossip),
+		NewDistSenderForLocalTestCluster(ctx, st, nodeDesc, tracer, clock, latency, stores, stopper),
 	)
 }
 
@@ -82,7 +82,6 @@ func NewDistSenderForLocalTestCluster(
 	latency time.Duration,
 	stores kv.Sender,
 	stopper *stop.Stopper,
-	g *gossip.Gossip,
 ) *DistSender {
 	retryOpts := base.DefaultRetryOptions()
 	retryOpts.Closer = stopper.ShouldQuiesce()
@@ -92,12 +91,16 @@ func NewDistSenderForLocalTestCluster(
 		AmbientCtx:         log.MakeTestingAmbientContext(tracer),
 		Settings:           st,
 		Clock:              clock,
-		NodeDescs:          g,
 		RPCContext:         rpcContext,
 		RPCRetryOptions:    &retryOpts,
+		FirstRangeProvider: NewLocalFirstRangeProvider(),
 		nodeDescriptor:     nodeDesc,
-		NodeDialer:         nodedialer.New(rpcContext, gossip.AddressResolver(g)),
-		FirstRangeProvider: g,
+		NodeDialer: nodedialer.New(rpcContext, func(id roachpb.NodeID) (net.Addr, error) {
+			if nodeDesc != nil && id == nodeDesc.NodeID {
+				return nodeDesc.Address.Resolve()
+			}
+			return nil, errors.Errorf("node n%d not found in local test cluster", id)
+		}),
 		TestingKnobs: ClientTestingKnobs{
 			TransportFactory: func(
 				opts SendOptions,

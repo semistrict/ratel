@@ -95,6 +95,14 @@ type TestServerInterface interface {
 	// The real return type is *gossip.Gossip.
 	GossipI() interface{}
 
+	// NodeDescStoreI returns the node descriptor store.
+	// The real return type is *nodedescstore.Store.
+	NodeDescStoreI() interface{}
+
+	// FirstRangeProviderI returns the first range provider.
+	// The real return type is kvcoord.FirstRangeProvider.
+	FirstRangeProviderI() interface{}
+
 	// DistSenderI returns the DistSender used by the TestServer.
 	// The real return type is *kv.DistSender.
 	DistSenderI() interface{}

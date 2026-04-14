@@ -36,14 +36,6 @@ func registerAcceptance(r registry.Registry) {
 		registry.OwnerKV: {
 			{name: "decommission-self", fn: runDecommissionSelf},
 			{name: "event-log", fn: runEventLog},
-			{name: "gossip/peerings", fn: runGossipPeerings},
-			{name: "gossip/restart", fn: runGossipRestart},
-			{
-				name:              "gossip/restart-node-one",
-				fn:                runGossipRestartNodeOne,
-				encryptionSupport: registry.EncryptionAlwaysDisabled,
-			},
-			{name: "gossip/locality-address", fn: runCheckLocalityIPAddress},
 			{name: "reset-quorum", fn: runResetQuorum, numNodes: 8},
 			{
 				name: "many-splits", fn: runManySplits,

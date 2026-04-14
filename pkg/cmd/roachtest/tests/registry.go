@@ -45,7 +45,6 @@ func RegisterTests(r registry.Registry) {
 	registerFlowable(r)
 	registerFollowerReads(r)
 	registerGopg(r)
-	registerGossip(r)
 	registerGORM(r)
 	registerHibernate(r, hibernateOpts)
 	registerHibernate(r, hibernateSpatialOpts)

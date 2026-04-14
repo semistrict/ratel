@@ -2036,12 +2036,7 @@ func (a Allocator) shouldTransferLeaseForAccessLocality(
 		if !ok {
 			continue
 		}
-		addr, err := a.storePool.gossip.GetNodeIDAddress(repl.NodeID)
-		if err != nil {
-			log.Errorf(ctx, "missing address for n%d: %+v", repl.NodeID, err)
-			continue
-		}
-		remoteLatency, ok := a.nodeLatencyFn(addr.String())
+		remoteLatency, ok := a.nodeLatencyFn(storeDesc.Node.Address.String())
 		if !ok {
 			continue
 		}

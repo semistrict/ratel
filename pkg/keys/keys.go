@@ -163,6 +163,22 @@ func NodeLivenessKey(nodeID roachpb.NodeID) roachpb.Key {
 	return key
 }
 
+// NodeDescriptorKey returns the key for a node descriptor record.
+func NodeDescriptorKey(nodeID roachpb.NodeID) roachpb.Key {
+	key := make(roachpb.Key, 0, len(NodeDescriptorPrefix)+9)
+	key = append(key, NodeDescriptorPrefix...)
+	key = encoding.EncodeUvarintAscending(key, uint64(nodeID))
+	return key
+}
+
+// StoreDescriptorKey returns the key for a store descriptor record.
+func StoreDescriptorKey(storeID roachpb.StoreID) roachpb.Key {
+	key := make(roachpb.Key, 0, len(StoreDescriptorPrefix)+9)
+	key = append(key, StoreDescriptorPrefix...)
+	key = encoding.EncodeUvarintAscending(key, uint64(storeID))
+	return key
+}
+
 // NodeStatusKey returns the key for accessing the node status for the
 // specified node ID.
 func NodeStatusKey(nodeID roachpb.NodeID) roachpb.Key {

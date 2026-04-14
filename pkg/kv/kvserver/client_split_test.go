@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math"
 	"math/rand"
 	"reflect"
 	"sort"
@@ -32,7 +31,6 @@ import (
 	"github.com/semistrict/ratel/pkg/base"
 	"github.com/semistrict/ratel/pkg/config"
 	"github.com/semistrict/ratel/pkg/config/zonepb"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/kv/kvclient/kvcoord"
@@ -2252,98 +2250,9 @@ func writeRandomTimeSeriesDataToRange(
 	return midKey
 }
 
-// TestStoreRangeGossipOnSplits verifies that the store descriptor
-// is gossiped on splits up until the point where an additional
-// split range doesn't exceed GossipWhenCapacityDeltaExceedsFraction.
-func TestStoreRangeGossipOnSplits(t *testing.T) {
-	defer leaktest.AfterTest(t)()
-	defer log.Scope(t).Close(t)
-
-	ctx := context.Background()
-	serv, _, _ := serverutils.StartServer(t, base.TestServerArgs{
-		Knobs: base.TestingKnobs{
-			Store: &kvserver.StoreTestingKnobs{
-				DisableMergeQueue:                      true,
-				DisableSplitQueue:                      true,
-				DisableScanner:                         true,
-				GossipWhenCapacityDeltaExceedsFraction: 0.5, // 50% for testing
-				// We can't properly test how frequently changes in the number of ranges
-				// trigger the store to gossip its capacities if we have to worry about
-				// changes in the number of leases also triggering store gossip.
-				DisableLeaseCapacityGossip: true,
-			},
-		},
-	})
-	s := serv.(*server.TestServer)
-	defer s.Stopper().Stop(ctx)
-	store, err := s.Stores().GetStore(s.GetFirstStoreID())
-	require.NoError(t, err)
-	storeKey := gossip.MakeStoreKey(store.StoreID())
-
-	// Avoid excessive logging on under-replicated ranges due to our many splits.
-	config.TestingSetupZoneConfigHook(s.Stopper())
-	zoneConfig := zonepb.DefaultZoneConfig()
-	zoneConfig.NumReplicas = proto.Int32(1)
-	config.TestingSetZoneConfig(0, zoneConfig)
-
-	var lastSD roachpb.StoreDescriptor
-	rangeCountCh := make(chan int32)
-	unregister := store.Gossip().RegisterCallback(storeKey, func(_ string, val roachpb.Value) {
-		var sd roachpb.StoreDescriptor
-		if err := val.GetProto(&sd); err != nil {
-			panic(err)
-		}
-		// Wait for range count to change as this callback is invoked
-		// for lease count changes as well.
-		if sd.Capacity.RangeCount == lastSD.Capacity.RangeCount {
-			return
-		}
-		lastSD = sd
-		rangeCountCh <- sd.Capacity.RangeCount
-	})
-	defer unregister()
-
-	// Pull the first gossiped range count.
-	lastRangeCount := <-rangeCountCh
-
-	splitFunc := func(i int) *roachpb.Error {
-		splitKey := roachpb.Key(fmt.Sprintf("%02d", i))
-		_, pErr := store.LookupReplica(roachpb.RKey(splitKey)).AdminSplit(
-			context.Background(),
-			roachpb.AdminSplitRequest{
-				RequestHeader: roachpb.RequestHeader{
-					Key: splitKey,
-				},
-				SplitKey: splitKey,
-			},
-			"test",
-		)
-		return pErr
-	}
-
-	// Split until we split at least 20 ranges.
-	var rangeCount int32
-	for i := 0; rangeCount < 20; i++ {
-		if pErr := splitFunc(i); pErr != nil {
-			// Avoid flakes caused by bad clocks.
-			if testutils.IsPError(pErr, "rejecting command with timestamp in the future") {
-				log.Warningf(context.Background(), "ignoring split error: %s", pErr)
-				continue
-			}
-			t.Fatal(pErr)
-		}
-		select {
-		case rangeCount = <-rangeCountCh:
-			changeCount := int32(math.Ceil(math.Min(float64(lastRangeCount)*0.5, 3)))
-			diff := rangeCount - (lastRangeCount + changeCount)
-			if diff < -1 || diff > 1 {
-				t.Errorf("gossiped range count %d more than 1 away from expected %d", rangeCount, lastRangeCount+changeCount)
-			}
-			lastRangeCount = rangeCount
-		case <-time.After(10 * time.Millisecond):
-		}
-	}
-}
+// TestStoreRangeGossipOnSplits has been removed because gossip has been
+// removed from Ratel. Store descriptor updates are now handled by the
+// rangefeed-backed store descriptor store.
 
 // TestStoreTxnWaitQueueEnabledOnSplit verifies that the TxnWaitQueue for
 // the right hand side of the split range is enabled after a split.

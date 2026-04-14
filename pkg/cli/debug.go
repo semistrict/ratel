@@ -26,7 +26,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -39,28 +38,21 @@ import (
 	"github.com/cockroachdb/pebble/vfs"
 	"github.com/cockroachdb/ttycolor"
 	humanize "github.com/dustin/go-humanize"
-	"github.com/gogo/protobuf/jsonpb"
 	"github.com/kr/pretty"
 	"github.com/semistrict/ratel/pkg/base"
 	"github.com/semistrict/ratel/pkg/cli/clierrorplus"
 	"github.com/semistrict/ratel/pkg/cli/cliflags"
 	"github.com/semistrict/ratel/pkg/cli/syncbench"
-	"github.com/semistrict/ratel/pkg/config"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv/kvserver"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/gc"
-	"github.com/semistrict/ratel/pkg/kv/kvserver/liveness/livenesspb"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/rditer"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/stateloader"
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/server"
-	"github.com/semistrict/ratel/pkg/server/serverpb"
-	"github.com/semistrict/ratel/pkg/server/status/statuspb"
 	"github.com/semistrict/ratel/pkg/sql/catalog"
 	"github.com/semistrict/ratel/pkg/sql/catalog/descbuilder"
 	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
-	"github.com/semistrict/ratel/pkg/sql/execinfrapb"
 	"github.com/semistrict/ratel/pkg/sql/row"
 	"github.com/semistrict/ratel/pkg/storage"
 	"github.com/semistrict/ratel/pkg/storage/enginepb"
@@ -74,7 +66,6 @@ import (
 	"github.com/semistrict/ratel/pkg/util/stop"
 	"github.com/semistrict/ratel/pkg/util/sysutil"
 	"github.com/semistrict/ratel/pkg/util/timeutil"
-	"github.com/semistrict/ratel/pkg/util/uuid"
 	"github.com/spf13/cobra"
 )
 
@@ -860,130 +851,6 @@ func runDebugCompact(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-var debugGossipValuesCmd = &cobra.Command{
-	Use:   "gossip-values",
-	Short: "dump all the values in a node's gossip instance",
-	Long: `
-Pretty-prints the values in a node's gossip instance.
-
-Can connect to a running server to get the values or can be provided with
-a JSON file captured from a node's /_status/gossip/ debug endpoint.
-`,
-	Args: cobra.NoArgs,
-	RunE: clierrorplus.MaybeDecorateError(runDebugGossipValues),
-}
-
-func runDebugGossipValues(cmd *cobra.Command, args []string) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	// If a file is provided, use it. Otherwise, try talking to the running node.
-	var gossipInfo *gossip.InfoStatus
-	if debugCtx.inputFile != "" {
-		file, err := os.Open(debugCtx.inputFile)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-		gossipInfo = new(gossip.InfoStatus)
-		if err := jsonpb.Unmarshal(file, gossipInfo); err != nil {
-			return errors.Wrap(err, "failed to parse provided file as gossip.InfoStatus")
-		}
-	} else {
-		conn, _, finish, err := getClientGRPCConn(ctx, serverCfg)
-		if err != nil {
-			return err
-		}
-		defer finish()
-
-		status := serverpb.NewStatusClient(conn)
-		gossipInfo, err = status.Gossip(ctx, &serverpb.GossipRequest{})
-		if err != nil {
-			return errors.Wrap(err, "failed to retrieve gossip from server")
-		}
-	}
-
-	output, err := parseGossipValues(gossipInfo)
-	if err != nil {
-		return err
-	}
-	fmt.Println(output)
-	return nil
-}
-
-func parseGossipValues(gossipInfo *gossip.InfoStatus) (string, error) {
-	var output []string
-	for key, info := range gossipInfo.Infos {
-		bytes, err := info.Value.GetBytes()
-		if err != nil {
-			return "", errors.Wrapf(err, "failed to extract bytes for key %q", key)
-		}
-		if key == gossip.KeyClusterID || key == gossip.KeySentinel {
-			clusterID, err := uuid.FromBytes(bytes)
-			if err != nil {
-				return "", errors.Wrapf(err, "failed to parse value for key %q", key)
-			}
-			output = append(output, fmt.Sprintf("%q: %v", key, clusterID))
-		} else if key == gossip.KeyDeprecatedSystemConfig {
-			if debugCtx.printSystemConfig {
-				var config config.SystemConfigEntries
-				if err := protoutil.Unmarshal(bytes, &config); err != nil {
-					return "", errors.Wrapf(err, "failed to parse value for key %q", key)
-				}
-				output = append(output, fmt.Sprintf("%q: %+v", key, config))
-			} else {
-				output = append(output, fmt.Sprintf("%q: omitted", key))
-			}
-		} else if key == gossip.KeyFirstRangeDescriptor {
-			var desc roachpb.RangeDescriptor
-			if err := protoutil.Unmarshal(bytes, &desc); err != nil {
-				return "", errors.Wrapf(err, "failed to parse value for key %q", key)
-			}
-			output = append(output, fmt.Sprintf("%q: %v", key, desc))
-		} else if gossip.IsNodeIDKey(key) {
-			var desc roachpb.NodeDescriptor
-			if err := protoutil.Unmarshal(bytes, &desc); err != nil {
-				return "", errors.Wrapf(err, "failed to parse value for key %q", key)
-			}
-			output = append(output, fmt.Sprintf("%q: %+v", key, desc))
-		} else if strings.HasPrefix(key, gossip.KeyStorePrefix) {
-			var desc roachpb.StoreDescriptor
-			if err := protoutil.Unmarshal(bytes, &desc); err != nil {
-				return "", errors.Wrapf(err, "failed to parse value for key %q", key)
-			}
-			output = append(output, fmt.Sprintf("%q: %+v", key, desc))
-		} else if strings.HasPrefix(key, gossip.KeyNodeLivenessPrefix) {
-			var liveness livenesspb.Liveness
-			if err := protoutil.Unmarshal(bytes, &liveness); err != nil {
-				return "", errors.Wrapf(err, "failed to parse value for key %q", key)
-			}
-			output = append(output, fmt.Sprintf("%q: %+v", key, liveness))
-		} else if strings.HasPrefix(key, gossip.KeyNodeHealthAlertPrefix) {
-			var healthAlert statuspb.HealthCheckResult
-			if err := protoutil.Unmarshal(bytes, &healthAlert); err != nil {
-				return "", errors.Wrapf(err, "failed to parse value for key %q", key)
-			}
-			output = append(output, fmt.Sprintf("%q: %+v", key, healthAlert))
-		} else if strings.HasPrefix(key, gossip.KeyDistSQLNodeVersionKeyPrefix) {
-			var version execinfrapb.DistSQLVersionGossipInfo
-			if err := protoutil.Unmarshal(bytes, &version); err != nil {
-				return "", errors.Wrapf(err, "failed to parse value for key %q", key)
-			}
-			output = append(output, fmt.Sprintf("%q: %+v", key, version))
-		} else if strings.HasPrefix(key, gossip.KeyDistSQLDrainingPrefix) {
-			var drainingInfo execinfrapb.DistSQLDrainingInfo
-			if err := protoutil.Unmarshal(bytes, &drainingInfo); err != nil {
-				return "", errors.Wrapf(err, "failed to parse value for key %q", key)
-			}
-			output = append(output, fmt.Sprintf("%q: %+v", key, drainingInfo))
-		} else if strings.HasPrefix(key, gossip.KeyGossipClientsPrefix) {
-			output = append(output, fmt.Sprintf("%q: %v", key, string(bytes)))
-		}
-	}
-
-	sort.Strings(output)
-	return strings.Join(output, "\n"), nil
-}
-
 var debugSyncBenchCmd = &cobra.Command{
 	Use:   "syncbench [directory]",
 	Short: "Run a performance test for WAL sync speed",
@@ -1563,7 +1430,6 @@ var debugCmds = []*cobra.Command{
 	debugDecodeKeyCmd,
 	debugDecodeValueCmd,
 	debugDecodeProtoCmd,
-	debugGossipValuesCmd,
 	debugTimeSeriesDumpCmd,
 	debugSyncBenchCmd,
 	debugSyncTestCmd,

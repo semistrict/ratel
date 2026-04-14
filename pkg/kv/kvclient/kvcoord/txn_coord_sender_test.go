@@ -184,7 +184,7 @@ func TestTxnCoordSenderHeartbeat(t *testing.T) {
 		kvcoord.NewDistSenderForLocalTestCluster(
 			ctx,
 			s.Cfg.Settings, &roachpb.NodeDescriptor{NodeID: 1},
-			ambient.Tracer, s.Clock, s.Latency, s.Stores, s.Stopper(), s.Gossip,
+			ambient.Tracer, s.Clock, s.Latency, s.Stores, s.Stopper(),
 		),
 	)
 	quickHeartbeatDB := kv.NewDB(ambient, tsf, s.Clock, s.Stopper())
@@ -288,7 +288,7 @@ func TestDB_PrepareForRetryAfterHeartbeatFailure(t *testing.T) {
 		kvcoord.NewDistSenderForLocalTestCluster(
 			ctx,
 			s.Cfg.Settings, &roachpb.NodeDescriptor{NodeID: 1},
-			ambient.Tracer, s.Clock, s.Latency, s.Stores, s.Stopper(), s.Gossip,
+			ambient.Tracer, s.Clock, s.Latency, s.Stores, s.Stopper(),
 		),
 	)
 	db := kv.NewDB(ambient, tsf, s.Clock, s.Stopper())

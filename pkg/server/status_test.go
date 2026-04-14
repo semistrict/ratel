@@ -38,7 +38,6 @@ import (
 	io_prometheus_client "github.com/prometheus/client_model/go"
 	"github.com/semistrict/ratel/pkg/base"
 	"github.com/semistrict/ratel/pkg/build"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/jobs"
 	"github.com/semistrict/ratel/pkg/jobs/jobspb"
 	"github.com/semistrict/ratel/pkg/keys"
@@ -115,15 +114,9 @@ func TestStatusJson(t *testing.T) {
 	defer s.Stopper().Stop(context.Background())
 	ts := s.(*TestServer)
 
-	nodeID := ts.Gossip().NodeID.Get()
-	addr, err := ts.Gossip().GetNodeIDAddress(nodeID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	sqlAddr, err := ts.Gossip().GetNodeIDSQLAddress(nodeID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	nodeID := ts.NodeID()
+	rpcAddr := ts.ServingRPCAddr()
+	sqlAddr := ts.ServingSQLAddr()
 
 	var nodes serverpb.NodesResponse
 	testutils.SucceedsSoon(t, func() error {
@@ -148,10 +141,10 @@ func TestStatusJson(t *testing.T) {
 		if a, e := details.NodeID, nodeID; a != e {
 			t.Errorf("expected: %d, got: %d", e, a)
 		}
-		if a, e := details.Address, *addr; a != e {
+		if a, e := details.Address.String(), rpcAddr; a != e {
 			t.Errorf("expected: %v, got: %v", e, a)
 		}
-		if a, e := details.SQLAddress, *sqlAddr; a != e {
+		if a, e := details.SQLAddress.String(), sqlAddr; a != e {
 			t.Errorf("expected: %v, got: %v", e, a)
 		}
 		if a, e := details.BuildInfo, build.GetInfo(); a != e {
@@ -235,29 +228,7 @@ func TestHealthTelemetry(t *testing.T) {
 	}
 }
 
-// TestStatusGossipJson ensures that the output response for the full gossip
-// info contains the required fields.
-func TestStatusGossipJson(t *testing.T) {
-	defer leaktest.AfterTest(t)()
-	defer log.Scope(t).Close(t)
-
-	s, _, _ := serverutils.StartServer(t, base.TestServerArgs{})
-	defer s.Stopper().Stop(context.Background())
-
-	var data gossip.InfoStatus
-	if err := getStatusJSONProto(s, "gossip/local", &data); err != nil {
-		t.Fatal(err)
-	}
-	if _, ok := data.Infos["first-range"]; !ok {
-		t.Errorf("no first-range info returned: %v", data)
-	}
-	if _, ok := data.Infos["cluster-id"]; !ok {
-		t.Errorf("no clusterID info returned: %v", data)
-	}
-	if _, ok := data.Infos["node:1"]; !ok {
-		t.Errorf("no node 1 info returned: %v", data)
-	}
-}
+// TestStatusGossipJson was deleted — gossip has been removed from Ratel.
 
 // TestStatusEngineStatsJson ensures that the output response for the engine
 // stats contains the required fields.
@@ -870,7 +841,7 @@ func TestMetricsEndpoint(t *testing.T) {
 	s := startServer(t)
 	defer s.Stopper().Stop(context.Background())
 
-	if _, err := getText(s, s.AdminURL()+statusPrefix+"metrics/"+s.Gossip().NodeID.String()); err != nil {
+	if _, err := getText(s, s.AdminURL()+statusPrefix+"metrics/"+strconv.FormatInt(int64(s.NodeID()), 10)); err != nil {
 		t.Fatal(err)
 	}
 }

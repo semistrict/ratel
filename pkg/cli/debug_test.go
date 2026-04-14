@@ -19,14 +19,12 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/semistrict/ratel/pkg/base"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/kv/kvserver"
@@ -36,7 +34,6 @@ import (
 	"github.com/semistrict/ratel/pkg/server/serverpb"
 	"github.com/semistrict/ratel/pkg/storage"
 	"github.com/semistrict/ratel/pkg/testutils"
-	"github.com/semistrict/ratel/pkg/testutils/serverutils"
 	"github.com/semistrict/ratel/pkg/testutils/skip"
 	"github.com/semistrict/ratel/pkg/testutils/sqlutils"
 	"github.com/semistrict/ratel/pkg/testutils/testcluster"
@@ -418,34 +415,7 @@ func TestRemoveDeadReplicas(t *testing.T) {
 	}
 }
 
-func TestParseGossipValues(t *testing.T) {
-	defer leaktest.AfterTest(t)()
-	defer log.Scope(t).Close(t)
-	ctx := context.Background()
-
-	tc := testcluster.StartTestCluster(t, 3, base.TestClusterArgs{})
-	defer tc.Stopper().Stop(ctx)
-
-	var gossipInfo gossip.InfoStatus
-	if err := serverutils.GetJSONProto(tc.Server(0), "/_status/gossip/1", &gossipInfo); err != nil {
-		t.Fatal(err)
-	}
-
-	debugOutput, err := parseGossipValues(&gossipInfo)
-	if err != nil {
-		t.Fatal(err)
-	}
-	debugLines := strings.Split(debugOutput, "\n")
-	if len(debugLines) != len(gossipInfo.Infos) {
-		var gossipInfoKeys []string
-		for key := range gossipInfo.Infos {
-			gossipInfoKeys = append(gossipInfoKeys, key)
-		}
-		sort.Strings(gossipInfoKeys)
-		t.Errorf("`debug gossip-values` output contains %d entries, but the source gossip contains %d:\ndebug output:\n%v\n\ngossipInfos:\n%v",
-			len(debugLines), len(gossipInfo.Infos), debugOutput, strings.Join(gossipInfoKeys, "\n"))
-	}
-}
+// TestParseGossipValues was deleted — gossip has been removed from Ratel.
 
 func TestParsePositiveDuration(t *testing.T) {
 	defer leaktest.AfterTest(t)()

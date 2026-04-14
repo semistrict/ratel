@@ -127,16 +127,32 @@ func (r *Retry) Next() bool {
 		return false
 	}
 
-	// Wait before retry.
+	// Wait before retry. Check cancellation before and after sleeping.
+	// We use time.Sleep so that synctest can advance fake time through
+	// the wait — a select mixing timers with channels is classified as
+	// "durable" by synctest, preventing fake-time advancement.
+	//
+	// The tradeoff: cancellation during sleep is detected only after
+	// the sleep completes. With exponential backoff capped at MaxBackoff
+	// (default 2s), worst-case detection delay equals MaxBackoff.
+	d := r.retryIn()
 	select {
-	case <-time.After(r.retryIn()):
-		r.currentAttempt++
-		return true
 	case <-r.opts.Closer:
 		return false
 	case <-r.ctxDoneChan:
 		return false
+	default:
 	}
+	time.Sleep(d)
+	select {
+	case <-r.opts.Closer:
+		return false
+	case <-r.ctxDoneChan:
+		return false
+	default:
+	}
+	r.currentAttempt++
+	return true
 }
 
 // closedC is returned from Retry.NextCh whenever a retry

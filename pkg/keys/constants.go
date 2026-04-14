@@ -275,6 +275,20 @@ var (
 	// NodeLivenessKeyMax is the maximum value for any node liveness key.
 	NodeLivenessKeyMax = NodeLivenessPrefix.PrefixEnd()
 	//
+	// NodeDescriptorPrefix specifies the key prefix for node descriptor
+	// records, used by the rangefeed-backed node descriptor store that
+	// replaces gossip for node discovery.
+	NodeDescriptorPrefix = roachpb.Key(makeKey(SystemPrefix, roachpb.RKey("\x00nodedesc-")))
+	// NodeDescriptorKeyMax is the maximum value for any node descriptor key.
+	NodeDescriptorKeyMax = NodeDescriptorPrefix.PrefixEnd()
+	//
+	// StoreDescriptorPrefix specifies the key prefix for store descriptor
+	// records, used by the rangefeed-backed store descriptor store that
+	// replaces gossip for store discovery.
+	StoreDescriptorPrefix = roachpb.Key(makeKey(SystemPrefix, roachpb.RKey("\x00storedesc-")))
+	// StoreDescriptorKeyMax is the maximum value for any store descriptor key.
+	StoreDescriptorKeyMax = StoreDescriptorPrefix.PrefixEnd()
+	//
 	// BootstrapVersionKey is the key at which clusters bootstrapped with a version
 	// > 1.0 persist the version at which they were bootstrapped.
 	BootstrapVersionKey = roachpb.Key(makeKey(SystemPrefix, roachpb.RKey("bootstrap-version")))

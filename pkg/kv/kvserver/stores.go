@@ -21,39 +21,26 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/semistrict/ratel/pkg/clusterversion"
-	"github.com/semistrict/ratel/pkg/gossip"
-	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/closedts/ctpb"
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/storage"
 	"github.com/semistrict/ratel/pkg/util/hlc"
 	"github.com/semistrict/ratel/pkg/util/log"
-	"github.com/semistrict/ratel/pkg/util/protoutil"
 	"github.com/semistrict/ratel/pkg/util/syncutil"
 )
 
 // Stores provides methods to access a collection of stores. There's
 // a visitor pattern and also an implementation of the client.Sender
 // interface which directs a call to the appropriate store based on
-// the call's key range. Stores also implements the gossip.Storage
-// interface, which allows gossip bootstrap information to be
-// persisted consistently to every store and the most recent bootstrap
-// information to be read at node startup.
+// the call's key range.
 type Stores struct {
 	log.AmbientContext
 	clock    *hlc.Clock
 	storeMap syncutil.IntMap // map[roachpb.StoreID]*Store
-
-	mu struct {
-		syncutil.Mutex
-		biLatestTS hlc.Timestamp         // Timestamp of gossip bootstrap info
-		latestBI   *gossip.BootstrapInfo // Latest cached bootstrap info
-	}
 }
 
-var _ kv.Sender = &Stores{}      // Stores implements the client.Sender interface
-var _ gossip.Storage = &Stores{} // Stores implements the gossip.Storage interface
+var _ kv.Sender = &Stores{} // Stores implements the client.Sender interface
 
 // NewStores returns a local-only sender which directly accesses
 // a collection of stores.
@@ -106,16 +93,6 @@ func (ls *Stores) GetStore(storeID roachpb.StoreID) (*Store, error) {
 func (ls *Stores) AddStore(s *Store) {
 	if _, loaded := ls.storeMap.LoadOrStore(int64(s.Ident.StoreID), unsafe.Pointer(s)); loaded {
 		panic(fmt.Sprintf("cannot add store twice: %+v", s.Ident))
-	}
-	// If we've already read the gossip bootstrap info, ensure that
-	// all stores have the most recent values.
-	ls.mu.Lock()
-	defer ls.mu.Unlock()
-	if !ls.mu.biLatestTS.IsEmpty() {
-		if err := ls.updateBootstrapInfoLocked(ls.mu.latestBI); err != nil {
-			ctx := ls.AnnotateCtx(context.TODO())
-			log.Errorf(ctx, "failed to update bootstrap info on newly added store: %+v", err)
-		}
 	}
 }
 
@@ -218,78 +195,6 @@ func (ls *Stores) RangeFeed(
 	}
 
 	return store.RangeFeed(args, stream)
-}
-
-// ReadBootstrapInfo implements the gossip.Storage interface. Read
-// attempts to read gossip bootstrap info from every known store and
-// finds the most recent from all stores to initialize the bootstrap
-// info argument. Returns an error on any issues reading data for the
-// stores (but excluding the case in which no data has been persisted
-// yet).
-func (ls *Stores) ReadBootstrapInfo(bi *gossip.BootstrapInfo) error {
-	var latestTS hlc.Timestamp
-
-	ctx := ls.AnnotateCtx(context.TODO())
-	var err error
-
-	// Find the most recent bootstrap info.
-	ls.storeMap.Range(func(k int64, v unsafe.Pointer) bool {
-		s := (*Store)(v)
-		var storeBI gossip.BootstrapInfo
-		var ok bool
-		ok, err = storage.MVCCGetProto(ctx, s.engine, keys.StoreGossipKey(), hlc.Timestamp{}, &storeBI,
-			storage.MVCCGetOptions{})
-		if err != nil {
-			return false
-		}
-		if ok && latestTS.Less(storeBI.Timestamp) {
-			latestTS = storeBI.Timestamp
-			*bi = storeBI
-		}
-		return true
-	})
-	if err != nil {
-		return err
-	}
-	log.Infof(ctx, "read %d node addresses from persistent storage", len(bi.Addresses))
-
-	ls.mu.Lock()
-	defer ls.mu.Unlock()
-	return ls.updateBootstrapInfoLocked(bi)
-}
-
-// WriteBootstrapInfo implements the gossip.Storage interface. Write
-// persists the supplied bootstrap info to every known store. Returns
-// nil on success; otherwise returns first error encountered writing
-// to the stores.
-func (ls *Stores) WriteBootstrapInfo(bi *gossip.BootstrapInfo) error {
-	ls.mu.Lock()
-	defer ls.mu.Unlock()
-	bi.Timestamp = ls.clock.Now()
-	if err := ls.updateBootstrapInfoLocked(bi); err != nil {
-		return err
-	}
-	ctx := ls.AnnotateCtx(context.TODO())
-	log.Infof(ctx, "wrote %d node addresses to persistent storage", len(bi.Addresses))
-	return nil
-}
-
-func (ls *Stores) updateBootstrapInfoLocked(bi *gossip.BootstrapInfo) error {
-	if bi.Timestamp.Less(ls.mu.biLatestTS) {
-		return nil
-	}
-	ctx := ls.AnnotateCtx(context.TODO())
-	// Update the latest timestamp and set cached version.
-	ls.mu.biLatestTS = bi.Timestamp
-	ls.mu.latestBI = protoutil.Clone(bi).(*gossip.BootstrapInfo)
-	// Update all stores.
-	var err error
-	ls.storeMap.Range(func(k int64, v unsafe.Pointer) bool {
-		s := (*Store)(v)
-		err = storage.MVCCPutProto(ctx, s.engine, nil, keys.StoreGossipKey(), hlc.Timestamp{}, nil, bi)
-		return err == nil
-	})
-	return err
 }
 
 // WriteClusterVersionToEngines writes the given version to the given engines,

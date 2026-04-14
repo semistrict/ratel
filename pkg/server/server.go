@@ -17,6 +17,7 @@ package server
 import (
 	"context"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -29,13 +30,14 @@ import (
 	"github.com/cockroachdb/redact"
 	"github.com/semistrict/ratel/pkg/base"
 	"github.com/semistrict/ratel/pkg/clusterversion"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/jobs"
 	"github.com/semistrict/ratel/pkg/jobs/jobsprotectedts"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/kv/kvclient/kvcoord"
+	"github.com/semistrict/ratel/pkg/kv/kvclient/nodedescstore"
 	"github.com/semistrict/ratel/pkg/kv/kvclient/rangefeed"
+	"github.com/semistrict/ratel/pkg/kv/kvclient/storedescstore"
 	"github.com/semistrict/ratel/pkg/kv/kvprober"
 	"github.com/semistrict/ratel/pkg/kv/kvserver"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/closedts/ctpb"
@@ -104,8 +106,11 @@ type Server struct {
 	rpcContext      *rpc.Context
 	engines         Engines
 	// The gRPC server on which the different RPC handlers will be registered.
-	grpc             *grpcServer
-	gossip           *gossip.Gossip
+	grpc               *grpcServer
+	firstRangeProvider kvcoord.FirstRangeProvider
+	nodeDescStore    *nodedescstore.Store
+	storeDescStore   *storedescstore.Store
+	rangeFeedFactory *rangefeed.Factory
 	nodeDialer       *nodedialer.Dialer
 	nodeLiveness     *liveness.NodeLiveness
 	storePool        *kvserver.StorePool
@@ -285,27 +290,42 @@ func NewServer(cfg Config, stopper *stop.Stopper) (*Server, error) {
 
 	grpcServer := newGRPCServer(rpcContext)
 
-	g := gossip.New(
-		cfg.AmbientCtx,
-		rpcContext.StorageClusterID,
-		nodeIDContainer,
-		rpcContext,
-		grpcServer.Server,
-		stopper,
-		registry,
-		cfg.Locality,
-		&cfg.DefaultZoneConfig,
-	)
-
 	var dialerKnobs nodedialer.DialerTestingKnobs
 	if dk := cfg.TestingKnobs.DialerKnobs; dk != nil {
 		dialerKnobs = dk.(nodedialer.DialerTestingKnobs)
 	}
 
-	nodeDialer := nodedialer.NewWithOpt(rpcContext, gossip.AddressResolver(g),
-		nodedialer.DialerOpt{TestingKnobs: dialerKnobs})
+	// The nodeDescStore is created later (after db/rangefeed factory). The
+	// resolver captures the pointer and uses it once initialized.
+	var nodeDescStore *nodedescstore.Store
+	var sharedDescs *SharedNodeDescStore
+	if knobs := cfg.TestingKnobs.Server; knobs != nil {
+		sharedDescs = knobs.(*TestingKnobs).SharedNodeDescs
+	}
+	nodeDialer := nodedialer.NewWithOpt(rpcContext, nodedialer.AddressResolver(func(nodeID roachpb.NodeID) (net.Addr, error) {
+		if nds := nodeDescStore; nds != nil {
+			if addr, err := nds.AddressResolver()(nodeID); err == nil {
+				return addr, nil
+			}
+		}
+		if sharedDescs != nil {
+			if addr, _ := sharedDescs.AddressResolver()(nodeID); addr != nil {
+				return addr, nil
+			}
+		}
+		if len(cfg.JoinList) > 0 {
+			return util.NewUnresolvedAddr("tcp", cfg.JoinList[0]), nil
+		}
+		return nil, errors.Errorf("unable to resolve address for n%d", nodeID)
+	}), nodedialer.DialerOpt{TestingKnobs: dialerKnobs})
 
-	runtimeSampler := status.NewRuntimeStatSampler(ctx, clock)
+	var osSampler status.OSSampler
+	if knobs := cfg.TestingKnobs.Server; knobs != nil {
+		if s, ok := knobs.(*TestingKnobs).OSSampler.(status.OSSampler); ok {
+			osSampler = s
+		}
+	}
+	runtimeSampler := status.NewRuntimeStatSampler(ctx, clock, osSampler)
 	registry.AddMetricStruct(runtimeSampler)
 
 	registry.AddMetric(base.LicenseTTL)
@@ -337,15 +357,33 @@ func NewServer(cfg Config, stopper *stop.Stopper) (*Server, error) {
 		retryOpts = base.DefaultRetryOptions()
 	}
 	retryOpts.Closer = stopper.ShouldQuiesce()
+	// Use the shared first range provider if available (test clusters).
+	// Otherwise create a local one that gets populated by the store.
+	var firstRangeProvider kvcoord.FirstRangeProvider
+	var localFirstRangeProvider *kvcoord.LocalFirstRangeProvider
+	if knobs := cfg.TestingKnobs.Server; knobs != nil {
+		if sfr := knobs.(*TestingKnobs).SharedFirstRange; sfr != nil {
+			firstRangeProvider = sfr
+		}
+	}
+	if firstRangeProvider == nil {
+		lfrp := kvcoord.NewLocalFirstRangeProvider()
+		firstRangeProvider = lfrp
+		localFirstRangeProvider = lfrp
+	}
+	// lazyNodeDescStore defers to the nodeDescStore pointer once it's initialized.
+	// This breaks the circular dependency: distSender needs a NodeDescStore but
+	// nodeDescStore needs a db which needs distSender.
+	lazyNodeDescs := lazyNodeDescStore{store: &nodeDescStore, shared: sharedDescs}
 	distSenderCfg := kvcoord.DistSenderConfig{
 		AmbientCtx:         cfg.AmbientCtx,
 		Settings:           st,
 		Clock:              clock,
-		NodeDescs:          g,
+		NodeDescs:          &lazyNodeDescs,
 		RPCContext:         rpcContext,
 		RPCRetryOptions:    &retryOpts,
 		NodeDialer:         nodeDialer,
-		FirstRangeProvider: g,
+		FirstRangeProvider: firstRangeProvider,
 		TestingKnobs:       clientTestingKnobs,
 	}
 	distSender := kvcoord.NewDistSender(distSenderCfg)
@@ -408,6 +446,10 @@ func NewServer(cfg Config, stopper *stop.Stopper) (*Server, error) {
 		return nil, err
 	}
 
+	// Rangefeed-backed descriptor stores that replace gossip.
+	// nodeDescStore was declared above (needed for composite resolver closure).
+	nodeDescStore = nodedescstore.New(db, clock, rangeFeedFactory, stopper)
+	storeDescStore := storedescstore.New(db, clock, rangeFeedFactory, stopper)
 	stores := kvserver.NewStores(cfg.AmbientCtx, clock)
 
 	decomNodeMap := &decommissioningNodeMap{
@@ -418,7 +460,7 @@ func NewServer(cfg Config, stopper *stop.Stopper) (*Server, error) {
 		Stopper:                 stopper,
 		Clock:                   clock,
 		DB:                      db,
-		Gossip:                  g,
+		NodeIDContainer:         nodeIDContainer,
 		LivenessThreshold:       nlActive,
 		RenewalDuration:         nlRenewal,
 		Settings:                st,
@@ -450,12 +492,13 @@ func NewServer(cfg Config, stopper *stop.Stopper) (*Server, error) {
 	storePool := kvserver.NewStorePool(
 		cfg.AmbientCtx,
 		st,
-		g,
 		clock,
 		nodeLiveness.GetNodeCount,
 		nodeLivenessFn,
 		/* deterministic */ false,
 	)
+	// Feed rangefeed-backed store descriptor updates into StorePool.
+	storeDescStore.RegisterCallback(storePool.StoreDescUpdate)
 
 	raftTransport := kvserver.NewRaftTransport(
 		cfg.AmbientCtx, st, nodeDialer, grpcServer.Server, stopper,
@@ -636,7 +679,6 @@ func NewServer(cfg Config, stopper *stop.Stopper) (*Server, error) {
 		RaftConfig:               cfg.RaftConfig,
 		Clock:                    clock,
 		DB:                       db,
-		Gossip:                   g,
 		NodeLiveness:             nodeLiveness,
 		Transport:                raftTransport,
 		NodeDialer:               nodeDialer,
@@ -660,13 +702,23 @@ func NewServer(cfg Config, stopper *stop.Stopper) (*Server, error) {
 		SystemConfigProvider:     systemConfigWatcher,
 		SpanConfigSubscriber:     spanConfig.subscriber,
 		SpanConfigsDisabled:      cfg.SpanConfigsDisabled,
+		FirstRangeCallback: func(desc *roachpb.RangeDescriptor) {
+			if localFirstRangeProvider != nil {
+				localFirstRangeProvider.Set(desc)
+			}
+			if knobs := cfg.TestingKnobs.Server; knobs != nil {
+				if sfr := knobs.(*TestingKnobs).SharedFirstRange; sfr != nil {
+					sfr.Set(desc)
+				}
+			}
+		},
 	}
 
 	if storeTestingKnobs := cfg.TestingKnobs.Store; storeTestingKnobs != nil {
 		storeCfg.TestingKnobs = *storeTestingKnobs.(*kvserver.StoreTestingKnobs)
 	}
 
-	recorder := status.NewMetricsRecorder(clock, nodeLiveness, rpcContext, g, st)
+	recorder := status.NewMetricsRecorder(clock, nodeLiveness, rpcContext, nodeDescStore.GetNodeIDAddress, st)
 	registry.AddMetricStruct(rpcContext.RemoteClocks.Metrics())
 
 	tenantUsage := NewTenantUsageServer(st, db, internalExecutor)
@@ -690,6 +742,8 @@ func NewServer(cfg Config, stopper *stop.Stopper) (*Server, error) {
 		tenantUsage,
 		tenantSettingsWatcher,
 		spanConfig.kvAccessor,
+		nodeDescStore,
+		storeDescStore,
 	)
 	roachpb.RegisterInternalServer(grpcServer.Server, node)
 	kvserver.RegisterPerReplicaServer(grpcServer.Server, node.perReplicaServer)
@@ -707,12 +761,15 @@ func NewServer(cfg Config, stopper *stop.Stopper) (*Server, error) {
 		lateBoundServer, cfg.Settings, adminAuthzCheck, internalExecutor,
 	)
 
-	// These callbacks help us avoid a dependency on gossip in httpServer.
+	// These callbacks help us avoid a dependency on nodeDescStore in httpServer.
 	parseNodeIDFn := func(s string) (roachpb.NodeID, bool, error) {
-		return parseNodeID(g, s)
+		return parseNodeID(nodeIDContainer, s)
 	}
 	getNodeIDHTTPAddressFn := func(id roachpb.NodeID) (*util.UnresolvedAddr, error) {
-		return g.GetNodeIDHTTPAddress(id)
+		if nodeDescStore != nil {
+			return nodeDescStore.GetNodeIDHTTPAddress(id)
+		}
+		return nil, errors.New("node descriptor store not yet initialized")
 	}
 	sHTTP := newHTTPServer(cfg.BaseConfig, rpcContext, parseNodeIDFn, getNodeIDHTTPAddressFn)
 
@@ -726,7 +783,8 @@ func NewServer(cfg Config, stopper *stop.Stopper) (*Server, error) {
 		adminAuthzCheck,
 		sAdmin,
 		db,
-		g,
+		nodeIDContainer,
+		nodeDescStore,
 		recorder,
 		nodeLiveness,
 		storePool,
@@ -759,7 +817,6 @@ func NewServer(cfg Config, stopper *stop.Stopper) (*Server, error) {
 		sqlServerOptionalKVArgs: sqlServerOptionalKVArgs{
 			nodesStatusServer:        serverpb.MakeOptionalNodesStatusServer(sStatus),
 			nodeLiveness:             optionalnodeliveness.MakeContainer(nodeLiveness),
-			gossip:                   gossip.MakeOptionalGossip(g),
 			grpcServer:               grpcServer.Server,
 			nodeIDContainer:          idContainer,
 			externalStorage:          externalStorage,
@@ -775,7 +832,9 @@ func NewServer(cfg Config, stopper *stop.Stopper) (*Server, error) {
 		clock:                    clock,
 		runtime:                  runtimeSampler,
 		rpcContext:               rpcContext,
-		nodeDescs:                g,
+		nodeDescs:                nodeDescStore,
+		nodeDescLookup:           nodeDescStore,
+		storeDescLookup:          storeDescStore,
 		systemConfigWatcher:      systemConfigWatcher,
 		spanConfigAccessor:       spanConfig.kvAccessor,
 		nodeDialer:               nodeDialer,
@@ -825,7 +884,10 @@ func NewServer(cfg Config, stopper *stop.Stopper) (*Server, error) {
 		rpcContext:             rpcContext,
 		engines:                engines,
 		grpc:                   grpcServer,
-		gossip:                 g,
+		firstRangeProvider:     firstRangeProvider,
+		nodeDescStore:          nodeDescStore,
+		storeDescStore:         storeDescStore,
+		rangeFeedFactory:       rangeFeedFactory,
 		nodeDialer:             nodeDialer,
 		nodeLiveness:           nodeLiveness,
 		storePool:              storePool,
@@ -938,6 +1000,28 @@ func (s *Server) GetFirstStoreID() roachpb.StoreID {
 	return first
 }
 
+// lazyNodeDescStore is a kvcoord.NodeDescStore that defers to a
+// *nodedescstore.Store pointer once it is initialized. This breaks the
+// circular dependency between DistSender and nodeDescStore during server
+// construction. It also falls back to the shared test cluster store.
+type lazyNodeDescStore struct {
+	store  **nodedescstore.Store
+	shared *SharedNodeDescStore
+}
+
+func (l *lazyNodeDescStore) GetNodeDescriptor(nodeID roachpb.NodeID) (*roachpb.NodeDescriptor, error) {
+	if s := *l.store; s != nil {
+		desc, err := s.GetNodeDescriptor(nodeID)
+		if err == nil {
+			return desc, nil
+		}
+	}
+	if l.shared != nil {
+		return l.shared.GetNodeDescriptor(nodeID)
+	}
+	return nil, errors.Errorf("node descriptor not found for n%d", nodeID)
+}
+
 // listenerInfo is a helper used to write files containing various listener
 // information to the store directories. In contrast to the "listening url
 // file", these are written once the listeners are available, before the server
@@ -970,29 +1054,13 @@ func (s *Server) Start(ctx context.Context) error {
 	return s.AcceptClients(ctx)
 }
 
-// PreStart starts the server on the specified port, starts gossip and
-// initializes the node using the engines from the server's context.
+// PreStart starts the server on the specified port and initializes the node
+// using the engines from the server's context.
 //
 // It does not activate the pgwire listener over the network / unix
 // socket, which is done by the AcceptClients() method. The separation
 // between the two exists so that SQL initialization can take place
 // before the first client is accepted.
-//
-// PreStart is complex since it sets up the listeners and the associated
-// port muxing, but especially since it has to solve the
-// "bootstrapping problem": nodes need to connect to Gossip fairly
-// early, but what drives Gossip connectivity are the first range
-// replicas in the kv store. This in turn suggests opening the Gossip
-// server early. However, naively doing so also serves most other
-// services prematurely, which exposes a large surface of potentially
-// underinitialized services. This is avoided with some additional
-// complexity that can be summarized as follows:
-//
-//   - before blocking trying to connect to the Gossip network, we already open
-//     the admin UI (so that its diagnostics are available)
-//   - we also allow our Gossip and our connection health Ping service
-//   - everything else returns Unavailable errors (which are retryable)
-//   - once the node has started, unlock all RPCs.
 //
 // The passed context can be used to trace the server startup. The context
 // should represent the general startup operation.
@@ -1055,9 +1123,6 @@ func (s *Server) PreStart(ctx context.Context) error {
 		s.db,
 		nil, /* TenantExternalIORecorder */
 	)
-
-	// Filter out self from the gossip bootstrap addresses.
-	filtered := s.cfg.FilterGossipBootstrapAddresses(ctx)
 
 	// Set up the init server. We have to do this relatively early because we
 	// can't call RegisterInitServer() after `grpc.Serve`, which is called in
@@ -1268,7 +1333,7 @@ func (s *Server) PreStart(ctx context.Context) error {
 		return errors.Wrap(err, "invalid init state")
 	}
 
-	// Apply any cached initial settings (and start the gossip listener) as early
+	// Apply any cached initial settings as early
 	// as possible, to avoid spending time with stale settings.
 	if err := initializeCachedSettings(
 		ctx, keys.SystemSQLCodec, s.st.MakeUpdater(), state.initialSettingsKVs,
@@ -1338,22 +1403,6 @@ func (s *Server) PreStart(ctx context.Context) error {
 	// initState -- and everything after it is actually starting the server,
 	// using the listeners and init state.
 
-	// Spawn a goroutine that will print a nice message when Gossip connects.
-	// Note that we already know the clusterID, but we don't know that Gossip
-	// has connected. The pertinent case is that of restarting an entire
-	// cluster. Someone has to gossip the ClusterID before Gossip is connected,
-	// but this gossip only happens once the first range has a leaseholder, i.e.
-	// when a quorum of nodes has gone fully operational.
-	_ = s.stopper.RunAsyncTask(ctx, "connect-gossip", func(ctx context.Context) {
-		log.Ops.Infof(ctx, "connecting to gossip network to verify cluster ID %q", state.clusterID)
-		select {
-		case <-s.gossip.Connected:
-			log.Ops.Infof(ctx, "node connected via gossip")
-		case <-ctx.Done():
-		case <-s.stopper.ShouldQuiesce():
-		}
-	})
-
 	hlcUpperBoundExists, err := s.checkHLCUpperBoundExistsAndEnsureMonotonicity(ctx, initialStart)
 	if err != nil {
 		return err
@@ -1372,10 +1421,6 @@ func (s *Server) PreStart(ctx context.Context) error {
 	// what the advertised addr is going to be if nothing is explicitly
 	// provided.
 	advAddrU := util.NewUnresolvedAddr("tcp", s.cfg.AdvertiseAddr)
-
-	// We're going to need to start gossip before we spin up Node below.
-	s.gossip.Start(advAddrU, filtered)
-	log.Event(ctx, "started gossip")
 
 	// Now that we have a monotonic HLC wrt previous incarnations of the process,
 	// init all the replicas. At this point *some* store has been initialized or
@@ -1401,6 +1446,15 @@ func (s *Server) PreStart(ctx context.Context) error {
 	}
 
 	log.Event(ctx, "started node")
+
+	// Register this node's descriptor in the shared test cluster store
+	// so other nodes can discover it immediately. This replaces gossip.
+	if knobs := s.cfg.TestingKnobs.Server; knobs != nil {
+		if shared := knobs.(*TestingKnobs).SharedNodeDescs; shared != nil {
+			shared.Set(&s.node.Descriptor)
+		}
+	}
+
 	if err := s.startPersistingHLCUpperBound(ctx, hlcUpperBoundExists); err != nil {
 		return err
 	}
@@ -1524,6 +1578,18 @@ func (s *Server) PreStart(ctx context.Context) error {
 		DisableHeartbeatLoop: disableNodeLivenessHeartbeatLoop,
 	})
 
+	// Start rangefeed-backed stores that replace gossip for discovery.
+	if err := s.nodeDescStore.Start(ctx); err != nil {
+		return errors.Wrap(err, "starting node descriptor store")
+	}
+	if err := s.storeDescStore.Start(ctx); err != nil {
+		return errors.Wrap(err, "starting store descriptor store")
+	}
+	// Liveness poller feeds updates into NodeLiveness cache.
+	if err := s.nodeLiveness.StartLivenessPoller(ctx, s.stopper); err != nil {
+		return errors.Wrap(err, "starting liveness poller")
+	}
+
 	// Begin recording status summaries.
 	disableNodeStatusWrite := false
 	if knobs := s.cfg.TestingKnobs.Server; knobs != nil {
@@ -1575,8 +1641,8 @@ func (s *Server) PreStart(ctx context.Context) error {
 
 		// Create the multi-node worker router for DO affinity.
 		var router *workerRouter
-		if s.nodeLiveness != nil && s.gossip != nil {
-			router = newWorkerRouter(s.NodeID(), s.gossip, s.nodeLiveness, s.rpcContext)
+		if s.nodeLiveness != nil && s.nodeDescStore != nil {
+			router = newWorkerRouter(s.NodeID(), s.nodeLiveness, s.rpcContext, s.nodeDescStore)
 		}
 
 		wp := newWorkerdProxy(apiServer, workerdPort, s.cfg.AmbientCtx.Tracer, s.workerdSidecar, router)

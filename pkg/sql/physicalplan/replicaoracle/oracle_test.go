@@ -21,15 +21,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/semistrict/ratel/pkg/config/zonepb"
-	"github.com/semistrict/ratel/pkg/gossip"
+	"github.com/cockroachdb/errors"
 	"github.com/semistrict/ratel/pkg/roachpb"
-	"github.com/semistrict/ratel/pkg/rpc"
 	"github.com/semistrict/ratel/pkg/util"
-	"github.com/semistrict/ratel/pkg/util/hlc"
 	"github.com/semistrict/ratel/pkg/util/leaktest"
-	"github.com/semistrict/ratel/pkg/util/metric"
-	"github.com/semistrict/ratel/pkg/util/stop"
 )
 
 // TestRandomOracle defeats TestUnused for RandomChoice.
@@ -40,12 +35,10 @@ func TestRandomOracle(t *testing.T) {
 func TestClosest(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	ctx := context.Background()
-	stopper := stop.NewStopper()
-	defer stopper.Stop(ctx)
-	g, _ := makeGossip(t, stopper)
-	nd, _ := g.GetNodeDescriptor(1)
+	ns := makeNodeStore(t)
+	nd, _ := ns.GetNodeDescriptor(1)
 	o := NewOracle(ClosestChoice, Config{
-		NodeDescs: g,
+		NodeDescs: ns,
 		NodeDesc:  *nd,
 	})
 	o.(*closestOracle).latencyFunc = func(s string) (time.Duration, bool) {
@@ -76,27 +69,24 @@ func TestClosest(t *testing.T) {
 	}
 }
 
-func makeGossip(t *testing.T, stopper *stop.Stopper) (*gossip.Gossip, *hlc.Clock) {
-	clock := hlc.NewClock(hlc.UnixNano, time.Nanosecond)
-	ctx := context.Background()
-	rpcContext := rpc.NewInsecureTestingContext(ctx, clock, stopper)
-	server := rpc.NewServer(rpcContext)
+// testNodeDescStore implements kvcoord.NodeDescStore for tests.
+type testNodeDescStore struct {
+	nodes map[roachpb.NodeID]*roachpb.NodeDescriptor
+}
 
-	const nodeID = 1
-	g := gossip.NewTest(nodeID, rpcContext, server, stopper, metric.NewRegistry(), zonepb.DefaultZoneConfigRef())
-	if err := g.SetNodeDescriptor(newNodeDesc(nodeID)); err != nil {
-		t.Fatal(err)
+func (s *testNodeDescStore) GetNodeDescriptor(id roachpb.NodeID) (*roachpb.NodeDescriptor, error) {
+	if d, ok := s.nodes[id]; ok {
+		return d, nil
 	}
-	if err := g.AddInfo(gossip.KeySentinel, nil, time.Hour); err != nil {
-		t.Fatal(err)
+	return nil, errors.Errorf("node %d not found", id)
+}
+
+func makeNodeStore(t *testing.T) *testNodeDescStore {
+	ns := &testNodeDescStore{nodes: make(map[roachpb.NodeID]*roachpb.NodeDescriptor)}
+	for i := roachpb.NodeID(1); i <= 3; i++ {
+		ns.nodes[i] = newNodeDesc(i)
 	}
-	for i := roachpb.NodeID(2); i <= 3; i++ {
-		err := g.AddInfoProto(gossip.MakeNodeIDKey(i), newNodeDesc(i), gossip.NodeDescriptorTTL)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-	return g, clock
+	return ns
 }
 
 func newNodeDesc(nodeID roachpb.NodeID) *roachpb.NodeDescriptor {

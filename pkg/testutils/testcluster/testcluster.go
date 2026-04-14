@@ -29,7 +29,6 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/logtags"
 	"github.com/semistrict/ratel/pkg/base"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv/kvserver"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/liveness/livenesspb"
@@ -37,6 +36,7 @@ import (
 	"github.com/semistrict/ratel/pkg/rpc"
 	"github.com/semistrict/ratel/pkg/rpc/nodedialer"
 	"github.com/semistrict/ratel/pkg/server"
+	"github.com/semistrict/ratel/pkg/settings/cluster"
 	"github.com/semistrict/ratel/pkg/server/serverpb"
 	"github.com/semistrict/ratel/pkg/spanconfig"
 	"github.com/semistrict/ratel/pkg/storage"
@@ -222,6 +222,17 @@ func NewTestCluster(t testing.TB, nodes int, clusterArgs base.TestClusterArgs) *
 		}
 	}
 
+	// Create shared node descriptor and first range stores so that nodes
+	// can discover each other without gossip.
+	sharedDescs := server.NewSharedNodeDescStore()
+	sharedFirstRange := server.NewSharedFirstRangeProvider()
+
+	// Ensure all nodes share cluster settings so that the cluster version
+	// is initialized before cross-node RPCs occur.
+	if clusterArgs.ServerArgs.Settings == nil {
+		clusterArgs.ServerArgs.Settings = cluster.MakeTestingClusterSettings()
+	}
+
 	tc := &TestCluster{
 		stopper:     stop.NewStopper(),
 		clusterArgs: clusterArgs,
@@ -294,6 +305,21 @@ func NewTestCluster(t testing.TB, nodes int, clusterArgs base.TestClusterArgs) *
 			serverArgs.NoAutoInitializeCluster = true
 		}
 
+		// Inject shared node desc + first range providers so nodes can
+		// find each other without gossip.
+		serverKnobs := serverArgs.Knobs.Server
+		if serverKnobs == nil {
+			serverKnobs = &server.TestingKnobs{}
+		}
+		tk := serverKnobs.(*server.TestingKnobs)
+		if tk.SharedNodeDescs == nil {
+			tk.SharedNodeDescs = sharedDescs
+		}
+		if tk.SharedFirstRange == nil {
+			tk.SharedFirstRange = sharedFirstRange
+		}
+		serverArgs.Knobs.Server = tk
+
 		if _, err := tc.AddServer(serverArgs); err != nil {
 			tc.Stopper().Stop(context.Background())
 			t.Fatal(err)
@@ -332,10 +358,6 @@ func (tc *TestCluster) Start(t testing.TB) {
 			if err := tc.startServer(i, tc.serverArgs[i]); err != nil {
 				t.Fatal(err)
 			}
-			// We want to wait for stores for each server in order to have predictable
-			// store IDs. Otherwise, stores can be asynchronously bootstrapped in an
-			// unexpected order (#22342).
-			tc.WaitForNStores(t, i+1, tc.Servers[0].Gossip())
 		}
 	}
 
@@ -345,8 +367,6 @@ func (tc *TestCluster) Start(t testing.TB) {
 				t.Fatal(err)
 			}
 		}
-
-		tc.WaitForNStores(t, tc.NumServers(), tc.Servers[0].Gossip())
 	}
 
 	if tc.clusterArgs.ReplicationMode == base.ReplicationManual {
@@ -529,45 +549,6 @@ func (tc *TestCluster) startServer(idx int, serverArgs base.TestServerArgs) erro
 	defer tc.mu.Unlock()
 	tc.Conns = append(tc.Conns, dbConn)
 	return nil
-}
-
-// WaitForNStores waits for N store descriptors to be gossiped. Servers other
-// than the first "bootstrap" their stores asynchronously, but we'd like to have
-// control over when stores get initialized before returning the TestCluster.
-func (tc *TestCluster) WaitForNStores(t testing.TB, n int, g *gossip.Gossip) {
-	// Register a gossip callback for the store descriptors.
-	var storesMu syncutil.Mutex
-	stores := map[roachpb.StoreID]struct{}{}
-	storesDone := make(chan error)
-	storesDoneOnce := storesDone
-	unregister := g.RegisterCallback(gossip.MakePrefixPattern(gossip.KeyStorePrefix),
-		func(_ string, content roachpb.Value) {
-			storesMu.Lock()
-			defer storesMu.Unlock()
-			if storesDoneOnce == nil {
-				return
-			}
-
-			var desc roachpb.StoreDescriptor
-			if err := content.GetProto(&desc); err != nil {
-				storesDoneOnce <- err
-				return
-			}
-
-			stores[desc.StoreID] = struct{}{}
-			if len(stores) == n {
-				close(storesDoneOnce)
-				storesDoneOnce = nil
-			}
-		})
-	defer unregister()
-
-	// Wait for the store descriptors to be gossiped.
-	for err := range storesDone {
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
 }
 
 // LookupRange is part of TestClusterInterface.

@@ -22,11 +22,9 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/semistrict/ratel/pkg/clusterversion"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/storage"
 	"github.com/semistrict/ratel/pkg/testutils"
-	"github.com/semistrict/ratel/pkg/util"
 	"github.com/semistrict/ratel/pkg/util/hlc"
 	"github.com/semistrict/ratel/pkg/util/leaktest"
 	"github.com/semistrict/ratel/pkg/util/log"
@@ -238,108 +236,11 @@ func createStores(count int, t *testing.T) (*hlc.ManualClock, []*Store, *Stores,
 	return manual, stores, ls, stopper
 }
 
-// TestStoresGossipStorage verifies reading and writing of bootstrap info.
-func TestStoresGossipStorage(t *testing.T) {
-	defer leaktest.AfterTest(t)()
-	defer log.Scope(t).Close(t)
-	manual, stores, ls, stopper := createStores(2, t)
-	defer stopper.Stop(context.Background())
-	ls.AddStore(stores[0])
+// TestStoresGossipStorage has been removed because gossip bootstrap info
+// storage has been removed from Ratel.
 
-	// Verify initial read is empty.
-	var bi gossip.BootstrapInfo
-	if err := ls.ReadBootstrapInfo(&bi); err != nil {
-		t.Fatal(err)
-	}
-	if len(bi.Addresses) != 0 {
-		t.Errorf("expected empty bootstrap info: %+v", bi)
-	}
-
-	// Add a fake address and write.
-	manual.Increment(1)
-	bi.Addresses = append(bi.Addresses, util.MakeUnresolvedAddr("tcp", "127.0.0.1:8001"))
-	if err := ls.WriteBootstrapInfo(&bi); err != nil {
-		t.Fatal(err)
-	}
-
-	// Verify on read.
-	manual.Increment(1)
-	var newBI gossip.BootstrapInfo
-	if err := ls.ReadBootstrapInfo(&newBI); err != nil {
-		t.Fatal(err)
-	}
-	if len(newBI.Addresses) != 1 {
-		t.Errorf("expected single bootstrap info address: %+v", newBI)
-	}
-
-	// Add another store and verify it has bootstrap info written.
-	ls.AddStore(stores[1])
-
-	// Create a new stores object to verify read.
-	ls2 := newStores(log.MakeTestingAmbientCtxWithNewTracer(), ls.clock)
-	ls2.AddStore(stores[1])
-	var verifyBI gossip.BootstrapInfo
-	if err := ls2.ReadBootstrapInfo(&verifyBI); err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(bi, verifyBI) {
-		t.Errorf("bootstrap info %+v not equal to expected %+v", verifyBI, bi)
-	}
-}
-
-// TestStoresGossipStorageReadLatest verifies that the latest
-// bootstrap info from multiple stores is returned on Read.
-func TestStoresGossipStorageReadLatest(t *testing.T) {
-	defer leaktest.AfterTest(t)()
-	defer log.Scope(t).Close(t)
-	manual, stores, ls, stopper := createStores(2, t)
-	defer stopper.Stop(context.Background())
-	ls.AddStore(stores[0])
-
-	// Add a fake address and write.
-	var bi gossip.BootstrapInfo
-	bi.Addresses = append(bi.Addresses, util.MakeUnresolvedAddr("tcp", "127.0.0.1:8001"))
-	if err := ls.WriteBootstrapInfo(&bi); err != nil {
-		t.Fatal(err)
-	}
-
-	// Now remove store 0 and add store 1.
-	ls.RemoveStore(stores[0])
-	ls.AddStore(stores[1])
-
-	// Increment clock, add another address and write.
-	manual.Increment(1)
-	bi.Addresses = append(bi.Addresses, util.MakeUnresolvedAddr("tcp", "127.0.0.1:8002"))
-	if err := ls.WriteBootstrapInfo(&bi); err != nil {
-		t.Fatal(err)
-	}
-
-	// Create a new stores object to freshly read. Should get latest
-	// version from store 1.
-	manual.Increment(1)
-	ls2 := newStores(log.MakeTestingAmbientCtxWithNewTracer(), ls.clock)
-	ls2.AddStore(stores[0])
-	ls2.AddStore(stores[1])
-	var verifyBI gossip.BootstrapInfo
-	if err := ls2.ReadBootstrapInfo(&verifyBI); err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(bi, verifyBI) {
-		t.Errorf("bootstrap info %+v not equal to expected %+v", verifyBI, bi)
-	}
-
-	// Verify that stores[0], which had old info, was updated with
-	// latest bootstrap info during the read.
-	ls3 := newStores(log.MakeTestingAmbientCtxWithNewTracer(), ls.clock)
-	ls3.AddStore(stores[0])
-	verifyBI.Reset()
-	if err := ls3.ReadBootstrapInfo(&verifyBI); err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(bi, verifyBI) {
-		t.Errorf("bootstrap info %+v not equal to expected %+v", verifyBI, bi)
-	}
-}
+// TestStoresGossipStorageReadLatest has been removed because gossip bootstrap
+// info storage has been removed from Ratel.
 
 // TestStoresClusterVersionWriteSynthesize verifies that the cluster version is
 // written to all stores and that missing versions are filled in appropriately.

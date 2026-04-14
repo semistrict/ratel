@@ -313,6 +313,10 @@ type workQueueOptions struct {
 	// timeSource can be set to non-nil for tests. If nil,
 	// the timeutil.DefaultTimeSource will be used.
 	timeSource timeutil.TimeSource
+	// epochClosingInterval overrides the timer duration for background
+	// goroutines. Zero means use the default (1s). Set to a large value
+	// in synctest to avoid burning fake time.
+	epochClosingInterval time.Duration
 	// The epoch closing goroutine can be disabled for tests.
 	disableEpochClosingGoroutine bool
 }
@@ -365,21 +369,26 @@ func makeWorkQueue(
 		q.mu.tenants = make(map[uint64]*tenantInfo)
 		q.sampleEpochLIFOSettingsLocked()
 	}()
+	gcInterval := time.Second
+	if opts.epochClosingInterval != 0 {
+		gcInterval = opts.epochClosingInterval
+	}
 	go func() {
-		ticker := time.NewTicker(time.Second)
+		t := time.NewTimer(gcInterval)
+		defer t.Stop()
 		for {
 			select {
-			case <-ticker.C:
+			case <-t.C:
 				q.gcTenantsAndResetTokens()
+				t.Reset(gcInterval)
 			case <-stopCh:
-				// Channel closed.
 				return
 			}
 		}
 	}()
 	q.tryCloseEpoch(q.timeNow())
 	if !opts.disableEpochClosingGoroutine {
-		q.startClosingEpochs()
+		q.startClosingEpochs(gcInterval)
 	}
 	return q
 }
@@ -413,42 +422,32 @@ func (q *WorkQueue) sampleEpochLIFOSettingsLocked() {
 	q.mu.maxQueueDelayToSwitchToLifo = epochLIFOQueueDelayThresholdToSwitchToLIFO.Get(&q.settings.SV)
 }
 
-func (q *WorkQueue) startClosingEpochs() {
+func (q *WorkQueue) startClosingEpochs(interval time.Duration) {
 	go func() {
-		// If someone sets the epoch length to a huge value by mistake, we will
-		// still sample every second, so that we can adjust when they fix their
-		// mistake.
-		const maxTimerDur = time.Second
-		// This is the min duration we set the timer for, to avoid setting smaller
-		// and smaller timers, in case the timer fires slightly early.
-		const minTimerDur = time.Millisecond
-		var timer *time.Timer
 		for {
+			select {
+			case <-q.stopCh:
+				return
+			default:
+			}
 			q.mu.Lock()
 			q.sampleEpochLIFOSettingsLocked()
 			nextCloseTime := q.nextEpochCloseTimeLocked()
 			q.mu.Unlock()
 			timeNow := q.timeNow()
 			timerDur := nextCloseTime.Sub(timeNow)
-			if timerDur > 0 {
-				if timerDur > maxTimerDur {
-					timerDur = maxTimerDur
-				} else if timerDur < minTimerDur {
-					timerDur = minTimerDur
-				}
-				if timer == nil {
-					timer = time.NewTimer(timerDur)
-				} else {
-					timer.Reset(timerDur)
-				}
-				select {
-				case <-timer.C:
-				case <-q.stopCh:
-					// Channel closed.
-					return
-				}
-			} else {
+			if timerDur <= 0 {
 				q.tryCloseEpoch(timeNow)
+				timerDur = interval
+			} else if timerDur > interval {
+				timerDur = interval
+			}
+			t := time.NewTimer(timerDur)
+			select {
+			case <-t.C:
+			case <-q.stopCh:
+				t.Stop()
+				return
 			}
 		}
 	}()
@@ -949,9 +948,14 @@ func (q *WorkQueue) SetTenantWeights(tenantWeights map[uint64]uint32) {
 	}
 }
 
-// close tells the gc goroutine to stop.
+// close tells background goroutines to stop. Safe to call multiple times.
 func (q *WorkQueue) close() {
-	close(q.stopCh)
+	select {
+	case <-q.stopCh:
+		// Already closed.
+	default:
+		close(q.stopCh)
+	}
 }
 
 type workOrderingKind int8

@@ -635,8 +635,12 @@ type Options struct {
 	SQLSQLResponseBurstTokens      int
 	SQLStatementLeafStartWorkSlots int
 	SQLStatementRootStartWorkSlots int
-	TestingDisableSkipEnforcement  bool
-	Settings                       *cluster.Settings
+	TestingDisableSkipEnforcement bool
+	// EpochClosingInterval, if non-zero, overrides the timer duration used
+	// by admission control background goroutines. Set to a large value
+	// (e.g. 1 minute) in synctest to avoid burning fake time.
+	EpochClosingInterval time.Duration
+	Settings             *cluster.Settings
 	// Only non-nil for tests.
 	makeRequesterFunc makeRequesterFunc
 }
@@ -680,6 +684,9 @@ func (o *Options) Override(override *Options) {
 	if override.TestingDisableSkipEnforcement {
 		o.TestingDisableSkipEnforcement = true
 	}
+	if override.EpochClosingInterval != 0 {
+		o.EpochClosingInterval = override.EpochClosingInterval
+	}
 }
 
 type makeRequesterFunc func(
@@ -702,7 +709,19 @@ type makeRequesterFunc func(
 func NewGrantCoordinators(
 	ambientCtx log.AmbientContext, opts Options,
 ) (GrantCoordinators, []metric.Struct) {
-	makeRequester := makeWorkQueue
+	origMakeWorkQueue := makeWorkQueue
+	makeRequester := func(
+		ambientCtx log.AmbientContext,
+		workKind WorkKind,
+		granter granter,
+		st *cluster.Settings,
+		wqOpts workQueueOptions,
+	) requester {
+		if opts.EpochClosingInterval != 0 {
+			wqOpts.epochClosingInterval = opts.EpochClosingInterval
+		}
+		return origMakeWorkQueue(ambientCtx, workKind, granter, st, wqOpts)
+	}
 	if opts.makeRequesterFunc != nil {
 		makeRequester = opts.makeRequesterFunc
 	}
@@ -805,7 +824,19 @@ func NewGrantCoordinators(
 func NewGrantCoordinatorSQL(
 	ambientCtx log.AmbientContext, opts Options,
 ) (*GrantCoordinator, []metric.Struct) {
-	makeRequester := makeWorkQueue
+	origMakeWorkQueue := makeWorkQueue
+	makeRequester := func(
+		ambientCtx log.AmbientContext,
+		workKind WorkKind,
+		granter granter,
+		st *cluster.Settings,
+		wqOpts workQueueOptions,
+	) requester {
+		if opts.EpochClosingInterval != 0 {
+			wqOpts.epochClosingInterval = opts.EpochClosingInterval
+		}
+		return origMakeWorkQueue(ambientCtx, workKind, granter, st, wqOpts)
+	}
 	if opts.makeRequesterFunc != nil {
 		makeRequester = opts.makeRequesterFunc
 	}

@@ -32,7 +32,6 @@ import (
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/lib/pq"
 	"github.com/semistrict/ratel/pkg/base"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/kv/kvserver"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/closedts/ctpb"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverpb"
@@ -739,15 +738,6 @@ func TestGRPCAuthentication(t *testing.T) {
 		name    string
 		sendRPC func(context.Context, *grpc.ClientConn) error
 	}{
-		{"gossip", func(ctx context.Context, conn *grpc.ClientConn) error {
-			stream, err := gossip.NewGossipClient(conn).Gossip(ctx)
-			if err != nil {
-				return err
-			}
-			_ = stream.Send(&gossip.Request{})
-			_, err = stream.Recv()
-			return err
-		}},
 		{"internal", func(ctx context.Context, conn *grpc.ClientConn) error {
 			_, err := roachpb.NewInternalClient(conn).Batch(ctx, &roachpb.BatchRequest{})
 			return err

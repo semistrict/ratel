@@ -33,12 +33,12 @@ import (
 	humanize "github.com/dustin/go-humanize"
 	"github.com/elastic/gosigar"
 	"github.com/semistrict/ratel/pkg/build"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/liveness"
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/rpc"
+	"github.com/semistrict/ratel/pkg/util"
 	"github.com/semistrict/ratel/pkg/server/status/statuspb"
 	"github.com/semistrict/ratel/pkg/settings"
 	"github.com/semistrict/ratel/pkg/settings/cluster"
@@ -103,10 +103,13 @@ var childMetricsEnabled = settings.RegisterBoolSetting(
 // node-level systems, and "store-level" registries which are provided by each
 // store hosted by the node. There are slight differences in the way these are
 // recorded, and they are thus kept separate.
+// NodeAddressResolver returns the address of a node by ID.
+type NodeAddressResolver func(roachpb.NodeID) (*util.UnresolvedAddr, error)
+
 type MetricsRecorder struct {
 	*HealthChecker
-	gossip       *gossip.Gossip
-	nodeLiveness *liveness.NodeLiveness
+	getNodeIDAddress NodeAddressResolver
+	nodeLiveness     *liveness.NodeLiveness
 	rpcContext   *rpc.Context
 	settings     *cluster.Settings
 	clock        *hlc.Clock
@@ -152,14 +155,14 @@ func NewMetricsRecorder(
 	clock *hlc.Clock,
 	nodeLiveness *liveness.NodeLiveness,
 	rpcContext *rpc.Context,
-	gossip *gossip.Gossip,
+	getNodeIDAddress NodeAddressResolver,
 	settings *cluster.Settings,
 ) *MetricsRecorder {
 	mr := &MetricsRecorder{
 		HealthChecker: NewHealthChecker(trackedMetrics),
 		nodeLiveness:  nodeLiveness,
 		rpcContext:    rpcContext,
-		gossip:        gossip,
+		getNodeIDAddress: getNodeIDAddress,
 		settings:      settings,
 	}
 	mr.mu.storeRegistries = make(map[roachpb.StoreID]*metric.Registry)
@@ -362,7 +365,7 @@ func (mr *MetricsRecorder) getNetworkActivity(
 	ctx context.Context,
 ) map[roachpb.NodeID]statuspb.NodeStatus_NetworkActivity {
 	activity := make(map[roachpb.NodeID]statuspb.NodeStatus_NetworkActivity)
-	if mr.nodeLiveness != nil && mr.gossip != nil {
+	if mr.nodeLiveness != nil && mr.getNodeIDAddress != nil {
 		isLiveMap := mr.nodeLiveness.GetIsLiveMap()
 
 		throughputMap := mr.rpcContext.GetStatsMap()
@@ -371,7 +374,7 @@ func (mr *MetricsRecorder) getNetworkActivity(
 			currentAverages = mr.rpcContext.RemoteClocks.AllLatencies()
 		}
 		for nodeID, entry := range isLiveMap {
-			address, err := mr.gossip.GetNodeIDAddress(nodeID)
+			address, err := mr.getNodeIDAddress(nodeID)
 			if err != nil {
 				if entry.IsLive {
 					log.Warningf(ctx, "%v", err)
@@ -498,6 +501,9 @@ func (mr *MetricsRecorder) WriteNodeStatus(
 	// of the build info in the node status, writing one of these every 10s
 	// will generate more versions than will easily fit into a range over
 	// the course of a day.
+	// Use regular MVCC Put instead of PutInline. Inline values have
+	// timestamp 0 which causes rangefeed assertions to fire. Regular
+	// MVCC writes accumulate versions but GC cleans them up.
 	if mustExist {
 		entry, err := db.Get(ctx, key)
 		if err != nil {
@@ -506,17 +512,11 @@ func (mr *MetricsRecorder) WriteNodeStatus(
 		if entry.Value == nil {
 			return errors.New("status entry not found, node may have been decommissioned")
 		}
-		err = db.CPutInline(ctx, key, &nodeStatus, entry.Value.TagAndDataBytes())
-		if detail := (*roachpb.ConditionFailedError)(nil); errors.As(err, &detail) {
-			if detail.ActualValue == nil {
-				return errors.New("status entry not found, node may have been decommissioned")
-			}
-			return errors.New("status entry unexpectedly changed during update")
-		} else if err != nil {
+		if err := db.Put(ctx, key, &nodeStatus); err != nil {
 			return err
 		}
 	} else {
-		if err := db.PutInline(ctx, key, &nodeStatus); err != nil {
+		if err := db.Put(ctx, key, &nodeStatus); err != nil {
 			return err
 		}
 	}

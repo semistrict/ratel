@@ -16,14 +16,123 @@ package server
 
 import (
 	"net"
+	"sync"
 	"time"
 
+	"github.com/cockroachdb/errors"
 	"github.com/semistrict/ratel/pkg/blobs"
 	"github.com/semistrict/ratel/pkg/config/zonepb"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/liveness/livenesspb"
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/rpc"
+	"github.com/semistrict/ratel/pkg/util"
 )
+
+// SharedFirstRangeProvider stores the first range descriptor shared
+// across servers in a test cluster.
+type SharedFirstRangeProvider struct {
+	mu   sync.Mutex
+	desc *roachpb.RangeDescriptor
+	cbs  []func(*roachpb.RangeDescriptor)
+}
+
+// NewSharedFirstRangeProvider creates a new SharedFirstRangeProvider.
+func NewSharedFirstRangeProvider() *SharedFirstRangeProvider {
+	return &SharedFirstRangeProvider{}
+}
+
+// GetFirstRangeDescriptor returns the first range descriptor.
+func (p *SharedFirstRangeProvider) GetFirstRangeDescriptor() (*roachpb.RangeDescriptor, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.desc == nil {
+		return nil, errors.New("first range descriptor not yet available (shared)")
+	}
+	return p.desc, nil
+}
+
+// OnFirstRangeChanged registers a callback.
+func (p *SharedFirstRangeProvider) OnFirstRangeChanged(cb func(*roachpb.RangeDescriptor)) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.cbs = append(p.cbs, cb)
+	if p.desc != nil {
+		cb(p.desc)
+	}
+}
+
+// Set updates the first range descriptor.
+func (p *SharedFirstRangeProvider) Set(desc *roachpb.RangeDescriptor) {
+	p.mu.Lock()
+	p.desc = desc
+	cbs := make([]func(*roachpb.RangeDescriptor), len(p.cbs))
+	copy(cbs, p.cbs)
+	p.mu.Unlock()
+	for _, cb := range cbs {
+		cb(desc)
+	}
+}
+
+// SharedNodeDescStore is a thread-safe shared cache of node descriptors
+// used by test clusters to replace gossip-based node discovery.
+type SharedNodeDescStore struct {
+	mu    sync.RWMutex
+	nodes map[roachpb.NodeID]*roachpb.NodeDescriptor
+}
+
+// NewSharedNodeDescStore creates a new SharedNodeDescStore.
+func NewSharedNodeDescStore() *SharedNodeDescStore {
+	return &SharedNodeDescStore{nodes: make(map[roachpb.NodeID]*roachpb.NodeDescriptor)}
+}
+
+// Set registers a node descriptor.
+func (s *SharedNodeDescStore) Set(desc *roachpb.NodeDescriptor) {
+	s.mu.Lock()
+	s.nodes[desc.NodeID] = desc
+	s.mu.Unlock()
+}
+
+// GetNodeDescriptor returns the descriptor for the given node ID.
+func (s *SharedNodeDescStore) GetNodeDescriptor(nodeID roachpb.NodeID) (*roachpb.NodeDescriptor, error) {
+	s.mu.RLock()
+	desc, ok := s.nodes[nodeID]
+	s.mu.RUnlock()
+	if !ok {
+		return nil, errors.Errorf("node descriptor not found for n%d (shared store)", nodeID)
+	}
+	return desc, nil
+}
+
+// GetAllNodeDescriptors returns all cached node descriptors.
+func (s *SharedNodeDescStore) GetAllNodeDescriptors() []*roachpb.NodeDescriptor {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	descs := make([]*roachpb.NodeDescriptor, 0, len(s.nodes))
+	for _, desc := range s.nodes {
+		descs = append(descs, desc)
+	}
+	return descs
+}
+
+// GetAddress resolves a node ID to its network address.
+func (s *SharedNodeDescStore) GetAddress(nodeID roachpb.NodeID) (net.Addr, error) {
+	desc, err := s.GetNodeDescriptor(nodeID)
+	if err != nil {
+		return nil, err
+	}
+	return desc.Address.Resolve()
+}
+
+// AddressResolver returns a function that resolves node IDs to addresses.
+func (s *SharedNodeDescStore) AddressResolver() func(roachpb.NodeID) (net.Addr, error) {
+	return func(nodeID roachpb.NodeID) (net.Addr, error) {
+		desc, err := s.GetNodeDescriptor(nodeID)
+		if err != nil {
+			return nil, err
+		}
+		return &util.UnresolvedAddr{NetworkField: desc.Address.NetworkField, AddressField: desc.Address.AddressField}, nil
+	}
+}
 
 // TestingKnobs groups testing knobs for the Server.
 type TestingKnobs struct {
@@ -131,6 +240,11 @@ type TestingKnobs struct {
 	// that run under testing/synctest.
 	DisableEnvironmentSample bool
 
+	// OSSampler overrides the OS-level disk/network stats collector used by
+	// RuntimeStatSampler. Set to status.NoopOSSampler{} in synctest tests
+	// to avoid shelling out to OS utilities.
+	OSSampler interface{}
+
 	// DisableReplicationReporter skips the background task that periodically
 	// generates replication reports. This is useful in fully in-process tests
 	// that run under testing/synctest.
@@ -146,6 +260,17 @@ type TestingKnobs struct {
 	// in-process tests that run under testing/synctest, where the global ticker
 	// can outlive an individual synctest bubble.
 	DisableRunnableCountCallbacks bool
+
+	// SharedNodeDescs, if non-nil, provides a shared node descriptor
+	// cache across all servers in a test cluster. Each server registers
+	// its own descriptor and can look up other nodes' addresses. This
+	// replaces gossip-based node discovery.
+	SharedNodeDescs *SharedNodeDescStore
+
+	// SharedFirstRange, if non-nil, provides the first range descriptor
+	// shared across all servers in a test cluster. The node that holds
+	// range 1 sets it; other nodes read from it.
+	SharedFirstRange *SharedFirstRangeProvider
 
 	// BlobClientFactory supplies a BlobClientFactory for
 	// use by servers.

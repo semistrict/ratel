@@ -12,13 +12,12 @@
 // implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-package gossip
+package config
 
 import (
 	"bytes"
 	"sort"
 
-	"github.com/semistrict/ratel/pkg/config"
 	"github.com/semistrict/ratel/pkg/roachpb"
 )
 
@@ -30,7 +29,7 @@ import (
 // goroutines.
 type SystemConfigDeltaFilter struct {
 	keyPrefix roachpb.Key
-	lastCfg   config.SystemConfigEntries
+	lastCfg   SystemConfigEntries
 }
 
 // MakeSystemConfigDeltaFilter creates a new SystemConfigDeltaFilter. The filter
@@ -45,7 +44,7 @@ func MakeSystemConfigDeltaFilter(keyPrefix roachpb.Key) SystemConfigDeltaFilter 
 // ForModified calls the provided function for all SystemConfig kvs that were modified
 // since the last call to this method.
 func (df *SystemConfigDeltaFilter) ForModified(
-	newCfg *config.SystemConfig, fn func(kv roachpb.KeyValue),
+	newCfg *SystemConfig, fn func(kv roachpb.KeyValue),
 ) {
 	// Save newCfg in the filter.
 	lastCfg := df.lastCfg

@@ -21,7 +21,7 @@ import (
 	"net/url"
 	"sort"
 
-	"github.com/semistrict/ratel/pkg/gossip"
+	"github.com/semistrict/ratel/pkg/kv/kvclient/nodedescstore"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/liveness"
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/rpc"
@@ -36,10 +36,10 @@ import (
 // worker name) to ensure single-writer semantics for ActorCache.
 // Stateless workers are served locally.
 type workerRouter struct {
-	localNodeID roachpb.NodeID
-	gossip      *gossip.Gossip
-	nl          *liveness.NodeLiveness
-	rpcCtx      *rpc.Context
+	localNodeID   roachpb.NodeID
+	nodeDescStore *nodedescstore.Store
+	nl            *liveness.NodeLiveness
+	rpcCtx        *rpc.Context
 
 	mu struct {
 		syncutil.RWMutex
@@ -49,15 +49,15 @@ type workerRouter struct {
 
 func newWorkerRouter(
 	localNodeID roachpb.NodeID,
-	g *gossip.Gossip,
 	nl *liveness.NodeLiveness,
 	rpcCtx *rpc.Context,
+	nodeDescStore *nodedescstore.Store,
 ) *workerRouter {
 	r := &workerRouter{
-		localNodeID: localNodeID,
-		gossip:      g,
-		nl:          nl,
-		rpcCtx:      rpcCtx,
+		localNodeID:   localNodeID,
+		nodeDescStore: nodeDescStore,
+		nl:            nl,
+		rpcCtx:        rpcCtx,
 	}
 	r.mu.proxies = make(map[util.UnresolvedAddr]*httputil.ReverseProxy)
 	return r
@@ -87,7 +87,7 @@ func (wr *workerRouter) routeRequest(
 		return false
 	}
 
-	addr, err := wr.gossip.GetNodeIDHTTPAddress(target)
+	addr, err := wr.nodeDescStore.GetNodeIDHTTPAddress(target)
 	if err != nil {
 		log.Warningf(r.Context(), "cannot resolve HTTP address for n%d: %v", target, err)
 		return false

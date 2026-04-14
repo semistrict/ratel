@@ -20,11 +20,14 @@ import (
 	"math/rand"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/semistrict/ratel/pkg/base"
 	"github.com/semistrict/ratel/pkg/kv/kvserver"
+	"github.com/semistrict/ratel/pkg/util/admission"
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/server"
+	"github.com/semistrict/ratel/pkg/server/status"
 	"github.com/semistrict/ratel/pkg/settings/cluster"
 	"github.com/semistrict/ratel/pkg/sql/contention"
 	"github.com/semistrict/ratel/pkg/testutils/testcluster"
@@ -37,10 +40,15 @@ var nextClusterAddrBase atomic.Uint64
 // a synctest bubble where all I/O must be virtualized.
 type Cluster struct {
 	*testcluster.TestCluster
-	Registry       *Registry
-	addrs          []string
-	rpcListeners   []*Listener
-	stickyRegistry server.StickyInMemEnginesRegistry
+	Registry         *Registry
+	addrs            []string
+	rpcListeners     []*Listener
+	stickyRegistry   server.StickyInMemEnginesRegistry
+	sharedDescs      *server.SharedNodeDescStore
+	sharedFirstRange *server.SharedFirstRangeProvider
+	clusterBase      uint64
+	nextNodeIdx      int
+	clusterArgs      base.TestClusterArgs
 }
 
 // StartCluster creates and starts a multi-node in-process cluster
@@ -76,6 +84,8 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 		context.Background(), &clusterArgs.ServerArgs.Settings.SV, 0,
 	)
 
+	sharedDescs := server.NewSharedNodeDescStore()
+	sharedFirstRange := server.NewSharedFirstRangeProvider()
 	addrs := make([]string, nodes)
 	rpcListeners := make([]*Listener, nodes)
 
@@ -122,6 +132,14 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 		storeTestingKnobs.DisableScanner = true
 		args.Knobs.Store = storeKnobs
 
+		// Slow down admission control background timers so they don't
+		// prevent synctest from advancing fake time.
+		if args.Knobs.AdmissionControl == nil {
+			args.Knobs.AdmissionControl = &admission.Options{
+				EpochClosingInterval: time.Minute,
+			}
+		}
+
 		serverKnobs := args.Knobs.Server
 		if serverKnobs == nil {
 			serverKnobs = &server.TestingKnobs{}
@@ -137,6 +155,9 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 		tk.DisableReplicationReporter = true
 		tk.DisableProtectedTSProvider = true
 		tk.DisableRunnableCountCallbacks = true
+		tk.OSSampler = status.NoopOSSampler{}
+		tk.SharedNodeDescs = sharedDescs
+		tk.SharedFirstRange = sharedFirstRange
 		tk.ContextTestingKnobs.DialerFunc = registry.DialerFuncFor(rpcAddr)
 		args.Knobs.Server = tk
 
@@ -145,11 +166,16 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 
 	tc := testcluster.StartTestCluster(t, nodes, clusterArgs)
 	return &Cluster{
-		TestCluster:    tc,
-		Registry:       registry,
-		addrs:          addrs,
-		rpcListeners:   rpcListeners,
-		stickyRegistry: stickyRegistry,
+		TestCluster:      tc,
+		Registry:         registry,
+		addrs:            addrs,
+		rpcListeners:     rpcListeners,
+		stickyRegistry:   stickyRegistry,
+		sharedDescs:      sharedDescs,
+		sharedFirstRange: sharedFirstRange,
+		clusterBase:      clusterBase,
+		nextNodeIdx:      nodes,
+		clusterArgs:      clusterArgs,
 	}
 }
 
@@ -238,6 +264,72 @@ func (c *Cluster) nodeAddrs(nodeIdxs []int) []string {
 // NodeAddr returns the in-memory address for the given node index.
 func (c *Cluster) NodeAddr(nodeIdx int) string {
 	return c.addrs[nodeIdx]
+}
+
+// AddNode dynamically adds a new node to a running cluster with
+// in-memory networking. The new node joins via the first node's
+// RPC address. Returns the index of the new node.
+func (c *Cluster) AddNode(t testing.TB) int {
+	i := c.nextNodeIdx
+	c.nextNodeIdx++
+
+	rpcAddr := fmt.Sprintf("127.0.0.1:%d", c.clusterBase+uint64(i))
+	httpAddr := fmt.Sprintf("127.0.0.1:%d", c.clusterBase+1000+uint64(i))
+
+	rpcListener := c.Registry.Register(rpcAddr)
+	httpListener := NewListener(httpAddr)
+
+	args := c.clusterArgs.ServerArgs
+	args.Insecure = true
+	args.Addr = rpcAddr
+	args.SQLDialFunc = c.Registry.SQLDialFunc()
+	args.Listener = rpcListener
+	args.StoreSpecs = []base.StoreSpec{
+		{InMemory: true, StickyInMemoryEngineID: fmt.Sprintf("inproc-%d", i)},
+	}
+	args.Locality = roachpb.Locality{
+		Tiers: []roachpb.Tier{
+			{Key: "region", Value: "test"},
+			{Key: "dc", Value: fmt.Sprintf("dc%d", i+1)},
+		},
+	}
+
+	storeKnobs := &kvserver.StoreTestingKnobs{}
+	if existing := args.Knobs.Store; existing != nil {
+		*storeKnobs = *existing.(*kvserver.StoreTestingKnobs)
+	}
+	storeKnobs.DisableRangeLogWrite = true
+	storeKnobs.DisablePeriodicGossips = true
+	storeKnobs.DisableRangefeedUpdater = true
+	storeKnobs.DisableStoreRebalancer = true
+	storeKnobs.DisableScanner = true
+	args.Knobs.Store = storeKnobs
+
+	tk := &server.TestingKnobs{}
+	if existing := args.Knobs.Server; existing != nil {
+		*tk = *existing.(*server.TestingKnobs)
+	}
+	tk.RPCListener = rpcListener
+	tk.HTTPListener = httpListener
+	tk.ShareRPCListenSQL = true
+	tk.StickyEngineRegistry = c.stickyRegistry
+	tk.DisableAuthSessionPurge = true
+	tk.DisableNodeStatusWrite = true
+	tk.DisableEnvironmentSample = true
+	tk.DisableReplicationReporter = true
+	tk.DisableProtectedTSProvider = true
+	tk.DisableRunnableCountCallbacks = true
+	tk.OSSampler = status.NoopOSSampler{}
+	tk.SharedNodeDescs = c.sharedDescs
+	tk.SharedFirstRange = c.sharedFirstRange
+	tk.ContextTestingKnobs.DialerFunc = c.Registry.DialerFuncFor(rpcAddr)
+	args.Knobs.Server = tk
+
+	c.addrs = append(c.addrs, rpcAddr)
+	c.rpcListeners = append(c.rpcListeners, rpcListener)
+
+	c.AddAndStartServer(t.(*testing.T), args)
+	return i
 }
 
 // Stop stops the cluster and closes the registry.

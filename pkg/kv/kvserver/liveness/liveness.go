@@ -25,7 +25,6 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
 	"github.com/semistrict/ratel/pkg/base"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/liveness/livenesspb"
@@ -191,7 +190,7 @@ type NodeLiveness struct {
 	stopper           *stop.Stopper
 	clock             *hlc.Clock
 	db                *kv.DB
-	gossip            *gossip.Gossip
+	nodeIDContainer   *base.NodeIDContainer
 	livenessThreshold time.Duration
 	renewalDuration   time.Duration
 	selfSem           chan struct{}
@@ -273,7 +272,7 @@ type NodeLivenessOptions struct {
 	AmbientCtx              log.AmbientContext
 	Stopper                 *stop.Stopper
 	Settings                *cluster.Settings
-	Gossip                  *gossip.Gossip
+	NodeIDContainer         *base.NodeIDContainer
 	Clock                   *hlc.Clock
 	DB                      *kv.DB
 	LivenessThreshold       time.Duration
@@ -297,7 +296,7 @@ func NewNodeLiveness(opts NodeLivenessOptions) *NodeLiveness {
 		stopper:               opts.Stopper,
 		clock:                 opts.Clock,
 		db:                    opts.DB,
-		gossip:                opts.Gossip,
+		nodeIDContainer:       opts.NodeIDContainer,
 		livenessThreshold:     opts.LivenessThreshold,
 		renewalDuration:       opts.RenewalDuration,
 		selfSem:               make(chan struct{}, 1),
@@ -318,21 +317,18 @@ func NewNodeLiveness(opts NodeLivenessOptions) *NodeLiveness {
 	nl.mu.nodes = make(map[roachpb.NodeID]Record)
 	nl.heartbeatToken <- struct{}{}
 
-	// NB: we should consider moving this registration to .Start() once we
-	// have ensured that nobody uses the server's KV client (kv.DB) before
-	// nl.Start() is invoked. At the time of writing this invariant does
-	// not hold (which is a problem, since the node itself won't be live
-	// at this point, and requests routed to it will hang).
-	livenessRegex := gossip.MakePrefixPattern(gossip.KeyNodeLivenessPrefix)
-	nl.gossip.RegisterCallback(livenessRegex, nl.livenessGossipUpdate)
-
 	return nl
 }
 
 var errNodeDrainingSet = errors.New("node is already draining")
 
+// nodeID returns the local node's ID from the NodeIDContainer.
+func (nl *NodeLiveness) nodeID() roachpb.NodeID {
+	return nl.nodeIDContainer.Get()
+}
+
 func (nl *NodeLiveness) sem(nodeID roachpb.NodeID) chan struct{} {
-	if nodeID == nl.gossip.NodeID.Get() {
+	if nodeID == nl.nodeID() {
 		return nl.selfSem
 	}
 	return nl.otherSem
@@ -354,7 +350,7 @@ func (nl *NodeLiveness) SetDraining(
 		if !ok {
 			// There was a cache miss, let's now fetch the record from KV
 			// directly.
-			nodeID := nl.gossip.NodeID.Get()
+			nodeID := nl.nodeID()
 			livenessRec, err := nl.getLivenessRecordFromKV(ctx, nodeID)
 			if err != nil {
 				return err
@@ -469,7 +465,7 @@ func (nl *NodeLiveness) SetMembershipStatus(
 func (nl *NodeLiveness) setDrainingInternal(
 	ctx context.Context, oldLivenessRec Record, drain bool, reporter func(int, redact.SafeString),
 ) error {
-	nodeID := nl.gossip.NodeID.Get()
+	nodeID := nl.nodeID()
 	sem := nl.sem(nodeID)
 	// Allow only one attempt to set the draining field at a time.
 	select {
@@ -769,7 +765,7 @@ func (nl *NodeLiveness) Start(ctx context.Context, opts NodeLivenessStartOptions
 					for r := retry.StartWithCtx(ctx, retryOpts); r.Next(); {
 						oldLiveness, ok := nl.Self()
 						if !ok {
-							nodeID := nl.gossip.NodeID.Get()
+							nodeID := nl.nodeID()
 							liveness, err := nl.getLivenessFromKV(ctx, nodeID)
 							if err != nil {
 								log.Infof(ctx, "unable to get liveness record from KV: %s", err)
@@ -912,7 +908,7 @@ func (nl *NodeLiveness) heartbeatInternal(
 	defer nl.metrics.HeartbeatsInFlight.Dec(1)
 
 	// Allow only one heartbeat at a time.
-	nodeID := nl.gossip.NodeID.Get()
+	nodeID := nl.nodeID()
 	sem := nl.sem(nodeID)
 	select {
 	case sem <- struct{}{}:
@@ -1030,7 +1026,7 @@ func (nl *NodeLiveness) Self() (_ livenesspb.Liveness, ok bool) {
 func (nl *NodeLiveness) SelfEx() (_ Record, ok bool) {
 	nl.mu.RLock()
 	defer nl.mu.RUnlock()
-	return nl.getLivenessLocked(nl.gossip.NodeID.Get())
+	return nl.getLivenessLocked(nl.nodeID())
 }
 
 // IsLiveMapEntry encapsulates data about current liveness for a
@@ -1483,19 +1479,6 @@ func shouldReplaceLiveness(ctx context.Context, old, new Record) bool {
 		(oldL.Equal(newL) && !bytes.Equal(old.raw, new.raw))
 }
 
-// livenessGossipUpdate is the gossip callback used to keep the
-// in-memory liveness info up to date.
-func (nl *NodeLiveness) livenessGossipUpdate(_ string, content roachpb.Value) {
-	var liveness livenesspb.Liveness
-	ctx := context.TODO()
-	if err := content.GetProto(&liveness); err != nil {
-		log.Errorf(ctx, "%v", err)
-		return
-	}
-
-	nl.maybeUpdate(ctx, Record{Liveness: liveness, raw: content.TagAndDataBytes()})
-}
-
 // numLiveNodes is used to populate a metric that tracks the number of live
 // nodes in the cluster. Returns 0 if this node is not itself live, to avoid
 // reporting potentially inaccurate data.
@@ -1505,7 +1488,7 @@ func (nl *NodeLiveness) livenessGossipUpdate(_ string, content roachpb.Value) {
 // nodes reporting the metric, so it's simplest to just have all live nodes
 // report it.
 func (nl *NodeLiveness) numLiveNodes() int64 {
-	selfID := nl.gossip.NodeID.Get()
+	selfID := nl.nodeID()
 	if selfID == 0 {
 		return 0
 	}

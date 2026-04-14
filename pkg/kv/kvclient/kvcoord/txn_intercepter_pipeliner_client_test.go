@@ -107,7 +107,7 @@ func TestTxnPipelinerCondenseLockSpans(t *testing.T) {
 	ds := kvcoord.NewDistSender(kvcoord.DistSenderConfig{
 		AmbientCtx: ambient,
 		Clock:      s.Clock,
-		NodeDescs:  s.Gossip,
+		NodeDescs:  s.NodeDescStore,
 		RPCContext: s.Cfg.RPCContext,
 		TestingKnobs: kvcoord.ClientTestingKnobs{
 			TransportFactory: kvcoord.TestingAdaptSimpleTransport(sendFn),

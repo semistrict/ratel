@@ -42,6 +42,12 @@ var (
 	// NodeLivenessSpan holds the liveness records for nodes in the cluster.
 	NodeLivenessSpan = roachpb.Span{Key: NodeLivenessPrefix, EndKey: NodeLivenessKeyMax}
 
+	// NodeDescriptorSpan holds node descriptor records.
+	NodeDescriptorSpan = roachpb.Span{Key: NodeDescriptorPrefix, EndKey: NodeDescriptorKeyMax}
+
+	// StoreDescriptorSpan holds store descriptor records.
+	StoreDescriptorSpan = roachpb.Span{Key: StoreDescriptorPrefix, EndKey: StoreDescriptorKeyMax}
+
 	// TimeseriesSpan holds all the timeseries data in the cluster.
 	TimeseriesSpan = roachpb.Span{Key: TimeseriesPrefix, EndKey: TimeseriesKeyMax}
 

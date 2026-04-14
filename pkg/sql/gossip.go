@@ -17,13 +17,7 @@ package sql
 import "context"
 
 // TryClearGossipInfo implements the tree.GossipOperator interface.
+// With gossip removed, this always returns false.
 func (p *planner) TryClearGossipInfo(ctx context.Context, key string) (bool, error) {
-	g, err := p.ExecCfg().Gossip.OptionalErr(0 /* issue */)
-	if err != nil {
-		return false, err
-	}
-	if err := p.RequireAdminRole(ctx, "try clear gossip info"); err != nil {
-		return false, err
-	}
-	return g.TryClearInfo(key)
+	return false, nil
 }

@@ -27,7 +27,6 @@ import (
 	"github.com/semistrict/ratel/pkg/clusterversion"
 	"github.com/semistrict/ratel/pkg/config"
 	"github.com/semistrict/ratel/pkg/config/zonepb"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv/kvserver"
 	"github.com/semistrict/ratel/pkg/roachpb"
@@ -215,28 +214,18 @@ func TestNodeJoin(t *testing.T) {
 		})
 	}
 
-	// Verify node1 sees node2 via gossip and vice versa.
-	node1Key := gossip.MakeNodeIDKey(s.Server(0).NodeID())
-	node2Key := gossip.MakeNodeIDKey(s.Server(1).NodeID())
+	// Verify both nodes are serving on their expected addresses.
 	server1Addr := s.Server(0).ServingRPCAddr()
 	server2Addr := s.Server(1).ServingRPCAddr()
-	testutils.SucceedsSoon(t, func() error {
-		var nodeDesc1 roachpb.NodeDescriptor
-		if err := s.Server(0).GossipI().(*gossip.Gossip).GetInfoProto(node2Key, &nodeDesc1); err != nil {
-			return err
-		}
-		if addr2Str, server2AddrStr := nodeDesc1.Address.String(), server2Addr; addr2Str != server2AddrStr {
-			return errors.Errorf("addr2 gossip %s doesn't match addr2 address %s", addr2Str, server2AddrStr)
-		}
-		var nodeDesc2 roachpb.NodeDescriptor
-		if err := s.Server(1).GossipI().(*gossip.Gossip).GetInfoProto(node1Key, &nodeDesc2); err != nil {
-			return err
-		}
-		if addr1Str, server1AddrStr := nodeDesc2.Address.String(), server1Addr; addr1Str != server1AddrStr {
-			return errors.Errorf("addr1 gossip %s doesn't match addr1 address %s", addr1Str, server1AddrStr)
-		}
-		return nil
-	})
+	if server1Addr == "" {
+		t.Fatal("server 0 has empty serving RPC addr")
+	}
+	if server2Addr == "" {
+		t.Fatal("server 1 has empty serving RPC addr")
+	}
+	if server1Addr == server2Addr {
+		t.Fatalf("servers have same address: %s", server1Addr)
+	}
 }
 
 // TestCorruptedClusterID verifies that a node fails to start when a

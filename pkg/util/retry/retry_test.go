@@ -17,6 +17,7 @@ package retry
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/cockroachdb/errors"
@@ -310,4 +311,86 @@ func TestRetryWithMaxAttempts(t *testing.T) {
 			require.LessOrEqual(t, attempts, tc.maxNumAttempts)
 		})
 	}
+}
+
+// TestSyncRetryAdvancesFakeTime verifies that retry.Next() uses time.Sleep
+// which is compatible with synctest fake-time advancement.
+func TestSyncRetryAdvancesFakeTime(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		opts := Options{
+			InitialBackoff:      100 * time.Millisecond,
+			MaxBackoff:          time.Second,
+			Multiplier:          2,
+			MaxRetries:          3,
+			RandomizationFactor: 0, // deterministic
+		}
+
+		attempts := 0
+		for r := Start(opts); r.Next(); {
+			attempts++
+		}
+		// 1 initial + 3 retries = 4 total calls to Next() returning true.
+		require.Equal(t, 4, attempts)
+	})
+}
+
+// TestSyncRetryCloserStopsFakeTime verifies that closing the Closer channel
+// stops the retry loop under synctest fake time.
+func TestSyncRetryCloserStopsFakeTime(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		closer := make(chan struct{})
+		opts := Options{
+			InitialBackoff: time.Second,
+			MaxBackoff:     time.Second,
+			Multiplier:     2,
+			Closer:         closer,
+		}
+
+		done := make(chan int)
+		go func() {
+			attempts := 0
+			for r := Start(opts); r.Next(); {
+				attempts++
+				if attempts == 2 {
+					close(closer)
+				}
+			}
+			done <- attempts
+		}()
+
+		synctest.Wait()
+		attempts := <-done
+		// First attempt runs immediately, second runs after sleep, then
+		// closer fires before third sleep completes.
+		require.Equal(t, 2, attempts)
+	})
+}
+
+// TestSyncRetryContextCancelFakeTime verifies that context cancellation
+// stops the retry loop under synctest fake time.
+func TestSyncRetryContextCancelFakeTime(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithCancel(t.Context())
+		opts := Options{
+			InitialBackoff: time.Second,
+			MaxBackoff:     time.Second,
+			Multiplier:     2,
+		}
+
+		done := make(chan int)
+		go func() {
+			attempts := 0
+			for r := StartWithCtx(ctx, opts); r.Next(); {
+				attempts++
+				if attempts == 2 {
+					cancel()
+				}
+			}
+			done <- attempts
+		}()
+
+		synctest.Wait()
+		attempts := <-done
+		require.Equal(t, 2, attempts)
+	})
 }

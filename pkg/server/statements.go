@@ -43,7 +43,7 @@ func (s *statusServer) Statements(
 		return nil, err
 	}
 
-	if s.gossip.NodeID.Get() == 0 {
+	if s.getNodeID() == 0 {
 		return nil, status.Errorf(codes.Unavailable, "nodeID not set")
 	}
 
@@ -66,7 +66,7 @@ func (s *statusServer) Statements(
 		if local {
 			return statementsLocal(
 				ctx,
-				s.gossip.NodeID.Get(),
+				s.getNodeID(),
 				s.admin.server.sqlServer,
 				req.FetchMode)
 		}

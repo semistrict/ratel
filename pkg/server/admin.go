@@ -3349,7 +3349,7 @@ func (s *adminServer) queryTableID(
 func (s *adminServer) dialNode(
 	ctx context.Context, nodeID roachpb.NodeID,
 ) (serverpb.AdminClient, error) {
-	addr, err := s.server.gossip.GetNodeIDAddress(nodeID)
+	addr, err := s.server.nodeDescStore.GetNodeIDAddress(nodeID)
 	if err != nil {
 		return nil, err
 	}

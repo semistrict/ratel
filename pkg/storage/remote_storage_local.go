@@ -15,6 +15,7 @@
 package storage
 
 import (
+	"fmt"
 	"net/url"
 	"os"
 	"strings"
@@ -86,6 +87,111 @@ func parseS3URL(u *url.URL) S3StorageConfig {
 	}
 }
 
+// parseHTTPAsS3 treats an http(s) URL as an S3-compatible endpoint.
+// The first path segment is the bucket, the rest is the prefix.
+//
+// Examples:
+//
+//	https://acct.r2.cloudflarestorage.com/mybucket/prefix/
+//	https://fly.storage.tigris.dev/mybucket/prefix/
+//	http://localhost:9000/mybucket/prefix/
+func parseHTTPAsS3(u *url.URL) S3StorageConfig {
+	// Split path into bucket + prefix.
+	path := strings.TrimPrefix(u.Path, "/")
+	bucket, prefix, _ := strings.Cut(path, "/")
+	if prefix != "" && !strings.HasSuffix(prefix, "/") {
+		prefix += "/"
+	}
+	region := u.Query().Get("region")
+	if region == "" {
+		region = "auto"
+	}
+	endpoint := fmt.Sprintf("%s://%s", u.Scheme, u.Host)
+	// R2 uses virtual-hosted-style by default; most others use path-style.
+	// Use path-style unless the bucket is embedded in the hostname.
+	forcePathStyle := !strings.Contains(u.Host, bucket)
+	return S3StorageConfig{
+		Bucket:           bucket,
+		Prefix:           prefix,
+		Region:           region,
+		Endpoint:         endpoint,
+		S3ForcePathStyle: forcePathStyle,
+	}
+}
+
+// clusterStorageFromS3 creates a ClusterStorage from an S3StorageConfig.
+func clusterStorageFromS3(cfg S3StorageConfig) (*ClusterStorage, error) {
+	cfg.Prefix = cfg.Prefix + layoutVersion + "/"
+	sstCfg := cfg
+	sstCfg.Prefix = cfg.Prefix + "sstables/"
+	metaStore, err := newS3Storage(cfg, "metadata/")
+	if err != nil {
+		return nil, errors.Wrap(err, "creating S3 metadata storage")
+	}
+	nodesStore, err := newS3Storage(cfg, "discovery/")
+	if err != nil {
+		return nil, errors.Wrap(err, "creating S3 nodes storage")
+	}
+	certsStore, err := newS3Storage(cfg, "certs/")
+	if err != nil {
+		return nil, errors.Wrap(err, "creating S3 certs storage")
+	}
+	return &ClusterStorage{
+		SSTableFactory: NewS3StorageFactory(sstCfg),
+		Metadata:       metaStore,
+		Nodes:          nodesStore,
+		Certs:          certsStore,
+	}, nil
+}
+
+// parseGCSURL extracts GCSStorageConfig from a gcs:// or gs:// URL.
+//
+// Format: gcs://bucket/prefix/
+func parseGCSURL(u *url.URL) GCSStorageConfig {
+	prefix := strings.TrimPrefix(u.Path, "/")
+	if prefix != "" && !strings.HasSuffix(prefix, "/") {
+		prefix += "/"
+	}
+	return GCSStorageConfig{
+		Bucket: u.Host,
+		Prefix: prefix,
+	}
+}
+
+// clusterStorageFromGCS creates a ClusterStorage from a GCSStorageConfig.
+func clusterStorageFromGCS(cfg GCSStorageConfig) (*ClusterStorage, error) {
+	cfg.Prefix = cfg.Prefix + layoutVersion + "/"
+	sstCfg := cfg
+	sstCfg.Prefix = cfg.Prefix + "sstables/"
+	metaStore, err := newGCSStorage(cfg, "metadata/")
+	if err != nil {
+		return nil, errors.Wrap(err, "creating GCS metadata storage")
+	}
+	nodesStore, err := newGCSStorage(cfg, "discovery/")
+	if err != nil {
+		return nil, errors.Wrap(err, "creating GCS discovery storage")
+	}
+	certsStore, err := newGCSStorage(cfg, "certs/")
+	if err != nil {
+		return nil, errors.Wrap(err, "creating GCS certs storage")
+	}
+	return &ClusterStorage{
+		SSTableFactory: NewGCSStorageFactory(sstCfg),
+		Metadata:       metaStore,
+		Nodes:          nodesStore,
+		Certs:          certsStore,
+	}, nil
+}
+
+// newGCSStorage creates a GCSStorage instance with the given config and
+// sub-prefix appended.
+func newGCSStorage(cfg GCSStorageConfig, subPrefix string) (remote.Storage, error) {
+	sub := cfg
+	sub.Prefix = cfg.Prefix + subPrefix
+	factory := NewGCSStorageFactory(sub)
+	return factory.CreateStorage("")
+}
+
 // newS3Storage creates an S3Storage instance with the given config and
 // sub-prefix appended.
 func newS3Storage(cfg S3StorageConfig, subPrefix string) (remote.Storage, error) {
@@ -144,12 +250,24 @@ func RemoteStorageFromURL(rawURL string) (remote.StorageFactory, remote.Storage,
 //
 //	file:///path/to/dir — local filesystem
 //	s3://bucket/prefix/?endpoint=...&region=... — S3-compatible storage
+//	gcs://bucket/prefix/ — Google Cloud Storage (native auth)
+//	https://endpoint/bucket/prefix/ — S3-compatible via HTTP URL (R2, Tigris, etc.)
+//
+// For https:// URLs, the first path segment is the bucket name and the
+// remainder is the key prefix. The scheme + host form the S3 endpoint.
+// Optional query parameters: region (default "auto").
 func ClusterStorageFromURL(rawURL string) (*ClusterStorage, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return nil, errors.Wrapf(err, "parsing cluster storage URL %q", rawURL)
 	}
 	switch u.Scheme {
+	case "http", "https":
+		cfg := parseHTTPAsS3(u)
+		return clusterStorageFromS3(cfg)
+	case "gcs", "gs":
+		cfg := parseGCSURL(u)
+		return clusterStorageFromGCS(cfg)
 	case "file":
 		basePath := u.Path + "/" + layoutVersion
 		dirs := []string{
@@ -171,28 +289,8 @@ func ClusterStorageFromURL(rawURL string) (*ClusterStorage, error) {
 		}, nil
 	case "s3":
 		cfg := parseS3URL(u)
-		cfg.Prefix = cfg.Prefix + layoutVersion + "/"
-		sstCfg := cfg
-		sstCfg.Prefix = cfg.Prefix + "sstables/"
-		metaStore, err := newS3Storage(cfg, "metadata/")
-		if err != nil {
-			return nil, errors.Wrap(err, "creating S3 metadata storage")
-		}
-		nodesStore, err := newS3Storage(cfg, "discovery/")
-		if err != nil {
-			return nil, errors.Wrap(err, "creating S3 nodes storage")
-		}
-		certsStore, err := newS3Storage(cfg, "certs/")
-		if err != nil {
-			return nil, errors.Wrap(err, "creating S3 certs storage")
-		}
-		return &ClusterStorage{
-			SSTableFactory: NewS3StorageFactory(sstCfg),
-			Metadata:       metaStore,
-			Nodes:          nodesStore,
-			Certs:          certsStore,
-		}, nil
+		return clusterStorageFromS3(cfg)
 	default:
-		return nil, errors.Errorf("unsupported cluster storage scheme %q (use file:// or s3://)", u.Scheme)
+		return nil, errors.Errorf("unsupported cluster storage scheme %q (use file://, s3://, gcs://, or https://)", u.Scheme)
 	}
 }

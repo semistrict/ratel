@@ -20,7 +20,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/apply"
 	"github.com/semistrict/ratel/pkg/storage/enginepb"
 	"github.com/semistrict/ratel/pkg/util/protoutil"
@@ -40,9 +39,6 @@ func TrackRaftProtos() func() []reflect.Type {
 	// We only need to track protos that could cause replica divergence
 	// by being written to disk downstream of raft.
 	allowlist := []string{
-		// Some raft operations trigger gossip, but we don't require
-		// strict consistency there.
-		funcName((*gossip.Gossip).AddInfoProto),
 		// Range merges destroy replicas beneath Raft and write replica tombstones,
 		// but tombstones are unreplicated and thus not subject to the strict
 		// consistency requirements.

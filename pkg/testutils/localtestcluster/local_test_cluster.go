@@ -20,11 +20,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cockroachdb/errors"
 	"github.com/semistrict/ratel/pkg/base"
 	"github.com/semistrict/ratel/pkg/clusterversion"
 	"github.com/semistrict/ratel/pkg/config"
 	"github.com/semistrict/ratel/pkg/config/zonepb"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/kv/kvclient/rangefeed"
@@ -62,7 +62,6 @@ type LocalTestCluster struct {
 	Cfg               kvserver.StoreConfig
 	Manual            *hlc.ManualClock
 	Clock             *hlc.Clock
-	Gossip            *gossip.Gossip
 	Eng               storage.Engine
 	Store             *kvserver.Store
 	StoreTestingKnobs *kvserver.StoreTestingKnobs
@@ -72,6 +71,10 @@ type LocalTestCluster struct {
 	stopper           *stop.Stopper
 	Latency           time.Duration // sleep for each RPC sent
 	tester            testing.TB
+
+	// NodeDescStore provides node descriptor lookups. Implements
+	// kvcoord.NodeDescStore.
+	NodeDescStore *simpleNodeDescStore
 
 	// DisableLivenessHeartbeat, if set, inhibits the heartbeat loop. Some tests
 	// need this because, for example, the heartbeat loop increments some
@@ -88,6 +91,19 @@ type LocalTestCluster struct {
 	DontCreateSystemRanges bool
 }
 
+// simpleNodeDescStore is a minimal NodeDescStore for testing.
+type simpleNodeDescStore struct {
+	desc *roachpb.NodeDescriptor
+}
+
+// GetNodeDescriptor implements kvcoord.NodeDescStore.
+func (s *simpleNodeDescStore) GetNodeDescriptor(nodeID roachpb.NodeID) (*roachpb.NodeDescriptor, error) {
+	if s.desc != nil && s.desc.NodeID == nodeID {
+		return s.desc, nil
+	}
+	return nil, errors.Errorf("node %d not found", nodeID)
+}
+
 // InitFactoryFn is a callback used to initiate the txn coordinator
 // sender factory (we don't do it directly from this package to avoid
 // a dependency on kv).
@@ -100,7 +116,6 @@ type InitFactoryFn func(
 	latency time.Duration,
 	stores kv.Sender,
 	stopper *stop.Stopper,
-	gossip *gossip.Gossip,
 ) kv.TxnSenderFactory
 
 // Stopper returns the Stopper.
@@ -134,6 +149,7 @@ func (ltc *LocalTestCluster) Start(t testing.TB, baseCtx *base.Config, initFacto
 		Address: util.MakeUnresolvedAddr("tcp", "invalid.invalid:26257"),
 	}
 
+	ltc.NodeDescStore = &simpleNodeDescStore{desc: nodeDesc}
 	ltc.tester = t
 	cfg.RPCContext = rpc.NewContext(ctx, rpc.ContextOptions{
 		TenantID: roachpb.SystemTenantID,
@@ -144,9 +160,6 @@ func (ltc *LocalTestCluster) Start(t testing.TB, baseCtx *base.Config, initFacto
 		NodeID:   nc,
 	})
 	cfg.RPCContext.NodeID.Set(ctx, nodeID)
-	clusterID := cfg.RPCContext.StorageClusterID
-	server := rpc.NewServer(cfg.RPCContext) // never started
-	ltc.Gossip = gossip.New(ambient, clusterID, nc, cfg.RPCContext, server, ltc.stopper, metric.NewRegistry(), roachpb.Locality{}, zonepb.DefaultZoneConfigRef())
 	var err error
 	ltc.Eng, err = storage.Open(
 		ctx,
@@ -161,7 +174,7 @@ func (ltc *LocalTestCluster) Start(t testing.TB, baseCtx *base.Config, initFacto
 
 	ltc.Stores = kvserver.NewStores(ambient, ltc.Clock)
 
-	factory := initFactory(ctx, cfg.Settings, nodeDesc, ltc.stopper.Tracer(), ltc.Clock, ltc.Latency, ltc.Stores, ltc.stopper, ltc.Gossip)
+	factory := initFactory(ctx, cfg.Settings, nodeDesc, ltc.stopper.Tracer(), ltc.Clock, ltc.Latency, ltc.Stores, ltc.stopper)
 
 	var nodeIDContainer base.NodeIDContainer
 	nodeIDContainer.Set(context.Background(), nodeID)
@@ -182,7 +195,6 @@ func (ltc *LocalTestCluster) Start(t testing.TB, baseCtx *base.Config, initFacto
 		cfg.TestingKnobs = *ltc.StoreTestingKnobs
 	}
 	cfg.DB = ltc.DB
-	cfg.Gossip = ltc.Gossip
 	cfg.HistogramWindowInterval = metric.TestSampleInterval
 	active, renewal := cfg.NodeLivenessDurations()
 	cfg.NodeLiveness = liveness.NewNodeLiveness(liveness.NodeLivenessOptions{
@@ -190,7 +202,7 @@ func (ltc *LocalTestCluster) Start(t testing.TB, baseCtx *base.Config, initFacto
 		Stopper:                 ltc.stopper,
 		Clock:                   cfg.Clock,
 		DB:                      cfg.DB,
-		Gossip:                  cfg.Gossip,
+		NodeIDContainer:         &nodeIDContainer,
 		LivenessThreshold:       active,
 		RenewalDuration:         renewal,
 		Settings:                cfg.Settings,
@@ -200,7 +212,6 @@ func (ltc *LocalTestCluster) Start(t testing.TB, baseCtx *base.Config, initFacto
 	cfg.StorePool = kvserver.NewStorePool(
 		cfg.AmbientCtx,
 		cfg.Settings,
-		cfg.Gossip,
 		cfg.Clock,
 		cfg.NodeLiveness.GetNodeCount,
 		kvserver.MakeStorePoolNodeLivenessFunc(cfg.NodeLiveness),
@@ -268,12 +279,7 @@ func (ltc *LocalTestCluster) Start(t testing.TB, baseCtx *base.Config, initFacto
 		t.Fatalf("unable to start local test cluster: %s", err)
 	}
 
-	// The heartbeat loop depends on gossip to retrieve the node ID, so we're
-	// sure to set it first.
 	nc.Set(ctx, nodeDesc.NodeID)
-	if err := ltc.Gossip.SetNodeDescriptor(nodeDesc); err != nil {
-		t.Fatalf("unable to set node descriptor: %s", err)
-	}
 
 	if !ltc.DisableLivenessHeartbeat {
 		cfg.NodeLiveness.Start(ctx,

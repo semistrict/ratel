@@ -27,7 +27,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/semistrict/ratel/pkg/base"
-	"github.com/semistrict/ratel/pkg/gossip"
+	"github.com/semistrict/ratel/pkg/kv/kvclient/nodedescstore"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/kv/kvclient/kvcoord"
@@ -92,10 +92,10 @@ func TestRangeLookupWithOpenTransaction(t *testing.T) {
 		AmbientCtx:         ambient,
 		Settings:           cluster.MakeTestingClusterSettings(),
 		Clock:              s.Clock(),
-		NodeDescs:          s.Gossip(),
+		NodeDescs:          s.NodeDescStoreI().(kvcoord.NodeDescStore),
 		RPCContext:         s.RPCContext(),
-		NodeDialer:         nodedialer.New(s.RPCContext(), gossip.AddressResolver(s.Gossip())),
-		FirstRangeProvider: s.Gossip(),
+		NodeDialer:         nodedialer.New(s.RPCContext(), s.NodeDescStoreI().(*nodedescstore.Store).AddressResolver()),
+		FirstRangeProvider: s.FirstRangeProviderI().(kvcoord.FirstRangeProvider),
 	})
 	tsf := kvcoord.NewTxnCoordSenderFactory(
 		kvcoord.TxnCoordSenderFactoryConfig{
@@ -1128,10 +1128,10 @@ func TestMultiRangeScanReverseScanInconsistent(t *testing.T) {
 					AmbientCtx:         s.AmbientCtx(),
 					Settings:           cluster.MakeTestingClusterSettings(),
 					Clock:              clock,
-					NodeDescs:          s.Gossip(),
+					NodeDescs:          s.NodeDescStoreI().(kvcoord.NodeDescStore),
 					RPCContext:         s.RPCContext(),
-					NodeDialer:         nodedialer.New(s.RPCContext(), gossip.AddressResolver(s.Gossip())),
-					FirstRangeProvider: s.Gossip(),
+					NodeDialer:         nodedialer.New(s.RPCContext(), s.NodeDescStoreI().(*nodedescstore.Store).AddressResolver()),
+					FirstRangeProvider: s.FirstRangeProviderI().(kvcoord.FirstRangeProvider),
 				})
 
 				reply, err := kv.SendWrappedWith(context.Background(), ds, roachpb.Header{
@@ -1634,11 +1634,11 @@ func TestBatchPutWithConcurrentSplit(t *testing.T) {
 	ds := kvcoord.NewDistSender(kvcoord.DistSenderConfig{
 		AmbientCtx:         s.AmbientCtx(),
 		Clock:              s.Clock(),
-		NodeDescs:          s.Gossip(),
+		NodeDescs:          s.NodeDescStoreI().(kvcoord.NodeDescStore),
 		RPCContext:         s.RPCContext(),
-		NodeDialer:         nodedialer.New(s.RPCContext(), gossip.AddressResolver(s.Gossip())),
+		NodeDialer:         nodedialer.New(s.RPCContext(), s.NodeDescStoreI().(*nodedescstore.Store).AddressResolver()),
 		Settings:           cluster.MakeTestingClusterSettings(),
-		FirstRangeProvider: s.Gossip(),
+		FirstRangeProvider: s.FirstRangeProviderI().(kvcoord.FirstRangeProvider),
 	})
 	for _, key := range []string{"c"} {
 		req := &roachpb.AdminSplitRequest{

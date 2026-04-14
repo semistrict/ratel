@@ -36,9 +36,6 @@ import (
 	"github.com/kr/pretty"
 	"github.com/semistrict/ratel/pkg/base"
 	"github.com/semistrict/ratel/pkg/cli/exit"
-	"github.com/semistrict/ratel/pkg/clusterversion"
-	"github.com/semistrict/ratel/pkg/config"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/batcheval"
@@ -57,7 +54,6 @@ import (
 	"github.com/semistrict/ratel/pkg/kv/kvserver/uncertainty"
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/server/telemetry"
-	"github.com/semistrict/ratel/pkg/settings/cluster"
 	"github.com/semistrict/ratel/pkg/storage"
 	"github.com/semistrict/ratel/pkg/storage/enginepb"
 	"github.com/semistrict/ratel/pkg/testutils"
@@ -148,7 +144,6 @@ type testContext struct {
 	store       *Store
 	repl        *Replica
 	rangeID     roachpb.RangeID
-	gossip      *gossip.Gossip
 	engine      storage.Engine
 	manualClock *hlc.ManualClock
 }
@@ -187,7 +182,6 @@ func (tc *testContext) StartWithStoreConfigAndVersion(
 	bootstrapVersion roachpb.Version,
 ) {
 	tc.TB = t
-	require.Nil(t, tc.gossip)
 	require.Nil(t, tc.transport)
 	require.Nil(t, tc.engine)
 	require.Nil(t, tc.store)
@@ -218,7 +212,6 @@ func (tc *testContext) StartWithStoreConfigAndVersion(
 	require.NoError(t, err)
 	tc.repl = repl
 	tc.rangeID = repl.RangeID
-	tc.gossip = store.cfg.Gossip
 	tc.transport = store.cfg.Transport
 	tc.engine = store.engine
 	tc.store = store
@@ -256,24 +249,10 @@ func (tc *testContext) SendWrapped(args roachpb.Request) (roachpb.Response, *roa
 	return tc.SendWrappedWith(roachpb.Header{}, args)
 }
 
-// initConfigs creates default configuration entries.
-//
-// TODO(ajwerner): Remove this in 22.2.
+// initConfigs is a no-op. System config was previously injected via gossip,
+// which has been removed. The SystemConfigProvider in StoreConfig now provides
+// a constant system config directly.
 func (tc *testContext) initConfigs(t testing.TB) error {
-	// Put an empty system config into gossip so that gossip callbacks get
-	// run. We're using a fake config, but it's hooked into SystemConfig.
-	if err := tc.gossip.AddInfoProto(gossip.KeyDeprecatedSystemConfig,
-		&config.SystemConfigEntries{}, 0); err != nil {
-		return err
-	}
-
-	testutils.SucceedsSoon(t, func() error {
-		if cfg := tc.gossip.DeprecatedGetSystemConfig(); cfg == nil {
-			return errors.Errorf("expected system config to be set")
-		}
-		return nil
-	})
-
 	return nil
 }
 
@@ -1156,110 +1135,8 @@ func TestReplicaLeaseCounters(t *testing.T) {
 	}
 }
 
-// TestReplicaGossipConfigsOnLease verifies that config info is gossiped
-// upon acquisition of the range lease.
-//
-// TODO(ajwerner): Delete this test in 22.2.
-func TestReplicaGossipConfigsOnLease(t *testing.T) {
-	defer leaktest.AfterTest(t)()
-	defer log.Scope(t).Close(t)
-
-	ctx := context.Background()
-	stopper := stop.NewStopper()
-	defer stopper.Stop(ctx)
-
-	tc := testContext{manualClock: hlc.NewManualClock(123)}
-	cfg := TestStoreConfig(hlc.NewClock(tc.manualClock.UnixNano, time.Nanosecond))
-	cfg.TestingKnobs.DisableAutomaticLeaseRenewal = true
-	// Use the TestingBinaryMinSupportedVersion for bootstrap because we won't
-	// gossip the system config once the current version is finalized.
-	cfg.Settings = cluster.MakeTestingClusterSettingsWithVersions(
-		clusterversion.TestingBinaryVersion,
-		clusterversion.TestingBinaryMinSupportedVersion,
-		false,
-	)
-	require.NoError(t, cfg.Settings.Version.SetActiveVersion(ctx, clusterversion.ClusterVersion{
-		Version: clusterversion.TestingBinaryMinSupportedVersion,
-	}))
-	tc.StartWithStoreConfigAndVersion(ctx, t, stopper, cfg,
-		clusterversion.TestingBinaryMinSupportedVersion)
-
-	secondReplica, err := tc.addBogusReplicaToRangeDesc(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Write some arbitrary data in the system config span.
-	key := keys.SystemSQLCodec.TablePrefix(keys.MaxSystemConfigDescID)
-	var val roachpb.Value
-	val.SetInt(42)
-	if err := storage.MVCCPut(context.Background(), tc.engine, nil, key, hlc.Timestamp{}, val, nil); err != nil {
-		t.Fatal(err)
-	}
-
-	// If this actually failed, we would have gossiped from MVCCPutProto.
-	// Unlikely, but why not check.
-	if cfg := tc.gossip.DeprecatedGetSystemConfig(); cfg != nil {
-		if nv := len(cfg.Values); nv == 1 && cfg.Values[nv-1].Key.Equal(key) {
-			t.Errorf("unexpected gossip of system config: %s", cfg)
-		}
-	}
-
-	// Expire our own lease which we automagically acquired due to being
-	// first range and config holder.
-	tc.manualClock.Set(leaseExpiry(tc.repl))
-	now := tc.Clock().NowAsClockTimestamp()
-
-	// Give lease to someone else.
-	if err := sendLeaseRequest(tc.repl, &roachpb.Lease{
-		Start:      now,
-		Expiration: now.ToTimestamp().Add(10, 0).Clone(),
-		Replica:    secondReplica,
-	}); err != nil {
-		t.Fatal(err)
-	}
-
-	// Expire that lease.
-	tc.manualClock.Increment(11 + int64(tc.Clock().MaxOffset())) // advance time
-	now = tc.Clock().NowAsClockTimestamp()
-
-	ch := tc.gossip.DeprecatedRegisterSystemConfigChannel()
-	select {
-	case <-ch:
-	default:
-	}
-
-	// Give lease to this range.
-	if err := sendLeaseRequest(tc.repl, &roachpb.Lease{
-		Start:      now.ToTimestamp().Add(11, 0).UnsafeToClockTimestamp(),
-		Expiration: now.ToTimestamp().Add(20, 0).Clone(),
-		Replica: roachpb.ReplicaDescriptor{
-			ReplicaID: 1,
-			NodeID:    1,
-			StoreID:   1,
-		},
-	}); err != nil {
-		t.Fatal(err)
-	}
-
-	testutils.SucceedsSoon(t, func() error {
-		sysCfg := tc.gossip.DeprecatedGetSystemConfig()
-		if sysCfg == nil {
-			return errors.Errorf("no system config yet")
-		}
-		var found bool
-		for _, cur := range sysCfg.Values {
-			if key.Equal(cur.Key) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return errors.Errorf("key %s not found in SystemConfig", key)
-		}
-		return nil
-	})
-}
+// TestReplicaGossipConfigsOnLease has been removed because system config
+// gossip has been removed from Ratel.
 
 // TestReplicaTSCacheLowWaterOnLease verifies that the low water mark
 // is set on the timestamp cache when the node is granted the lease holder
@@ -1526,49 +1403,11 @@ func TestReplicaDrainLease(t *testing.T) {
 	require.NoError(t, pErr.GoError())
 }
 
-// TestReplicaGossipFirstRange verifies that the first range gossips its
-// location and the cluster ID.
-func TestReplicaGossipFirstRange(t *testing.T) {
-	defer leaktest.AfterTest(t)()
-	defer log.Scope(t).Close(t)
-	tc := testContext{}
-	ctx := context.Background()
-	stopper := stop.NewStopper()
-	defer stopper.Stop(ctx)
-	tc.Start(ctx, t, stopper)
-	for _, key := range []string{gossip.KeyClusterID, gossip.KeyFirstRangeDescriptor, gossip.KeySentinel} {
-		bytes, err := tc.gossip.GetInfo(key)
-		if err != nil {
-			t.Errorf("missing first range gossip of key %s", key)
-		}
-		if key == gossip.KeyFirstRangeDescriptor {
-			var rangeDesc roachpb.RangeDescriptor
-			if err := protoutil.Unmarshal(bytes, &rangeDesc); err != nil {
-				t.Fatal(err)
-			}
-		}
-		if key == gossip.KeyClusterID && len(bytes) == 0 {
-			t.Errorf("expected non-empty gossiped cluster ID, got %q", bytes)
-		}
-		if key == gossip.KeySentinel && len(bytes) == 0 {
-			t.Errorf("expected non-empty gossiped sentinel, got %q", bytes)
-		}
-	}
-}
+// TestReplicaGossipFirstRange has been removed because gossip has been removed
+// from Ratel. First range information is now distributed via rangefeed.
 
-// TestReplicaGossipAllConfigs verifies that all config types are gossiped.
-func TestReplicaGossipAllConfigs(t *testing.T) {
-	defer leaktest.AfterTest(t)()
-	defer log.Scope(t).Close(t)
-	ctx := context.Background()
-	tc := testContext{}
-	stopper := stop.NewStopper()
-	defer stopper.Stop(ctx)
-	tc.Start(ctx, t, stopper)
-	if cfg := tc.gossip.DeprecatedGetSystemConfig(); cfg == nil {
-		t.Fatal("config not set")
-	}
-}
+// TestReplicaGossipAllConfigs has been removed because system config gossip has
+// been removed from Ratel.
 
 func getArgs(key []byte) roachpb.GetRequest {
 	return roachpb.GetRequest{
@@ -10391,8 +10230,7 @@ func TestConsistenctQueueErrorFromCheckConsistency(t *testing.T) {
 
 	for i := 0; i < 2; i++ {
 		// Do this twice because it used to deadlock. See #25456.
-		sysCfg := tc.store.Gossip().DeprecatedGetSystemConfig()
-		processed, err := tc.store.consistencyQueue.process(ctx, tc.repl, sysCfg)
+		processed, err := tc.store.consistencyQueue.process(ctx, tc.repl, nil)
 		if !testutils.IsError(err, "boom") {
 			t.Fatal(err)
 		}

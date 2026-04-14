@@ -652,7 +652,6 @@ func init() {
 
 	clientCmds := []*cobra.Command{
 		debugJobTraceFromClusterCmd,
-		debugGossipValuesCmd,
 		debugTimeSeriesDumpCmd,
 		debugZipCmd,
 		debugListFilesCmd,
@@ -986,11 +985,6 @@ func init() {
 		f := debugRangeDataCmd.Flags()
 		boolFlag(f, &debugCtx.replicated, cliflags.Replicated)
 		intFlag(f, &debugCtx.maxResults, cliflags.Limit)
-	}
-	{
-		f := debugGossipValuesCmd.Flags()
-		stringFlag(f, &debugCtx.inputFile, cliflags.GossipInputFile)
-		boolFlag(f, &debugCtx.printSystemConfig, cliflags.PrintSystemConfig)
 	}
 	{
 		f := debugBallastCmd.Flags()

@@ -15,10 +15,15 @@
 package cli
 
 import (
+	"bytes"
 	"context"
-	"crypto/sha256"
+	"crypto/rand"
+	"encoding/json"
+	"io"
+	gohex "encoding/hex"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -47,6 +52,19 @@ import (
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )
+
+// autoNodeID generates a node ID from hostname + random suffix.
+func autoNodeID() string {
+	host, _ := os.Hostname()
+	if host == "" {
+		host = "node"
+	}
+	var b [4]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("%s-%s", host, gohex.EncodeToString(b[:]))
+}
 
 var ratelListenAddr string
 var ratelHTTPAddr string
@@ -99,6 +117,18 @@ With a storage URL, discover nodes from S3:
 	RunE: runRatelSQL,
 }
 
+var ratelDeployCmd = &cobra.Command{
+	Use:   "deploy <storage-url | host:port> <file.js>",
+	Short: "Deploy a JavaScript worker to the cluster",
+	Long: `Deploy a JavaScript worker file. The worker name is derived from the
+filename (e.g. counter.js becomes "counter").
+
+  ratel deploy s3://bucket/path worker.js
+  ratel deploy localhost:5273 worker.js`,
+	Args: cobra.ExactArgs(2),
+	RunE: runRatelDeploy,
+}
+
 var ratelStartLocalCmd = &cobra.Command{
 	Use:   "start-local",
 	Short: "Start a single-node cluster for local development",
@@ -111,25 +141,24 @@ Connect with:  ratel sql localhost:26257`,
 }
 
 func init() {
-	ratelCmd.AddCommand(ratelInitCmd, ratelJoinCmd, ratelSQLCmd, ratelStartLocalCmd)
+	ratelCmd.AddCommand(ratelInitCmd, ratelJoinCmd, ratelSQLCmd, ratelDeployCmd, ratelStartLocalCmd)
 
 	ratelStartLocalCmd.Flags().StringVar(&ratelListenAddr, "listen-addr", "localhost:26257",
 		"Address to listen on for RPC and SQL connections")
-	ratelStartLocalCmd.Flags().StringVar(&ratelHTTPAddr, "http-addr", "localhost:8080",
+	ratelStartLocalCmd.Flags().StringVar(&ratelHTTPAddr, "http-addr", "localhost:5273",
 		"Address to listen on for the admin HTTP interface")
 
 	for _, cmd := range []*cobra.Command{ratelInitCmd, ratelJoinCmd} {
 		cmd.Flags().StringVar(&ratelListenAddr, "listen-addr", "localhost:26257",
 			"Address to listen on for RPC and SQL connections")
-		cmd.Flags().StringVar(&ratelHTTPAddr, "http-addr", "localhost:8080",
+		cmd.Flags().StringVar(&ratelHTTPAddr, "http-addr", "localhost:5273",
 			"Address to listen on for the admin HTTP interface")
 		cmd.Flags().BoolVar(&ratelTLS, "tls", false,
 			"Enable application-level TLS (generates and manages certificates via S3)")
 		cmd.Flags().BoolVar(&ratelNoPassphrase, "no-passphrase", false,
 			"Do not encrypt the CA key (skip passphrase prompt, only with --tls)")
 		cmd.Flags().StringVar(&ratelNodeID, "node-id", "",
-			"Stable operator-assigned node identity (e.g. ratel-1)")
-		_ = cmd.MarkFlagRequired("node-id")
+			"Stable operator-assigned node identity (e.g. ratel-1); auto-generated if omitted")
 	}
 
 	// SQL-specific flags.
@@ -204,10 +233,11 @@ func ratelPassphrase(confirm bool) ([]byte, error) {
 	return pass, nil
 }
 
-// ratelLocalDir returns a stable temp directory derived from the cluster URL.
-func ratelLocalDir(clusterURL string) string {
-	h := sha256.Sum256([]byte(clusterURL))
-	return filepath.Join(os.TempDir(), fmt.Sprintf("ratel-%x", h[:8]))
+// ratelLocalDir returns a stable temp directory derived from the cluster UUID.
+// Each cluster gets its own local store directory, preventing stale data
+// conflicts when the same URL is reused for a new cluster.
+func ratelLocalDir(clusterID string) string {
+	return filepath.Join(os.TempDir(), fmt.Sprintf("ratel-%s", clusterID))
 }
 
 func runRatelStartLocal(cmd *cobra.Command, args []string) error {
@@ -234,13 +264,36 @@ func runRatelStartLocal(cmd *cobra.Command, args []string) error {
 
 func runRatelInit(cmd *cobra.Command, args []string) error {
 	clusterURL := args[0]
+	ctx := context.Background()
+
+	// Probe storage; offer to create bucket if it doesn't exist.
+	if err := storage.ProbeStorage(ctx, clusterURL); err != nil {
+		if errors.Is(err, storage.ErrBucketNotFound) {
+			bucket := storage.BucketName(clusterURL)
+			fmt.Fprintf(os.Stderr, "Bucket %q does not exist. Create it? [y/N] ", bucket)
+			var answer string
+			fmt.Scanln(&answer)
+			if answer != "y" && answer != "Y" {
+				return errors.New("bucket does not exist")
+			}
+			if err := storage.CreateBucket(ctx, clusterURL); err != nil {
+				return errors.Wrap(err, "creating bucket")
+			}
+			fmt.Fprintf(os.Stderr, "Created bucket %q\n", bucket)
+		} else {
+			return errors.Wrap(err, "probing storage")
+		}
+	}
 
 	cs, err := storage.ClusterStorageFromURL(clusterURL)
 	if err != nil {
 		return err
 	}
 
-	ctx := context.Background()
+	if ratelNodeID == "" {
+		ratelNodeID = autoNodeID()
+		fmt.Fprintf(os.Stderr, "Auto-assigned node ID: %s\n", ratelNodeID)
+	}
 
 	// Check for duplicate running node with same --node-id.
 	if err := checkNodeLiveness(ctx, cs.Nodes, ratelNodeID); err != nil {
@@ -256,7 +309,14 @@ func runRatelInit(cmd *cobra.Command, args []string) error {
 		return errors.Newf("cluster already initialized: found %d node(s) at %s", len(nodes), clusterURL)
 	}
 
-	ld := ratelLocalDir(clusterURL)
+	// Assign a cluster UUID and persist it to metadata storage.
+	clusterUUID, err := storage.WriteClusterID(ctx, cs.Metadata)
+	if err != nil {
+		return errors.Wrap(err, "writing cluster ID")
+	}
+	fmt.Fprintf(os.Stderr, "Cluster ID: %s\n", clusterUUID)
+
+	ld := ratelLocalDir(clusterUUID.String())
 	certsDir := ""
 	storeDir := filepath.Join(ld, "store")
 
@@ -315,9 +375,20 @@ func runRatelJoin(cmd *cobra.Command, args []string) error {
 
 	ctx := context.Background()
 
+	if ratelNodeID == "" {
+		ratelNodeID = autoNodeID()
+		fmt.Fprintf(os.Stderr, "Auto-assigned node ID: %s\n", ratelNodeID)
+	}
+
 	// Check for duplicate running node with same --node-id.
 	if err := checkNodeLiveness(ctx, cs.Nodes, ratelNodeID); err != nil {
 		return err
+	}
+
+	// Read cluster UUID from metadata storage.
+	clusterUUID, err := storage.ReadClusterID(ctx, cs.Metadata)
+	if err != nil {
+		return errors.Wrap(err, "reading cluster ID (is the cluster initialized?)")
 	}
 
 	// Discover peers.
@@ -334,7 +405,7 @@ func runRatelJoin(cmd *cobra.Command, args []string) error {
 		joinList = append(joinList, n.Addr)
 	}
 
-	ld := ratelLocalDir(clusterURL)
+	ld := ratelLocalDir(clusterUUID.String())
 	certsDir := ""
 	storeDir := filepath.Join(ld, "store")
 
@@ -563,6 +634,80 @@ func runHeartbeat(ctx context.Context, quiesce <-chan struct{}, store remote.Sto
 	}
 }
 
+func runRatelDeploy(cmd *cobra.Command, args []string) error {
+	target := args[0]
+	jsFile := args[1]
+
+	// Read the JS file.
+	script, err := os.ReadFile(jsFile)
+	if err != nil {
+		return errors.Wrapf(err, "reading %s", jsFile)
+	}
+
+	// Derive worker name from filename: "counter.js" -> "counter".
+	base := filepath.Base(jsFile)
+	name := strings.TrimSuffix(base, filepath.Ext(base))
+	if name == "" {
+		return errors.Newf("cannot derive worker name from %q", jsFile)
+	}
+
+	// Resolve HTTP address.
+	var httpAddr string
+	if strings.Contains(target, "://") {
+		cs, err := storage.ClusterStorageFromURL(target)
+		if err != nil {
+			return err
+		}
+		ctx := context.Background()
+		nodes, err := storage.ListNodes(ctx, cs.Nodes)
+		if err != nil {
+			return errors.Wrap(err, "listing nodes")
+		}
+		if len(nodes) == 0 {
+			return errors.New("no nodes found; is the cluster running?")
+		}
+		httpAddr = nodes[0].HTTPAddr
+	} else {
+		httpAddr = target
+	}
+
+	// Ensure scheme.
+	if !strings.HasPrefix(httpAddr, "http") {
+		httpAddr = "http://" + httpAddr
+	}
+
+	// PUT /api/v2/workers/{name}
+	deployURL := fmt.Sprintf("%s/api/v2/workers/%s/", httpAddr, name)
+	req, err := http.NewRequest("PUT", deployURL, bytes.NewReader(script))
+	if err != nil {
+		return errors.Wrap(err, "creating request")
+	}
+	req.Header.Set("Content-Type", "application/javascript")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return errors.Wrapf(err, "deploying to %s", deployURL)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		return errors.Newf("deploy failed (%s): %s", resp.Status, string(body))
+	}
+
+	// Parse response for version number.
+	var result struct {
+		Name    string `json:"name"`
+		Version int64  `json:"version"`
+	}
+	if err := json.Unmarshal(body, &result); err == nil {
+		fmt.Fprintf(os.Stderr, "Deployed %s v%d\n", result.Name, result.Version)
+	} else {
+		fmt.Fprintf(os.Stderr, "Deployed %s\n", name)
+	}
+	return nil
+}
+
 func runRatelSQL(cmd *cobra.Command, args []string) error {
 	arg := args[0]
 
@@ -592,7 +737,11 @@ func runRatelSQL(cmd *cobra.Command, args []string) error {
 			}
 		}
 		if ratelTLS {
-			ld := ratelLocalDir(arg)
+			clusterUUID, err := storage.ReadClusterID(ctx, cs.Metadata)
+			if err != nil {
+				return errors.Wrap(err, "reading cluster ID")
+			}
+			ld := ratelLocalDir(clusterUUID.String())
 			certsDir = filepath.Join(ld, "certs")
 			if err := storage.DownloadClientCerts(ctx, cs.Certs, certsDir); err != nil {
 				return err

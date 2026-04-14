@@ -247,12 +247,43 @@ var (
 // error           : any issues fetching stats. This should be a warning only.
 var getCgoMemStats func(context.Context) (uint, uint, error)
 
+// OSSampler provides disk and network I/O counters from the host OS.
+// The default implementation shells out to OS utilities. Tests can
+// inject a no-op to avoid running OS commands inside synctest bubbles.
+type OSSampler interface {
+	SumDiskCounters(ctx context.Context) (diskStats, error)
+	SumNetCounters(ctx context.Context) (net.IOCountersStat, error)
+}
+
+type realOSSampler struct{}
+
+func (realOSSampler) SumDiskCounters(ctx context.Context) (diskStats, error) {
+	return getSummedDiskCounters(ctx)
+}
+
+func (realOSSampler) SumNetCounters(ctx context.Context) (net.IOCountersStat, error) {
+	return getSummedNetStats(ctx)
+}
+
+// NoopOSSampler is an OSSampler that returns zero values. Use it in
+// tests that run inside synctest bubbles where OS commands are unsafe.
+type NoopOSSampler struct{}
+
+func (NoopOSSampler) SumDiskCounters(context.Context) (diskStats, error) {
+	return diskStats{}, nil
+}
+
+func (NoopOSSampler) SumNetCounters(context.Context) (net.IOCountersStat, error) {
+	return net.IOCountersStat{}, nil
+}
+
 // RuntimeStatSampler is used to periodically sample the runtime environment
 // for useful statistics, performing some rudimentary calculations and storing
 // the resulting information in a format that can be easily consumed by status
 // logging systems.
 type RuntimeStatSampler struct {
-	clock *hlc.Clock
+	clock     *hlc.Clock
+	osSampler OSSampler
 
 	startTimeNanos int64
 	// The last sampled values of some statistics are kept only to compute
@@ -319,7 +350,11 @@ type RuntimeStatSampler struct {
 }
 
 // NewRuntimeStatSampler constructs a new RuntimeStatSampler object.
-func NewRuntimeStatSampler(ctx context.Context, clock *hlc.Clock) *RuntimeStatSampler {
+// Pass nil for osSampler to use the real OS implementation.
+func NewRuntimeStatSampler(ctx context.Context, clock *hlc.Clock, osSampler OSSampler) *RuntimeStatSampler {
+	if osSampler == nil {
+		osSampler = realOSSampler{}
+	}
 	// Construct the build info metric. It is constant.
 	// We first build set the labels on the metadata.
 	info := build.GetInfo()
@@ -342,17 +377,18 @@ func NewRuntimeStatSampler(ctx context.Context, clock *hlc.Clock) *RuntimeStatSa
 	buildTimestamp := metric.NewGauge(metaBuildTimestamp)
 	buildTimestamp.Update(timestamp)
 
-	diskCounters, err := getSummedDiskCounters(ctx)
+	diskCounters, err := osSampler.SumDiskCounters(ctx)
 	if err != nil {
 		log.Ops.Errorf(ctx, "could not get initial disk IO counters: %v", err)
 	}
-	netCounters, err := getSummedNetStats(ctx)
+	netCounters, err := osSampler.SumNetCounters(ctx)
 	if err != nil {
-		log.Ops.Errorf(ctx, "could not get initial disk IO counters: %v", err)
+		log.Ops.Errorf(ctx, "could not get initial net IO counters: %v", err)
 	}
 
 	rsr := &RuntimeStatSampler{
 		clock:                    clock,
+		osSampler:                osSampler,
 		startTimeNanos:           clock.PhysicalNow(),
 		initialNetCounters:       netCounters,
 		initialDiskCounters:      diskCounters,
@@ -477,7 +513,7 @@ func (rsr *RuntimeStatSampler) SampleEnvironment(
 	}
 
 	var deltaDisk diskStats
-	diskCounters, err := getSummedDiskCounters(ctx)
+	diskCounters, err := rsr.osSampler.SumDiskCounters(ctx)
 	if err != nil {
 		log.Ops.Warningf(ctx, "problem fetching disk stats: %s; disk stats will be empty.", err)
 	} else {
@@ -498,7 +534,7 @@ func (rsr *RuntimeStatSampler) SampleEnvironment(
 	}
 
 	var deltaNet net.IOCountersStat
-	netCounters, err := getSummedNetStats(ctx)
+	netCounters, err := rsr.osSampler.SumNetCounters(ctx)
 	if err != nil {
 		log.Ops.Warningf(ctx, "problem fetching net stats: %s; net stats will be empty.", err)
 	} else {

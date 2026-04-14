@@ -39,6 +39,7 @@ import (
 	"github.com/semistrict/ratel/pkg/base"
 	"github.com/semistrict/ratel/pkg/build"
 	"github.com/semistrict/ratel/pkg/gossip"
+	"github.com/semistrict/ratel/pkg/kv/kvclient/nodedescstore"
 	"github.com/semistrict/ratel/pkg/jobs"
 	"github.com/semistrict/ratel/pkg/jobs/jobspb"
 	"github.com/semistrict/ratel/pkg/keys"
@@ -450,7 +451,8 @@ type statusServer struct {
 	cfg                      *base.Config
 	admin                    *adminServer
 	db                       *kv.DB
-	gossip                   *gossip.Gossip
+	nodeIDContainer          *base.NodeIDContainer
+	nodeDescStore            *nodedescstore.Store
 	metricSource             metricMarshaler
 	nodeLiveness             *liveness.NodeLiveness
 	storePool                *kvserver.StorePool
@@ -493,7 +495,8 @@ func newStatusServer(
 	adminAuthzCheck *adminPrivilegeChecker,
 	adminServer *adminServer,
 	db *kv.DB,
-	gossip *gossip.Gossip,
+	nodeIDContainer *base.NodeIDContainer,
+	nodeDescStore *nodedescstore.Store,
 	metricSource metricMarshaler,
 	nodeLiveness *liveness.NodeLiveness,
 	storePool *kvserver.StorePool,
@@ -518,7 +521,8 @@ func newStatusServer(
 		cfg:              cfg,
 		admin:            adminServer,
 		db:               db,
-		gossip:           gossip,
+		nodeIDContainer:  nodeIDContainer,
+		nodeDescStore:    nodeDescStore,
 		metricSource:     metricSource,
 		nodeLiveness:     nodeLiveness,
 		storePool:        storePool,
@@ -551,16 +555,27 @@ func (s *statusServer) RegisterGateway(
 	return serverpb.RegisterStatusHandler(ctx, mux, conn)
 }
 
+// getNodeID returns the local node ID.
+func (s *statusServer) getNodeID() roachpb.NodeID {
+	if s.nodeIDContainer != nil {
+		return roachpb.NodeID(s.nodeIDContainer.Get())
+	}
+	return 0
+}
+
 func (s *statusServer) parseNodeID(nodeIDParam string) (roachpb.NodeID, bool, error) {
-	return parseNodeID(s.gossip, nodeIDParam)
+	return parseNodeID(s.nodeIDContainer, nodeIDParam)
 }
 
 func parseNodeID(
-	gossip *gossip.Gossip, nodeIDParam string,
+	nodeIDContainer *base.NodeIDContainer, nodeIDParam string,
 ) (nodeID roachpb.NodeID, isLocal bool, err error) {
 	// No parameter provided or set to local.
 	if len(nodeIDParam) == 0 || localRE.MatchString(nodeIDParam) {
-		return gossip.NodeID.Get(), true, nil
+		if nodeIDContainer != nil {
+			return roachpb.NodeID(nodeIDContainer.Get()), true, nil
+		}
+		return 0, true, nil
 	}
 
 	id, err := strconv.ParseInt(nodeIDParam, 0, 32)
@@ -568,13 +583,19 @@ func parseNodeID(
 		return 0, false, errors.Wrap(err, "node ID could not be parsed")
 	}
 	nodeID = roachpb.NodeID(id)
-	return nodeID, nodeID == gossip.NodeID.Get(), nil
+	if nodeIDContainer != nil {
+		return nodeID, nodeID == roachpb.NodeID(nodeIDContainer.Get()), nil
+	}
+	return nodeID, false, nil
 }
 
 func (s *statusServer) dialNode(
 	ctx context.Context, nodeID roachpb.NodeID,
 ) (serverpb.StatusClient, error) {
-	addr, err := s.gossip.GetNodeIDAddress(nodeID)
+	if s.nodeDescStore == nil {
+		return nil, errors.New("node descriptor store is not available")
+	}
+	addr, err := s.nodeDescStore.GetNodeIDAddress(nodeID)
 	if err != nil {
 		return nil, err
 	}
@@ -586,7 +607,8 @@ func (s *statusServer) dialNode(
 	return serverpb.NewStatusClient(conn), nil
 }
 
-// Gossip returns gossip network status.
+// Gossip returns gossip network status. Gossip has been removed; this returns
+// an empty response for backward compatibility.
 func (s *statusServer) Gossip(
 	ctx context.Context, req *serverpb.GossipRequest,
 ) (*gossip.InfoStatus, error) {
@@ -594,25 +616,10 @@ func (s *statusServer) Gossip(
 	ctx = s.AnnotateCtx(ctx)
 
 	if _, err := s.privilegeChecker.requireAdminUser(ctx); err != nil {
-		// NB: not using serverError() here since the priv checker
-		// already returns a proper gRPC error status.
 		return nil, err
 	}
 
-	nodeID, local, err := s.parseNodeID(req.NodeId)
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "%s", err.Error())
-	}
-
-	if local {
-		infoStatus := s.gossip.GetInfoStatus()
-		return &infoStatus, nil
-	}
-	status, err := s.dialNode(ctx, nodeID)
-	if err != nil {
-		return nil, serverError(ctx, err)
-	}
-	return status.Gossip(ctx, req)
+	return &gossip.InfoStatus{}, nil
 }
 
 func (s *statusServer) EngineStats(
@@ -986,17 +993,19 @@ func (s *statusServer) Details(
 		return status.Details(ctx, req)
 	}
 
-	remoteNodeID := s.gossip.NodeID.Get()
+	localNodeID := s.getNodeID()
 	resp := &serverpb.DetailsResponse{
-		NodeID:     remoteNodeID,
+		NodeID:     localNodeID,
 		BuildInfo:  build.GetInfo(),
 		SystemInfo: s.si.systemInfo(ctx),
 	}
-	if addr, err := s.gossip.GetNodeIDAddress(remoteNodeID); err == nil {
-		resp.Address = *addr
-	}
-	if addr, err := s.gossip.GetNodeIDSQLAddress(remoteNodeID); err == nil {
-		resp.SQLAddress = *addr
+	if s.nodeDescStore != nil {
+		if addr, err := s.nodeDescStore.GetNodeIDAddress(localNodeID); err == nil {
+			resp.Address = *addr
+		}
+		if addr, err := s.nodeDescStore.GetNodeIDSQLAddress(localNodeID); err == nil {
+			resp.SQLAddress = *addr
+		}
 	}
 
 	return resp, nil
@@ -2222,7 +2231,7 @@ func (s *statusServer) HotRanges(
 	}
 
 	response := &serverpb.HotRangesResponse{
-		NodeID:            s.gossip.NodeID.Get(),
+		NodeID:            s.getNodeID(),
 		HotRangesByNodeID: make(map[roachpb.NodeID]serverpb.HotRangesResponse_NodeResponse),
 	}
 
@@ -2474,7 +2483,7 @@ func (s *statusServer) Range(
 
 	response := &serverpb.RangeResponse{
 		RangeID:           roachpb.RangeID(req.RangeId),
-		NodeID:            s.gossip.NodeID.Get(),
+		NodeID:            s.getNodeID(),
 		ResponsesByNodeID: make(map[roachpb.NodeID]serverpb.RangeResponse_NodeResponse),
 	}
 
@@ -2528,7 +2537,7 @@ func (s *statusServer) ListLocalSessions(
 		return nil, err
 	}
 	for i := range sessions {
-		sessions[i].NodeID = s.gossip.NodeID.Get()
+		sessions[i].NodeID = s.getNodeID()
 	}
 	return &serverpb.ListSessionsResponse{Sessions: sessions}, nil
 }
@@ -3280,7 +3289,7 @@ func (s *statusServer) JobRegistryStatus(
 		return status.JobRegistryStatus(ctx, req)
 	}
 
-	remoteNodeID := s.gossip.NodeID.Get()
+	remoteNodeID := s.getNodeID()
 	resp := &serverpb.JobRegistryStatusResponse{
 		NodeID: remoteNodeID,
 	}
@@ -3375,7 +3384,7 @@ func (s *statusServer) TransactionContentionEvents(
 		}
 	}
 
-	if s.gossip.NodeID.Get() == 0 {
+	if s.getNodeID() == 0 {
 		return nil, status.Errorf(codes.Unavailable, "nodeID not set")
 	}
 

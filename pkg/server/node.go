@@ -31,12 +31,13 @@ import (
 	"github.com/semistrict/ratel/pkg/clusterversion"
 	"github.com/semistrict/ratel/pkg/config"
 	"github.com/semistrict/ratel/pkg/config/zonepb"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/kv/kvclient"
 	"github.com/semistrict/ratel/pkg/kv/kvclient/kvcoord"
 	"github.com/semistrict/ratel/pkg/kv/kvclient/kvtenant"
+	"github.com/semistrict/ratel/pkg/kv/kvclient/nodedescstore"
+	"github.com/semistrict/ratel/pkg/kv/kvclient/storedescstore"
 	"github.com/semistrict/ratel/pkg/kv/kvserver"
 	"github.com/semistrict/ratel/pkg/multitenant"
 	"github.com/semistrict/ratel/pkg/roachpb"
@@ -69,8 +70,9 @@ import (
 )
 
 const (
-	// gossipStatusInterval is the interval for logging gossip status.
-	gossipStatusInterval = 1 * time.Minute
+	// descriptorBroadcastInterval is the interval for broadcasting node and store
+	// descriptors to the KV-backed descriptor stores.
+	descriptorBroadcastInterval = 1 * time.Minute
 
 	graphiteIntervalKey = "external.graphite.interval"
 	maxGraphiteInterval = 15 * time.Minute
@@ -209,18 +211,20 @@ func (nm nodeMetrics) callComplete(d time.Duration, pErr *roachpb.Error) {
 // IDs for bootstrapping the node itself or initializing new stores as
 // they're added on subsequent instantiations.
 type Node struct {
-	stopper      *stop.Stopper
-	clusterID    *base.ClusterIDContainer // UUID for Cockroach cluster
-	Descriptor   roachpb.NodeDescriptor   // Node ID, network/physical topology
-	storeCfg     kvserver.StoreConfig     // Config to use and pass to stores
-	sqlExec      *sql.InternalExecutor    // For event logging
-	stores       *kvserver.Stores         // Access to node-local stores
-	metrics      nodeMetrics
-	recorder     *status.MetricsRecorder
-	startedAt    int64
-	lastUp       int64
-	initialStart bool // true if this is the first time this node has started
-	txnMetrics   kvcoord.TxnMetrics
+	stopper        *stop.Stopper
+	clusterID      *base.ClusterIDContainer // UUID for Cockroach cluster
+	Descriptor     roachpb.NodeDescriptor   // Node ID, network/physical topology
+	storeCfg       kvserver.StoreConfig     // Config to use and pass to stores
+	sqlExec        *sql.InternalExecutor    // For event logging
+	stores         *kvserver.Stores         // Access to node-local stores
+	nodeDescStore  *nodedescstore.Store     // KV-backed node descriptor store
+	storeDescStore *storedescstore.Store    // KV-backed store descriptor store
+	metrics        nodeMetrics
+	recorder       *status.MetricsRecorder
+	startedAt      int64
+	lastUp         int64
+	initialStart   bool // true if this is the first time this node has started
+	txnMetrics     kvcoord.TxnMetrics
 
 	// Used to signal when additional stores, if any, have been initialized.
 	additionalStoreInitCh chan struct{}
@@ -364,20 +368,24 @@ func NewNode(
 	tenantUsage multitenant.TenantUsageServer,
 	tenantSettingsWatcher *tenantsettingswatcher.Watcher,
 	spanConfigAccessor spanconfig.KVAccessor,
+	nodeDescStore *nodedescstore.Store,
+	storeDescStore *storedescstore.Store,
 ) *Node {
 	var sqlExec *sql.InternalExecutor
 	if execCfg != nil {
 		sqlExec = execCfg.InternalExecutor
 	}
 	n := &Node{
-		storeCfg:   cfg,
-		stopper:    stopper,
-		recorder:   recorder,
-		metrics:    makeNodeMetrics(reg, cfg.HistogramWindowInterval),
-		stores:     stores,
-		txnMetrics: txnMetrics,
-		sqlExec:    sqlExec,
-		clusterID:  clusterID,
+		storeCfg:       cfg,
+		stopper:        stopper,
+		recorder:       recorder,
+		metrics:        makeNodeMetrics(reg, cfg.HistogramWindowInterval),
+		stores:         stores,
+		txnMetrics:     txnMetrics,
+		sqlExec:        sqlExec,
+		clusterID:      clusterID,
+		nodeDescStore:  nodeDescStore,
+		storeDescStore: storeDescStore,
 		admissionController: kvserver.MakeKVAdmissionController(
 			kvAdmissionQ, storeGrantCoords, cfg.Settings),
 		tenantUsage:           tenantUsage,
@@ -414,8 +422,8 @@ func (n *Node) AnnotateCtxWithSpan(
 
 // start starts the node by registering the storage instance for the RPC
 // service "Node" and initializing stores for each specified engine.
-// Launches periodic store gossiping in a goroutine. A callback can
-// be optionally provided that will be invoked once this node's
+// Launches periodic store descriptor publishing in a goroutine. A callback
+// can be optionally provided that will be invoked once this node's
 // NodeDescriptor is available, to help bootstrapping.
 //
 // addr, sqlAddr, and httpAddr are used to populate the Address,
@@ -457,12 +465,6 @@ func (n *Node) start(
 		nodeDescriptorCallback(n.Descriptor)
 	}
 
-	// Gossip the node descriptor to make this node addressable by node ID.
-	n.storeCfg.Gossip.NodeID.Set(ctx, n.Descriptor.NodeID)
-	if err := n.storeCfg.Gossip.SetNodeDescriptor(&n.Descriptor); err != nil {
-		return errors.Wrapf(err, "couldn't gossip descriptor for node %d", n.Descriptor.NodeID)
-	}
-
 	// Create stores from the engines that were already initialized.
 	for _, e := range state.initializedEngines {
 		s := kvserver.NewStore(ctx, n.storeCfg, e, &n.Descriptor)
@@ -472,6 +474,13 @@ func (n *Node) start(
 
 		n.addStore(ctx, s)
 		log.Infof(ctx, "initialized store s%s", s.StoreID())
+	}
+
+	// Register this node's descriptor in the in-memory cache so its
+	// address is resolvable immediately. The KV write is deferred to
+	// after the server is fully started (SetNodeDescriptor handles this).
+	if n.nodeDescStore != nil {
+		n.nodeDescStore.SetLocal(&n.Descriptor)
 	}
 
 	// Verify all initialized stores agree on cluster and node IDs.
@@ -496,13 +505,6 @@ func (n *Node) start(
 		return errors.Wrapf(err, "failed to read last up timestamp from stores")
 	}
 	n.lastUp = mostRecentTimestamp.WallTime
-
-	// Set the stores map as the gossip persistent storage, so that
-	// gossip can bootstrap using the most recently persisted set of
-	// node addresses.
-	if err := n.storeCfg.Gossip.SetStorage(n.stores); err != nil {
-		return errors.Wrap(err, "failed to initialize the gossip interface")
-	}
 
 	// Initialize remaining stores/engines, if any.
 	if len(state.uninitializedEngines) > 0 {
@@ -665,12 +667,6 @@ func (n *Node) initializeAdditionalStores(
 			n.addStore(ctx, s)
 			log.Infof(ctx, "initialized store s%s", s.StoreID())
 
-			// Done regularly in Node.startGossiping, but this cuts down the time
-			// until this store is used for range allocations.
-			if err := s.GossipStore(ctx, false /* useCached */); err != nil {
-				log.Warningf(ctx, "error doing initial gossiping: %s", err)
-			}
-
 			sIdent.StoreID++
 		}
 	}
@@ -684,44 +680,29 @@ func (n *Node) initializeAdditionalStores(
 	return nil
 }
 
-// startGossiping loops on a periodic ticker to gossip node-related
-// information. Starts a goroutine to loop until the node is closed.
+// startGossiping loops on a periodic ticker to broadcast node and store
+// descriptors to the KV-backed descriptor stores. Starts a goroutine to
+// loop until the node is closed.
 func (n *Node) startGossiping(ctx context.Context, stopper *stop.Stopper) {
 	ctx = n.AnnotateCtx(ctx)
 	_ = stopper.RunAsyncTask(ctx, "start-gossip", func(ctx context.Context) {
-		// Verify we've already gossiped our node descriptor.
-		//
-		// TODO(tbg): see if we really needed to do this earlier already. We
-		// probably needed to (this call has to come late for ... reasons I
-		// still need to look into) and nobody can talk to this node until
-		// the descriptor is in Gossip.
-		if _, err := n.storeCfg.Gossip.GetNodeDescriptor(n.Descriptor.NodeID); err != nil {
-			panic(err)
-		}
-
-		// NB: Gossip may not be connected at this point. That's fine though,
-		// we can still gossip something; Gossip sends it out reactively once
-		// it can.
-
-		statusTicker := time.NewTicker(gossipStatusInterval)
-		storesTicker := time.NewTicker(gossip.StoresInterval)
-		nodeTicker := time.NewTicker(gossip.NodeDescriptorInterval)
+		storesTicker := time.NewTicker(descriptorBroadcastInterval)
+		nodeTicker := time.NewTicker(descriptorBroadcastInterval)
 		defer func() {
 			nodeTicker.Stop()
 			storesTicker.Stop()
-			statusTicker.Stop()
 		}()
 
 		n.gossipStores(ctx) // one-off run before going to sleep
 		for {
 			select {
-			case <-statusTicker.C:
-				n.storeCfg.Gossip.LogStatus()
 			case <-storesTicker.C:
 				n.gossipStores(ctx)
 			case <-nodeTicker.C:
-				if err := n.storeCfg.Gossip.SetNodeDescriptor(&n.Descriptor); err != nil {
-					log.Warningf(ctx, "couldn't gossip descriptor for node %d: %s", n.Descriptor.NodeID, err)
+				if n.nodeDescStore != nil {
+					if err := n.nodeDescStore.Upsert(ctx, &n.Descriptor); err != nil {
+						log.Warningf(ctx, "couldn't write node descriptor to KV for node %d: %v", n.Descriptor.NodeID, err)
+					}
 				}
 			case <-stopper.ShouldQuiesce():
 				return
@@ -730,10 +711,21 @@ func (n *Node) startGossiping(ctx context.Context, stopper *stop.Stopper) {
 	})
 }
 
-// gossipStores broadcasts each store and dead replica to the gossip network.
+// gossipStores writes store descriptors to the KV-backed store descriptor store.
 func (n *Node) gossipStores(ctx context.Context) {
+	if n.storeDescStore == nil {
+		return
+	}
 	if err := n.stores.VisitStores(func(s *kvserver.Store) error {
-		return s.GossipStore(ctx, false /* useCached */)
+		storeDesc, err := s.Descriptor(ctx, false /* useCached */)
+		if err != nil {
+			log.Warningf(ctx, "couldn't get store descriptor for KV write: %v", err)
+			return nil
+		}
+		if err := n.storeDescStore.Upsert(ctx, storeDesc); err != nil {
+			log.Warningf(ctx, "couldn't write store descriptor to KV for store %d: %v", s.StoreID(), err)
+		}
+		return nil
 	}); err != nil {
 		log.Warningf(ctx, "%v", err)
 	}
@@ -894,26 +886,7 @@ func (n *Node) writeNodeStatus(ctx context.Context, alertTTL time.Duration, must
 		}
 
 		if result := n.recorder.CheckHealth(ctx, *nodeStatus); len(result.Alerts) != 0 {
-			var numNodes int
-			if err := n.storeCfg.Gossip.IterateInfos(gossip.KeyNodeIDPrefix, func(k string, info gossip.Info) error {
-				numNodes++
-				return nil
-			}); err != nil {
-				log.Warningf(ctx, "%v", err)
-			}
-			if numNodes > 1 {
-				// Avoid this warning on single-node clusters, which require special UX.
-				log.Warningf(ctx, "health alerts detected: %+v", result)
-			}
-			if err := n.storeCfg.Gossip.AddInfoProto(
-				gossip.MakeNodeHealthAlertKey(n.Descriptor.NodeID), &result, alertTTL,
-			); err != nil {
-				log.Warningf(ctx, "unable to gossip health alerts: %+v", result)
-			}
-
-			// TODO(tschottdorf): add a metric that we increment every time there are
-			// alerts. This can help understand how long the cluster has been in that
-			// state (since it'll be incremented every ~10s).
+			log.Warningf(ctx, "health alerts detected: %+v", result)
 		}
 
 		err = n.recorder.WriteNodeStatus(ctx, n.storeCfg.DB, *nodeStatus, mustExist)
@@ -1364,63 +1337,17 @@ func (n *Node) GossipSubscription(
 
 	_, isSecondaryTenant := roachpb.TenantFromContext(ctx)
 
-	// Register a callback for each of the requested patterns. We don't want to
-	// block the gossip callback goroutine on a slow consumer, so we instead
-	// handle all communication asynchronously. We could pick a channel size and
-	// say that if the channel ever blocks, terminate the subscription. Doing so
-	// feels fragile, though, especially during the initial information dump.
-	// Instead, we say that if the channel ever blocks for more than some
-	// duration, terminate the subscription.
-	entC := make(chan *roachpb.GossipSubscriptionEvent, 256)
-	entCClosed := false
-	var callbackMu syncutil.Mutex
+	// Only the system config subscription is still supported; gossip callbacks
+	// have been removed.
 	var systemConfigUpdateCh <-chan struct{}
 	for i := range args.Patterns {
-		pattern := args.Patterns[i] // copy for closure
-		switch pattern {
-		// Note that we need to support clients subscribing to the system config
-		// over this RPC even if the system config is no longer stored in gossip
-		// in the host cluster. To achieve this, we special-case the system config
-		// key and hook it up to the node's SystemConfigProvider. We need to
-		// support this because tenant clusters are upgraded *after* the system
-		// tenant of the host cluster. Tenant sql servers will still be expecting
-		// this information to drive GC TTLs for their GC jobs. It's worth noting
-		// that those zone configurations won't really map to reality, but that's
-		// okay, we just need to tell the pods something.
-		//
-		// TODO(ajwerner): Remove support for the system config key in the
-		// in 22.2, or leave it and make it a no-op.
-		case gossip.KeyDeprecatedSystemConfig:
+		switch args.Patterns[i] {
+		case "system-db":
 			var unregister func()
 			systemConfigUpdateCh, unregister = n.storeCfg.SystemConfigProvider.RegisterSystemConfigChannel()
 			defer unregister()
 		default:
-			callback := func(key string, content roachpb.Value) {
-				callbackMu.Lock()
-				defer callbackMu.Unlock()
-				if entCClosed {
-					return
-				}
-				var event roachpb.GossipSubscriptionEvent
-				event.Key = key
-				event.Content = content
-				event.PatternMatched = pattern
-				const maxBlockDur = 1 * time.Millisecond
-				select {
-				case entC <- &event:
-				default:
-					select {
-					case entC <- &event:
-					case <-time.After(maxBlockDur):
-						// entC blocking for too long. The consumer must not be
-						// keeping up. Terminate the subscription.
-						close(entC)
-						entCClosed = true
-					}
-				}
-			}
-			unregister := n.storeCfg.Gossip.RegisterCallback(pattern, callback)
-			defer unregister()
+			// Non-system-config gossip patterns are no longer supported.
 		}
 	}
 	handleSystemConfigUpdate := func() error {
@@ -1434,9 +1361,9 @@ func (n *Node) GossipSubscription(
 		if err := content.SetProto(&ents); err != nil {
 			event.Error = roachpb.NewError(errors.Wrap(err, "could not marshal system config"))
 		} else {
-			event.Key = gossip.KeyDeprecatedSystemConfig
+			event.Key = "system-db"
 			event.Content = content
-			event.PatternMatched = gossip.KeyDeprecatedSystemConfig
+			event.PatternMatched = "system-db"
 		}
 		return stream.Send(&event)
 	}
@@ -1445,17 +1372,6 @@ func (n *Node) GossipSubscription(
 		case <-systemConfigUpdateCh:
 			if err := handleSystemConfigUpdate(); err != nil {
 				return errors.Wrap(err, "handling system config update")
-			}
-		case e, ok := <-entC:
-			if !ok {
-				// The consumer was not keeping up with gossip updates, so its
-				// subscription was terminated to avoid blocking gossip.
-				err := roachpb.NewErrorf("subscription terminated due to slow consumption")
-				log.Warningf(ctx, "%v", err)
-				e = &roachpb.GossipSubscriptionEvent{Error: err}
-			}
-			if err := stream.Send(e); err != nil {
-				return err
 			}
 		case <-ctxDone:
 			return ctx.Err()

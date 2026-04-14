@@ -23,7 +23,6 @@ import (
 	"github.com/marusama/semaphore"
 	"github.com/semistrict/ratel/pkg/base"
 	"github.com/semistrict/ratel/pkg/cloud"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/jobs"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
@@ -142,10 +141,6 @@ type ServerConfig struct {
 	// LeaseManager is a *lease.Manager. It's stored as an `interface{}` due
 	// to package dependency cycles
 	LeaseManager interface{}
-
-	// A handle to gossip used to broadcast the node's DistSQL version and
-	// draining state.
-	Gossip gossip.OptionalGossip
 
 	// Dialer for communication between SQL and KV nodes.
 	NodeDialer *nodedialer.Dialer

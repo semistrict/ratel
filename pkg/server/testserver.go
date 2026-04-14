@@ -339,10 +339,8 @@ func (ts *TestServer) GossipI() interface{} {
 }
 
 // Gossip is like GossipI but returns the real type instead of interface{}.
+// Gossip has been removed; this always returns nil.
 func (ts *TestServer) Gossip() *gossip.Gossip {
-	if ts != nil {
-		return ts.gossip
-	}
 	return nil
 }
 
@@ -973,6 +971,25 @@ func (ts *TestServer) InternalExecutor() interface{} {
 // GetNode exposes the Server's Node.
 func (ts *TestServer) GetNode() *Node {
 	return ts.node
+}
+
+// SeedNodeDescriptor inserts a node descriptor into the local
+// nodedescstore cache. Used by test clusters to cross-register
+// nodes, replacing what gossip used to do.
+func (ts *TestServer) SeedNodeDescriptor(desc *roachpb.NodeDescriptor) {
+	if ts.Server != nil && ts.Server.nodeDescStore != nil {
+		ts.Server.nodeDescStore.SetLocal(desc)
+	}
+}
+
+// NodeDescStoreI returns the node descriptor store.
+func (ts *TestServer) NodeDescStoreI() interface{} {
+	return ts.Server.nodeDescStore
+}
+
+// FirstRangeProviderI returns the first range provider.
+func (ts *TestServer) FirstRangeProviderI() interface{} {
+	return ts.Server.firstRangeProvider
 }
 
 // DistSenderI is part of DistSenderInterface.

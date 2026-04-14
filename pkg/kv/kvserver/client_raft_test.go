@@ -29,7 +29,6 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/semistrict/ratel/pkg/base"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/kv/kvserver"
@@ -3193,8 +3192,8 @@ func TestReplicaGCRace(t *testing.T) {
 	fromTransport := kvserver.NewRaftTransport(
 		ambient,
 		cluster.MakeTestingClusterSettings(),
-		nodedialer.New(tc.Servers[0].RPCContext(), gossip.AddressResolver(fromStore.Gossip())),
-		nil, /* grpcServer */
+		tc.Servers[0].NodeDialer().(*nodedialer.Dialer),
+		nil, /* grpcServer - ok, we're not receiving */
 		tc.Servers[0].Stopper(),
 	)
 	errChan := errorChannelTestHandler(make(chan *roachpb.Error, 1))
@@ -3682,8 +3681,7 @@ func TestReplicateRemovedNodeDisruptiveElection(t *testing.T) {
 	transport0 := kvserver.NewRaftTransport(
 		tc.Servers[0].AmbientCtx(),
 		cluster.MakeTestingClusterSettings(),
-		nodedialer.New(tc.Servers[0].RPCContext(),
-			gossip.AddressResolver(tc.GetFirstStoreFromServer(t, 0).Gossip())),
+		tc.Servers[0].NodeDialer().(*nodedialer.Dialer),
 		nil, /* grpcServer */
 		tc.Servers[0].Stopper(),
 	)

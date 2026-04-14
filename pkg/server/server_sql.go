@@ -29,7 +29,6 @@ import (
 	"github.com/semistrict/ratel/pkg/blobs/blobspb"
 	"github.com/semistrict/ratel/pkg/cloud"
 	"github.com/semistrict/ratel/pkg/featureflag"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/jobs"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
@@ -196,10 +195,6 @@ type sqlServerOptionalKVArgs struct {
 	// Narrowed down version of *NodeLiveness. Used by jobs, DistSQLPlanner, and
 	// migration manager.
 	nodeLiveness optionalnodeliveness.Container
-	// Gossip is relied upon by distSQLCfg (execinfra.ServerConfig), the executor
-	// config, the DistSQL planner, the table statistics cache, the statements
-	// diagnostics registry, and the lease manager.
-	gossip gossip.OptionalGossip
 	// To register blob and DistSQL servers.
 	grpcServer *grpc.Server
 	// For the temporaryObjectCleaner.
@@ -254,6 +249,12 @@ type sqlServerArgs struct {
 
 	// Used by DistSQLPlanner.
 	nodeDescs kvcoord.NodeDescStore
+
+	// Used for node descriptor lookups (crdb_internal, EXPLAIN).
+	nodeDescLookup sql.NodeDescLookup
+
+	// Used for store descriptor lookups (e.g., RELOCATE).
+	storeDescLookup sql.StoreDescLookup
 
 	// Used by the executor config.
 	systemConfigWatcher *systemconfigwatcher.Cache
@@ -645,7 +646,6 @@ func newSQLServer(ctx context.Context, cfg sqlServerArgs) (*SQLServer, error) {
 
 		SQLLivenessReader: cfg.sqlLivenessProvider,
 		JobRegistry:       jobRegistry,
-		Gossip:            cfg.gossip,
 		NodeDialer:        cfg.nodeDialer,
 		PodNodeDialer:     cfg.podNodeDialer,
 		LeaseManager:      leaseMgr,
@@ -739,8 +739,9 @@ func newSQLServer(ctx context.Context, cfg sqlServerArgs) (*SQLServer, error) {
 		Locality:                cfg.Locality,
 		AmbientCtx:              cfg.AmbientCtx,
 		DB:                      cfg.db,
-		Gossip:                  cfg.gossip,
 		NodeLiveness:            cfg.nodeLiveness,
+		NodeDescLookup:          cfg.nodeDescLookup,
+		StoreDescLookup:         cfg.storeDescLookup,
 		SystemConfig:            cfg.systemConfigWatcher,
 		MetricsRecorder:         cfg.recorder,
 		DistSender:              cfg.distSender,
@@ -778,7 +779,6 @@ func newSQLServer(ctx context.Context, cfg sqlServerArgs) (*SQLServer, error) {
 			distSQLServer,
 			cfg.distSender,
 			cfg.nodeDescs,
-			cfg.gossip,
 			cfg.stopper,
 			isAvailable,
 			cfg.nodeDialer,
@@ -956,7 +956,6 @@ func newSQLServer(ctx context.Context, cfg sqlServerArgs) (*SQLServer, error) {
 	stmtDiagnosticsRegistry := stmtdiagnostics.NewRegistry(
 		cfg.circularInternalExecutor,
 		cfg.db,
-		cfg.gossip,
 		cfg.Settings,
 	)
 	execCfg.StmtDiagnosticsRecorder = stmtDiagnosticsRegistry

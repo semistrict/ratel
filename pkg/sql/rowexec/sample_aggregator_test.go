@@ -23,7 +23,6 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/semistrict/ratel/pkg/base"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/settings/cluster"
 	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
@@ -77,7 +76,6 @@ func runSampleAggregator(
 			Settings: st,
 			DB:       kvDB,
 			Executor: server.InternalExecutor().(sqlutil.InternalExecutor),
-			Gossip:   gossip.MakeOptionalGossip(server.GossipI().(*gossip.Gossip)),
 		},
 	}
 	// Override the default memory limit. If memLimitBytes is small but

@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"github.com/semistrict/ratel/pkg/roachpb"
-	"github.com/semistrict/ratel/pkg/testutils/gossiputil"
 	"github.com/semistrict/ratel/pkg/util/leaktest"
 	"github.com/semistrict/ratel/pkg/util/log"
 	"github.com/semistrict/ratel/pkg/util/stop"
@@ -80,9 +79,9 @@ func TestDeprecatedChooseLeaseToTransfer(t *testing.T) {
 	stopper := stop.NewStopper()
 	defer stopper.Stop(ctx)
 
-	stopper, g, _, a, _ := createTestAllocator(ctx, 10, false /* deterministic */)
+	stopper, _, a, _ := createTestAllocator(ctx, 10, false /* deterministic */)
 	defer stopper.Stop(context.Background())
-	gossiputil.NewStoreGossiper(g).GossipStores(deprecatedNoLocalityStores, t)
+	updateStoreDescs(a.storePool, deprecatedNoLocalityStores)
 	storeList, _, _ := a.storePool.getStoreList(storeFilterThrottled)
 	storeMap := storeListToMap(storeList)
 
@@ -91,7 +90,7 @@ func TestDeprecatedChooseLeaseToTransfer(t *testing.T) {
 
 	localDesc := *deprecatedNoLocalityStores[0]
 	cfg := TestStoreConfig(nil)
-	cfg.Gossip = g
+	cfg.StorePool = a.storePool
 	s := createTestStoreWithoutStart(ctx, t, stopper, testStoreOpts{createSystemRanges: true}, &cfg)
 	s.Ident = &roachpb.StoreIdent{StoreID: localDesc.StoreID}
 	rq := newReplicateQueue(s, a)
@@ -168,7 +167,7 @@ func TestDeprecatedChooseRangeToRebalanceBalanceScore(t *testing.T) {
 	stopper := stop.NewStopper()
 	defer stopper.Stop(ctx)
 
-	stopper, g, _, a, _ := createTestAllocator(ctx, 10, false /* deterministic */)
+	stopper, _, a, _ := createTestAllocator(ctx, 10, false /* deterministic */)
 	defer stopper.Stop(ctx)
 	noLocalityStoresWithRangeCounts := []*roachpb.StoreDescriptor{
 		{
@@ -196,7 +195,7 @@ func TestDeprecatedChooseRangeToRebalanceBalanceScore(t *testing.T) {
 			},
 		},
 	}
-	gossiputil.NewStoreGossiper(g).GossipStores(noLocalityStoresWithRangeCounts, t)
+	updateStoreDescs(a.storePool, noLocalityStoresWithRangeCounts)
 	storeList, _, _ := a.storePool.getStoreList(storeFilterThrottled)
 	storeMap := storeListToMap(storeList)
 
@@ -205,7 +204,7 @@ func TestDeprecatedChooseRangeToRebalanceBalanceScore(t *testing.T) {
 
 	localDesc := *deprecatedNoLocalityStores[0]
 	cfg := TestStoreConfig(nil)
-	cfg.Gossip = g
+	cfg.StorePool = a.storePool
 	s := createTestStoreWithoutStart(ctx, t, stopper, testStoreOpts{createSystemRanges: true}, &cfg)
 	s.Ident = &roachpb.StoreIdent{StoreID: localDesc.StoreID}
 	rq := newReplicateQueue(s, a)
@@ -265,9 +264,9 @@ func TestDeprecatedChooseRangeToRebalance(t *testing.T) {
 	stopper := stop.NewStopper()
 	defer stopper.Stop(ctx)
 
-	stopper, g, _, a, _ := createTestAllocator(ctx, 10, false /* deterministic */)
+	stopper, _, a, _ := createTestAllocator(ctx, 10, false /* deterministic */)
 	defer stopper.Stop(context.Background())
-	gossiputil.NewStoreGossiper(g).GossipStores(deprecatedNoLocalityStores, t)
+	updateStoreDescs(a.storePool, deprecatedNoLocalityStores)
 	storeList, _, _ := a.storePool.getStoreList(storeFilterThrottled)
 	storeMap := storeListToMap(storeList)
 
@@ -276,7 +275,7 @@ func TestDeprecatedChooseRangeToRebalance(t *testing.T) {
 
 	localDesc := *deprecatedNoLocalityStores[0]
 	cfg := TestStoreConfig(nil)
-	cfg.Gossip = g
+	cfg.StorePool = a.storePool
 	s := createTestStoreWithoutStart(ctx, t, stopper, testStoreOpts{createSystemRanges: true}, &cfg)
 	s.Ident = &roachpb.StoreIdent{StoreID: localDesc.StoreID}
 	rq := newReplicateQueue(s, a)
@@ -622,9 +621,9 @@ func TestDeprecatedNoLeaseTransferToBehindReplicas(t *testing.T) {
 	log.Scope(t).Close(t) // Lots of setup boilerplate. ctx := context.Background() stopper :=
 
 	ctx := context.Background()
-	stopper, g, _, a, _ := createTestAllocator(ctx, 10, false /* deterministic */)
+	stopper, _, a, _ := createTestAllocator(ctx, 10, false /* deterministic */)
 	defer stopper.Stop(ctx)
-	gossiputil.NewStoreGossiper(g).GossipStores(deprecatedNoLocalityStores, t)
+	updateStoreDescs(a.storePool, deprecatedNoLocalityStores)
 	storeList, _, _ := a.storePool.getStoreList(storeFilterThrottled)
 	storeMap := storeListToMap(storeList)
 
@@ -633,7 +632,7 @@ func TestDeprecatedNoLeaseTransferToBehindReplicas(t *testing.T) {
 
 	localDesc := *deprecatedNoLocalityStores[0]
 	cfg := TestStoreConfig(nil)
-	cfg.Gossip = g
+	cfg.StorePool = a.storePool
 	s := createTestStoreWithoutStart(ctx, t, stopper, testStoreOpts{createSystemRanges: true}, &cfg)
 	s.Ident = &roachpb.StoreIdent{StoreID: localDesc.StoreID}
 	rq := newReplicateQueue(s, a)

@@ -18,7 +18,6 @@ import (
 	"context"
 
 	"github.com/cockroachdb/errors"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/roachpb"
@@ -102,7 +101,7 @@ func (n *relocateNode) Next(params runParams) (bool, error) {
 			storeID := roachpb.StoreID(*d.(*tree.DInt))
 			nodeID, ok := n.run.storeMap[storeID]
 			if !ok {
-				// Lookup the store in gossip.
+				// Lookup the store descriptor.
 				storeDesc, err := lookupStoreDesc(storeID, params)
 				if err != nil {
 					return false, err
@@ -180,18 +179,11 @@ func (n *relocateNode) Close(ctx context.Context) {
 }
 
 func lookupStoreDesc(storeID roachpb.StoreID, params runParams) (*roachpb.StoreDescriptor, error) {
-	var storeDesc roachpb.StoreDescriptor
-	gossipStoreKey := gossip.MakeStoreKey(storeID)
-	g, err := params.extendedEvalCtx.ExecCfg.Gossip.OptionalErr(54250)
-	if err != nil {
-		return nil, err
+	lookup := params.extendedEvalCtx.ExecCfg.StoreDescLookup
+	if lookup == nil {
+		return nil, errors.New("store descriptor lookup not available")
 	}
-	if err := g.GetInfoProto(
-		gossipStoreKey, &storeDesc,
-	); err != nil {
-		return nil, errors.Wrapf(err, "error looking up store %d", storeID)
-	}
-	return &storeDesc, nil
+	return lookup.GetStoreDescriptor(storeID)
 }
 
 func lookupRangeDescriptor(

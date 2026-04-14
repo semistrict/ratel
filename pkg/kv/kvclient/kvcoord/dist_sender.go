@@ -27,7 +27,6 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
 	"github.com/semistrict/ratel/pkg/base"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/kv/kvclient/rangecache"
@@ -555,42 +554,20 @@ func (ds *DistSender) FirstRange() (*roachpb.RangeDescriptor, error) {
 	return ds.firstRangeProvider.GetFirstRangeDescriptor()
 }
 
-// getNodeID attempts to return the local node ID. It returns 0 if the DistSender
-// does not have access to the Gossip network.
+// getNodeID attempts to return the local node ID. It returns 0 if the
+// local node descriptor has not been set yet.
 func (ds *DistSender) getNodeID() roachpb.NodeID {
-	// TODO(nvanbenschoten): open an issue about the effect of this.
-	g, ok := ds.nodeDescs.(*gossip.Gossip)
-	if !ok {
-		return 0
+	if desc := ds.getNodeDescriptor(); desc != nil {
+		return desc.NodeID
 	}
-	return g.NodeID.Get()
+	return 0
 }
 
-// getNodeDescriptor returns ds.nodeDescriptor, but makes an attempt to load
-// it from the Gossip network if a nil value is found.
-// We must jump through hoops here to get the node descriptor because it's not available
-// until after the node has joined the gossip network and been allowed to initialize
-// its stores.
+// getNodeDescriptor returns ds.nodeDescriptor. The descriptor is set at
+// construction time or via SetNodeDescriptor.
 func (ds *DistSender) getNodeDescriptor() *roachpb.NodeDescriptor {
 	if desc := atomic.LoadPointer(&ds.nodeDescriptor); desc != nil {
 		return (*roachpb.NodeDescriptor)(desc)
-	}
-	// TODO(nvanbenschoten): open an issue about the effect of this.
-	g, ok := ds.nodeDescs.(*gossip.Gossip)
-	if !ok {
-		return nil
-	}
-
-	ownNodeID := g.NodeID.Get()
-	if ownNodeID > 0 {
-		// TODO(tschottdorf): Consider instead adding the NodeID of the
-		// coordinator to the header, so we can get this from incoming
-		// requests. Just in case we want to mostly eliminate gossip here.
-		nodeDesc := &roachpb.NodeDescriptor{}
-		if err := g.GetInfoProto(gossip.MakeNodeIDKey(ownNodeID), nodeDesc); err == nil {
-			atomic.StorePointer(&ds.nodeDescriptor, unsafe.Pointer(nodeDesc))
-			return nodeDesc
-		}
 	}
 	if log.V(1) {
 		ctx := ds.AnnotateCtx(context.TODO())

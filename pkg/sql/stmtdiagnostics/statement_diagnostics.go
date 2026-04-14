@@ -16,16 +16,13 @@ package stmtdiagnostics
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/semistrict/ratel/pkg/clusterversion"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/multitenant"
-	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/security"
 	"github.com/semistrict/ratel/pkg/settings"
 	"github.com/semistrict/ratel/pkg/settings/cluster"
@@ -81,19 +78,9 @@ type Registry struct {
 		// between, then the table contents might be stale.
 		epoch int
 	}
-	st     *cluster.Settings
-	ie     sqlutil.InternalExecutor
-	db     *kv.DB
-	gossip gossip.OptionalGossip
-
-	// gossipUpdateChan is used to notify the polling loop that a diagnostics
-	// request has been added. The gossip callback will not block sending on this
-	// channel.
-	gossipUpdateChan chan RequestID
-	// gossipCancelChan is used to notify the polling loop that a diagnostics
-	// request has been canceled. The gossip callback will not block sending on
-	// this channel.
-	gossipCancelChan chan RequestID
+	st *cluster.Settings
+	ie sqlutil.InternalExecutor
+	db *kv.DB
 }
 
 // Request describes a statement diagnostics request along with some conditional
@@ -114,21 +101,12 @@ func (r *Request) isConditional() bool {
 
 // NewRegistry constructs a new Registry.
 func NewRegistry(
-	ie sqlutil.InternalExecutor, db *kv.DB, gw gossip.OptionalGossip, st *cluster.Settings,
+	ie sqlutil.InternalExecutor, db *kv.DB, st *cluster.Settings,
 ) *Registry {
 	r := &Registry{
-		ie:               ie,
-		db:               db,
-		gossip:           gw,
-		gossipUpdateChan: make(chan RequestID, 1),
-		gossipCancelChan: make(chan RequestID, 1),
-		st:               st,
-	}
-	// Some tests pass a nil gossip, and gossip is not available on SQL tenant
-	// servers.
-	g, ok := gw.Optional(47893)
-	if ok && g != nil {
-		g.RegisterCallback(gossip.KeyGossipStatementDiagnosticsRequest, r.gossipNotification)
+		ie: ie,
+		db: db,
+		st: st,
 	}
 	return r
 }
@@ -185,17 +163,6 @@ func (r *Registry) poll(ctx context.Context) {
 		select {
 		case <-pollIntervalChanged:
 			continue // go back around and maybe reset the timer
-		case reqID := <-r.gossipUpdateChan:
-			if r.findRequest(reqID) {
-				continue // request already exists, don't do anything
-			}
-			// Poll the data.
-		case reqID := <-r.gossipCancelChan:
-			r.cancelRequest(reqID)
-			// No need to poll the data (unlike above) because we don't have to
-			// read anything of the system table to remove the request from the
-			// registry.
-			continue
 		case <-timer.C:
 			timer.Read = true
 		case <-ctx.Done():
@@ -290,11 +257,6 @@ func (r *Registry) insertRequestInternal(
 	minExecutionLatency time.Duration,
 	expiresAfter time.Duration,
 ) (RequestID, error) {
-	g, err := r.gossip.OptionalErr(48274)
-	if err != nil {
-		return 0, err
-	}
-
 	if !r.isMinExecutionLatencySupported(ctx) {
 		if minExecutionLatency != 0 || expiresAfter != 0 {
 			return 0, errors.New(
@@ -306,7 +268,7 @@ func (r *Registry) insertRequestInternal(
 
 	var reqID RequestID
 	var expiresAt time.Time
-	err = r.db.Txn(ctx, func(ctx context.Context, txn *kv.Txn) error {
+	err := r.db.Txn(ctx, func(ctx context.Context, txn *kv.Txn) error {
 		// Check if there's already a pending request for this fingerprint.
 		var extraConditions string
 		if r.isMinExecutionLatencySupported(ctx) {
@@ -379,23 +341,12 @@ func (r *Registry) insertRequestInternal(
 	r.addRequestInternalLocked(ctx, reqID, stmtFingerprint, minExecutionLatency, expiresAt)
 	r.mu.Unlock()
 
-	// Notify all the other nodes that they have to poll.
-	buf := make([]byte, 8)
-	binary.LittleEndian.PutUint64(buf, uint64(reqID))
-	if err := g.AddInfo(gossip.KeyGossipStatementDiagnosticsRequest, buf, 0 /* ttl */); err != nil {
-		log.Warningf(ctx, "error notifying of diagnostics request: %s", err)
-	}
-
+	// Other nodes will pick up the request via the polling loop.
 	return reqID, nil
 }
 
 // CancelRequest is part of the server.StmtDiagnosticsRequester interface.
 func (r *Registry) CancelRequest(ctx context.Context, requestID int64) error {
-	g, err := r.gossip.OptionalErr(48274)
-	if err != nil {
-		return err
-	}
-
 	if !r.isMinExecutionLatencySupported(ctx) {
 		// If conditional diagnostics are not supported for this cluster yet,
 		// then we cannot cancel the request.
@@ -429,13 +380,7 @@ func (r *Registry) CancelRequest(ctx context.Context, requestID int64) error {
 	reqID := RequestID(requestID)
 	r.cancelRequest(reqID)
 
-	// Notify all the other nodes that this request has been canceled.
-	buf := make([]byte, 8)
-	binary.LittleEndian.PutUint64(buf, uint64(reqID))
-	if err := g.AddInfo(gossip.KeyGossipStatementDiagnosticsRequestCancellation, buf, 0 /* ttl */); err != nil {
-		log.Warningf(ctx, "error notifying of diagnostics request cancellation: %s", err)
-	}
-
+	// Other nodes will pick up the cancellation via the polling loop.
 	return nil
 }
 
@@ -734,25 +679,3 @@ func (r *Registry) pollRequests(ctx context.Context) error {
 	return nil
 }
 
-// gossipNotification is called in response to a gossip update informing us that
-// we need to poll.
-func (r *Registry) gossipNotification(s string, value roachpb.Value) {
-	switch s {
-	case gossip.KeyGossipStatementDiagnosticsRequest:
-		select {
-		case r.gossipUpdateChan <- RequestID(binary.LittleEndian.Uint64(value.RawBytes)):
-		default:
-			// Don't pile up on these requests and don't block gossip.
-		}
-	case gossip.KeyGossipStatementDiagnosticsRequestCancellation:
-		select {
-		case r.gossipCancelChan <- RequestID(binary.LittleEndian.Uint64(value.RawBytes)):
-		default:
-			// Don't pile up on these requests and don't block gossip.
-		}
-	default:
-		// We don't expect any other notifications. Perhaps in a future version
-		// we added other keys with the same prefix.
-		return
-	}
-}

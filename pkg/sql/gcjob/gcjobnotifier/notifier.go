@@ -22,7 +22,6 @@ import (
 	"context"
 
 	"github.com/semistrict/ratel/pkg/config"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/settings/cluster"
@@ -42,7 +41,7 @@ type Notifier struct {
 	mu       struct {
 		syncutil.Mutex
 		started, stopped bool
-		deltaFilter      *gossip.SystemConfigDeltaFilter
+		deltaFilter      *config.SystemConfigDeltaFilter
 		notifyees        map[chan struct{}]struct{}
 	}
 }
@@ -94,7 +93,7 @@ func (n *Notifier) AddNotifyee(ctx context.Context) (onChange <-chan struct{}, c
 		return nil, noopFunc
 	}
 	if n.mu.deltaFilter == nil {
-		zoneCfgFilter := gossip.MakeSystemConfigDeltaFilter(n.prefix)
+		zoneCfgFilter := config.MakeSystemConfigDeltaFilter(n.prefix)
 		n.mu.deltaFilter = &zoneCfgFilter
 		// Initialize the filter with the current values, if they exist.
 		cfg := n.provider.GetSystemConfig()

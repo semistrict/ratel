@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/liveness"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/liveness/livenesspb"
 	"github.com/semistrict/ratel/pkg/roachpb"
@@ -87,14 +86,12 @@ var TimeUntilStoreDead = func() *settings.DurationSetting {
 	s := settings.RegisterDurationSetting(
 		settings.TenantWritable,
 		timeUntilStoreDeadSettingName,
-		"the time after which if there is no new gossiped information about a store, it is considered dead",
+		"the time after which if there is no new store descriptor update, it is considered dead",
 		5*time.Minute,
 		func(v time.Duration) error {
-			// Setting this to less than the interval for gossiping stores is a big
-			// no-no, since this value is compared to the age of the most recent gossip
-			// from each store to determine whether that store is live. Put a buffer of
-			// 15 seconds on top to allow time for gossip to propagate.
-			const minTimeUntilStoreDead = gossip.StoresInterval + 15*time.Second
+			// Setting this too low risks marking live stores as dead. Put a
+			// minimum of 75 seconds (60s store descriptor interval + 15s buffer).
+			const minTimeUntilStoreDead = 75 * time.Second
 			if v < minTimeUntilStoreDead {
 				return errors.Errorf("cannot set %s to less than %v: %v",
 					timeUntilStoreDeadSettingName, minTimeUntilStoreDead, v)
@@ -339,7 +336,6 @@ type StorePool struct {
 	st *cluster.Settings
 
 	clock          *hlc.Clock
-	gossip         *gossip.Gossip
 	nodeCountFn    NodeCountFunc
 	nodeLivenessFn NodeLivenessFunc
 	startTime      time.Time
@@ -350,7 +346,8 @@ type StorePool struct {
 	// storeDetails.
 	detailsMu struct {
 		syncutil.RWMutex
-		storeDetails map[roachpb.StoreID]*storeDetail
+		storeDetails       map[roachpb.StoreID]*storeDetail
+		onStoreDescUpdate  []func()
 	}
 	localitiesMu struct {
 		syncutil.RWMutex
@@ -373,12 +370,13 @@ type StorePool struct {
 	isStoreReadyForRoutineReplicaTransfer func(context.Context, roachpb.StoreID) bool
 }
 
-// NewStorePool creates a StorePool and registers the store updating callback
-// with gossip.
+// NewStorePool creates a StorePool. Store descriptor updates are delivered
+// via the StoreDescUpdate method (backed by the rangefeed-based store
+// descriptor store).
+//
 func NewStorePool(
 	ambient log.AmbientContext,
 	st *cluster.Settings,
-	g *gossip.Gossip,
 	clock *hlc.Clock,
 	nodeCountFn NodeCountFunc,
 	nodeLivenessFn NodeLivenessFunc,
@@ -388,7 +386,6 @@ func NewStorePool(
 		AmbientContext: ambient,
 		st:             st,
 		clock:          clock,
-		gossip:         g,
 		nodeCountFn:    nodeCountFn,
 		nodeLivenessFn: nodeLivenessFn,
 		startTime:      clock.PhysicalTime(),
@@ -397,13 +394,6 @@ func NewStorePool(
 	sp.isStoreReadyForRoutineReplicaTransfer = sp.isStoreReadyForRoutineReplicaTransferInternal
 	sp.detailsMu.storeDetails = make(map[roachpb.StoreID]*storeDetail)
 	sp.localitiesMu.nodeLocalities = make(map[roachpb.NodeID]localityWithString)
-
-	// Enable redundant callbacks for the store keys because we use these
-	// callbacks as a clock to determine when a store was last updated even if it
-	// hasn't otherwise changed.
-	storeRegex := gossip.MakePrefixPattern(gossip.KeyStorePrefix)
-	g.RegisterCallback(storeRegex, sp.storeGossipUpdate, gossip.Redundant)
-
 	return sp
 }
 
@@ -442,25 +432,33 @@ func (sp *StorePool) String() string {
 	return buf.String()
 }
 
-// storeGossipUpdate is the gossip callback used to keep the StorePool up to date.
-func (sp *StorePool) storeGossipUpdate(_ string, content roachpb.Value) {
-	var storeDesc roachpb.StoreDescriptor
-	if err := content.GetProto(&storeDesc); err != nil {
-		ctx := sp.AnnotateCtx(context.TODO())
-		log.Errorf(ctx, "%v", err)
-		return
-	}
-
+// StoreDescUpdate updates the StorePool with a store descriptor from the
+// rangefeed-backed store descriptor store. Same logic as the gossip callback.
+// After updating, fires any registered OnStoreDescUpdate callbacks.
+func (sp *StorePool) StoreDescUpdate(desc roachpb.StoreDescriptor) {
 	sp.detailsMu.Lock()
-	detail := sp.getStoreDetailLocked(storeDesc.StoreID)
-	detail.desc = &storeDesc
+	detail := sp.getStoreDetailLocked(desc.StoreID)
+	detail.desc = &desc
 	detail.lastUpdatedTime = sp.clock.PhysicalTime()
+	cbs := sp.detailsMu.onStoreDescUpdate
 	sp.detailsMu.Unlock()
 
 	sp.localitiesMu.Lock()
-	sp.localitiesMu.nodeLocalities[storeDesc.Node.NodeID] =
-		localityWithString{storeDesc.Node.Locality, storeDesc.Node.Locality.String()}
+	sp.localitiesMu.nodeLocalities[desc.Node.NodeID] =
+		localityWithString{desc.Node.Locality, desc.Node.Locality.String()}
 	sp.localitiesMu.Unlock()
+
+	for _, cb := range cbs {
+		cb()
+	}
+}
+
+// OnStoreDescUpdate registers a callback that fires after every store
+// descriptor update. Used by the replicate queue to wake purgatory.
+func (sp *StorePool) OnStoreDescUpdate(cb func()) {
+	sp.detailsMu.Lock()
+	sp.detailsMu.onStoreDescUpdate = append(sp.detailsMu.onStoreDescUpdate, cb)
+	sp.detailsMu.Unlock()
 }
 
 // updateLocalStoreAfterRebalance is used to update the local copy of the

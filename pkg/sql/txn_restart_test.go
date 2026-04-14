@@ -1185,7 +1185,7 @@ func TestReacquireLeaseOnRestart(t *testing.T) {
 						txn := ba.Txn
 						txn.ResetObservedTimestamps()
 						now := s.Clock().NowAsClockTimestamp()
-						txn.UpdateObservedTimestamp(s.(*server.TestServer).Gossip().NodeID.Get(), now)
+						txn.UpdateObservedTimestamp(s.(*server.TestServer).NodeID(), now)
 						return roachpb.NewErrorWithTxn(roachpb.NewReadWithinUncertaintyIntervalError(now.ToTimestamp(), now.ToTimestamp(), now.ToTimestamp(), txn), txn)
 					}
 				}
@@ -1270,7 +1270,7 @@ func TestFlushUncommitedDescriptorCacheOnRestart(t *testing.T) {
 					txn := args.Hdr.Txn
 					txn.ResetObservedTimestamps()
 					now := s.Clock().NowAsClockTimestamp()
-					txn.UpdateObservedTimestamp(s.(*server.TestServer).Gossip().NodeID.Get(), now)
+					txn.UpdateObservedTimestamp(s.(*server.TestServer).NodeID(), now)
 					return roachpb.NewErrorWithTxn(roachpb.NewReadWithinUncertaintyIntervalError(now.ToTimestamp(), now.ToTimestamp(), now.ToTimestamp(), txn), txn)
 				}
 			}

@@ -21,7 +21,6 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/semistrict/ratel/pkg/base"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/roachpb"
@@ -143,26 +142,8 @@ func TestServer(t *testing.T) {
 	})
 }
 
-// Test that a node gossips its DistSQL version information.
-func TestDistSQLServerGossipsVersion(t *testing.T) {
-	defer leaktest.AfterTest(t)()
-	defer log.Scope(t).Close(t)
-
-	s, _, _ := serverutils.StartServer(t, base.TestServerArgs{})
-	defer s.Stopper().Stop(context.Background())
-
-	var v execinfrapb.DistSQLVersionGossipInfo
-	if err := s.GossipI().(*gossip.Gossip).GetInfoProto(
-		gossip.MakeDistSQLNodeVersionKey(base.SQLInstanceID(s.NodeID())), &v,
-	); err != nil {
-		t.Fatal(err)
-	}
-
-	if v.Version != execinfra.Version || v.MinAcceptedVersion != execinfra.MinAcceptedVersion {
-		t.Fatalf("node is gossipping the wrong version. Expected: [%d-%d], got [%d-%d",
-			execinfra.Version, execinfra.MinAcceptedVersion, v.Version, v.MinAcceptedVersion)
-	}
-}
+// TestDistSQLServerGossipsVersion was deleted — gossip-based DistSQL
+// version distribution has been removed from Ratel.
 
 // runLocalFlow takes in a SetupFlowRequest to setup a local sync flow that is
 // then run to completion. The result rows are returned. All metadata except for

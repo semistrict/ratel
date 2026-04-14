@@ -24,7 +24,6 @@ import (
 
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/storage/enginepb"
-	"github.com/semistrict/ratel/pkg/testutils/gossiputil"
 	"github.com/semistrict/ratel/pkg/util/hlc"
 	"github.com/semistrict/ratel/pkg/util/leaktest"
 	"github.com/semistrict/ratel/pkg/util/log"
@@ -296,7 +295,7 @@ func TestChooseLeaseToTransfer(t *testing.T) {
 	stopper := stop.NewStopper()
 	defer stopper.Stop(ctx)
 
-	stopper, g, _, a, _ := createTestAllocatorWithKnobs(ctx,
+	stopper, _, a, _ := createTestAllocatorWithKnobs(ctx,
 		10, false /* deterministic */, &AllocatorTestingKnobs{
 			// Let the allocator pick lease transfer targets that are replicas in need
 			// of snapshots, in order to avoid mocking out a fake raft group for the
@@ -305,12 +304,12 @@ func TestChooseLeaseToTransfer(t *testing.T) {
 		},
 	)
 	defer stopper.Stop(context.Background())
-	gossiputil.NewStoreGossiper(g).GossipStores(noLocalityStores, t)
+	updateStoreDescs(a.storePool, noLocalityStores)
 	storeList, _, _ := a.storePool.getStoreList(storeFilterThrottled)
 	storeMap := storeListToMap(storeList)
 	localDesc := *noLocalityStores[0]
 	cfg := TestStoreConfig(nil)
-	cfg.Gossip = g
+	cfg.StorePool = a.storePool
 	s := createTestStoreWithoutStart(ctx, t, stopper, testStoreOpts{createSystemRanges: true}, &cfg)
 	s.Ident = &roachpb.StoreIdent{StoreID: localDesc.StoreID}
 	rq := newReplicateQueue(s, a)
@@ -554,7 +553,7 @@ func TestChooseRangeToRebalanceRandom(t *testing.T) {
 	for i := 0; i < numIterations; i++ {
 		t.Run(fmt.Sprintf("%d", i+1), func(t *testing.T) {
 			ctx := context.Background()
-			stopper, g, _, a, _ := createTestAllocator(ctx, numNodes, false /* deterministic */)
+			stopper, _, a, _ := createTestAllocator(ctx, numNodes, false /* deterministic */)
 			defer stopper.Stop(context.Background())
 
 			stores, actualQPSMean := randomNoLocalityStores(numNodes, qpsMultiplier)
@@ -574,7 +573,7 @@ func TestChooseRangeToRebalanceRandom(t *testing.T) {
 			}
 
 			// Test setup boilerplate.
-			gossiputil.NewStoreGossiper(g).GossipStores(stores, t)
+			updateStoreDescs(a.storePool, stores)
 			storeList, _, _ := a.storePool.getStoreList(storeFilterThrottled)
 			localDesc := *stores[0]
 			cfg := TestStoreConfig(nil)
@@ -901,9 +900,9 @@ func TestChooseRangeToRebalanceAcrossHeterogeneousZones(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Boilerplate for test setup.
 			testingKnobs := AllocatorTestingKnobs{RaftStatusFn: TestingRaftStatusFn}
-			stopper, g, _, a, _ := createTestAllocatorWithKnobs(ctx, 10, false /* deterministic */, &testingKnobs)
+			stopper, _, a, _ := createTestAllocatorWithKnobs(ctx, 10, false /* deterministic */, &testingKnobs)
 			defer stopper.Stop(context.Background())
-			gossiputil.NewStoreGossiper(g).GossipStores(multiRegionStores, t)
+			updateStoreDescs(a.storePool, multiRegionStores)
 			storeList, _, _ := a.storePool.getStoreList(storeFilterThrottled)
 
 			var localDesc roachpb.StoreDescriptor
@@ -987,7 +986,7 @@ func TestChooseRangeToRebalanceIgnoresRangeOnBestStores(t *testing.T) {
 	stopper := stop.NewStopper()
 	defer stopper.Stop(ctx)
 
-	stopper, g, _, a, _ := createTestAllocatorWithKnobs(
+	stopper, _, a, _ := createTestAllocatorWithKnobs(
 		ctx,
 		10,
 		false, /* deterministic */
@@ -998,12 +997,11 @@ func TestChooseRangeToRebalanceIgnoresRangeOnBestStores(t *testing.T) {
 
 	localDesc := *noLocalityStores[len(noLocalityStores)-1]
 	cfg := TestStoreConfig(nil)
-	cfg.Gossip = g
 	cfg.StorePool = a.storePool
 	cfg.DefaultSpanConfig.NumVoters = 1
 	cfg.DefaultSpanConfig.NumReplicas = 1
 	s := createTestStoreWithoutStart(ctx, t, stopper, testStoreOpts{createSystemRanges: true}, &cfg)
-	gossiputil.NewStoreGossiper(cfg.Gossip).GossipStores(noLocalityStores, t)
+	updateStoreDescs(a.storePool, noLocalityStores)
 	s.Ident = &roachpb.StoreIdent{StoreID: localDesc.StoreID}
 	rq := newReplicateQueue(s, a)
 	rr := newReplicaRankings()
@@ -1131,9 +1129,9 @@ func TestChooseRangeToRebalanceOffHotNodes(t *testing.T) {
 		},
 	} {
 		t.Run("", func(t *testing.T) {
-			stopper, g, _, a, _ := createTestAllocator(ctx, 10, false /* deterministic */)
+			stopper, _, a, _ := createTestAllocator(ctx, 10, false /* deterministic */)
 			defer stopper.Stop(context.Background())
-			gossiputil.NewStoreGossiper(g).GossipStores(imbalancedStores, t)
+			updateStoreDescs(a.storePool, imbalancedStores)
 			storeList, _, _ := a.storePool.getStoreList(storeFilterThrottled)
 
 			var localDesc roachpb.StoreDescriptor
@@ -1193,7 +1191,7 @@ func TestNoLeaseTransferToBehindReplicas(t *testing.T) {
 	stopper := stop.NewStopper()
 	defer stopper.Stop(ctx)
 
-	stopper, g, _, a, _ := createTestAllocatorWithKnobs(ctx,
+	stopper, _, a, _ := createTestAllocatorWithKnobs(ctx,
 		10,
 		false, /* deterministic */
 		&AllocatorTestingKnobs{AllowLeaseTransfersToReplicasNeedingSnapshots: true},
@@ -1204,10 +1202,9 @@ func TestNoLeaseTransferToBehindReplicas(t *testing.T) {
 
 	localDesc := *noLocalityStores[0]
 	cfg := TestStoreConfig(nil)
-	cfg.Gossip = g
 	cfg.StorePool = a.storePool
 	s := createTestStoreWithoutStart(ctx, t, stopper, testStoreOpts{createSystemRanges: true}, &cfg)
-	gossiputil.NewStoreGossiper(cfg.Gossip).GossipStores(noLocalityStores, t)
+	updateStoreDescs(a.storePool, noLocalityStores)
 	s.Ident = &roachpb.StoreIdent{StoreID: localDesc.StoreID}
 	rq := newReplicateQueue(s, a)
 	rr := newReplicaRankings()

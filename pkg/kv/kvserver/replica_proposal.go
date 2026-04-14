@@ -622,25 +622,25 @@ func (r *Replica) handleReadWriteLocalEvalResult(ctx context.Context, lResult re
 	}
 
 	if lResult.GossipFirstRange {
-		// We need to run the gossip in an async task because gossiping requires
-		// the range lease and we'll deadlock if we try to acquire it while
-		// holding processRaftMu. Specifically, Replica.redirectOnOrAcquireLease
-		// blocks waiting for the lease acquisition to finish but it can't finish
-		// because we're not processing raft messages due to holding
-		// processRaftMu (and running on the processRaft goroutine).
+		// We need to run this in an async task because acquiring the range
+		// lease will deadlock if we try while holding processRaftMu.
+		// Specifically, Replica.redirectOnOrAcquireLease blocks waiting for
+		// the lease acquisition to finish but it can't finish because we're
+		// not processing raft messages due to holding processRaftMu (and
+		// running on the processRaft goroutine).
 		if err := r.store.Stopper().RunAsyncTask(
-			ctx, "storage.Replica: gossipping first range",
+			ctx, "storage.Replica: first range update",
 			func(ctx context.Context) {
-				hasLease, pErr := r.getLeaseForGossip(ctx)
+				hasLease, pErr := r.getLeaseForFirstRange(ctx)
 
 				if pErr != nil {
-					log.Infof(ctx, "unable to gossip first range; hasLease=%t, err=%s", hasLease, pErr)
+					log.Infof(ctx, "unable to update first range; hasLease=%t, err=%s", hasLease, pErr)
 				} else if !hasLease {
 					return
 				}
 				r.gossipFirstRange(ctx)
 			}); err != nil {
-			log.Infof(ctx, "unable to gossip first range: %s", err)
+			log.Infof(ctx, "unable to update first range: %s", err)
 		}
 		lResult.GossipFirstRange = false
 	}

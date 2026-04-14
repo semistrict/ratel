@@ -19,12 +19,11 @@ import (
 	"math/rand"
 	"net"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/cockroachdb/errors"
-	"github.com/semistrict/ratel/pkg/config/zonepb"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/kv/kvserver"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverpb"
 	"github.com/semistrict/ratel/pkg/roachpb"
@@ -36,7 +35,6 @@ import (
 	"github.com/semistrict/ratel/pkg/util/hlc"
 	"github.com/semistrict/ratel/pkg/util/leaktest"
 	"github.com/semistrict/ratel/pkg/util/log"
-	"github.com/semistrict/ratel/pkg/util/metric"
 	"github.com/semistrict/ratel/pkg/util/netutil"
 	"github.com/semistrict/ratel/pkg/util/stop"
 	"github.com/semistrict/ratel/pkg/util/tracing"
@@ -108,7 +106,7 @@ type raftTransportTestContext struct {
 	stopper        *stop.Stopper
 	transports     map[roachpb.NodeID]*kvserver.RaftTransport
 	nodeRPCContext *rpc.Context
-	gossip         *gossip.Gossip
+	nodeAddrs      sync.Map // map[roachpb.NodeID]net.Addr
 }
 
 func newRaftTransportTestContext(t testing.TB) *raftTransportTestContext {
@@ -135,11 +133,6 @@ func newRaftTransportTestContext(t testing.TB) *raftTransportTestContext {
 	// we can't enforce some of the RPC check validation.
 	rttc.nodeRPCContext.TestingAllowNamedRPCToAnonymousServer = true
 
-	server := rpc.NewServer(rttc.nodeRPCContext) // never started
-	rttc.gossip = gossip.NewTest(
-		1, rttc.nodeRPCContext, server, rttc.stopper, metric.NewRegistry(), zonepb.DefaultZoneConfigRef(),
-	)
-
 	return rttc
 }
 
@@ -147,9 +140,20 @@ func (rttc *raftTransportTestContext) Stop() {
 	rttc.stopper.Stop(context.Background())
 }
 
+// addressResolver returns a function that resolves node IDs to addresses using
+// the test context's address map.
+func (rttc *raftTransportTestContext) addressResolver() nodedialer.AddressResolver {
+	return func(nodeID roachpb.NodeID) (net.Addr, error) {
+		if addr, ok := rttc.nodeAddrs.Load(nodeID); ok {
+			return addr.(net.Addr), nil
+		}
+		return nil, errors.Errorf("node %d address not found", nodeID)
+	}
+}
+
 // AddNode registers a node with the cluster. Nodes must be added
 // before they can be used in other methods of
-// raftTransportTestContext. The node will be gossiped immediately.
+// raftTransportTestContext. The node's address is registered immediately.
 func (rttc *raftTransportTestContext) AddNode(nodeID roachpb.NodeID) *kvserver.RaftTransport {
 	transport, addr := rttc.AddNodeWithoutGossip(nodeID, util.TestAddr, rttc.stopper)
 	rttc.GossipNode(nodeID, addr)
@@ -159,7 +163,7 @@ func (rttc *raftTransportTestContext) AddNode(nodeID roachpb.NodeID) *kvserver.R
 // AddNodeWithoutGossip registers a node with the cluster. Nodes must
 // be added before they can be used in other methods of
 // raftTransportTestContext. Unless you are testing the effects of
-// delaying gossip, use AddNode instead.
+// delaying address registration, use AddNode instead.
 func (rttc *raftTransportTestContext) AddNodeWithoutGossip(
 	nodeID roachpb.NodeID, addr net.Addr, stopper *stop.Stopper,
 ) (*kvserver.RaftTransport, net.Addr) {
@@ -167,7 +171,7 @@ func (rttc *raftTransportTestContext) AddNodeWithoutGossip(
 	transport := kvserver.NewRaftTransport(
 		log.MakeTestingAmbientCtxWithNewTracer(),
 		cluster.MakeTestingClusterSettings(),
-		nodedialer.New(rttc.nodeRPCContext, gossip.AddressResolver(rttc.gossip)),
+		nodedialer.New(rttc.nodeRPCContext, rttc.addressResolver()),
 		grpcServer,
 		rttc.stopper,
 	)
@@ -179,18 +183,11 @@ func (rttc *raftTransportTestContext) AddNodeWithoutGossip(
 	return transport, ln.Addr()
 }
 
-// GossipNode gossips the node's address, which is necessary before
+// GossipNode registers the node's address, which is necessary before
 // any messages can be sent to it. Normally done automatically by
 // AddNode.
 func (rttc *raftTransportTestContext) GossipNode(nodeID roachpb.NodeID, addr net.Addr) {
-	if err := rttc.gossip.AddInfoProto(gossip.MakeNodeIDKey(nodeID),
-		&roachpb.NodeDescriptor{
-			NodeID:  nodeID,
-			Address: util.MakeUnresolvedAddr(addr.Network(), addr.String()),
-		},
-		time.Hour); err != nil {
-		rttc.t.Fatal(err)
-	}
+	rttc.nodeAddrs.Store(nodeID, addr)
 }
 
 // ListenStore registers a store on a node and returns a channel for

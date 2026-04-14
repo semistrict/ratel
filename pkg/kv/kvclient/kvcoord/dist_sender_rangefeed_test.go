@@ -21,7 +21,6 @@ import (
 	"time"
 
 	gomock "github.com/golang/mock/gomock"
-	"github.com/semistrict/ratel/pkg/gossip"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv/kvclient/rangecache/rangecachemock"
 	"github.com/semistrict/ratel/pkg/roachpb"
@@ -63,7 +62,7 @@ func TestDistSenderRangeFeedRetryOnTransportErrors(t *testing.T) {
 			stopper := stop.NewStopper()
 			defer stopper.Stop(ctx)
 			rpcContext := rpc.NewInsecureTestingContext(ctx, clock, stopper)
-			g := makeGossip(t, stopper, rpcContext)
+			g := makeNodeStore(t)
 
 			desc := roachpb.RangeDescriptor{
 				RangeID:    1,
@@ -76,11 +75,7 @@ func TestDistSenderRangeFeedRetryOnTransportErrors(t *testing.T) {
 				},
 			}
 			for _, repl := range desc.InternalReplicas {
-				require.NoError(t, g.AddInfoProto(
-					gossip.MakeNodeIDKey(repl.NodeID),
-					newNodeDesc(repl.NodeID),
-					gossip.NodeDescriptorTTL,
-				))
+				g.AddNode(newNodeDesc(repl.NodeID))
 			}
 
 			ctrl := gomock.NewController(t)
@@ -143,7 +138,7 @@ func TestDistSenderRangeFeedRetryOnTransportErrors(t *testing.T) {
 					},
 				},
 				RangeDescriptorDB: rangeDB,
-				NodeDialer:        nodedialer.New(rpcContext, gossip.AddressResolver(g)),
+				NodeDialer:        nodedialer.New(rpcContext, g.AddressResolver()),
 				Settings:          cluster.MakeTestingClusterSettings(),
 			})
 			ds.rangeCache.Insert(ctx, roachpb.RangeInfo{

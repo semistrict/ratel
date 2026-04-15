@@ -42,110 +42,6 @@ func TestV8Basic(t *testing.T) {
 	}
 }
 
-func TestV8WasmDirect(t *testing.T) {
-	wat := `(module
-		(func (export "invoke") (param i64 i64) (result i64)
-			local.get 0
-			local.get 1
-			i64.add))`
-	wasmBytes, err := Wat2Wasm(wat)
-	if err != nil {
-		t.Fatalf("Wat2Wasm: %v", err)
-	}
-
-	iso := v8.NewIsolate()
-	defer iso.Dispose()
-	ctx := v8.NewContext(iso)
-	defer ctx.Close()
-
-	js := fmt.Sprintf(`
-		(function() {
-			const bytes = new Uint8Array(%s);
-			const mod = new WebAssembly.Module(bytes);
-			const instance = new WebAssembly.Instance(mod);
-			return Number(instance.exports.invoke(BigInt(3), BigInt(4)));
-		})()
-	`, wasmBytesToJSArray(wasmBytes))
-
-	val, err := ctx.RunScript(js, "wasm_test.js")
-	if err != nil {
-		t.Fatalf("RunScript: %v", err)
-	}
-	if val.Int32() != 7 {
-		t.Fatalf("expected 7, got %d", val.Int32())
-	}
-}
-
-func TestRegistryWasmAddInts(t *testing.T) {
-	reg := NewRegistry()
-	defer reg.Close()
-
-	wat := `(module
-		(func (export "invoke") (param i64 i64) (result i64)
-			local.get 0
-			local.get 1
-			i64.add))`
-	wasmBytes, err := Wat2Wasm(wat)
-	if err != nil {
-		t.Fatalf("Wat2Wasm: %v", err)
-	}
-
-	err = reg.CompileAndRegisterWasm("add_ints", wasmBytes, "invoke",
-		[]ValType{ValI64, ValI64}, ValI64, 0)
-	if err != nil {
-		t.Fatalf("CompileAndRegisterWasm: %v", err)
-	}
-
-	fn, err := reg.MakeFn("add_ints")
-	if err != nil {
-		t.Fatalf("MakeFn: %v", err)
-	}
-
-	result, err := fn(nil, tree.Datums{tree.NewDInt(3), tree.NewDInt(4)})
-	if err != nil {
-		t.Fatalf("fn call: %v", err)
-	}
-	expected := tree.NewDInt(7)
-	if result.Compare(nil, expected) != 0 {
-		t.Fatalf("expected %s, got %s", expected, result)
-	}
-}
-
-func TestRegistryWasmFloat(t *testing.T) {
-	reg := NewRegistry()
-	defer reg.Close()
-
-	wat := `(module
-		(func (export "invoke") (param f64 f64) (result f64)
-			local.get 0
-			local.get 1
-			f64.mul))`
-	wasmBytes, err := Wat2Wasm(wat)
-	if err != nil {
-		t.Fatalf("Wat2Wasm: %v", err)
-	}
-
-	err = reg.CompileAndRegisterWasm("mul_floats", wasmBytes, "invoke",
-		[]ValType{ValF64, ValF64}, ValF64, 0)
-	if err != nil {
-		t.Fatalf("CompileAndRegisterWasm: %v", err)
-	}
-
-	fn, err := reg.MakeFn("mul_floats")
-	if err != nil {
-		t.Fatalf("MakeFn: %v", err)
-	}
-
-	result, err := fn(nil, tree.Datums{tree.NewDFloat(2.5), tree.NewDFloat(4.0)})
-	if err != nil {
-		t.Fatalf("fn call: %v", err)
-	}
-	expected := tree.NewDFloat(10.0)
-	if result.Compare(nil, expected) != 0 {
-		t.Fatalf("expected %s, got %s", expected, result)
-	}
-}
-
 func TestRegistryJavaScript(t *testing.T) {
 	reg := NewRegistry()
 	defer reg.Close()
@@ -200,44 +96,6 @@ func TestRegistryJavaScriptFloat(t *testing.T) {
 	}
 }
 
-func TestRegistryWasmWithHelper(t *testing.T) {
-	reg := NewRegistry()
-	defer reg.Close()
-
-	wat := `(module
-		(func $double (param i64) (result i64)
-			local.get 0
-			i64.const 2
-			i64.mul)
-		(func (export "invoke") (param i64) (result i64)
-			local.get 0
-			call $double))`
-	wasmBytes, err := Wat2Wasm(wat)
-	if err != nil {
-		t.Fatalf("Wat2Wasm: %v", err)
-	}
-
-	err = reg.CompileAndRegisterWasm("double", wasmBytes, "invoke",
-		[]ValType{ValI64}, ValI64, 0)
-	if err != nil {
-		t.Fatalf("CompileAndRegisterWasm: %v", err)
-	}
-
-	fn, err := reg.MakeFn("double")
-	if err != nil {
-		t.Fatalf("MakeFn: %v", err)
-	}
-
-	result, err := fn(nil, tree.Datums{tree.NewDInt(21)})
-	if err != nil {
-		t.Fatalf("fn call: %v", err)
-	}
-	expected := tree.NewDInt(42)
-	if result.Compare(nil, expected) != 0 {
-		t.Fatalf("expected %s, got %s", expected, result)
-	}
-}
-
 func TestRegistryDeregister(t *testing.T) {
 	reg := NewRegistry()
 	defer reg.Close()
@@ -280,17 +138,6 @@ func TestRegistryFuelExhaustion(t *testing.T) {
 	_, err = fn(nil, tree.Datums{tree.NewDInt(1)})
 	if err == nil {
 		t.Fatal("expected error for infinite loop")
-	}
-}
-
-func TestRegistryInvalidWasm(t *testing.T) {
-	reg := NewRegistry()
-	defer reg.Close()
-
-	err := reg.CompileAndRegisterWasm("bad", []byte("not wasm"), "invoke",
-		[]ValType{ValI64}, ValI64, 0)
-	if err == nil {
-		t.Fatal("expected error for invalid WASM bytes")
 	}
 }
 
@@ -454,18 +301,6 @@ func TestRegistryRejectsInvalidNames(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "invalid function name") {
 		t.Fatalf("expected 'invalid function name' error, got: %s", err)
-	}
-
-	// WASM path too.
-	wat := `(module (func (export "invoke") (result i64) i64.const 1))`
-	wasmBytes, err := Wat2Wasm(wat)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = reg.CompileAndRegisterWasm("drop table users;--", wasmBytes, "invoke",
-		[]ValType{}, ValI64, 0)
-	if err == nil {
-		t.Fatal("expected error for invalid WASM function name")
 	}
 }
 

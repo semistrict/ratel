@@ -188,7 +188,7 @@ var FunDefs map[string]*FunctionDefinition
 var funDefsMu sync.RWMutex
 
 // RegisterFunction dynamically registers a function definition in FunDefs.
-// This is used for user-defined WASM functions.
+// This is used for user-defined JavaScript functions.
 func RegisterFunction(name string, def *FunctionDefinition) {
 	funDefsMu.Lock()
 	defer funDefsMu.Unlock()
@@ -203,7 +203,7 @@ func UnregisterFunction(name string) {
 }
 
 // UDFResolver is a callback that resolves user-defined functions by name
-// from external storage (e.g. system.wasm_functions). It is called when
+// from external storage (e.g. system.wasm_functions table). It is called when
 // ResolveFunction does not find the function in the builtin FunDefs cache.
 // The resolver should compile and register the function in FunDefs if found,
 // then return the definition. Return nil if the function does not exist.

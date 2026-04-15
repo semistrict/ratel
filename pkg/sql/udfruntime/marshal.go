@@ -70,8 +70,7 @@ func ValTypeToSQLType(v ValType) (*types.T, error) {
 }
 
 // MarshalDatumToJS converts a SQL Datum to a JavaScript expression string.
-// If forWasm is true, i64 values are wrapped in BigInt() for WASM interop.
-func MarshalDatumToJS(d tree.Datum, vt ValType, forWasm bool) (string, error) {
+func MarshalDatumToJS(d tree.Datum, vt ValType) (string, error) {
 	if d == tree.DNull {
 		return "", fmt.Errorf("NULL values are not supported in UDF functions")
 	}
@@ -80,9 +79,6 @@ func MarshalDatumToJS(d tree.Datum, vt ValType, forWasm bool) (string, error) {
 		v, ok := d.(*tree.DInt)
 		if !ok {
 			return "", fmt.Errorf("expected INT datum for i64 parameter, got %T", d)
-		}
-		if forWasm {
-			return fmt.Sprintf("BigInt(%d)", int64(*v)), nil
 		}
 		return fmt.Sprintf("%d", int64(*v)), nil
 	case ValF64:

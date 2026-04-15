@@ -16,7 +16,6 @@ package udfruntime
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
@@ -37,7 +36,6 @@ const MaxModuleSize = 10 << 20 // 10MB
 type Language string
 
 const (
-	LangWasm       Language = "wasm"
 	LangJavaScript Language = "javascript"
 )
 
@@ -49,13 +47,10 @@ type Registry struct {
 	execMu      sync.Mutex           // serializes V8 execution (isolates are single-threaded)
 	sqlTemplate *v8.FunctionTemplate // async sql`` tagged template (returns Promise)
 	callState   asyncCallState       // per-call state, safe because execMu is held
-	sbPool      sync.Pool            // pool of *strings.Builder
 }
 
 type compiledFunc struct {
 	jsSetup    string // evaluated once per context to define the function
-	jsCall     string // call expression prefix: "invoke(" or "__wasm_inst_X.exports.invoke("
-	language   Language
 	paramTypes []ValType
 	resultType ValType
 	timeout    time.Duration
@@ -66,71 +61,9 @@ func NewRegistry() *Registry {
 	r := &Registry{
 		iso:   v8.NewIsolate(),
 		funcs: make(map[string]*compiledFunc),
-		sbPool: sync.Pool{New: func() interface{} {
-			return &strings.Builder{}
-		}},
 	}
 	r.sqlTemplate = r.makeAsyncSQLTemplate()
 	return r
-}
-
-func (r *Registry) getSB() *strings.Builder {
-	sb := r.sbPool.Get().(*strings.Builder)
-	sb.Reset()
-	return sb
-}
-
-func (r *Registry) putSB(sb *strings.Builder) {
-	r.sbPool.Put(sb)
-}
-
-// CompileAndRegisterWasm compiles a WASM binary and registers it.
-func (r *Registry) CompileAndRegisterWasm(
-	name string,
-	wasmBytes []byte,
-	exportName string,
-	paramTypes []ValType,
-	resultType ValType,
-	timeout time.Duration,
-) error {
-	if timeout == 0 {
-		timeout = DefaultTimeout
-	}
-
-	if !isValidIdentifier(name) {
-		return fmt.Errorf("invalid function name %q: must be a valid identifier", name)
-	}
-	if len(wasmBytes) > MaxModuleSize {
-		return fmt.Errorf("WASM module too large: %d bytes (max %d)", len(wasmBytes), MaxModuleSize)
-	}
-
-	jsArray := wasmBytesToJSArray(wasmBytes)
-	jsSetup := fmt.Sprintf(`
-		const __wasm_bytes_%s = new Uint8Array(%s);
-		const __wasm_mod_%s = new WebAssembly.Module(__wasm_bytes_%s);
-		const __wasm_inst_%s = new WebAssembly.Instance(__wasm_mod_%s);
-	`, name, jsArray, name, name, name, name)
-
-	ctx := v8.NewContext(r.iso)
-	_, err := ctx.RunScript(jsSetup, "setup_"+name+".js")
-	ctx.Close()
-	if err != nil {
-		return fmt.Errorf("compiling WASM module %q: %w", name, err)
-	}
-
-	cf := &compiledFunc{
-		jsSetup:    jsSetup,
-		jsCall:     fmt.Sprintf("__wasm_inst_%s.exports.%s(", name, exportName),
-		language:   LangWasm,
-		paramTypes: paramTypes,
-		resultType: resultType,
-		timeout:    timeout,
-	}
-
-	r.mu.Lock()
-	r.funcs[name] = cf
-	r.mu.Unlock()
-	return nil
 }
 
 // CompileAndRegisterJS registers a JavaScript function.
@@ -160,8 +93,6 @@ func (r *Registry) CompileAndRegisterJS(
 
 	cf := &compiledFunc{
 		jsSetup:    jsBody,
-		jsCall:     "invoke(",
-		language:   LangJavaScript,
 		paramTypes: paramTypes,
 		resultType: resultType,
 		timeout:    timeout,
@@ -277,160 +208,7 @@ func (r *Registry) Call(
 		tc.setupDone[name] = true
 	}
 
-	// Detect async functions: if the function is declared with "async function",
-	// it returns Promises and can't be batched via JSON.stringify.
-	// Fall back to sequential per-row execution.
-	if strings.Contains(cf.jsSetup, "async function") {
-		return r.callSequential(tc, cf, name, argsBatch)
-	}
-
-	forWasm := cf.language == LangWasm
-	wrapBigInt := cf.resultType == ValI64 && cf.language == LangWasm
-
-	// Build a single script: JSON.stringify([invoke(a0), invoke(a1), ...])
-	sb := r.getSB()
-	sb.Grow(len(argsBatch)*20 + 32)
-	sb.WriteString("JSON.stringify([")
-	for i, args := range argsBatch {
-		if i > 0 {
-			sb.WriteByte(',')
-		}
-		if wrapBigInt {
-			sb.WriteString("Number(")
-		}
-		sb.WriteString(cf.jsCall)
-		for j, arg := range args {
-			if j > 0 {
-				sb.WriteByte(',')
-			}
-			s, err := MarshalDatumToJS(arg, cf.paramTypes[j], forWasm)
-			if err != nil {
-				r.putSB(sb)
-				return nil, fmt.Errorf("row %d arg %d: %w", i, j, err)
-			}
-			sb.WriteString(s)
-		}
-		sb.WriteByte(')')
-		if wrapBigInt {
-			sb.WriteByte(')')
-		}
-	}
-	sb.WriteString("])")
-	script := sb.String()
-	r.putSB(sb)
-
-	timer := time.AfterFunc(cf.timeout*time.Duration(len(argsBatch)), func() {
-		r.iso.TerminateExecution()
-	})
-
-	val, err := tc.v8ctx.RunScript(script, name+"_call.js")
-
-	// If the batch contains async functions (sql``), the result will be
-	// a Promise wrapping the array. Pump until resolved.
-	if err == nil {
-		if prom, promErr := val.AsPromise(); promErr == nil {
-			for prom.State() == v8.Pending {
-				r.drainAsyncResults(tc.v8ctx)
-				if r.callState.pending.Load() > 0 {
-					r.waitAsyncResults(tc.v8ctx)
-				}
-				tc.v8ctx.PerformMicrotaskCheckpoint()
-			}
-			if prom.State() == v8.Rejected {
-				timer.Stop()
-				return nil, fmt.Errorf("UDF %q rejected: %s", name, prom.Result().String())
-			}
-			val = prom.Result()
-		}
-	}
-	timer.Stop()
-
-	if err != nil {
-		if jsErr, ok := err.(*v8.JSError); ok {
-			if jsErr.StackTrace != "" && jsErr.StackTrace != jsErr.Message {
-				return nil, fmt.Errorf("UDF %q: %s", name, jsErr.StackTrace)
-			}
-		}
-		return nil, fmt.Errorf("UDF %q: %w", name, err)
-	}
-
-	// Parse the JSON string in Go -- one CGO call instead of N GetIdx calls.
-	jsonStr := val.String()
-
-	results := make([]tree.Datum, len(argsBatch))
-	switch cf.resultType {
-	case ValI64:
-		var nums []float64
-		if err := json.Unmarshal([]byte(jsonStr), &nums); err != nil {
-			return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
-		}
-		for i, n := range nums {
-			d := tree.DInt(int64(n))
-			results[i] = &d
-		}
-	case ValF64:
-		var nums []float64
-		if err := json.Unmarshal([]byte(jsonStr), &nums); err != nil {
-			return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
-		}
-		for i, n := range nums {
-			d := tree.DFloat(n)
-			results[i] = &d
-		}
-	case ValI32:
-		var nums []float64
-		if err := json.Unmarshal([]byte(jsonStr), &nums); err != nil {
-			return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
-		}
-		for i, n := range nums {
-			if n != 0 {
-				results[i] = tree.DBoolTrue
-			} else {
-				results[i] = tree.DBoolFalse
-			}
-		}
-	case ValString:
-		var strs []string
-		if err := json.Unmarshal([]byte(jsonStr), &strs); err != nil {
-			return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
-		}
-		for i, s := range strs {
-			d := tree.DString(s)
-			results[i] = &d
-		}
-	case ValTimestamp:
-		// Timestamps are serialized as epoch milliseconds by JSON.stringify(Date).
-		// But JSON.stringify on a Date produces a string like "2025-01-01T00:00:00.000Z".
-		var strs []string
-		if err := json.Unmarshal([]byte(jsonStr), &strs); err != nil {
-			return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
-		}
-		for i, s := range strs {
-			t, _, err := tree.ParseDTimestamp(nil, s, time.Microsecond)
-			if err != nil {
-				return nil, fmt.Errorf("UDF %q result %d: parsing timestamp %q: %w", name, i, s, err)
-			}
-			results[i] = t
-		}
-	case ValJSON:
-		// JSON results: each element is a raw JSON value. We use json.RawMessage
-		// to avoid re-parsing.
-		var raws []json.RawMessage
-		if err := json.Unmarshal([]byte(jsonStr), &raws); err != nil {
-			return nil, fmt.Errorf("UDF %q: parsing results: %w", name, err)
-		}
-		for i, raw := range raws {
-			j, err := crdbJSON.ParseJSON(string(raw))
-			if err != nil {
-				return nil, fmt.Errorf("UDF %q result %d: parsing JSON: %w", name, i, err)
-			}
-			results[i] = tree.NewDJSON(j)
-		}
-	default:
-		return nil, fmt.Errorf("unsupported result type: 0x%02x", byte(cf.resultType))
-	}
-
-	return results, nil
+	return r.callSequential(tc, cf, name, argsBatch)
 }
 
 func (r *Registry) unmarshalResult(val *v8.Value, cf *compiledFunc) (tree.Datum, error) {
@@ -446,16 +224,21 @@ func (r *Registry) unmarshalResult(val *v8.Value, cf *compiledFunc) (tree.Datum,
 		d := tree.DString(val.String())
 		return &d, nil
 	case ValTimestamp:
-		// JS Date.toISOString() or valueOf() -- we get the string representation.
+		// The call expression was wrapped in JSON.stringify, so val is a
+		// quoted ISO 8601 string like "\"2025-01-01T08:00:00.000Z\"".
 		s := val.String()
+		if len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"' {
+			s = s[1 : len(s)-1]
+		}
 		t, _, err := tree.ParseDTimestamp(nil, s, time.Microsecond)
 		if err != nil {
 			return nil, fmt.Errorf("parsing timestamp result %q: %w", s, err)
 		}
 		return t, nil
 	case ValJSON:
-		s := val.String()
-		j, err := crdbJSON.ParseJSON(s)
+		// The call expression was wrapped in JSON.stringify, so val is
+		// the JSON string of the result object.
+		j, err := crdbJSON.ParseJSON(val.String())
 		if err != nil {
 			return nil, fmt.Errorf("parsing JSON result: %w", err)
 		}
@@ -465,28 +248,28 @@ func (r *Registry) unmarshalResult(val *v8.Value, cf *compiledFunc) (tree.Datum,
 	}
 }
 
-// callSequential executes an async UDF one row at a time, pumping Promises.
-// Used for functions that contain sql“ calls (which return Promises).
-// Caller must hold execMu.
+// callSequential executes a UDF one row at a time, pumping Promises for
+// async functions that use sql``. Caller must hold execMu.
 func (r *Registry) callSequential(
 	tc *TxnContext, cf *compiledFunc, name string, argsBatch []tree.Datums,
 ) ([]tree.Datum, error) {
-	forWasm := cf.language == LangWasm
 	results := make([]tree.Datum, len(argsBatch))
 
 	for i, args := range argsBatch {
 		jsArgs := make([]string, len(args))
 		for j, arg := range args {
-			s, err := MarshalDatumToJS(arg, cf.paramTypes[j], forWasm)
+			s, err := MarshalDatumToJS(arg, cf.paramTypes[j])
 			if err != nil {
 				return nil, fmt.Errorf("row %d arg %d: %w", i, j, err)
 			}
 			jsArgs[j] = s
 		}
 
-		callExpr := cf.jsCall + strings.Join(jsArgs, ", ") + ")"
-		if cf.resultType == ValI64 && cf.language == LangWasm {
-			callExpr = "Number(" + callExpr + ")"
+		callExpr := "invoke(" + strings.Join(jsArgs, ", ") + ")"
+		// Date.toString() gives locale format, Object.toString() gives "[object Object]".
+		// Wrap in JSON.stringify so we get ISO 8601 for timestamps and real JSON for objects.
+		if cf.resultType == ValTimestamp || cf.resultType == ValJSON {
+			callExpr = "JSON.stringify(" + callExpr + ")"
 		}
 
 		timer := time.AfterFunc(cf.timeout, func() {
@@ -553,15 +336,15 @@ func (r *Registry) List() []string {
 	return names
 }
 
-// GetSignature returns the param/result types and language for a registered function.
-func (r *Registry) GetSignature(name string) (paramTypes []ValType, resultType ValType, lang Language, ok bool) {
+// GetSignature returns the param/result types for a registered function.
+func (r *Registry) GetSignature(name string) (paramTypes []ValType, resultType ValType, ok bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	cf, exists := r.funcs[name]
 	if !exists {
-		return nil, 0, "", false
+		return nil, 0, false
 	}
-	return cf.paramTypes, cf.resultType, cf.language, true
+	return cf.paramTypes, cf.resultType, true
 }
 
 // isValidIdentifier checks that a name is safe to embed in generated JS code.
@@ -582,11 +365,3 @@ func isValidIdentifier(name string) bool {
 	return true
 }
 
-// wasmBytesToJSArray converts WASM bytes to a JS array literal like "[0,97,115,109,...]"
-func wasmBytesToJSArray(b []byte) string {
-	parts := make([]string, len(b))
-	for i, v := range b {
-		parts[i] = fmt.Sprintf("%d", v)
-	}
-	return "[" + strings.Join(parts, ",") + "]"
-}

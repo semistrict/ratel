@@ -57,7 +57,7 @@ func (n *dropWasmFunctionNode) startExec(params runParams) error {
 	}
 
 	// Check if function exists locally.
-	_, _, _, ok := registry.GetSignature(funcName)
+	_, _, ok := registry.GetSignature(funcName)
 	if !ok {
 		if n.n.IfExists {
 			return nil

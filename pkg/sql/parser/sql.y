@@ -3779,9 +3779,9 @@ create_extension_stmt:
   }
 | CREATE EXTENSION error // SHOW HELP: CREATE EXTENSION
 
-// %Help: CREATE FUNCTION - define a new WASM function
+// %Help: CREATE FUNCTION - define a new JavaScript function
 // %Category: DDL
-// %Text: CREATE FUNCTION <name> ( [<param_name> <type>, ...] ) RETURNS <type> LANGUAGE wasm AS '<wat_source>' IMMUTABLE
+// %Text: CREATE FUNCTION <name> ( [<param_name> <type>, ...] ) RETURNS <type> LANGUAGE javascript AS '<source>' [STABLE|VOLATILE]
 create_function_stmt:
   CREATE FUNCTION name '(' opt_func_param_list ')' name simple_typename LANGUAGE name AS SCONST name
   {
@@ -3793,8 +3793,8 @@ create_function_stmt:
     if lang == "js" || lang == "plv8" {
       lang = "javascript"
     }
-    if lang != "wasm" && lang != "javascript" {
-      return setErr(sqllex, errors.Newf("unsupported language %q; supported: wasm, javascript, js, plv8", lang))
+    if lang != "javascript" {
+      return setErr(sqllex, errors.Newf("unsupported language %q; supported: javascript, js, plv8", lang))
     }
     // $13 is the volatility keyword (IMMUTABLE, STABLE, VOLATILE).
     var volatility tree.Volatility
@@ -3827,8 +3827,8 @@ create_function_stmt:
     if lang == "js" || lang == "plv8" {
       lang = "javascript"
     }
-    if lang != "wasm" && lang != "javascript" {
-      return setErr(sqllex, errors.Newf("unsupported language %q; supported: wasm, javascript, js, plv8", lang))
+    if lang != "javascript" {
+      return setErr(sqllex, errors.Newf("unsupported language %q; supported: javascript, js, plv8", lang))
     }
     $$.val = &tree.CreateFunction{
       Name:       tree.Name($3),
@@ -3849,8 +3849,8 @@ create_function_stmt:
     if lang == "js" || lang == "plv8" {
       lang = "javascript"
     }
-    if lang != "wasm" && lang != "javascript" {
-      return setErr(sqllex, errors.Newf("unsupported language %q; supported: wasm, javascript, js, plv8", lang))
+    if lang != "javascript" {
+      return setErr(sqllex, errors.Newf("unsupported language %q; supported: javascript, js, plv8", lang))
     }
     $$.val = &tree.CreateFunction{
       Name:       tree.Name($3),

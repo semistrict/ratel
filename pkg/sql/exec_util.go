@@ -1341,7 +1341,7 @@ type ExecutorConfig struct {
 	// This is currently only for builtin functions where we need to execute sql.
 	InternalExecutorFactory sqlutil.SessionBoundInternalExecutorFactory
 
-	// UDFRegistry holds compiled WASM modules for user-defined functions.
+	// UDFRegistry holds compiled JavaScript user-defined functions.
 	UDFRegistry *udfruntime.Registry
 }
 

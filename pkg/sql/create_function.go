@@ -89,59 +89,6 @@ func (n *createWasmFunctionNode) startExec(params runParams) error {
 	lang := n.n.Language
 
 	switch lang {
-	case "wasm":
-		// WASM functions have no database access (no WASI), so IMMUTABLE
-		// is safe and is the default.
-		if n.n.Volatility == 0 {
-			n.n.Volatility = tree.VolatilityImmutable
-		}
-
-		// Compile WAT to WASM.
-		wasmBytes, err := udfruntime.Wat2Wasm(n.n.Body)
-		if err != nil {
-			return fmt.Errorf("compiling WAT: %w", err)
-		}
-
-		// Register in the UDF runtime.
-		err = registry.CompileAndRegisterWasm(funcName, wasmBytes, "invoke",
-			paramValTypes, retValType, 0)
-		if err != nil {
-			return err
-		}
-
-		// Build and register the SQL function definition.
-		if err := registerUDFFunDef(registry, funcName, sqlArgTypes, retType, n.n.Volatility); err != nil {
-			registry.Deregister(funcName)
-			return err
-		}
-
-		// Persist to system.wasm_functions so other nodes can discover it.
-		argTypesBytes := encodeArgTypes(sqlArgTypes)
-		retTypeBytes := []byte{byte(retValType)}
-
-		_, err = p.execCfg.InternalExecutor.ExecEx(
-			ctx,
-			"create-wasm-function",
-			p.Txn(),
-			sessiondata.InternalExecutorOverride{User: security.RootUserName()},
-			`UPSERT INTO system.wasm_functions
-			(database_id, schema_id, function_name, arg_types, return_type,
-			 wasm_module, wat_source, export_name, owner, volatility)
-			VALUES (0, 0, $1, $2, $3, $4, $5, 'invoke', $6, $7)`,
-			funcName,
-			argTypesBytes,
-			retTypeBytes,
-			wasmBytes,
-			n.n.Body,
-			p.User().Normalized(),
-			persistedUDFVolatility(n.n.Volatility),
-		)
-		if err != nil {
-			tree.UnregisterFunction(funcName)
-			registry.Deregister(funcName)
-			return fmt.Errorf("persisting WASM function: %w", err)
-		}
-
 	case "javascript":
 		// JavaScript UDFs always have access to sql``, so they can read
 		// the database. IMMUTABLE is not safe — the optimizer would fold
@@ -171,8 +118,7 @@ func (n *createWasmFunctionNode) startExec(params runParams) error {
 			return err
 		}
 
-		// Persist to system.wasm_functions (reusing the table for all UDF languages).
-		// For JavaScript, wasm_module is empty and wat_source holds the JS source.
+		// Persist to system.wasm_functions so other nodes can discover it.
 		argTypesBytes := encodeArgTypes(sqlArgTypes)
 		retTypeBytes := []byte{byte(retValType)}
 
@@ -188,7 +134,7 @@ func (n *createWasmFunctionNode) startExec(params runParams) error {
 			funcName,
 			argTypesBytes,
 			retTypeBytes,
-			[]byte{}, // no wasm module for JS
+			[]byte{},
 			jsBody,
 			p.User().Normalized(),
 			persistedUDFVolatility(n.n.Volatility),
@@ -200,7 +146,7 @@ func (n *createWasmFunctionNode) startExec(params runParams) error {
 		}
 
 	default:
-		return fmt.Errorf("unsupported language %q; supported: wasm, javascript", lang)
+		return fmt.Errorf("unsupported language %q; supported: javascript", lang)
 	}
 
 	return nil

@@ -61,7 +61,6 @@ func resolveWasmFunction(execCfg *ExecutorConfig, name string) *tree.FunctionDef
 	}
 
 	// Extract columns.
-	wasmModule := []byte(tree.MustBeDBytes(row[0]))
 	argTypesBytes := []byte(tree.MustBeDBytes(row[1]))
 	retTypeBytes := []byte(tree.MustBeDBytes(row[2]))
 	watSource := string(tree.MustBeDString(row[3]))
@@ -93,23 +92,12 @@ func resolveWasmFunction(execCfg *ExecutorConfig, name string) *tree.FunctionDef
 		return nil
 	}
 
-	// Determine language based on whether wasm_module is present.
-	if len(wasmModule) > 0 {
-		// WASM function: compile and register.
-		err = registry.CompileAndRegisterWasm(name, wasmModule, "invoke",
-			paramValTypes, retValType, 0)
-		if err != nil {
-			log.Warningf(ctx, "error compiling WASM function %q: %v", name, err)
-			return nil
-		}
-	} else {
-		// JavaScript function: source is in watSource field.
-		err = registry.CompileAndRegisterJS(name, watSource,
-			paramValTypes, retValType, 0)
-		if err != nil {
-			log.Warningf(ctx, "error compiling JavaScript function %q: %v", name, err)
-			return nil
-		}
+	// JavaScript function: source is in watSource field.
+	err = registry.CompileAndRegisterJS(name, watSource,
+		paramValTypes, retValType, 0)
+	if err != nil {
+		log.Warningf(ctx, "error compiling JavaScript function %q: %v", name, err)
+		return nil
 	}
 
 	// Register the SQL function definition.

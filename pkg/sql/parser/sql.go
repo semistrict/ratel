@@ -25839,8 +25839,8 @@ sqldefault:
 			if lang == "js" || lang == "plv8" {
 				lang = "javascript"
 			}
-			if lang != "wasm" && lang != "javascript" {
-				return setErr(sqllex, errors.Newf("unsupported language %q; supported: wasm, javascript, js, plv8", lang))
+			if lang != "javascript" {
+				return setErr(sqllex, errors.Newf("unsupported language %q; supported: javascript, js, plv8", lang))
 			}
 
 			var volatility tree.Volatility
@@ -25875,8 +25875,8 @@ sqldefault:
 			if lang == "js" || lang == "plv8" {
 				lang = "javascript"
 			}
-			if lang != "wasm" && lang != "javascript" {
-				return setErr(sqllex, errors.Newf("unsupported language %q; supported: wasm, javascript, js, plv8", lang))
+			if lang != "javascript" {
+				return setErr(sqllex, errors.Newf("unsupported language %q; supported: javascript, js, plv8", lang))
 			}
 			sqlVAL.union.val = &tree.CreateFunction{
 				Name:       tree.Name(sqlDollar[3].str),
@@ -25899,8 +25899,8 @@ sqldefault:
 			if lang == "js" || lang == "plv8" {
 				lang = "javascript"
 			}
-			if lang != "wasm" && lang != "javascript" {
-				return setErr(sqllex, errors.Newf("unsupported language %q; supported: wasm, javascript, js, plv8", lang))
+			if lang != "javascript" {
+				return setErr(sqllex, errors.Newf("unsupported language %q; supported: javascript, js, plv8", lang))
 			}
 			sqlVAL.union.val = &tree.CreateFunction{
 				Name:       tree.Name(sqlDollar[3].str),

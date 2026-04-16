@@ -346,8 +346,8 @@ type StorePool struct {
 	// storeDetails.
 	detailsMu struct {
 		syncutil.RWMutex
-		storeDetails       map[roachpb.StoreID]*storeDetail
-		onStoreDescUpdate  []func()
+		storeDetails      map[roachpb.StoreID]*storeDetail
+		onStoreDescUpdate []func()
 	}
 	localitiesMu struct {
 		syncutil.RWMutex
@@ -373,7 +373,6 @@ type StorePool struct {
 // NewStorePool creates a StorePool. Store descriptor updates are delivered
 // via the StoreDescUpdate method (backed by the rangefeed-based store
 // descriptor store).
-//
 func NewStorePool(
 	ambient log.AmbientContext,
 	st *cluster.Settings,

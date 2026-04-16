@@ -11,4 +11,4 @@
 	branch = 4.9.3-cockroach
 [submodule "c-deps/workerd"]
 	path = c-deps/workerd
-	url = git@github.com:semistrict/workerd.git
+	url = https://github.com/semistrict/workerd.git

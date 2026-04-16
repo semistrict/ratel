@@ -418,4 +418,3 @@ func assertActorIndexHasKVs(t *testing.T, kvDB *kv.DB, tableID int, indexID int,
 		t.Fatalf("expected actor index prefix %s to contain KVs", prefix)
 	}
 }
-

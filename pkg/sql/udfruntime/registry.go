@@ -249,7 +249,7 @@ func (r *Registry) unmarshalResult(val *v8.Value, cf *compiledFunc) (tree.Datum,
 }
 
 // callSequential executes a UDF one row at a time, pumping Promises for
-// async functions that use sql``. Caller must hold execMu.
+// async functions that use sql“. Caller must hold execMu.
 func (r *Registry) callSequential(
 	tc *TxnContext, cf *compiledFunc, name string, argsBatch []tree.Datums,
 ) ([]tree.Datum, error) {
@@ -364,4 +364,3 @@ func isValidIdentifier(name string) bool {
 	}
 	return true
 }
-

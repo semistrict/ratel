@@ -199,13 +199,13 @@ func createTestStoreWithoutStart(
 	rangeProv := &dummyFirstRangeProvider{}
 	var storeSender struct{ kv.Sender }
 	ds := kvcoord.NewDistSender(kvcoord.DistSenderConfig{
-		AmbientCtx:         cfg.AmbientCtx,
-		Settings:           cfg.Settings,
-		Clock:              cfg.Clock,
-		NodeDescs:          mockNodeStore{desc: nodeDesc},
-		RPCContext:         rpcContext,
-		RPCRetryOptions:    &retry.Options{},
-		NodeDialer:         nodedialer.New(rpcContext, func(nodeID roachpb.NodeID) (net.Addr, error) {
+		AmbientCtx:      cfg.AmbientCtx,
+		Settings:        cfg.Settings,
+		Clock:           cfg.Clock,
+		NodeDescs:       mockNodeStore{desc: nodeDesc},
+		RPCContext:      rpcContext,
+		RPCRetryOptions: &retry.Options{},
+		NodeDialer: nodedialer.New(rpcContext, func(nodeID roachpb.NodeID) (net.Addr, error) {
 			return nil, errors.Errorf("node %d address resolution not available in test", nodeID)
 		}),
 		FirstRangeProvider: rangeProv,

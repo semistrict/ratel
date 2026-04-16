@@ -635,7 +635,7 @@ type Options struct {
 	SQLSQLResponseBurstTokens      int
 	SQLStatementLeafStartWorkSlots int
 	SQLStatementRootStartWorkSlots int
-	TestingDisableSkipEnforcement bool
+	TestingDisableSkipEnforcement  bool
 	// EpochClosingInterval, if non-zero, overrides the timer duration used
 	// by admission control background goroutines. Set to a large value
 	// (e.g. 1 minute) in synctest to avoid burning fake time.

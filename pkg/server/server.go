@@ -108,22 +108,22 @@ type Server struct {
 	// The gRPC server on which the different RPC handlers will be registered.
 	grpc               *grpcServer
 	firstRangeProvider kvcoord.FirstRangeProvider
-	nodeDescStore    *nodedescstore.Store
-	storeDescStore   *storedescstore.Store
-	rangeFeedFactory *rangefeed.Factory
-	nodeDialer       *nodedialer.Dialer
-	nodeLiveness     *liveness.NodeLiveness
-	storePool        *kvserver.StorePool
-	tcsFactory       *kvcoord.TxnCoordSenderFactory
-	distSender       *kvcoord.DistSender
-	db               *kv.DB
-	node             *Node
-	registry         *metric.Registry
-	recorder         *status.MetricsRecorder
-	runtime          *status.RuntimeStatSampler
-	ruleRegistry     *metric.RuleRegistry
-	promRuleExporter *metric.PrometheusRuleExporter
-	ctSender         *sidetransport.Sender
+	nodeDescStore      *nodedescstore.Store
+	storeDescStore     *storedescstore.Store
+	rangeFeedFactory   *rangefeed.Factory
+	nodeDialer         *nodedialer.Dialer
+	nodeLiveness       *liveness.NodeLiveness
+	storePool          *kvserver.StorePool
+	tcsFactory         *kvcoord.TxnCoordSenderFactory
+	distSender         *kvcoord.DistSender
+	db                 *kv.DB
+	node               *Node
+	registry           *metric.Registry
+	recorder           *status.MetricsRecorder
+	runtime            *status.RuntimeStatSampler
+	ruleRegistry       *metric.RuleRegistry
+	promRuleExporter   *metric.PrometheusRuleExporter
+	ctSender           *sidetransport.Sender
 
 	http            *httpServer
 	adminAuthzCheck *adminPrivilegeChecker

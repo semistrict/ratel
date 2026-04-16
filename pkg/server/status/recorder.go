@@ -38,11 +38,11 @@ import (
 	"github.com/semistrict/ratel/pkg/kv/kvserver/liveness"
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/rpc"
-	"github.com/semistrict/ratel/pkg/util"
 	"github.com/semistrict/ratel/pkg/server/status/statuspb"
 	"github.com/semistrict/ratel/pkg/settings"
 	"github.com/semistrict/ratel/pkg/settings/cluster"
 	"github.com/semistrict/ratel/pkg/ts/tspb"
+	"github.com/semistrict/ratel/pkg/util"
 	"github.com/semistrict/ratel/pkg/util/cgroups"
 	"github.com/semistrict/ratel/pkg/util/envutil"
 	"github.com/semistrict/ratel/pkg/util/hlc"
@@ -110,9 +110,9 @@ type MetricsRecorder struct {
 	*HealthChecker
 	getNodeIDAddress NodeAddressResolver
 	nodeLiveness     *liveness.NodeLiveness
-	rpcContext   *rpc.Context
-	settings     *cluster.Settings
-	clock        *hlc.Clock
+	rpcContext       *rpc.Context
+	settings         *cluster.Settings
+	clock            *hlc.Clock
 
 	// Counts to help optimize slice allocation. Should only be accessed atomically.
 	lastDataCount        int64
@@ -159,11 +159,11 @@ func NewMetricsRecorder(
 	settings *cluster.Settings,
 ) *MetricsRecorder {
 	mr := &MetricsRecorder{
-		HealthChecker: NewHealthChecker(trackedMetrics),
-		nodeLiveness:  nodeLiveness,
-		rpcContext:    rpcContext,
+		HealthChecker:    NewHealthChecker(trackedMetrics),
+		nodeLiveness:     nodeLiveness,
+		rpcContext:       rpcContext,
 		getNodeIDAddress: getNodeIDAddress,
-		settings:      settings,
+		settings:         settings,
 	}
 	mr.mu.storeRegistries = make(map[roachpb.StoreID]*metric.Registry)
 	mr.mu.stores = make(map[roachpb.StoreID]storeMetrics)

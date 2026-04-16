@@ -27,12 +27,12 @@ func roundSecs(d time.Duration) time.Duration {
 	return d.Truncate(time.Second)
 }
 
-func (m MetricSnap) String() string          { return redact.StringWithoutMarkers(m) }
-func (c OutgoingConnStatus) String() string  { return redact.StringWithoutMarkers(c) }
-func (c ClientStatus) String() string        { return redact.StringWithoutMarkers(c) }
-func (c ConnStatus) String() string          { return redact.StringWithoutMarkers(c) }
-func (s ServerStatus) String() string        { return redact.StringWithoutMarkers(s) }
-func (c Connectivity) String() string        { return redact.StringWithoutMarkers(c) }
+func (m MetricSnap) String() string         { return redact.StringWithoutMarkers(m) }
+func (c OutgoingConnStatus) String() string { return redact.StringWithoutMarkers(c) }
+func (c ClientStatus) String() string       { return redact.StringWithoutMarkers(c) }
+func (c ConnStatus) String() string         { return redact.StringWithoutMarkers(c) }
+func (s ServerStatus) String() string       { return redact.StringWithoutMarkers(s) }
+func (c Connectivity) String() string       { return redact.StringWithoutMarkers(c) }
 
 // SafeFormat implements the redact.SafeFormatter interface.
 func (m MetricSnap) SafeFormat(w redact.SafePrinter, _ rune) {

@@ -31,11 +31,11 @@ import (
 	"github.com/semistrict/ratel/pkg/security"
 	"github.com/semistrict/ratel/pkg/server/actorstorage"
 	"github.com/semistrict/ratel/pkg/sql"
-	"github.com/semistrict/ratel/pkg/util/tracing"
 	"github.com/semistrict/ratel/pkg/sql/sem/tree"
 	"github.com/semistrict/ratel/pkg/sql/sessiondata"
 	"github.com/semistrict/ratel/pkg/util/log"
 	"github.com/semistrict/ratel/pkg/util/stop"
+	"github.com/semistrict/ratel/pkg/util/tracing"
 )
 
 // defaultWorkerdListenPort is the default port for workerd. In production this

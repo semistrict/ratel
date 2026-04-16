@@ -69,7 +69,7 @@ jobs:
           key: go-build-linux-${{ hashFiles('go.mod', 'go.sum') }}
           restore-keys: go-build-linux-
       - name: Build
-        run: make -j$(nproc) buildshort
+        run: make -j$(nproc) buildratel
         env:
           BROWSERSLIST_IGNORE_OLD_DATA: 1
       - name: Vet

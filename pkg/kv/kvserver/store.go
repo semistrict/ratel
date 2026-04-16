@@ -968,10 +968,10 @@ type StoreConfig struct {
 	AmbientCtx log.AmbientContext
 	base.RaftConfig
 
-	DefaultSpanConfig    roachpb.SpanConfig
-	Settings             *cluster.Settings
-	Clock                *hlc.Clock
-	DB                   *kv.DB
+	DefaultSpanConfig roachpb.SpanConfig
+	Settings          *cluster.Settings
+	Clock             *hlc.Clock
+	DB                *kv.DB
 	// FirstRangeCallback, if set, is called when this store's replica of
 	// range 1 is the leaseholder and the range descriptor changes.
 	FirstRangeCallback func(*roachpb.RangeDescriptor)

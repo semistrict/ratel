@@ -27,10 +27,10 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/semistrict/ratel/pkg/base"
-	"github.com/semistrict/ratel/pkg/kv/kvclient/nodedescstore"
 	"github.com/semistrict/ratel/pkg/keys"
 	"github.com/semistrict/ratel/pkg/kv"
 	"github.com/semistrict/ratel/pkg/kv/kvclient/kvcoord"
+	"github.com/semistrict/ratel/pkg/kv/kvclient/nodedescstore"
 	"github.com/semistrict/ratel/pkg/kv/kvserver"
 	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverbase"
 	"github.com/semistrict/ratel/pkg/roachpb"

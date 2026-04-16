@@ -24,13 +24,13 @@ import (
 
 	"github.com/semistrict/ratel/pkg/base"
 	"github.com/semistrict/ratel/pkg/kv/kvserver"
-	"github.com/semistrict/ratel/pkg/util/admission"
 	"github.com/semistrict/ratel/pkg/roachpb"
 	"github.com/semistrict/ratel/pkg/server"
 	"github.com/semistrict/ratel/pkg/server/status"
 	"github.com/semistrict/ratel/pkg/settings/cluster"
 	"github.com/semistrict/ratel/pkg/sql/contention"
 	"github.com/semistrict/ratel/pkg/testutils/testcluster"
+	"github.com/semistrict/ratel/pkg/util/admission"
 )
 
 var nextClusterAddrBase atomic.Uint64

@@ -18,10 +18,10 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"encoding/json"
-	"io"
 	gohex "encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -253,11 +253,11 @@ func runRatelStartLocal(cmd *cobra.Command, args []string) error {
 		clusterURL:     "file://" + storeDir,
 		listenAddr:     ratelListenAddr,
 		httpAddr:       ratelHTTPAddr,
-		certsDir:       "",   // insecure
+		certsDir:       "", // insecure
 		storeDir:       storeDir,
-		joinList:       nil,  // single-node
+		joinList:       nil, // single-node
 		autoInitialize: true,
-		nodesStore:     nil,  // no S3 node registry
+		nodesStore:     nil, // no S3 node registry
 		ratelNodeID:    "local",
 	})
 }

@@ -678,4 +678,3 @@ func (r *Registry) pollRequests(ctx context.Context) error {
 	}
 	return nil
 }
-

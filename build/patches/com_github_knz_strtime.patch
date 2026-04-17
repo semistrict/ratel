@@ -1,0 +1,13 @@
+diff -urN a/bsdshim.h b/bsdshim.h
+--- a/bsdshim.h
++++ b/bsdshim.h
+@@ -5,7 +5,9 @@
+ #include <string.h>
+ #include <time.h>
+
++#ifndef __APPLE__
+ #define locale_t int
++#endif
+
+ #ifdef isspace_l
+ #undef isspace_l

@@ -104,6 +104,14 @@ go_deps.module_override(
     patches = ["//build/patches:com_github_prometheus_client_model.patch"],
     path = "github.com/prometheus/client_model",
 )
+
+# knz/strtime redefines locale_t to int for BSD/Linux compatibility, which
+# conflicts with macOS's typedef.  Guard the define for Apple builds.
+go_deps.module_override(
+    patch_strip = 1,
+    patches = ["//build/patches:com_github_knz_strtime.patch"],
+    path = "github.com/knz/strtime",
+)
 use_repo(
     go_deps,
     "co_honnef_go_tools",

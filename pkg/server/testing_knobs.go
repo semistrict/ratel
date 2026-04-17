@@ -77,6 +77,13 @@ type TestingKnobs struct {
 	// in-memory networking where all traffic must flow through one listener.
 	ShareRPCListenSQL bool
 
+	// DisableRunnableCountCallbacks, if set, skips registering the
+	// admission control runnable-count callback on the goschedstats package
+	// ticker. Required for clusters running under testing/synctest — the
+	// ticker goroutine is started at init() time (outside any synctest
+	// bubble) and would otherwise send on channels created inside a bubble.
+	DisableRunnableCountCallbacks bool
+
 	// BinaryVersionOverride overrides the binary version that the CRDB server
 	// will end up running. This value could also influence what version the
 	// cluster is bootstrapped at.

@@ -57,8 +57,6 @@ func TestInprocSmoke(t *testing.T) {
 // DisableProtectedTSProvider, DisableEnvironmentSample, etc.). Porting
 // those is a follow-up to this change.
 func TestSyncTestSmoke(t *testing.T) {
-	t.Skip("background goroutines leak timers out of the synctest bubble; " +
-		"requires porting the Disable* server TestingKnobs from ratel")
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
 

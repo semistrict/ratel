@@ -447,10 +447,16 @@ func NewServer(cfg Config, stopper *stop.Stopper) (*Server, error) {
 	}
 	tcsFactory := kvcoord.NewTxnCoordSenderFactory(txnCoordSenderFactoryCfg, distSender)
 
-	cbID := goschedstats.RegisterRunnableCountCallback(gcoords.Regular.CPULoad)
-	stopper.AddCloser(stop.CloserFn(func() {
-		goschedstats.UnregisterRunnableCountCallback(cbID)
-	}))
+	var disableRunnableCallbacks bool
+	if knobs, ok := cfg.TestingKnobs.Server.(*TestingKnobs); ok && knobs.DisableRunnableCountCallbacks {
+		disableRunnableCallbacks = true
+	}
+	if !disableRunnableCallbacks {
+		cbID := goschedstats.RegisterRunnableCountCallback(gcoords.Regular.CPULoad)
+		stopper.AddCloser(stop.CloserFn(func() {
+			goschedstats.UnregisterRunnableCountCallback(cbID)
+		}))
+	}
 	stopper.AddCloser(gcoords)
 
 	dbCtx := kv.DefaultDBContext(stopper)

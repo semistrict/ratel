@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	"github.com/cockroachdb/cockroach/pkg/base"
+	"github.com/cockroachdb/cockroach/pkg/kv/kvserver"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/server"
 	"github.com/cockroachdb/cockroach/pkg/testutils/testcluster"
@@ -74,6 +75,25 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 			},
 		}
 
+		// Disable the replica scanner and all background queues. Their
+		// timers can otherwise survive past cluster shutdown and produce
+		// "reset of synctest timer from outside bubble" panics on later
+		// tests.
+		storeKnobs, _ := args.Knobs.Store.(*kvserver.StoreTestingKnobs)
+		if storeKnobs == nil {
+			storeKnobs = &kvserver.StoreTestingKnobs{}
+		}
+		storeKnobs.DisableScanner = true
+		storeKnobs.DisableGCQueue = true
+		storeKnobs.DisableConsistencyQueue = true
+		storeKnobs.DisableRaftLogQueue = true
+		storeKnobs.DisableRaftSnapshotQueue = true
+		storeKnobs.DisableReplicaGCQueue = true
+		storeKnobs.DisableTimeSeriesMaintenanceQueue = true
+		storeKnobs.DisableLoadBasedSplitting = true
+		storeKnobs.DisableReplicaRebalancing = true
+		args.Knobs.Store = storeKnobs
+
 		serverKnobs := args.Knobs.Server
 		if serverKnobs == nil {
 			serverKnobs = &server.TestingKnobs{}
@@ -81,6 +101,10 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 		tk := serverKnobs.(*server.TestingKnobs)
 		tk.HTTPListener = httpListener
 		tk.ShareRPCListenSQL = true
+		// The goschedstats runnable-count callback ticker runs in a goroutine
+		// started at package init, outside any synctest bubble, and would
+		// otherwise send on bubble-scoped admission control channels.
+		tk.DisableRunnableCountCallbacks = true
 		tk.ContextTestingKnobs.DialerFunc = registry.Dial
 		args.Knobs.Server = tk
 

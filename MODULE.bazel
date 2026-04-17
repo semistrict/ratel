@@ -76,10 +76,7 @@ go_deps.gazelle_override(
 # proto_library target <dir>_proto (gogoproto_proto), so we alias gogo_proto
 # to it via a post-gazelle patch.
 go_deps.gazelle_override(
-    directives = [
-        "gazelle:proto default",
-        "gazelle:proto_strip_import_prefix /gogoproto",
-    ],
+    build_file_generation = "off",
     path = "github.com/gogo/protobuf",
 )
 use_repo(
@@ -262,6 +259,7 @@ use_repo(
     "io_opentelemetry_go_otel_exporters_zipkin",
     "io_opentelemetry_go_otel_metric",
     "io_opentelemetry_go_otel_sdk",
+    "io_opentelemetry_go_otel_sdk_metric",
     "io_opentelemetry_go_otel_trace",
     "io_vitess_vitess",
     "org_golang_google_api",
@@ -343,6 +341,9 @@ use_repo(
     "com_google_cloud_go_compute_metadata",
     "com_google_cloud_go_iam",
     "io_opencensus_go",
+    "io_opentelemetry_go_contrib_detectors_gcp",
+    "io_opentelemetry_go_contrib_instrumentation_google_golang_org_grpc_otelgrpc",
+    "io_opentelemetry_go_contrib_instrumentation_net_http_otelhttp",
     "io_opentelemetry_go_proto_otlp",
     "org_golang_x_mod",
     "org_golang_x_xerrors",

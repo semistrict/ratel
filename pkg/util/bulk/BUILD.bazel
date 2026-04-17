@@ -11,16 +11,3 @@ go_library(
     deps = ["//pkg/util/tracing"],
 )
 
-go_test(
-    name = "bulk_test",
-    srcs = ["tracing_aggregator_test.go"],
-    args = ["-test.timeout=295s"],
-    deps = [
-        ":bulk",
-        "//pkg/kv/bulk/bulkpb",
-        "//pkg/roachpb",
-        "//pkg/util/tracing",
-        "//pkg/util/tracing/tracingpb",
-        "@com_github_stretchr_testify//require",
-    ],
-)

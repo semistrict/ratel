@@ -22,7 +22,6 @@ go_test(
     args = ["-test.timeout=295s"],
     embed = [":goschedstats"],
     deps = [
-        "//pkg/testutils",
         "//pkg/util/timeutil",
         "@com_github_stretchr_testify//require",
     ],

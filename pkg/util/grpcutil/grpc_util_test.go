@@ -57,6 +57,12 @@ func (hs healthServer) Watch(*healthpb.HealthCheckRequest, healthpb.Health_Watch
 	panic("not implemented")
 }
 
+func (hs healthServer) List(
+	context.Context, *healthpb.HealthListRequest,
+) (*healthpb.HealthListResponse, error) {
+	panic("not implemented")
+}
+
 func TestIsWaitingForInit(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)

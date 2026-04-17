@@ -592,11 +592,14 @@ func TestFatalStacktraceStderr(t *testing.T) {
 					t.Fatalf("unexpected stack trace:\n%s", cont)
 				}
 			case tracebackSingle:
-				if strings.Count(cont, "goroutine ") != 1 {
+				// Go 1.21+ emits a trailing `created by … in goroutine N`
+				// attribution line even for single-goroutine stacks, so a
+				// single goroutine appears as two occurrences of "goroutine ".
+				if strings.Count(cont, "goroutine ") != 2 {
 					t.Fatalf("stack trace contains too many goroutines: %s", cont)
 				}
 			case tracebackAll:
-				if strings.Count(cont, "goroutine ") < 2 {
+				if strings.Count(cont, "goroutine ") < 4 {
 					t.Fatalf("stack trace contains less than two goroutines: %s", cont)
 				}
 			}

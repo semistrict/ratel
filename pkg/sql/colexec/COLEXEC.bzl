@@ -16,7 +16,7 @@ export COCKROACH_INTERNAL_DISABLE_METAMORPHIC_TESTING=true
 $(location :execgen) -template $(SRCS) -fmt=false pkg/sql/colexec/$@ > $@
 $(location :goimports) -w $@
 """,
-        exec_tools = [
+        tools = [
             "@go_sdk//:bin/go",
             ":execgen",
             ":goimports",
@@ -42,7 +42,7 @@ export COCKROACH_INTERNAL_DISABLE_METAMORPHIC_TESTING=true
 $(location :execgen) -template $(SRCS) -fmt=false pkg/sql/colexec/colexecprojconst/$@ > $@
 $(location :goimports) -w $@
 """,
-        exec_tools = [
+        tools = [
             "@go_sdk//:bin/go",
             ":execgen",
             ":goimports",

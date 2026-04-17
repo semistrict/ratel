@@ -11,6 +11,12 @@
 
 build --enable_platform_specific_config
 
+# Bazel 7+ hybrid mode: we have a small MODULE.bazel for toolchains that require
+# bzlmod (rules_java, rules_cc, protobuf, rules_python), and WORKSPACE for the
+# rest of CRDB's ~300 external deps.
+common --enable_workspace
+common --enable_bzlmod
+
 # Define a set up flag aliases, so people can use `--cross` instead of the
 # longer `//build/toolchains:cross_flag`.
 build --flag_alias=crdb_test=//build/toolchains:crdb_test_flag

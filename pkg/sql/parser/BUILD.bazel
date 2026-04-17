@@ -102,7 +102,7 @@ export GOROOT=
 $(location :sql-gen) $(location sql.y) sql $(location replace_help_rules.awk) \
     $(location sql.go) $(location @org_golang_x_tools//cmd/goyacc)
 """,
-    exec_tools = [
+    tools =[
         ":sql-gen",
         "@go_sdk//:bin/go",
         "@org_golang_x_tools//cmd/goyacc",
@@ -126,7 +126,7 @@ genrule(
       $(location :help-gen-test) < $< >$@.tmp
       mv -f $@.tmp $@
     """,
-    exec_tools = [
+    tools =[
         ":help-gen-test",
     ],
     visibility = [

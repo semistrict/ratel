@@ -49,13 +49,12 @@ labels("outs",  filter("-stringer$", kind("genrule rule", {{ .All }})))`,
 		target: "execgen",
 		query: `
 let genrules = kind("genrule rule",  {{ .All }})
-in labels("outs",  attr("tools", "execgen", $genrules)
-  + attr("exec_tools", "execgen", $genrules))`,
+in labels("outs",  attr("tools", "execgen", $genrules))`,
 	},
 	{
 		target: "optgen",
 		query: `
-let targets = attr("exec_tools", "(opt|lang)gen",  kind("genrule rule",  {{ .All }}))
+let targets = attr("tools", "(opt|lang)gen",  kind("genrule rule",  {{ .All }}))
 in let og = labels("outs",  $targets)
 in $og - filter(".*:.*(-gen|gen-).*", $og)`,
 	},

@@ -25,9 +25,6 @@ def go_deps():
         build_file_proto_mode = "disable_global",
         importpath = "honnef.co/go/tools",
         patch_args = ["-p1"],
-        patches = [
-            "@com_github_cockroachdb_cockroach//build/patches:co_honnef_go_tools.patch",
-        ],
         sha256 = "bdd216490737b6cd0fe2655f574415606136f56033cc9f95c9d077c0227aa71c",
         strip_prefix = "honnef.co/go/tools@v0.4.3",
         urls = [
@@ -1069,9 +1066,6 @@ def go_deps():
         build_file_proto_mode = "disable_global",
         importpath = "github.com/buchgr/bazel-remote",
         patch_args = ["-p1"],
-        patches = [
-            "@com_github_cockroachdb_cockroach//build/patches:com_github_buchgr_bazel_remote.patch",
-        ],
         sha256 = "7ab70784fddbc59e956501b2bc15a30c36baedb34df0d26009607d80c9e129e2",
         strip_prefix = "github.com/buchgr/bazel-remote@v1.3.3",
         urls = [
@@ -1572,9 +1566,6 @@ def go_deps():
         build_file_proto_mode = "disable_global",
         importpath = "github.com/cockroachdb/pebble",
         patch_args = ["-p1"],
-        patches = [
-            "@com_github_cockroachdb_cockroach//build/patches:com_github_cockroachdb_pebble.patch",
-        ],
         sha256 = "93739b832110f4e913e81e88555e51b9efda3da22ccd49e787781cd0565a209b",
         strip_prefix = "github.com/cockroachdb/pebble@v1.0.1-0.20240729165630-848f3c6eb646",
         urls = [
@@ -3701,9 +3692,6 @@ def go_deps():
         build_file_proto_mode = "disable_global",
         importpath = "github.com/golang/protobuf",
         patch_args = ["-p1"],
-        patches = [
-            "@com_github_cockroachdb_cockroach//build/patches:com_github_golang_protobuf.patch",
-        ],
         sha256 = "93bda6e88d4a0a493a98b481de67a10000a755d15f16a800b49a6b96d1bd6f81",
         strip_prefix = "github.com/golang/protobuf@v1.5.3",
         urls = [
@@ -4186,9 +4174,6 @@ def go_deps():
         build_naming_convention = "go_default_library",
         importpath = "github.com/grpc-ecosystem/grpc-gateway",
         patch_args = ["-p1"],
-        patches = [
-            "@com_github_cockroachdb_cockroach//build/patches:com_github_grpc_ecosystem_grpc_gateway.patch",
-        ],
         sha256 = "377b03aef288b34ed894449d3ddba40d525dd7fb55de6e79045cdf499e7fe565",
         strip_prefix = "github.com/grpc-ecosystem/grpc-gateway@v1.16.0",
         urls = [
@@ -5320,9 +5305,6 @@ def go_deps():
         build_file_proto_mode = "disable_global",
         importpath = "github.com/kisielk/errcheck",
         patch_args = ["-p1"],
-        patches = [
-            "@com_github_cockroachdb_cockroach//build/patches:com_github_kisielk_errcheck.patch",
-        ],
         sha256 = "99d3220891162cb684f8e05d54f3d0dc58abdd496a2f0cfda7fd4a28917a719e",
         strip_prefix = "github.com/kisielk/errcheck@v1.6.1-0.20210625163953-8ddee489636a",
         urls = [
@@ -7447,9 +7429,6 @@ def go_deps():
         build_file_proto_mode = "disable_global",
         importpath = "github.com/pseudomuto/protoc-gen-doc",
         patch_args = ["-p1"],
-        patches = [
-            "@com_github_cockroachdb_cockroach//build/patches:com_github_pseudomuto_protoc_gen_doc.patch",
-        ],
         sha256 = "ecf627d6f5b4e55d4844dda45612cbd152f0bc4dbe2ba182c7bc3ad1dc63ce5f",
         strip_prefix = "github.com/pseudomuto/protoc-gen-doc@v1.3.2",
         urls = [
@@ -11171,9 +11150,6 @@ def go_deps():
         build_file_proto_mode = "disable_global",
         importpath = "golang.org/x/tools",
         patch_args = ["-p1"],
-        patches = [
-            "@com_github_cockroachdb_cockroach//build/patches:org_golang_x_tools.patch",
-        ],
         sha256 = "562f25e674aab49f00a23ec1fcb46a57b0a9d27287ea9a885886c994306d9c14",
         strip_prefix = "golang.org/x/tools@v0.10.0",
         urls = [

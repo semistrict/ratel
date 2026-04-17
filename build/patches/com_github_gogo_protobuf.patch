@@ -1,13 +1,13 @@
-diff -urN a/gogoproto/BUILD.bazel b/gogoproto/BUILD.bazel
---- a/gogoproto/BUILD.bazel	1969-12-31 19:00:00.000000000 -0500
-+++ b/gogoproto/BUILD.bazel	2000-01-01 00:00:00.000000000 -0000
+diff --git a/gogoproto/BUILD.bazel b/gogoproto/BUILD.bazel
+--- a/gogoproto/BUILD.bazel
++++ b/gogoproto/BUILD.bazel
 @@ -1,4 +1,5 @@
  load("@io_bazel_rules_go//go:def.bzl", "go_library")
 +load("@rules_proto//proto:defs.bzl", "proto_library")
- 
+
  go_library(
      name = "gogoproto",
-@@ -20,3 +21,11 @@
+@@ -20,3 +21,11 @@ alias(
      actual = ":gogoproto",
      visibility = ["//visibility:public"],
  )

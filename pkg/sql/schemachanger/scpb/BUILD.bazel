@@ -77,7 +77,7 @@ genrule(
     cmd = """
         $(location :element-generator) --in $< --out $(location elements_generated.go)
        """,
-    exec_tools = [
+    tools =[
         ":element-generator",
     ],
     visibility = [
@@ -102,7 +102,7 @@ genrule(
     cmd = """
         $(location :element-uml-generator) --out $(location uml/table.puml)
        """,
-    exec_tools = [
+    tools =[
         ":element-uml-generator",
     ],
     visibility = [

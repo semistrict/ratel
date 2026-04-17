@@ -1,0 +1,16 @@
+diff -urN a/raftpb/BUILD.bazel b/raftpb/BUILD.bazel
+--- a/raftpb/BUILD.bazel
++++ b/raftpb/BUILD.bazel
+@@ -1 +1,11 @@
+-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
++load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
++load("@rules_proto//proto:defs.bzl", "proto_library")
++
++# keep
++proto_library(
++    name = "raftpb_proto",
++    srcs = ["raft.proto"],
++    import_prefix = "raft/v3",
++    deps = ["@com_github_gogo_protobuf//gogoproto:gogoproto_proto"],
++    visibility = ["//visibility:public"],
++)

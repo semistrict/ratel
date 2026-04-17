@@ -419,10 +419,10 @@ http_archive(
 )
 
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
-load("//:DEPS.bzl", "go_deps")
 
-# gazelle:repository_macro DEPS.bzl%go_deps
-go_deps()
+# Go dependencies are handled entirely by the bzlmod `go_deps` extension in
+# MODULE.bazel (sourced from //:go.mod).  The legacy DEPS.bzl is no longer
+# loaded here to avoid dual-declaration conflicts at link time.
 
 protobuf_deps()
 

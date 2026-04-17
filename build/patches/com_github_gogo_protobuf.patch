@@ -1,0 +1,15 @@
+diff -urN a/gogoproto/BUILD.bazel b/gogoproto/BUILD.bazel
+--- a/gogoproto/BUILD.bazel
++++ b/gogoproto/BUILD.bazel
+@@ -1 +1,10 @@
+-load("@io_bazel_rules_go//go:def.bzl", "go_library")
++load("@io_bazel_rules_go//go:def.bzl", "go_library")
++load("@rules_proto//proto:defs.bzl", "proto_library")
++
++# keep
++proto_library(
++    name = "gogoproto_proto",
++    srcs = ["gogo.proto"],
++    deps = ["@com_google_protobuf//:descriptor_proto"],
++    visibility = ["//visibility:public"],
++)

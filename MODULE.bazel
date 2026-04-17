@@ -50,34 +50,59 @@ go_deps.gazelle_override(
     path = "github.com/grpc-ecosystem/grpc-gateway",
 )
 
-# CRDB references target :errorspb_proto on @com_github_cockroachdb_errors,
-# which requires gazelle to generate proto_library rules.
+# cockroachdb/errors uses gogo-generated .pb.go files.  Disable gazelle's
+# proto rule generation (which would regenerate them using the default
+# compiler and produce incompatible types) and supply the proto_library
+# target for errorspb via a post-gazelle patch.
 go_deps.gazelle_override(
-    directives = [
-        "gazelle:proto default",
-        "gazelle:resolve proto proto gogoproto/gogo.proto @com_github_gogo_protobuf//gogoproto:gogoproto_proto",
-        "gazelle:resolve proto go gogoproto/gogo.proto @com_github_gogo_protobuf//gogoproto",
-    ],
+    directives = ["gazelle:proto disable"],
+    path = "github.com/cockroachdb/errors",
+)
+go_deps.module_override(
+    patch_strip = 1,
+    patches = ["//build/patches:com_github_cockroachdb_errors.patch"],
     path = "github.com/cockroachdb/errors",
 )
 
-# etcd raft's raftpb.proto imports gogoproto/gogo.proto; gazelle needs to know
-# that resolves to the gogo-protobuf repo rather than an in-repo directory.
+# etcd raft uses gogo-generated raft.pb.go.  Disable gazelle proto generation
+# and supply raftpb_proto via a post-gazelle patch.
 go_deps.gazelle_override(
-    directives = [
-        "gazelle:proto default",
-        "gazelle:resolve proto proto gogoproto/gogo.proto @com_github_gogo_protobuf//gogoproto:gogoproto_proto",
-        "gazelle:resolve proto go gogoproto/gogo.proto @com_github_gogo_protobuf//gogoproto",
-    ],
+    directives = ["gazelle:proto disable"],
+    path = "go.etcd.io/raft/v3",
+)
+go_deps.module_override(
+    patch_strip = 1,
+    patches = ["//build/patches:io_etcd_go_raft_v3.patch"],
     path = "go.etcd.io/raft/v3",
 )
 
-# CRDB references target :gogo_proto on gogo-protobuf. gazelle names the
-# proto_library target <dir>_proto (gogoproto_proto), so we alias gogo_proto
-# to it via a post-gazelle patch.
+# gogo-protobuf's generated Go code uses gogo's own extension types that are
+# incompatible with the default rules_go go_proto_library compiler.  We keep
+# gazelle's default `gazelle:proto disable` for this module (so no
+# go_proto_library is emitted; the checked-in .pb.go files are compiled as
+# normal Go) and supply a proto_library target for gogo.proto via a post-
+# gazelle patch so downstream proto_library rules can depend on it.
 go_deps.gazelle_override(
-    build_file_generation = "off",
+    directives = ["gazelle:proto disable"],
     path = "github.com/gogo/protobuf",
+)
+go_deps.module_override(
+    patch_strip = 1,
+    patches = ["//build/patches:com_github_gogo_protobuf.patch"],
+    path = "github.com/gogo/protobuf",
+)
+
+# prometheus/client_model ships only a .proto file under io/prometheus/client
+# and checked-in .pb.go files under go/.  Disable gazelle proto generation;
+# the patch supplies the io_prometheus_client_proto target.
+go_deps.gazelle_override(
+    directives = ["gazelle:proto disable"],
+    path = "github.com/prometheus/client_model",
+)
+go_deps.module_override(
+    patch_strip = 1,
+    patches = ["//build/patches:com_github_prometheus_client_model.patch"],
+    path = "github.com/prometheus/client_model",
 )
 use_repo(
     go_deps,
@@ -264,6 +289,8 @@ use_repo(
     "io_vitess_vitess",
     "org_golang_google_api",
     "org_golang_google_genproto",
+    "org_golang_google_genproto_googleapis_api",
+    "org_golang_google_genproto_googleapis_rpc",
     "org_golang_google_grpc",
     "org_golang_google_protobuf",
     "org_golang_x_crypto",

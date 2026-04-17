@@ -8,13 +8,13 @@
 // by the Apache License, Version 2.0, included in the file
 // licenses/APL.txt.
 
-// See grunning.Supported() for an explanation behind this build tag.
-//
-//go:build freebsd || (linux && s390x) || !bazel
-// +build freebsd linux,s390x !bazel
-
 package grunning
 
+// grunningnanos used to linkname into a patched upstream runtime symbol
+// (runtime.grunningnanos) provided only by the forked CRDB Go toolchain.
+// Upstream Go does not export that symbol, and stdlib linkname restrictions
+// in go1.23+ forbid us from reaching into the runtime anyway, so report 0
+// and flag the facility as unsupported.
 func grunningnanos() int64 { return 0 }
 
 func supported() bool { return false }

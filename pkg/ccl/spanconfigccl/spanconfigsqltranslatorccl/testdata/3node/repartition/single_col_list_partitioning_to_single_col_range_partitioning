@@ -1,2 +1,0 @@
-repartition from=../partition/single_col_list_partitioning to=../partition/single_col_range_partitioning
-----

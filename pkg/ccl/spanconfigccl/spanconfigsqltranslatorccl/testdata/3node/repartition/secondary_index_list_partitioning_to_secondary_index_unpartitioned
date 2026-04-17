@@ -1,2 +1,0 @@
-repartition from=../partition/secondary_index_list_partitioning to=../partition/secondary_index_unpartitioned
-----

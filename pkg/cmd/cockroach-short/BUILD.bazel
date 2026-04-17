@@ -6,7 +6,6 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/cmd/cockroach-short",
     visibility = ["//visibility:private"],
     deps = [
-        "//pkg/ccl",
         "//pkg/cli",
     ],
 )

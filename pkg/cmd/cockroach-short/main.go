@@ -18,7 +18,6 @@
 package main
 
 import (
-	_ "github.com/cockroachdb/cockroach/pkg/ccl" // ccl init hooks
 	"github.com/cockroachdb/cockroach/pkg/cli"
 )
 

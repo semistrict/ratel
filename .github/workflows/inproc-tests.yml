@@ -1,0 +1,61 @@
+name: inproc-tests
+
+on:
+  push:
+    branches:
+      - main
+      - v23
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  inproc-tests:
+    runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y autoconf libedit-dev
+      - name: Toolchain setup
+        run: |
+          set -o xtrace
+          GO_VERSION=1.26.1
+          curl -sSfL --retry 10 -O "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz"
+          sudo tar -C /usr/local -xzf "go${GO_VERSION}.linux-amd64.tar.gz"
+          echo "/usr/local/go/bin" >> "$GITHUB_PATH"
+      - name: Build c-deps
+        run: make -j$(nproc) c-deps
+      - name: Run inproc tests
+        run: |
+          set -e
+          # Run each test individually to avoid goroutine leaks between
+          # non-synctest and synctest tests within the same test binary.
+          tests=(
+            TestInprocSmoke
+            TestSyncInprocSmoke
+            TestSyncTestSmoke
+            TestSyncRestart
+            TestSyncNetworkPartition
+            TestSyncFakeTime
+            TestSyncClockJump
+            TestAddVoters
+            TestSyncAddVoters
+            TestAutoReplication
+            TestSyncAutoReplication
+            TestSyncRaftRestartWithReplication
+            TestSyncLeaseTransfer
+            TestDecommission
+            TestSyncDecommission
+            TestLeaseTransferAfterAddVoters
+          )
+          for t in "${tests[@]}"; do
+            echo "=== Running $t ==="
+            make test PKG=./pkg/testutils/inproc TESTS="^${t}\$" TESTFLAGS="-v -count=1 -timeout 30s"
+          done

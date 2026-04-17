@@ -1,0 +1,41 @@
+name: synctest-jepsen
+
+on:
+  push:
+    branches:
+      - main
+      - v23
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  synctest-jepsen:
+    runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          submodules: true
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.1"
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y autoconf libedit-dev
+      - name: Vendor setup
+        run: make vendor/modules.txt
+      - name: Build c-deps
+        run: make -j$(nproc) c-deps
+      - name: Synctest Jepsen
+        run: |
+          set -euo pipefail
+          regex='^(TestSyncRestartThenFreshBubble|TestSyncJepsen.*|TestJepsen.*|TestRegistry(PartitionGrudgeClosesSpecifiedLinks|HealAllLinksPreservesBlockedNodes)|Test(RandomHalvesGrudge|MajoritiesRingGrudge))$'
+          tests=$(go test -mod=vendor ./pkg/testutils/inproc -list "$regex" | grep '^Test')
+          while IFS= read -r test; do
+            [ -n "$test" ] || continue
+            go test -mod=vendor ./pkg/testutils/inproc -run "^${test}$" -count=3 -timeout 60s -v
+          done <<< "$tests"

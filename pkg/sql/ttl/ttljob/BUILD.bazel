@@ -69,8 +69,6 @@ go_test(
     deps = [
         ":ttljob",
         "//pkg/base",
-        "//pkg/ccl/kvccl/kvtenantccl",
-        "//pkg/ccl/streamingccl/replicationtestutils",
         "//pkg/jobs",
         "//pkg/jobs/jobspb",
         "//pkg/jobs/jobstest",

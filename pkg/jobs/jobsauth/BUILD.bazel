@@ -23,7 +23,6 @@ go_test(
     args = ["-test.timeout=295s"],
     deps = [
         ":jobsauth",
-        "//pkg/ccl/changefeedccl",
         "//pkg/jobs/jobspb",
         "//pkg/security/username",
         "//pkg/sql/catalog",

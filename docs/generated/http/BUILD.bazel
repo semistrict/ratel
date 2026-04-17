@@ -78,10 +78,10 @@ genrule(
           --out $(RULEDIR) \
           --protoc-flags "--descriptor_set_in $$DESCRIPTOR_SET_IN server/serverpb/status.proto server/serverpb/admin.proto server/status/statuspb/status.proto"
     """,
-    tools =[
-        "@com_google_protobuf//:protoc",
-        "@com_github_pseudomuto_protoc_gen_doc//cmd/protoc-gen-doc",
+    tools = [
         "//pkg/cmd/docgen",
+        "@com_github_pseudomuto_protoc_gen_doc//cmd/protoc-gen-doc",
+        "@com_google_protobuf//:protoc",
     ],
     visibility = [
         ":__pkg__",

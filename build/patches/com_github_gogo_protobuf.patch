@@ -1,21 +1,13 @@
 diff --git a/gogoproto/BUILD.bazel b/gogoproto/BUILD.bazel
 --- a/gogoproto/BUILD.bazel
 +++ b/gogoproto/BUILD.bazel
-@@ -1,4 +1,5 @@
- load("@io_bazel_rules_go//go:def.bzl", "go_library")
-+load("@rules_proto//proto:defs.bzl", "proto_library")
-
- go_library(
-     name = "gogoproto",
-@@ -20,3 +21,11 @@ alias(
+@@ -15,3 +15,9 @@ alias(
      actual = ":gogoproto",
      visibility = ["//visibility:public"],
  )
 +
-+# keep
-+proto_library(
++alias(
 +    name = "gogo_proto",
-+    srcs = ["gogo.proto"],
-+    deps = ["@com_google_protobuf//:descriptor_proto"],
++    actual = ":gogoproto_proto",
 +    visibility = ["//visibility:public"],
 +)

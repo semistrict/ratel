@@ -1,6 +1,6 @@
-load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@com_google_protobuf//bazel:proto_library.bzl", "proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
 go_library(
     name = "scpb",
@@ -57,7 +57,7 @@ proto_library(
         "//pkg/sql/catalog/catpb:catpb_proto",
         "//pkg/sql/sem/semenumpb:semenumpb_proto",
         "//pkg/sql/types:types_proto",
-        "@com_github_gogo_protobuf//gogoproto:gogo_proto",
+        "@com_github_gogo_protobuf//gogoproto:gogoproto_proto",
     ],
 )
 
@@ -77,7 +77,7 @@ genrule(
     cmd = """
         $(location :element-generator) --in $< --out $(location elements_generated.go)
        """,
-    tools =[
+    tools = [
         ":element-generator",
     ],
     visibility = [
@@ -102,7 +102,7 @@ genrule(
     cmd = """
         $(location :element-uml-generator) --out $(location uml/table.puml)
        """,
-    tools =[
+    tools = [
         ":element-uml-generator",
     ],
     visibility = [

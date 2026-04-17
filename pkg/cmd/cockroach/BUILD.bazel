@@ -7,8 +7,6 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/cmd/cockroach",
     visibility = ["//visibility:private"],
     deps = [
-        "//pkg/ccl",
-        "//pkg/ccl/cliccl",
         "//pkg/cli",
         "//pkg/ui/distccl",
     ],

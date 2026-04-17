@@ -30,7 +30,6 @@ go_test(
     deps = [
         ":structlogging",
         "//pkg/base",
-        "//pkg/ccl",
         "//pkg/keys",
         "//pkg/kv/kvserver",
         "//pkg/roachpb",

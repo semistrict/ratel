@@ -1,8 +1,8 @@
-exports_files(["nogo_config.json"])
-
 load("@bazel_skylib//rules:analysis_test.bzl", "analysis_test")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load(":lint.bzl", "lint_binary")
+
+exports_files(["nogo_config.json"])
 
 analysis_test(
     name = "test_nogo_configured",

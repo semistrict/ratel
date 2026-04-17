@@ -2,7 +2,7 @@ genrule(
     name = "settings",
     outs = ["settings.html"],
     cmd = "$(location //pkg/cmd/cockroach-short) gen settings-list --format=rawhtml > $@",
-    tools =["//pkg/cmd/cockroach-short"],
+    tools = ["//pkg/cmd/cockroach-short"],
     visibility = [
         ":__pkg__",
         "//pkg/gen:__pkg__",
@@ -13,7 +13,7 @@ genrule(
     name = "settings_for_tenants",
     outs = ["settings-for-tenants.txt"],
     cmd = "$(location //pkg/cmd/cockroach-short) gen settings-list --without-system-only > $@",
-    tools =["//pkg/cmd/cockroach-short"],
+    tools = ["//pkg/cmd/cockroach-short"],
     visibility = [
         ":__pkg__",
         "//pkg/gen:__pkg__",

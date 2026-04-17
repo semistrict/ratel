@@ -20,6 +20,6 @@ go_library(
         "//pkg/util/stop",
         "//pkg/util/timeutil",
         "//pkg/util/uuid",
-        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//:grpc",
     ],
 )

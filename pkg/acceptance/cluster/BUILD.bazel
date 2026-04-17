@@ -1,6 +1,6 @@
-load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@com_google_protobuf//bazel:proto_library.bzl", "proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
 go_library(
     name = "cluster",
@@ -52,7 +52,7 @@ proto_library(
     srcs = ["testconfig.proto"],
     strip_import_prefix = "/pkg",
     visibility = ["//visibility:public"],
-    deps = ["@com_github_gogo_protobuf//gogoproto:gogo_proto"],
+    deps = ["@com_github_gogo_protobuf//gogoproto:gogoproto_proto"],
 )
 
 go_proto_library(

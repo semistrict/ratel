@@ -178,10 +178,6 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/base",
-        "//pkg/ccl/changefeedccl",
-        "//pkg/ccl/changefeedccl/cdctest",
-        "//pkg/ccl/changefeedccl/changefeedbase",
-        "//pkg/ccl/streamingccl/replicationutils",
         "//pkg/cli",
         "//pkg/cli/clisqlclient",
         "//pkg/cloud",

@@ -1,6 +1,6 @@
-load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@com_google_protobuf//bazel:proto_library.bzl", "proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("//build:STRINGER.bzl", "stringer")
 
 go_library(
@@ -220,7 +220,7 @@ go_library(
         "@io_etcd_go_raft_v3//raftpb",
         "@io_etcd_go_raft_v3//tracker",
         "@io_opentelemetry_go_otel//attribute",
-        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//:grpc",
         "@org_golang_x_time//rate",
     ],
 )
@@ -341,7 +341,6 @@ go_test(
     tags = ["cpu:2"],
     deps = [
         "//pkg/base",
-        "//pkg/ccl",
         "//pkg/cli/exit",
         "//pkg/clusterversion",
         "//pkg/config",
@@ -485,7 +484,7 @@ go_test(
         "@io_etcd_go_raft_v3//confchange",
         "@io_etcd_go_raft_v3//raftpb",
         "@io_etcd_go_raft_v3//tracker",
-        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//:grpc",
         "@org_golang_google_grpc//metadata",
         "@org_golang_x_net//trace",
         "@org_golang_x_sync//errgroup",
@@ -506,7 +505,7 @@ proto_library(
         "//pkg/kv/kvserver/kvserverpb:kvserverpb_proto",
         "//pkg/roachpb:roachpb_proto",
         "//pkg/storage/enginepb:enginepb_proto",
-        "@com_github_gogo_protobuf//gogoproto:gogo_proto",
+        "@com_github_gogo_protobuf//gogoproto:gogoproto_proto",
     ],
 )
 

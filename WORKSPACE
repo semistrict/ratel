@@ -47,15 +47,9 @@ http_archive(
     ],
 )
 
-# Load up cockroachdb's go dependencies (the ones listed under go.mod). The
-# `DEPS.bzl` file is kept up to date using `build/bazelutil/bazel-generate.sh`.
-load("//:DEPS.bzl", "go_deps")
-
-# VERY IMPORTANT that we call into this function to prefer our pinned versions
-# of the dependencies to any that might be pulled in via functions like
-# `go_rules_dependencies`, `gazelle_dependencies`, etc.
-# gazelle:repository_macro DEPS.bzl%go_deps
-go_deps()
+# Go module dependencies are declared in MODULE.bazel via gazelle's bzlmod
+# go_deps extension (sourced from //:go.mod). DEPS.bzl is retained only as an
+# auxiliary record gazelle's update-repos writes to; it is not loaded here.
 
 ####### THIRD-PARTY DEPENDENCIES #######
 # Below we need to call into various helper macros to pull dependencies for
@@ -294,13 +288,12 @@ load(
 # co_honnef_go_tools handled in DEPS.bzl.
 
 # keep
-go_repository(
+http_archive(
     name = "com_github_bazelbuild_buildtools",
-    importpath = "github.com/bazelbuild/buildtools",
-    sha256 = "a9ef5103739dfb5ed2a5b47ab1654842a89695812e4af09e57d7015a5caf97e0",
-    strip_prefix = "buildtools",
+    sha256 = "f3b800e9f6ca60bdef3709440f393348f7c18a29f30814288a7326285c80aab9",
+    strip_prefix = "buildtools-8.5.1",
     urls = [
-        "https://storage.googleapis.com/public-bazel-artifacts/gomod/github.com/bazelbuild/buildtools/v0.0.0-20200718160251-b1667ff58f71/buildtools-v0.0.0-20200718160251-b1667ff58f71.tar.gz",
+        "https://github.com/bazelbuild/buildtools/archive/refs/tags/v8.5.1.tar.gz",
     ],
 )
 
@@ -310,10 +303,10 @@ go_repository(
 go_repository(
     name = "com_github_bmatcuk_doublestar_v4",
     importpath = "github.com/bmatcuk/doublestar/v4",
-    sha256 = "d11c3b3a45574f89d6a6b2f50e53feea50df60407b35f36193bf5815d32c79d1",
-    strip_prefix = "bmatcuk-doublestar-f7a8118",
+    sha256 = "5d178e61fe67b3ae3ea46f023b2fbfaf0400e6ee74fe5cef1074690305a3f4f6",
+    strip_prefix = "doublestar-4.10.0",
     urls = [
-        "https://storage.googleapis.com/public-bazel-artifacts/bazel/bmatcuk-doublestar-v4.0.1-0-gf7a8118.tar.gz",
+        "https://github.com/bmatcuk/doublestar/archive/refs/tags/v4.10.0.tar.gz",
     ],
 )
 
@@ -426,6 +419,10 @@ http_archive(
 )
 
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
+load("//:DEPS.bzl", "go_deps")
+
+# gazelle:repository_macro DEPS.bzl%go_deps
+go_deps()
 
 protobuf_deps()
 
@@ -581,4 +578,3 @@ http_archive(
 load("//build/bazelutil:repositories.bzl", "distdir_repositories")
 
 distdir_repositories()
-

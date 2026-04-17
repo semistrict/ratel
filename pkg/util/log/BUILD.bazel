@@ -114,7 +114,13 @@ go_library(
         "@io_bazel_rules_go//go/platform:openbsd": [
             "@org_golang_x_sys//unix",
         ],
+        "@io_bazel_rules_go//go/platform:osx": [
+            "@org_golang_x_sys//unix",
+        ],
         "@io_bazel_rules_go//go/platform:plan9": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:qnx": [
             "@org_golang_x_sys//unix",
         ],
         "@io_bazel_rules_go//go/platform:solaris": [
@@ -202,7 +208,7 @@ genrule(
         $(location //pkg/util/log/gen) $(location //pkg/util/log/logpb:log.proto) \
           log_channels.go $(location log_channels_generated.go)
        """,
-    tools =[
+    tools = [
         "//pkg/util/log/gen",
     ],
     visibility = [

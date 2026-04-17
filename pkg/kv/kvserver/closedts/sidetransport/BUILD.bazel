@@ -1,5 +1,5 @@
-load("//build:STRINGER.bzl", "stringer")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("//build:STRINGER.bzl", "stringer")
 
 go_library(
     name = "sidetransport",
@@ -26,7 +26,7 @@ go_library(
         "//pkg/util/syncutil",
         "//pkg/util/timeutil",
         "@com_github_cockroachdb_errors//:errors",
-        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//:grpc",
     ],
 )
 
@@ -53,7 +53,7 @@ go_test(
         "//pkg/util/syncutil",
         "@com_github_cockroachdb_errors//:errors",
         "@com_github_stretchr_testify//require",
-        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//:grpc",
     ],
 )
 

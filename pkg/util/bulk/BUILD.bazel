@@ -17,7 +17,6 @@ go_test(
     args = ["-test.timeout=295s"],
     deps = [
         ":bulk",
-        "//pkg/ccl/backupccl/backuppb",
         "//pkg/kv/bulk/bulkpb",
         "//pkg/roachpb",
         "//pkg/util/tracing",

@@ -1,4 +1,4 @@
-load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@com_google_protobuf//bazel:proto_library.bzl", "proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
@@ -9,7 +9,7 @@ proto_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/roachpb:roachpb_proto",
-        "@com_github_gogo_protobuf//gogoproto:gogo_proto",
+        "@com_github_gogo_protobuf//gogoproto:gogoproto_proto",
         "@com_google_protobuf//:timestamp_proto",
         "@go_googleapis//google/api:annotations_proto",
     ],
@@ -24,7 +24,7 @@ go_proto_library(
     deps = [
         "//pkg/roachpb",
         "@com_github_gogo_protobuf//gogoproto",
-        "@org_golang_google_genproto//googleapis/api/annotations:go_default_library",
+        "@org_golang_google_genproto_googleapis_api//annotations",
     ],
 )
 

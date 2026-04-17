@@ -51,7 +51,13 @@ go_library(
         "@io_bazel_rules_go//go/platform:openbsd": [
             "@org_golang_x_sys//unix",
         ],
+        "@io_bazel_rules_go//go/platform:osx": [
+            "@org_golang_x_sys//unix",
+        ],
         "@io_bazel_rules_go//go/platform:plan9": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:qnx": [
             "@org_golang_x_sys//unix",
         ],
         "@io_bazel_rules_go//go/platform:solaris": [
@@ -119,7 +125,15 @@ go_test(
             "@com_github_stretchr_testify//assert",
             "@org_golang_x_sys//unix",
         ],
+        "@io_bazel_rules_go//go/platform:osx": [
+            "@com_github_stretchr_testify//assert",
+            "@org_golang_x_sys//unix",
+        ],
         "@io_bazel_rules_go//go/platform:plan9": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:qnx": [
+            "@com_github_stretchr_testify//assert",
             "@org_golang_x_sys//unix",
         ],
         "@io_bazel_rules_go//go/platform:solaris": [

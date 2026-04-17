@@ -71,7 +71,6 @@ go_test(
     tags = ["no-remote"],
     deps = [
         "//pkg/base",
-        "//pkg/ccl/kvccl/kvtenantccl",
         "//pkg/gossip",
         "//pkg/keys",
         "//pkg/kv",

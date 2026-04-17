@@ -69,7 +69,6 @@ go_test(
     embed = [":randgen"],
     deps = [
         "//pkg/base",
-        "//pkg/ccl",
         "//pkg/security/securityassets",
         "//pkg/security/securitytest",
         "//pkg/server",

@@ -237,6 +237,30 @@ go_test(
             "//pkg/util/syncutil",
             "@com_github_stretchr_testify//require",
         ],
+        "@io_bazel_rules_go//go/platform:osx_386": [
+            ":grunning",
+            "//pkg/testutils/skip",
+            "//pkg/util/syncutil",
+            "@com_github_stretchr_testify//require",
+        ],
+        "@io_bazel_rules_go//go/platform:osx_amd64": [
+            ":grunning",
+            "//pkg/testutils/skip",
+            "//pkg/util/syncutil",
+            "@com_github_stretchr_testify//require",
+        ],
+        "@io_bazel_rules_go//go/platform:osx_arm": [
+            ":grunning",
+            "//pkg/testutils/skip",
+            "//pkg/util/syncutil",
+            "@com_github_stretchr_testify//require",
+        ],
+        "@io_bazel_rules_go//go/platform:osx_arm64": [
+            ":grunning",
+            "//pkg/testutils/skip",
+            "//pkg/util/syncutil",
+            "@com_github_stretchr_testify//require",
+        ],
         "@io_bazel_rules_go//go/platform:plan9_386": [
             ":grunning",
             "//pkg/testutils/skip",
@@ -250,6 +274,30 @@ go_test(
             "@com_github_stretchr_testify//require",
         ],
         "@io_bazel_rules_go//go/platform:plan9_arm": [
+            ":grunning",
+            "//pkg/testutils/skip",
+            "//pkg/util/syncutil",
+            "@com_github_stretchr_testify//require",
+        ],
+        "@io_bazel_rules_go//go/platform:qnx_386": [
+            ":grunning",
+            "//pkg/testutils/skip",
+            "//pkg/util/syncutil",
+            "@com_github_stretchr_testify//require",
+        ],
+        "@io_bazel_rules_go//go/platform:qnx_amd64": [
+            ":grunning",
+            "//pkg/testutils/skip",
+            "//pkg/util/syncutil",
+            "@com_github_stretchr_testify//require",
+        ],
+        "@io_bazel_rules_go//go/platform:qnx_arm": [
+            ":grunning",
+            "//pkg/testutils/skip",
+            "//pkg/util/syncutil",
+            "@com_github_stretchr_testify//require",
+        ],
+        "@io_bazel_rules_go//go/platform:qnx_arm64": [
             ":grunning",
             "//pkg/testutils/skip",
             "//pkg/util/syncutil",
@@ -274,6 +322,12 @@ go_test(
             "@com_github_stretchr_testify//require",
         ],
         "@io_bazel_rules_go//go/platform:windows_arm": [
+            ":grunning",
+            "//pkg/testutils/skip",
+            "//pkg/util/syncutil",
+            "@com_github_stretchr_testify//require",
+        ],
+        "@io_bazel_rules_go//go/platform:windows_arm64": [
             ":grunning",
             "//pkg/testutils/skip",
             "//pkg/util/syncutil",

@@ -70,7 +70,6 @@ go_test(
     deps = [
         "//pkg/base",
         "//pkg/bench",
-        "//pkg/ccl",
         "//pkg/cloud/impl:cloudimpl",
         "//pkg/clusterversion",
         "//pkg/config/zonepb",

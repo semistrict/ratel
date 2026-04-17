@@ -153,6 +153,11 @@ type TestServerArgs struct {
 	// config span.
 	DisableSpanConfigs bool
 
+	// SQLDialFunc, if set, is used to dial SQL (pgwire) connections instead
+	// of the default TCP dialer. This is needed for in-process test clusters
+	// that use in-memory networking where no real TCP port is listening.
+	SQLDialFunc func(network, addr string) (net.Conn, error)
+
 	// TestServer will probabilistically start a single test tenant on each
 	// node for multi-tenant testing, and default all connections through that
 	// tenant. Use this flag to disable that behavior. You might want/need to

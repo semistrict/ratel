@@ -239,6 +239,17 @@ func makeTestConfigFromParams(params base.TestServerArgs) Config {
 		cfg.SQLAdvertiseAddr = params.SQLAddr
 		cfg.SplitListenSQL = true
 	}
+	if knobs := cfg.TestingKnobs.Server; knobs != nil {
+		if knobs.(*TestingKnobs).ShareRPCListenSQL {
+			cfg.SplitListenSQL = false
+			// When the SQL endpoint shares the RPC listener via cmux, the SQL
+			// advertise host will be derived from the advertised RPC host in
+			// UpdateAddrs. Mirror cfg.AdvertiseAddr here so the SQL advertise
+			// host doesn't keep an unrelated IsolatedTestAddr.
+			cfg.SQLAddr = cfg.Addr
+			cfg.SQLAdvertiseAddr = cfg.AdvertiseAddr
+		}
+	}
 	if params.HTTPAddr != "" {
 		cfg.HTTPAddr = params.HTTPAddr
 	}

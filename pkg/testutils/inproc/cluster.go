@@ -1,0 +1,117 @@
+// Copyright 2025 The Cockroach Authors.
+//
+// Use of this software is governed by the Business Source License
+// included in the file licenses/BSL.txt.
+//
+// As of the Change Date specified in that file, in accordance with
+// the Business Source License, use of this software will be governed
+// by the Apache License, Version 2.0, included in the file
+// licenses/APL.txt.
+
+package inproc
+
+import (
+	"context"
+	"fmt"
+	"testing"
+
+	"github.com/cockroachdb/cockroach/pkg/base"
+	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/cockroachdb/cockroach/pkg/server"
+	"github.com/cockroachdb/cockroach/pkg/testutils/testcluster"
+)
+
+// Cluster is a TestCluster wrapper that uses in-memory networking
+// (via Registry) instead of real TCP. It is designed for use inside
+// a synctest bubble where all I/O must be virtualized.
+type Cluster struct {
+	*testcluster.TestCluster
+	Registry *Registry
+	addrs    []string
+}
+
+// StartCluster creates and starts a multi-node in-process cluster
+// with in-memory networking. All gRPC connections between nodes go
+// through the Registry's in-memory transport. HTTP and SQL listeners
+// are also in-memory (SQL shares the RPC listener via cmux).
+func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterArgs)) *Cluster {
+	registry := NewRegistry()
+
+	clusterArgs := base.TestClusterArgs{
+		ReplicationMode:   base.ReplicationManual,
+		ServerArgsPerNode: make(map[int]base.TestServerArgs),
+	}
+
+	for _, fn := range extraArgs {
+		fn(&clusterArgs)
+	}
+
+	addrs := make([]string, nodes)
+
+	for i := 0; i < nodes; i++ {
+		rpcAddr := fmt.Sprintf("127.0.0.1:%d", 26257+i)
+		httpAddr := fmt.Sprintf("127.0.0.1:%d", 8080+i)
+		addrs[i] = rpcAddr
+
+		rpcListener := registry.Register(rpcAddr)
+		httpListener := NewListener(httpAddr)
+
+		args := clusterArgs.ServerArgsPerNode[i]
+		args.Insecure = true
+		args.Addr = rpcAddr
+		// Route SQL client connections through the in-memory registry.
+		args.SQLDialFunc = registry.SQLDialFunc()
+		// Install the in-memory listener via the TestServerArgs.Listener
+		// field. testcluster.StartTestCluster propagates this into
+		// TestingKnobs.RPCListener automatically.
+		args.Listener = rpcListener
+		// Do NOT set args.SQLAddr — this keeps SplitListenSQL=false so
+		// SQL shares the RPC listener via cmux (already in-memory).
+		args.Locality = roachpb.Locality{
+			Tiers: []roachpb.Tier{
+				{Key: "region", Value: "test"},
+				{Key: "dc", Value: fmt.Sprintf("dc%d", i+1)},
+			},
+		}
+
+		serverKnobs := args.Knobs.Server
+		if serverKnobs == nil {
+			serverKnobs = &server.TestingKnobs{}
+		}
+		tk := serverKnobs.(*server.TestingKnobs)
+		tk.HTTPListener = httpListener
+		tk.ShareRPCListenSQL = true
+		tk.ContextTestingKnobs.DialerFunc = registry.Dial
+		args.Knobs.Server = tk
+
+		clusterArgs.ServerArgsPerNode[i] = args
+	}
+
+	tc := testcluster.StartTestCluster(t, nodes, clusterArgs)
+	return &Cluster{
+		TestCluster: tc,
+		Registry:    registry,
+		addrs:       addrs,
+	}
+}
+
+// PartitionNode blocks all new inbound connections to the given node.
+func (c *Cluster) PartitionNode(nodeIdx int) {
+	c.Registry.Block(c.addrs[nodeIdx])
+}
+
+// HealPartition restores connectivity to a previously partitioned node.
+func (c *Cluster) HealPartition(nodeIdx int) {
+	c.Registry.Unblock(c.addrs[nodeIdx])
+}
+
+// NodeAddr returns the in-memory address for the given node index.
+func (c *Cluster) NodeAddr(nodeIdx int) string {
+	return c.addrs[nodeIdx]
+}
+
+// Stop stops the cluster and closes the registry.
+func (c *Cluster) Stop() {
+	c.Stopper().Stop(context.Background())
+	c.Registry.Close()
+}

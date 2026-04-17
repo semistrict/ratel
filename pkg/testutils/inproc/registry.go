@@ -1,0 +1,124 @@
+// Copyright 2025 The Cockroach Authors.
+//
+// Use of this software is governed by the Business Source License
+// included in the file licenses/BSL.txt.
+//
+// As of the Change Date specified in that file, in accordance with
+// the Business Source License, use of this software will be governed
+// by the Apache License, Version 2.0, included in the file
+// licenses/APL.txt.
+
+package inproc
+
+import (
+	"context"
+	"net"
+	"sync"
+
+	"github.com/cockroachdb/errors"
+)
+
+// Registry is an in-memory network that maps addresses to Listeners.
+// It provides a Dial function that routes connections through the
+// appropriate in-memory listener, and supports partitioning nodes by
+// blocking their addresses.
+type Registry struct {
+	mu        sync.Mutex
+	listeners map[string]*Listener
+	blocked   map[string]bool
+}
+
+// NewRegistry creates a new in-memory network registry.
+func NewRegistry() *Registry {
+	return &Registry{
+		listeners: make(map[string]*Listener),
+		blocked:   make(map[string]bool),
+	}
+}
+
+// Register creates and registers a new in-memory listener for the given
+// address. Panics if the address is already registered.
+func (r *Registry) Register(addr string) *Listener {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.listeners[addr]; ok {
+		panic(errors.Newf("address %q already registered", addr))
+	}
+	l := NewListener(addr)
+	r.listeners[addr] = l
+	return l
+}
+
+// Dial connects to the listener at the given address. Returns an error
+// if the address is not registered, is blocked (partitioned), or the
+// context is canceled.
+func (r *Registry) Dial(ctx context.Context, addr string) (net.Conn, error) {
+	r.mu.Lock()
+	if r.blocked[addr] {
+		r.mu.Unlock()
+		return nil, errors.Newf("connection to %q refused: node is partitioned", addr)
+	}
+	l, ok := r.listeners[addr]
+	r.mu.Unlock()
+	if !ok {
+		return nil, errors.Newf("no listener registered for %q", addr)
+	}
+	return l.Dial(ctx)
+}
+
+// DialerFunc returns a function compatible with
+// rpc.ContextTestingKnobs.DialerFunc that routes all gRPC connections
+// through this registry.
+func (r *Registry) DialerFunc() func(ctx context.Context, addr string) (net.Conn, error) {
+	return r.Dial
+}
+
+// SQLDialFunc returns a function compatible with
+// base.TestServerArgs.SQLDialFunc that routes SQL (pgwire) connections
+// through this registry.
+func (r *Registry) SQLDialFunc() func(network, addr string) (net.Conn, error) {
+	return func(network, addr string) (net.Conn, error) {
+		return r.Dial(context.Background(), addr)
+	}
+}
+
+// Block prevents new connections to the given address, simulating a
+// network partition. Existing connections are not affected.
+func (r *Registry) Block(addr string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.blocked[addr] = true
+}
+
+// Unblock re-allows connections to the given address, healing a
+// simulated partition.
+func (r *Registry) Unblock(addr string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.blocked, addr)
+}
+
+// Unregister removes a listener from the registry and closes it.
+func (r *Registry) Unregister(addr string) {
+	r.mu.Lock()
+	l, ok := r.listeners[addr]
+	if ok {
+		delete(r.listeners, addr)
+	}
+	r.mu.Unlock()
+	if ok {
+		_ = l.Close()
+	}
+}
+
+// Close closes all listeners and clears the registry.
+func (r *Registry) Close() {
+	r.mu.Lock()
+	listeners := r.listeners
+	r.listeners = make(map[string]*Listener)
+	r.blocked = make(map[string]bool)
+	r.mu.Unlock()
+	for _, l := range listeners {
+		_ = l.Close()
+	}
+}

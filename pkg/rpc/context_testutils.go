@@ -12,6 +12,7 @@ package rpc
 
 import (
 	"context"
+	"net"
 	"time"
 
 	"github.com/cockroachdb/cockroach/pkg/base"
@@ -48,6 +49,12 @@ type ContextTestingKnobs struct {
 
 	// InjectedLatencyEnabled is used to turn on or off the InjectedLatencyOracle.
 	InjectedLatencyEnabled func() bool
+
+	// DialerFunc if non-nil replaces the default TCP dialer used for gRPC
+	// client connections. This allows tests to use in-memory transports
+	// (e.g. net.Pipe) instead of real network connections, which is required
+	// for running clusters under testing/synctest.
+	DialerFunc func(ctx context.Context, addr string) (net.Conn, error)
 
 	// StorageClusterID initializes the Context's StorageClusterID container to
 	// this value if non-nil at construction time.

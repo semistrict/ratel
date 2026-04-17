@@ -22,9 +22,12 @@ import (
 	gosql "database/sql"
 	"flag"
 	"math/rand"
+	"net"
 	"net/url"
 	"testing"
 	"time"
+
+	pq "github.com/lib/pq"
 
 	"github.com/cockroachdb/cockroach/pkg/base"
 	"github.com/cockroachdb/cockroach/pkg/kv"
@@ -392,6 +395,57 @@ func OpenDBConn(
 		t.Fatal(err)
 	}
 	return conn
+}
+
+// pqDialer adapts a plain dial function to the pq.Dialer interface.
+type pqDialer struct {
+	dialFunc func(network, addr string) (net.Conn, error)
+}
+
+func (d pqDialer) Dial(network, address string) (net.Conn, error) {
+	return d.dialFunc(network, address)
+}
+
+func (d pqDialer) DialTimeout(
+	network, address string, _ time.Duration,
+) (net.Conn, error) {
+	return d.dialFunc(network, address)
+}
+
+// OpenDBConnWithDialerE is like OpenDBConnE but uses the provided dial
+// function instead of real TCP. This is needed for in-process test clusters
+// that use in-memory networking.
+func OpenDBConnWithDialerE(
+	sqlAddr string,
+	useDatabase string,
+	insecure bool,
+	stopper *stop.Stopper,
+	dialFunc func(network, addr string) (net.Conn, error),
+) (*gosql.DB, error) {
+	pgURL, cleanupGoDB, err := sqlutils.PGUrlE(
+		sqlAddr, "StartServer" /* prefix */, url.User(username.RootUser))
+	if err != nil {
+		return nil, err
+	}
+
+	pgURL.Path = useDatabase
+	if insecure {
+		pgURL.RawQuery = "sslmode=disable"
+	}
+	connector, err := pq.NewConnector(pgURL.String())
+	if err != nil {
+		cleanupGoDB()
+		return nil, err
+	}
+	connector.Dialer(pqDialer{dialFunc: dialFunc})
+	goDB := gosql.OpenDB(connector)
+
+	stopper.AddCloser(
+		stop.CloserFn(func() {
+			_ = goDB.Close()
+			cleanupGoDB()
+		}))
+	return goDB, nil
 }
 
 // StartServerRaw creates and starts a TestServer.

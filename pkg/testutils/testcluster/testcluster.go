@@ -600,8 +600,16 @@ func (tc *TestCluster) startServer(idx int, serverArgs base.TestServerArgs) erro
 		return err
 	}
 
-	dbConn, err := serverutils.OpenDBConnE(
-		server.ServingSQLAddr(), serverArgs.UseDatabase, serverArgs.Insecure, server.Stopper())
+	var dbConn *gosql.DB
+	var err error
+	if serverArgs.SQLDialFunc != nil {
+		dbConn, err = serverutils.OpenDBConnWithDialerE(
+			server.ServingSQLAddr(), serverArgs.UseDatabase, serverArgs.Insecure,
+			server.Stopper(), serverArgs.SQLDialFunc)
+	} else {
+		dbConn, err = serverutils.OpenDBConnE(
+			server.ServingSQLAddr(), serverArgs.UseDatabase, serverArgs.Insecure, server.Stopper())
+	}
 	if err != nil {
 		return err
 	}
@@ -609,8 +617,14 @@ func (tc *TestCluster) startServer(idx int, serverArgs base.TestServerArgs) erro
 	// For the first server started, populate the host cluster connection.
 	var hostDbConn *gosql.DB
 	if idx == 0 {
-		hostDbConn, err = serverutils.OpenDBConnE(
-			server.HostSQLAddr(), serverArgs.UseDatabase, serverArgs.Insecure, server.Stopper())
+		if serverArgs.SQLDialFunc != nil {
+			hostDbConn, err = serverutils.OpenDBConnWithDialerE(
+				server.HostSQLAddr(), serverArgs.UseDatabase, serverArgs.Insecure,
+				server.Stopper(), serverArgs.SQLDialFunc)
+		} else {
+			hostDbConn, err = serverutils.OpenDBConnE(
+				server.HostSQLAddr(), serverArgs.UseDatabase, serverArgs.Insecure, server.Stopper())
+		}
 		if err != nil {
 			return err
 		}
@@ -1686,8 +1700,15 @@ func (tc *TestCluster) RestartServerWithInspect(idx int, inspect func(s *server.
 			return err
 		}
 
-		dbConn, err := serverutils.OpenDBConnE(srv.ServingSQLAddr(),
-			serverArgs.UseDatabase, serverArgs.Insecure, srv.Stopper())
+		var dbConn *gosql.DB
+		var err error
+		if serverArgs.SQLDialFunc != nil {
+			dbConn, err = serverutils.OpenDBConnWithDialerE(srv.ServingSQLAddr(),
+				serverArgs.UseDatabase, serverArgs.Insecure, srv.Stopper(), serverArgs.SQLDialFunc)
+		} else {
+			dbConn, err = serverutils.OpenDBConnE(srv.ServingSQLAddr(),
+				serverArgs.UseDatabase, serverArgs.Insecure, srv.Stopper())
+		}
 		if err != nil {
 			return err
 		}

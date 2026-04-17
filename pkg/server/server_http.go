@@ -14,6 +14,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"net"
 	"net/http"
 	"strings"
 
@@ -294,9 +295,18 @@ func startHTTPService(
 	stopper *stop.Stopper,
 	handler http.HandlerFunc,
 ) error {
-	httpLn, err := ListenAndUpdateAddrs(ctx, &cfg.HTTPAddr, &cfg.HTTPAdvertiseAddr, "http")
-	if err != nil {
-		return err
+	var httpLn net.Listener
+	if k := cfg.TestingKnobs.Server; k != nil {
+		if knobs := k.(*TestingKnobs); knobs.HTTPListener != nil {
+			httpLn = knobs.HTTPListener
+		}
+	}
+	if httpLn == nil {
+		var err error
+		httpLn, err = ListenAndUpdateAddrs(ctx, &cfg.HTTPAddr, &cfg.HTTPAdvertiseAddr, "http")
+		if err != nil {
+			return err
+		}
 	}
 	log.Eventf(ctx, "listening on http port %s", cfg.HTTPAddr)
 

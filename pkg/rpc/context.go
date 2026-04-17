@@ -1848,7 +1848,12 @@ func (rpcCtx *Context) dialOptsNetwork(
 	// which is only definitely provided during dial.
 	dialer := onlyOnceDialer{}
 	dialerFunc := dialer.dial
-	if rpcCtx.Knobs.InjectedLatencyOracle != nil {
+	if rpcCtx.Knobs.DialerFunc != nil {
+		// Use the injected dialer (e.g. in-memory net.Pipe transport).
+		// This bypasses the onlyOnceDialer and artificial latency since
+		// the caller controls the transport entirely.
+		dialerFunc = rpcCtx.Knobs.DialerFunc
+	} else if rpcCtx.Knobs.InjectedLatencyOracle != nil {
 		latency := rpcCtx.Knobs.InjectedLatencyOracle.GetLatency(target)
 		log.VEventf(ctx, 1, "connecting with simulated latency %dms",
 			latency)

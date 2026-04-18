@@ -14,6 +14,7 @@ import (
 	"context"
 	"testing"
 	"testing/synctest"
+	"time"
 
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/testutils/inproc"
@@ -71,5 +72,64 @@ func TestSyncTestSmoke(t *testing.T) {
 		val, err := db.Get(t.Context(), roachpb.Key("hello"))
 		require.NoError(t, err)
 		require.Equal(t, []byte("world"), val.ValueBytes())
+	})
+}
+
+// TestSyncFakeTime verifies that synctest's fake clock controls
+// CockroachDB's HLC.
+func TestSyncFakeTime(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+	defer log.Scope(t).Close(t)
+
+	synctest.Test(t, func(t *testing.T) {
+		c := inproc.StartCluster(t, 1)
+		defer c.Stop()
+
+		clock := c.Server(0).Clock()
+
+		// synctest starts at midnight UTC 2000-01-01.
+		ts1 := clock.Now()
+		require.Equal(t, 2000, ts1.GoTime().Year())
+
+		time.Sleep(time.Hour)
+
+		ts2 := clock.Now()
+		elapsed := ts2.GoTime().Sub(ts1.GoTime())
+		require.GreaterOrEqual(t, elapsed, time.Hour)
+	})
+}
+
+// TestSyncClockJump reimplements the "clock-jump" roachtest: verify
+// that the HLC tracks time advancement correctly under synctest's
+// full control over time progression.
+func TestSyncClockJump(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+	defer log.Scope(t).Close(t)
+
+	synctest.Test(t, func(t *testing.T) {
+		c := inproc.StartCluster(t, 1)
+		defer c.Stop()
+
+		ctx := t.Context()
+		db := c.Server(0).DB()
+		clock := c.Server(0).Clock()
+
+		require.NoError(t, db.Put(ctx, roachpb.Key("t0"), []byte("before")))
+		t0 := clock.Now()
+
+		time.Sleep(10 * time.Minute)
+
+		require.NoError(t, db.Put(ctx, roachpb.Key("t1"), []byte("after")))
+		t1 := clock.Now()
+
+		require.GreaterOrEqual(t, t1.WallTime-t0.WallTime, int64(10*time.Minute))
+
+		v0, err := db.Get(ctx, roachpb.Key("t0"))
+		require.NoError(t, err)
+		require.Equal(t, []byte("before"), v0.ValueBytes())
+
+		v1, err := db.Get(ctx, roachpb.Key("t1"))
+		require.NoError(t, err)
+		require.Equal(t, []byte("after"), v1.ValueBytes())
 	})
 }

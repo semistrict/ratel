@@ -24,9 +24,11 @@ go_test(
     srcs = [
         "cluster_test.go",
         "main_test.go",
+        "raft_test.go",
     ],
     deps = [
         ":inproc",
+        "//pkg/keys",
         "//pkg/roachpb",
         "//pkg/security/securityassets",
         "//pkg/security/securitytest",

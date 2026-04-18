@@ -13,6 +13,7 @@ package inproc
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"testing"
 
 	"github.com/cockroachdb/cockroach/pkg/base"
@@ -21,6 +22,11 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/server"
 	"github.com/cockroachdb/cockroach/pkg/testutils/testcluster"
 )
+
+// nextClusterAddrBase assigns disjoint port ranges to successive
+// StartCluster invocations so tests running in the same process don't
+// share addresses (which can leave stale gRPC connection state).
+var nextClusterAddrBase atomic.Uint64
 
 // Cluster is a TestCluster wrapper that uses in-memory networking
 // (via Registry) instead of real TCP. It is designed for use inside
@@ -37,6 +43,11 @@ type Cluster struct {
 // are also in-memory (SQL shares the RPC listener via cmux).
 func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterArgs)) *Cluster {
 	registry := NewRegistry()
+	clusterBase := nextClusterAddrBase.Add(100)
+	if clusterBase == 100 {
+		clusterBase = 30000
+		nextClusterAddrBase.Store(clusterBase)
+	}
 
 	clusterArgs := base.TestClusterArgs{
 		ReplicationMode:   base.ReplicationManual,
@@ -50,8 +61,8 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 	addrs := make([]string, nodes)
 
 	for i := 0; i < nodes; i++ {
-		rpcAddr := fmt.Sprintf("127.0.0.1:%d", 26257+i)
-		httpAddr := fmt.Sprintf("127.0.0.1:%d", 8080+i)
+		rpcAddr := fmt.Sprintf("127.0.0.1:%d", clusterBase+uint64(i))
+		httpAddr := fmt.Sprintf("127.0.0.1:%d", clusterBase+1000+uint64(i))
 		addrs[i] = rpcAddr
 
 		rpcListener := registry.Register(rpcAddr)

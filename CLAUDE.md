@@ -10,6 +10,30 @@ Before adding any new dependency, tool, library, fork, vendored code, or submodu
 
 This rule takes precedence over convenience. If the only way to build/test something requires a proprietary or non-OSI component, STOP and explain the blocker — do not proceed.
 
+### License headers
+
+All source files in this repo (both new files and files modified from upstream) must use the Apache-2.0 header attributed to **The Ratel Authors**. Do NOT carry forward the upstream BSL/CRL header.
+
+When editing an existing file that still has the Business Source License header, replace it with the Apache-2.0 Ratel header as part of your edit. When creating a new file, use this exact template:
+
+```go
+// Copyright <year> The Ratel Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// permissions and limitations under the License.
+```
+
+Use the appropriate comment syntax for the language (`//` for Go/C++/TS/JS, `#` for Python/shell/YAML, etc.) but keep the wording identical.
+
 ## Building
 
 Use the reproducible OSS-only Docker builder. It wraps `./dev` (Bazel) inside `ubuntu:22.04` with only open-source tools (bazelisk, gcc, cmake, etc.):

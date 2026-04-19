@@ -52,6 +52,7 @@ import (
 	"github.com/cockroachdb/logtags"
 	"github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/bloom"
+	"github.com/cockroachdb/pebble/objstorage/remote"
 	"github.com/cockroachdb/pebble/rangekey"
 	"github.com/cockroachdb/pebble/replay"
 	"github.com/cockroachdb/pebble/sstable"
@@ -594,7 +595,7 @@ func DefaultPebbleOptions() *pebble.Options {
 	// Enable deletion pacing. This helps prevent disk slowness events on some
 	// SSDs, that kick off an expensive GC if a lot of files are deleted at
 	// once.
-	opts.Experimental.MinDeletionRate = 128 << 20 // 128 MB
+	opts.TargetByteDeletionRate = 128 << 20 // 128 MB
 	// Validate min/max keys in each SSTable when performing a compaction. This
 	// serves as a simple protection against corruption or programmer-error in
 	// Pebble.
@@ -1089,7 +1090,9 @@ func NewPebble(ctx context.Context, cfg PebbleConfig) (p *Pebble, err error) {
 
 	if cfg.SharedStorage != nil {
 		esWrapper := &externalStorageWrapper{p: p, es: cfg.SharedStorage, ctx: ctx}
-		opts.Experimental.SharedStorage = esWrapper
+		opts.Experimental.RemoteStorage = remote.MakeSimpleFactory(map[remote.Locator]remote.Storage{
+			"": esWrapper,
+		})
 	}
 
 	// Read the current store cluster version.
@@ -2343,7 +2346,11 @@ func (p *pebbleReadOnly) PinEngineStateForIterators() error {
 		if p.durability == GuaranteedDurability {
 			o = &pebble.IterOptions{OnlyReadGuaranteedDurable: true}
 		}
-		p.iter = pebbleiter.MaybeWrap(p.parent.db.NewIter(o))
+		rawIter, err := p.parent.db.NewIter(o)
+		if err != nil {
+			return err
+		}
+		p.iter = pebbleiter.MaybeWrap(rawIter)
 		// NB: p.iterUsed == false avoids cloning this in NewMVCCIterator(), since
 		// we've just created it.
 	}

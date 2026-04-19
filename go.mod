@@ -110,10 +110,10 @@ require (
 	github.com/cockroachdb/cockroach-go/v2 v2.3.3
 	github.com/cockroachdb/crlfmt v0.0.0-20221214225007-b2fc5c302548
 	github.com/cockroachdb/datadriven v1.0.3-0.20230801171734-e384cf455877
-	github.com/cockroachdb/errors v1.11.1
+	github.com/cockroachdb/errors v1.11.3
 	github.com/cockroachdb/go-test-teamcity v0.0.0-20191211140407-cff980ad0a55
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b
-	github.com/cockroachdb/pebble v1.0.1-0.20240729165630-848f3c6eb646
+	github.com/cockroachdb/pebble v1.1.5
 	github.com/cockroachdb/redact v1.1.5
 	github.com/cockroachdb/returncheck v0.0.0-20200612231554-92cdbca611dd
 	github.com/cockroachdb/stress v0.0.0-20220803192808-1806698b1b7b
@@ -134,7 +134,7 @@ require (
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a
 	github.com/fraugster/parquet-go v0.10.0
 	github.com/fsnotify/fsnotify v1.5.1
-	github.com/getsentry/sentry-go v0.18.0
+	github.com/getsentry/sentry-go v0.27.0
 	github.com/ghemawat/stream v0.0.0-20171120220530-696b145b53b9
 	github.com/go-openapi/strfmt v0.20.2
 	github.com/go-sql-driver/mysql v1.6.0
@@ -159,7 +159,7 @@ require (
 	github.com/kevinburke/go-bindata v3.13.0+incompatible
 	github.com/kisielk/errcheck v1.6.1-0.20210625163953-8ddee489636a
 	github.com/kisielk/gotool v1.0.0
-	github.com/klauspost/compress v1.15.15
+	github.com/klauspost/compress v1.16.0
 	github.com/klauspost/pgzip v1.2.5
 	github.com/knz/bubbline v0.0.0-20230422210153-e176cdfe1c43
 	github.com/knz/go-libedit v1.10.2-0.20230621133438-5f2b2e7387c5
@@ -174,7 +174,7 @@ require (
 	github.com/lufia/iostat v1.2.1
 	github.com/maruel/panicparse/v2 v2.2.2
 	github.com/marusama/semaphore v0.0.0-20190110074507-6952cef993b2
-	github.com/mattn/go-isatty v0.0.16
+	github.com/mattn/go-isatty v0.0.17
 	github.com/mattn/goveralls v0.0.2
 	github.com/mibk/dupl v1.0.0
 	github.com/mitchellh/reflectwalk v1.0.0
@@ -193,9 +193,9 @@ require (
 	github.com/pkg/browser v0.0.0-20210115035449-ce105d075bb4
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 	github.com/pressly/goose/v3 v3.5.3
-	github.com/prometheus/client_golang v1.12.1
-	github.com/prometheus/client_model v0.2.1-0.20210607210712-147c58e9608a
-	github.com/prometheus/common v0.32.1
+	github.com/prometheus/client_golang v1.15.0
+	github.com/prometheus/client_model v0.3.0
+	github.com/prometheus/common v0.42.0
 	github.com/prometheus/prometheus v1.8.2-0.20210914090109-37468d88dce8
 	github.com/pseudomuto/protoc-gen-doc v1.3.2
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
@@ -266,6 +266,8 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/charmbracelet/bubbletea v0.23.1 // indirect
 	github.com/charmbracelet/lipgloss v0.6.0 // indirect
+	github.com/cockroachdb/fifo v0.0.0-20240606204812-0bbfbd93a7ce // indirect
+	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
@@ -277,7 +279,7 @@ require (
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
-	github.com/go-kit/log v0.1.0 // indirect
+	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -337,7 +339,7 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
-	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
+	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/minio/minio-go/v7 v7.0.21 // indirect
 	github.com/minio/sha256-simd v1.0.0 // indirect
@@ -359,7 +361,7 @@ require (
 	github.com/pkg/profile v1.6.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/pquerna/cachecontrol v0.0.0-20200921180117-858c6e7e6b7e // indirect
-	github.com/prometheus/procfs v0.7.3 // indirect
+	github.com/prometheus/procfs v0.9.0 // indirect
 	github.com/pseudomuto/protokit v0.2.0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect

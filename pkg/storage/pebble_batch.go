@@ -255,11 +255,17 @@ func (p *pebbleBatch) ConsistentIterators() bool {
 // PinEngineStateForIterators implements the Batch interface.
 func (p *pebbleBatch) PinEngineStateForIterators() error {
 	if p.iter == nil {
+		var rawIter *pebble.Iterator
+		var err error
 		if p.batch.Indexed() {
-			p.iter = pebbleiter.MaybeWrap(p.batch.NewIter(nil))
+			rawIter, err = p.batch.NewIter(nil)
 		} else {
-			p.iter = pebbleiter.MaybeWrap(p.db.NewIter(nil))
+			rawIter, err = p.db.NewIter(nil)
 		}
+		if err != nil {
+			return err
+		}
+		p.iter = pebbleiter.MaybeWrap(rawIter)
 		// NB: p.iterUsed == false avoids cloning this in NewMVCCIterator(). We've
 		// just created it, so cloning it would just be overhead.
 	}

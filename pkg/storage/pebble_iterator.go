@@ -104,7 +104,12 @@ func newPebbleIterator(
 	p := pebbleIterPool.Get().(*pebbleIterator)
 	p.reusable = false // defensive
 	p.init(nil, opts, durability, statsReporter)
-	p.iter = pebbleiter.MaybeWrap(handle.NewIter(&p.options))
+	iter, err := handle.NewIter(&p.options)
+	if err != nil {
+		p.Close()
+		panic(err)
+	}
+	p.iter = pebbleiter.MaybeWrap(iter)
 	return p
 }
 
@@ -194,7 +199,12 @@ func (p *pebbleIterator) initReuseOrCreate(
 
 	p.init(nil, opts, durability, statsReporter)
 	if iter == nil {
-		p.iter = pebbleiter.MaybeWrap(handle.NewIter(&p.options))
+		rawIter, err := handle.NewIter(&p.options)
+		if err != nil {
+			p.Close()
+			panic(err)
+		}
+		p.iter = pebbleiter.MaybeWrap(rawIter)
 	} else if clone {
 		var err error
 		p.iter, err = iter.Clone(pebble.CloneOptions{

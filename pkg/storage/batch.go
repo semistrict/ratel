@@ -224,9 +224,13 @@ func (r *PebbleBatchReader) rangeKeys() (rangekey.Span, error) {
 }
 
 // Next advances to the next entry in the batch, returning false when the batch
-// is empty.
+// is empty. Any decode error is stashed on the reader; callers should check
+// Error() after iteration ends.
 func (r *PebbleBatchReader) Next() bool {
-	kind, ukey, value, ok := r.batchReader.Next()
+	kind, ukey, value, ok, err := r.batchReader.Next()
+	if err != nil {
+		r.err = err
+	}
 
 	r.typ = BatchType(kind)
 	r.key = ukey

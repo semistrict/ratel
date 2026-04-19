@@ -114,13 +114,20 @@ func (r *pebbleMap) makeKeyWithSequence(k []byte) []byte {
 
 // NewIterator implements the SortedDiskMap interface.
 func (r *pebbleMap) NewIterator() diskmap.SortedDiskMapIterator {
+	iter, err := r.store.NewIter(&pebble.IterOptions{
+		UpperBound: roachpb.Key(r.prefix).PrefixEnd(),
+	})
+	if err != nil {
+		// Iterator creation failures indicate a closed/corrupted engine and are
+		// not recoverable at this layer, which mirrors the panic-on-Clone-error
+		// pattern in pebble_iterator.go.
+		panic(err)
+	}
 	return &pebbleMapIterator{
 		allowDuplicates: r.allowDuplicates,
-		iter: r.store.NewIter(&pebble.IterOptions{
-			UpperBound: roachpb.Key(r.prefix).PrefixEnd(),
-		}),
-		prefixLen:      len(r.prefix),
-		makeKeyScratch: append([]byte{}, r.prefix...),
+		iter:            iter,
+		prefixLen:       len(r.prefix),
+		makeKeyScratch:  append([]byte{}, r.prefix...),
 	}
 }
 

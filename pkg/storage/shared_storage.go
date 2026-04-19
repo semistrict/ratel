@@ -16,37 +16,46 @@ import (
 	"sync/atomic"
 
 	"github.com/cockroachdb/cockroach/pkg/cloud"
-	"github.com/cockroachdb/cockroach/pkg/util/ioctx"
-	"github.com/cockroachdb/pebble/objstorage/shared"
+	"github.com/cockroachdb/pebble/objstorage/remote"
 )
 
-// externalStorageReader wraps an ioctx.ReadCloserCtx returned by
-// externalStorageWrapper and conforms to the io.ReadCloser interface expected
-// by Pebble's shared.Storage.
-type externalStorageReader struct {
-	// Store a reference to the parent Pebble instance. Metrics around shared
-	// storage reads/writes are stored there.
-	//
-	// TODO(bilal): Refactor the metrics out of Pebble, and store a reference
-	// to just the Metrics struct.
-	p   *Pebble
-	r   ioctx.ReadCloserCtx
-	ctx context.Context
+// externalStorageObjectReader implements remote.ObjectReader on top of a
+// cloud.ExternalStorage, opening a new ranged-read stream for each ReadAt and
+// recording bytes read against the parent Pebble metrics.
+type externalStorageObjectReader struct {
+	p       *Pebble
+	es      cloud.ExternalStorage
+	objName string
+	objSize int64
 }
 
-var _ io.ReadCloser = &externalStorageReader{}
+var _ remote.ObjectReader = (*externalStorageObjectReader)(nil)
 
-// Read implements the io.ReadCloser interface.
-func (e *externalStorageReader) Read(p []byte) (n int, err error) {
-	n, err = e.r.Read(e.ctx, p)
-	atomic.AddInt64(&e.p.sharedBytesRead, int64(n))
-	return n, err
+// ReadAt implements remote.ObjectReader. The contract requires a full read of
+// len(p) bytes starting at offset; short reads must return an error.
+func (r *externalStorageObjectReader) ReadAt(ctx context.Context, p []byte, offset int64) error {
+	reader, _, err := r.es.ReadFileAt(ctx, r.objName, offset)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = reader.Close(ctx) }()
+	total := 0
+	for total < len(p) {
+		n, err := reader.Read(ctx, p[total:])
+		total += n
+		if err != nil {
+			if err == io.EOF && total == len(p) {
+				break
+			}
+			return err
+		}
+	}
+	atomic.AddInt64(&r.p.sharedBytesRead, int64(total))
+	return nil
 }
 
-// Close implements the io.ReadCloser interface.
-func (e *externalStorageReader) Close() error {
-	return e.r.Close(e.ctx)
-}
+// Close implements remote.ObjectReader.
+func (r *externalStorageObjectReader) Close() error { return nil }
 
 // externalStorageWriter wraps an io.WriteCloser returned by
 // externalStorageWrapper and tracks metrics on bytes written to shared storage.
@@ -55,13 +64,10 @@ type externalStorageWriter struct {
 
 	// Store a reference to the parent Pebble instance. Metrics around shared
 	// storage reads/writes are stored there.
-	//
-	// TODO(bilal): Refactor the metrics out of Pebble, and store a reference
-	// to just the Metrics struct.
 	p *Pebble
 }
 
-var _ io.WriteCloser = &externalStorageWriter{}
+var _ io.WriteCloser = (*externalStorageWriter)(nil)
 
 // Write implements the io.Writer interface.
 func (e *externalStorageWriter) Write(p []byte) (n int, err error) {
@@ -71,7 +77,7 @@ func (e *externalStorageWriter) Write(p []byte) (n int, err error) {
 }
 
 // externalStorageWrapper wraps a cloud.ExternalStorage and implements the
-// shared.Storage interface expected by Pebble. Also ensures reads and writes
+// remote.Storage interface expected by Pebble. Also ensures reads and writes
 // to shared cloud storage are tracked in store-specific metrics.
 type externalStorageWrapper struct {
 	p   *Pebble
@@ -79,28 +85,36 @@ type externalStorageWrapper struct {
 	ctx context.Context
 }
 
-var _ shared.Storage = &externalStorageWrapper{}
+var _ remote.Storage = (*externalStorageWrapper)(nil)
 
-// Close implements the shared.Storage interface.
+// Close implements remote.Storage.
 func (e *externalStorageWrapper) Close() error {
 	return e.es.Close()
 }
 
-// ReadObjectAt implements the shared.Storage interface.
-func (e *externalStorageWrapper) ReadObjectAt(
-	basename string, offset int64,
-) (io.ReadCloser, int64, error) {
-	reader, n, err := e.es.ReadFileAt(e.ctx, basename, offset)
-	return &externalStorageReader{p: e.p, r: reader, ctx: e.ctx}, n, err
+// ReadObject implements remote.Storage. It returns an ObjectReader that opens
+// a new range-read stream per ReadAt call and also reports the total object
+// size (required by Pebble to plan reads).
+func (e *externalStorageWrapper) ReadObject(
+	ctx context.Context, objName string,
+) (remote.ObjectReader, int64, error) {
+	size, err := e.es.Size(ctx, objName)
+	if err != nil {
+		return nil, 0, err
+	}
+	return &externalStorageObjectReader{p: e.p, es: e.es, objName: objName, objSize: size}, size, nil
 }
 
-// CreateObject implements the shared.Storage interface.
-func (e *externalStorageWrapper) CreateObject(basename string) (io.WriteCloser, error) {
-	writer, err := e.es.Writer(e.ctx, basename)
-	return &externalStorageWriter{WriteCloser: writer, p: e.p}, err
+// CreateObject implements remote.Storage.
+func (e *externalStorageWrapper) CreateObject(objName string) (io.WriteCloser, error) {
+	writer, err := e.es.Writer(e.ctx, objName)
+	if err != nil {
+		return nil, err
+	}
+	return &externalStorageWriter{WriteCloser: writer, p: e.p}, nil
 }
 
-// List implements the shared.Storage interface.
+// List implements remote.Storage.
 func (e *externalStorageWrapper) List(prefix, delimiter string) ([]string, error) {
 	var directoryList []string
 	err := e.es.List(e.ctx, prefix, delimiter, func(s string) error {
@@ -113,12 +127,19 @@ func (e *externalStorageWrapper) List(prefix, delimiter string) ([]string, error
 	return directoryList, nil
 }
 
-// Delete implements the shared.Storage interface.
-func (e *externalStorageWrapper) Delete(basename string) error {
-	return e.es.Delete(e.ctx, basename)
+// Delete implements remote.Storage.
+func (e *externalStorageWrapper) Delete(objName string) error {
+	return e.es.Delete(e.ctx, objName)
 }
 
-// Size implements the shared.Storage interface.
-func (e *externalStorageWrapper) Size(basename string) (int64, error) {
-	return e.es.Size(e.ctx, basename)
+// Size implements remote.Storage.
+func (e *externalStorageWrapper) Size(objName string) (int64, error) {
+	return e.es.Size(e.ctx, objName)
+}
+
+// IsNotExistError implements remote.Storage. cloud.ExternalStorage does not
+// expose a typed "not-found" error today; treat every error as possibly-exists
+// so Pebble retries/falls through rather than silently skipping.
+func (e *externalStorageWrapper) IsNotExistError(err error) bool {
+	return false
 }

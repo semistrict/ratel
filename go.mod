@@ -112,6 +112,7 @@ require (
 	github.com/cockroachdb/datadriven v1.0.3-0.20230801171734-e384cf455877
 	github.com/cockroachdb/errors v1.11.3
 	github.com/cockroachdb/go-test-teamcity v0.0.0-20191211140407-cff980ad0a55
+	github.com/cockroachdb/gostdlib v1.19.0 // indirect; tool-only dep via cockroachdb/crlfmt
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b
 	github.com/cockroachdb/pebble v1.1.5
 	github.com/cockroachdb/redact v1.1.5
@@ -395,6 +396,7 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
 	go.uber.org/zap v1.19.0 // indirect
+	golang.org/x/telemetry v0.0.0-20260409153401-be6f6cb8b1fa // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260414002931-afd174a4e478 // indirect

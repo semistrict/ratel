@@ -94,6 +94,18 @@ func (afs *autoDecryptFS) Open(name string, opts ...vfs.OpenOption) (vfs.File, e
 	return fs.Open(name, opts...)
 }
 
+func (afs *autoDecryptFS) OpenReadWrite(name string, opts ...vfs.OpenOption) (vfs.File, error) {
+	name, err := filepath.Abs(name)
+	if err != nil {
+		return nil, err
+	}
+	fs, err := afs.maybeSwitchFS(name)
+	if err != nil {
+		return nil, err
+	}
+	return fs.OpenReadWrite(name, opts...)
+}
+
 func (afs *autoDecryptFS) OpenDir(name string) (vfs.File, error) {
 	name, err := filepath.Abs(name)
 	if err != nil {

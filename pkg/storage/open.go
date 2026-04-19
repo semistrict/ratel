@@ -18,6 +18,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
 	"github.com/cockroachdb/pebble"
+	"github.com/cockroachdb/pebble/objstorage/remote"
 	"github.com/cockroachdb/pebble/vfs"
 )
 
@@ -185,6 +186,27 @@ func BallastSize(size int64) ConfigOption {
 func SharedStorage(sharedStorage cloud.ExternalStorage) ConfigOption {
 	return func(cfg *engineConfig) error {
 		cfg.SharedStorage = sharedStorage
+		return nil
+	}
+}
+
+// RemoteStorage wires a remote.StorageFactory (for SSTables) and a
+// remote.Storage (for the MANIFEST bundle) into the engine config. Mutually
+// exclusive with SharedStorage.
+func RemoteStorage(factory remote.StorageFactory, metadata remote.Storage) ConfigOption {
+	return func(cfg *engineConfig) error {
+		cfg.RemoteStorageFactory = factory
+		cfg.MetadataStorage = metadata
+		return nil
+	}
+}
+
+// RecoveryStoreID sets a store ID to use when recovering before the local
+// store identity is readable (typical on an empty local dir whose remote
+// MANIFEST bundle lives under manifest-bundle-<storeID>.zip).
+func RecoveryStoreID(storeID int32) ConfigOption {
+	return func(cfg *engineConfig) error {
+		cfg.RecoveryStoreID = storeID
 		return nil
 	}
 }

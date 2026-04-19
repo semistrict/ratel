@@ -1,0 +1,33 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "rateltest",
+    srcs = ["cluster.go"],
+    importpath = "github.com/cockroachdb/cockroach/pkg/storage/rateltest",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/base",
+        "//pkg/storage",
+        "//pkg/testutils/testcluster",
+        "@com_github_cockroachdb_pebble//objstorage/remote",
+    ],
+)
+
+go_test(
+    name = "rateltest_test",
+    srcs = [
+        "cluster_test.go",
+        "main_test.go",
+    ],
+    embed = [":rateltest"],
+    deps = [
+        "//pkg/security/securityassets",
+        "//pkg/security/securitytest",
+        "//pkg/server",
+        "//pkg/testutils/serverutils",
+        "//pkg/testutils/testcluster",
+        "//pkg/util/randutil",
+        "@com_github_cockroachdb_pebble//objstorage/remote",
+        "@com_github_stretchr_testify//require",
+    ],
+)

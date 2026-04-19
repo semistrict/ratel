@@ -828,6 +828,17 @@ func (cfg *Config) CreateEngines(ctx context.Context) (Engines, error) {
 			if sharedStorage != nil {
 				addCfgOpt(storage.SharedStorage(sharedStorage))
 			}
+			// Configure remote storage if specified: a test-provided factory
+			// (for rateltest) takes precedence over a URL that must be parsed.
+			if spec.RemoteStorageFactory != nil {
+				addCfgOpt(storage.RemoteStorage(spec.RemoteStorageFactory, spec.RemoteMetadataStorage))
+			} else if spec.RemoteStoragePath != "" {
+				factory, metaStore, rsErr := storage.RemoteStorageFromURL(spec.RemoteStoragePath)
+				if rsErr != nil {
+					return nil, errors.Wrapf(rsErr, "store %d: remote storage", i)
+				}
+				addCfgOpt(storage.RemoteStorage(factory, metaStore))
+			}
 			// If the spec contains Pebble options, set those too.
 			if spec.PebbleOptions != "" {
 				addCfgOpt(storage.PebbleOptions(spec.PebbleOptions, &pebble.ParseHooks{

@@ -1,0 +1,39 @@
+Pebble's tableCacheShard.Close() intentionally keeps its releaseLoop
+goroutine alive when it detects leaked iterators. This prevents
+testing/synctest from detecting quiescence, causing deadlock in tests
+that run Pebble under a synctest bubble.
+
+This patch makes tableCacheShard.Close() always close releasingCh so the
+goroutine exits, even when iterators were leaked. Acceptable tradeoff
+because on v23-ratel we run inproc test clusters under synctest, and
+synctest quiescence is more valuable than the leaked-iterator diagnostic
+that this branch was preserving.
+
+To apply: requires a pebble fork. Not wired up yet — when we ship
+synctest chaos tests, add `replace github.com/cockroachdb/pebble =>
+github.com/semistrict/pebble v1.1.5-ratel1` to go.mod pointing at a
+branch with this change applied.
+
+--- a/table_cache.go
++++ b/table_cache.go
+@@ -1051,17 +1051,9 @@
+ 	c.mu.handCold = nil
+ 	c.mu.handTest = nil
+
+-	// Only shutdown the releasing goroutine if there were no leaked
+-	// iterators. If there were leaked iterators, we leave the goroutine running
+-	// and the releasingCh open so that a subsequent iterator close can
+-	// complete. This behavior is used by iterator leak tests. Leaking the
+-	// goroutine for these tests is less bad not closing the iterator which
+-	// triggers other warnings about block cache handles not being released.
+-	if err != nil {
+-		c.releasing.Wait()
+-		return err
+-	}
+-
++	// Always shutdown the releasing goroutine, even if there are leaked
++	// iterators. Leaving it running prevents synctest from detecting
++	// quiescence.
+ 	close(c.releasingCh)
+ 	c.releasing.Wait()
+ 	c.releaseLoopExit.Wait()

@@ -82,6 +82,18 @@ var MaxSyncDurationFatalOnExceeded = settings.RegisterBoolSetting(
 	true,
 ).WithPublic()
 
+// ManifestBundleCheckpointInterval controls how often the manifest bundle is
+// uploaded to remote metadata storage while the DB is running. This provides
+// crash recovery: if the process dies without a clean shutdown, the last
+// periodic checkpoint's manifest bundle limits data loss to writes since
+// that checkpoint.
+var ManifestBundleCheckpointInterval = settings.RegisterDurationSetting(
+	settings.TenantWritable,
+	"storage.manifest_bundle.checkpoint_interval",
+	"how often to upload the manifest bundle to remote metadata storage (0 disables)",
+	5*time.Minute,
+)
+
 // ValueBlocksEnabled controls whether older versions of MVCC keys in the same
 // sstable will have their values written to value blocks. This only affects
 // sstables that will be written in the future, as part of flushes or
@@ -699,6 +711,22 @@ type PebbleConfig struct {
 	// SharedStorage is a cloud.ExternalStorage that can be used by all Pebble
 	// stores on this node and on other nodes to store sstables.
 	SharedStorage cloud.ExternalStorage
+	// RemoteStorageFactory, if set, provides a pre-built StorageFactory for
+	// remote SSTable storage (used for non-cloud backends, e.g. local
+	// filesystem via file:// URLs). Mutually exclusive with SharedStorage.
+	RemoteStorageFactory remote.StorageFactory
+	// MetadataStorage, if set, is used to persist the Pebble MANIFEST bundle
+	// (MANIFEST, OPTIONS, markers, remote object catalog) on remote storage.
+	// On open, the bundle is downloaded before pebble.Open so the DB can
+	// reconnect to its remote SSTables. On close, the bundle is uploaded
+	// after flushing.
+	MetadataStorage remote.Storage
+	// RecoveryStoreID, if non-zero, is a store ID recovered from an external
+	// source (e.g. node registration in shared storage) during crash
+	// recovery. It is used to download the correct per-store manifest bundle
+	// and to set the Pebble CreatorID before the store identity is read from
+	// the local dir.
+	RecoveryStoreID int32
 }
 
 // EncryptionStatsHandler provides encryption related stats.
@@ -739,10 +767,14 @@ type Pebble struct {
 	maxSize      base.StoreSize
 	attrs        roachpb.Attributes
 	properties   roachpb.StoreProperties
-	settings     *cluster.Settings
-	encryption   *EncryptionEnv
-	fileLock     *pebble.Lock
-	fileRegistry *PebbleFileRegistry
+	settings        *cluster.Settings
+	encryption      *EncryptionEnv
+	fileLock        *pebble.Lock
+	fileRegistry    *PebbleFileRegistry
+	metadataStorage remote.Storage
+	storeID         int32
+	checkpointStop  chan struct{}
+	checkpointDone  chan struct{}
 
 	// Stats updated by pebble.EventListener invocations, and returned in
 	// GetMetrics. Updated and retrieved atomically.
@@ -827,11 +859,15 @@ func (p *Pebble) SetCompactionConcurrency(n uint64) uint64 {
 	return prevConcurrency
 }
 
-// SetStoreID adds the store id to pebble logs.
+// SetStoreID adds the store id to pebble logs and sets the Pebble CreatorID
+// for remote/shared storage. The CreatorID is derived from the
+// CockroachDB-assigned store ID so that each node writes SSTables under
+// distinct remote filenames.
 func (p *Pebble) SetStoreID(ctx context.Context, storeID int32) error {
 	if p == nil {
 		return nil
 	}
+	p.storeID = storeID
 	if p.storeIDPebbleLog != nil {
 		p.storeIDPebbleLog.Set(ctx, storeID)
 	}
@@ -1095,11 +1131,47 @@ func NewPebble(ctx context.Context, cfg PebbleConfig) (p *Pebble, err error) {
 	opts.EventListener = &el
 	p.wrappedIntentWriter = wrapIntentWriter(p)
 
+	if cfg.SharedStorage != nil && cfg.RemoteStorageFactory != nil {
+		return nil, errors.New("SharedStorage and RemoteStorageFactory are mutually exclusive")
+	}
 	if cfg.SharedStorage != nil {
 		esWrapper := &externalStorageWrapper{p: p, es: cfg.SharedStorage, ctx: ctx}
 		opts.Experimental.RemoteStorage = remote.MakeSimpleFactory(map[remote.Locator]remote.Storage{
 			"": esWrapper,
 		})
+		opts.Experimental.CreateOnShared = remote.CreateOnSharedAll
+		opts.Experimental.CreateOnSharedLocator = ""
+	} else if cfg.RemoteStorageFactory != nil {
+		opts.Experimental.RemoteStorage = cfg.RemoteStorageFactory
+		opts.Experimental.CreateOnShared = remote.CreateOnSharedAll
+		opts.Experimental.CreateOnSharedLocator = ""
+		p.logger.Infof("remote storage enabled via factory")
+	}
+
+	// If metadata storage is configured, download the manifest bundle so
+	// pebble.Open can reconnect to its remote SSTables. The bundle is keyed
+	// by RecoveryStoreID when provided (crash recovery path).
+	p.metadataStorage = cfg.MetadataStorage
+	if cfg.MetadataStorage != nil {
+		bundleStoreID := cfg.RecoveryStoreID
+		exists, existsErr := ManifestBundleExists(ctx, cfg.MetadataStorage, bundleStoreID)
+		if existsErr != nil {
+			return nil, errors.Wrap(existsErr, "checking for manifest bundle")
+		}
+		if exists {
+			p.logger.Infof("downloading manifest bundle (store_id=%d) from metadata storage", bundleStoreID)
+			if dlErr := DownloadManifestBundle(ctx, opts.FS, cfg.Dir, cfg.MetadataStorage, bundleStoreID); dlErr != nil {
+				return nil, errors.Wrap(dlErr, "downloading manifest bundle")
+			}
+		}
+	}
+
+	// When remote/shared storage is configured, we need FormatVirtualSSTables
+	// for shared SSTable support.
+	if cfg.SharedStorage != nil || cfg.RemoteStorageFactory != nil {
+		if opts.FormatMajorVersion < pebble.FormatVirtualSSTables {
+			opts.FormatMajorVersion = pebble.FormatVirtualSSTables
+		}
 	}
 
 	// Read the current store cluster version.
@@ -1162,6 +1234,18 @@ func NewPebble(ctx context.Context, cfg PebbleConfig) (p *Pebble, err error) {
 	}
 	p.db = db
 
+	// If a RecoveryStoreID was provided (crash recovery before the store
+	// identity is read from the local dir), set the Pebble CreatorID now.
+	// Otherwise SetCreatorID is deferred to SetStoreID once the store
+	// identity is known.
+	if cfg.RecoveryStoreID > 0 && (cfg.SharedStorage != nil || cfg.RemoteStorageFactory != nil) {
+		p.storeID = cfg.RecoveryStoreID
+		if err := db.SetCreatorID(uint64(cfg.RecoveryStoreID)); err != nil {
+			p.Close()
+			return nil, errors.Wrap(err, "setting recovery creator ID for remote storage")
+		}
+	}
+
 	if !minVerFileExists {
 		storeClusterVersion = cfg.Settings.Version.ActiveVersionOrEmpty(ctx).Version
 		if storeClusterVersion == (roachpb.Version{}) {
@@ -1190,7 +1274,52 @@ func NewPebble(ctx context.Context, cfg PebbleConfig) (p *Pebble, err error) {
 		return nil, err
 	}
 
+	// Start periodic manifest bundle checkpoint once the DB is open.
+	if p.metadataStorage != nil {
+		p.checkpointStop = make(chan struct{})
+		p.checkpointDone = make(chan struct{})
+		go p.runManifestCheckpoint(ctx)
+	}
+
 	return p, nil
+}
+
+// runManifestCheckpoint periodically flushes the DB and uploads the manifest
+// bundle to remote metadata storage. This limits data loss on crash to writes
+// since the last checkpoint.
+func (p *Pebble) runManifestCheckpoint(ctx context.Context) {
+	defer close(p.checkpointDone)
+
+	getInterval := func() time.Duration {
+		if p.settings != nil {
+			return ManifestBundleCheckpointInterval.Get(&p.settings.SV)
+		}
+		return 5 * time.Minute
+	}
+
+	timer := time.NewTimer(getInterval())
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-p.checkpointStop:
+			return
+		case <-timer.C:
+			interval := getInterval()
+			if interval <= 0 {
+				timer.Reset(5 * time.Minute)
+				continue
+			}
+			if err := p.db.Flush(); err != nil {
+				p.logger.Infof("manifest checkpoint: flush failed: %v", err)
+			} else if err := UploadManifestBundle(context.Background(), p.fs, p.path, p.metadataStorage, p.storeID); err != nil {
+				p.logger.Infof("manifest checkpoint: upload failed: %v", err)
+			} else {
+				p.logger.Infof("manifest checkpoint: uploaded successfully")
+			}
+			timer.Reset(interval)
+		}
+	}
 }
 
 // async launches the provided function in a new goroutine. It uses a wait group
@@ -1297,6 +1426,20 @@ func (p *Pebble) Close() {
 	// Wait for any asynchronous goroutines to exit.
 	p.asyncDone.Wait()
 
+	// Stop the periodic manifest checkpoint goroutine before flushing.
+	if p.checkpointStop != nil {
+		close(p.checkpointStop)
+		<-p.checkpointDone
+	}
+
+	// If metadata storage is configured, flush before closing so that all
+	// data is on remote storage.
+	if p.metadataStorage != nil && p.db != nil {
+		if err := p.db.Flush(); err != nil {
+			p.logger.Infof("error flushing before manifest upload: %v", err)
+		}
+	}
+
 	handleErr := func(err error) {
 		if err == nil {
 			return
@@ -1317,6 +1460,15 @@ func (p *Pebble) Close() {
 	}
 
 	handleErr(p.db.Close())
+
+	// Upload the final manifest bundle after close so the next open can
+	// reconnect to the SSTables on remote storage.
+	if p.metadataStorage != nil {
+		if err := UploadManifestBundle(context.Background(), p.fs, p.path, p.metadataStorage, p.storeID); err != nil {
+			p.logger.Infof("error uploading manifest bundle: %v", err)
+		}
+	}
+
 	if p.fileRegistry != nil {
 		handleErr(p.fileRegistry.Close())
 	}

@@ -32,7 +32,7 @@ import (
 // configuration, it can hold anywhere between zero and three destinations for
 // trace information:
 //
-// 1. external OpenTelemetry-compatible trace collector (Jaeger, Zipkin, Lightstep),
+// 1. external OpenTelemetry-compatible trace collector,
 // 2. /debug/requests endpoint (net/trace package); mostly useful for local debugging
 // 3. CRDB-internal trace span (powers SQL session tracing).
 //

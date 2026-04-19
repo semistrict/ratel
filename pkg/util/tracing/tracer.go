@@ -37,9 +37,7 @@ import (
 	"github.com/cockroachdb/logtags"
 	"github.com/petermattis/goid"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
-	"go.opentelemetry.io/otel/exporters/zipkin"
 	"go.opentelemetry.io/otel/sdk/resource"
 	otelsdk "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
@@ -122,7 +120,9 @@ var enableNetTrace = settings.RegisterBoolSetting(
 	false,
 ).WithPublic()
 
-var openTelemetryCollector = settings.RegisterValidatedStringSetting(
+// OpenTelemetryCollector controls whether traces are mirrored to an external
+// OTLP collector.
+var OpenTelemetryCollector = settings.RegisterValidatedStringSetting(
 	settings.TenantWritable,
 	"trace.opentelemetry.collector",
 	"address of an OpenTelemetry trace collector to receive "+
@@ -134,39 +134,6 @@ var openTelemetryCollector = settings.RegisterValidatedStringSetting(
 			return nil
 		}
 		_, _, err := addr.SplitHostPort(s, "4317")
-		return err
-	},
-).WithPublic()
-
-var jaegerAgent = settings.RegisterValidatedStringSetting(
-	settings.TenantWritable,
-	"trace.jaeger.agent",
-	"the address of a Jaeger agent to receive traces using the "+
-		"Jaeger UDP Thrift protocol, as <host>:<port>. "+
-		"If no port is specified, 6381 will be used.",
-	envutil.EnvOrDefaultString("COCKROACH_JAEGER", ""),
-	func(_ *settings.Values, s string) error {
-		if s == "" {
-			return nil
-		}
-		_, _, err := addr.SplitHostPort(s, "6381")
-		return err
-	},
-).WithPublic()
-
-// ZipkinCollector is the cluster setting that specifies the Zipkin instance
-// to send traces to, if any.
-var ZipkinCollector = settings.RegisterValidatedStringSetting(
-	settings.TenantWritable,
-	"trace.zipkin.collector",
-	"the address of a Zipkin instance to receive traces, as <host>:<port>. "+
-		"If no port is specified, 9411 will be used.",
-	envutil.EnvOrDefaultString("COCKROACH_ZIPKIN", ""),
-	func(_ *settings.Values, s string) error {
-		if s == "" {
-			return nil
-		}
-		_, _, err := addr.SplitHostPort(s, "9411")
 		return err
 	},
 ).WithPublic()
@@ -768,9 +735,7 @@ func (t *Tracer) configure(ctx context.Context, sv *settings.Values, tracingDefa
 	// reconfigure will be called every time a cluster setting affecting tracing
 	// is updated.
 	reconfigure := func(ctx context.Context) {
-		jaegerAgentAddr := jaegerAgent.Get(sv)
-		otlpCollectorAddr := openTelemetryCollector.Get(sv)
-		zipkinAddr := ZipkinCollector.Get(sv)
+		otlpCollectorAddr := OpenTelemetryCollector.Get(sv)
 		enableRedactable := enableTraceRedactable.Get(sv)
 
 		switch tracingDefault {
@@ -793,7 +758,7 @@ func (t *Tracer) configure(ctx context.Context, sv *settings.Values, tracingDefa
 		atomic.StoreInt32(&t._useNetTrace, nt)
 
 		// Return early if the OpenTelemetry tracer is disabled.
-		if jaegerAgentAddr == "" && otlpCollectorAddr == "" && zipkinAddr == "" {
+		if otlpCollectorAddr == "" {
 			if traceProvider != nil {
 				t.SetOpenTelemetryTracer(nil)
 				if err := traceProvider.Shutdown(ctx); err != nil {
@@ -822,24 +787,6 @@ func (t *Tracer) configure(ctx context.Context, sv *settings.Values, tracingDefa
 			}
 		}
 
-		if jaegerAgentAddr != "" {
-			spanProcessor, err := createJaegerSpanCollector(ctx, jaegerAgentAddr)
-			if err == nil {
-				opts = append(opts, otelsdk.WithSpanProcessor(spanProcessor))
-			} else {
-				fmt.Fprintf(os.Stderr, "failed to create Jaeger processor: %s", err)
-			}
-		}
-
-		if zipkinAddr != "" {
-			spanProcessor, err := createZipkinCollector(ctx, zipkinAddr)
-			if err == nil {
-				opts = append(opts, otelsdk.WithSpanProcessor(spanProcessor))
-			} else {
-				fmt.Fprintf(os.Stderr, "failed to create Zipkin processor: %s", err)
-			}
-		}
-
 		oldTP := traceProvider
 		traceProvider = otelsdk.NewTracerProvider(opts...)
 
@@ -865,9 +812,7 @@ func (t *Tracer) configure(ctx context.Context, sv *settings.Values, tracingDefa
 
 	EnableActiveSpansRegistry.SetOnChange(sv, reconfigure)
 	enableNetTrace.SetOnChange(sv, reconfigure)
-	openTelemetryCollector.SetOnChange(sv, reconfigure)
-	ZipkinCollector.SetOnChange(sv, reconfigure)
-	jaegerAgent.SetOnChange(sv, reconfigure)
+	OpenTelemetryCollector.SetOnChange(sv, reconfigure)
 	enableTraceRedactable.SetOnChange(sv, reconfigure)
 }
 
@@ -884,36 +829,6 @@ func createOTLPSpanProcessor(
 		otlptracegrpc.WithEndpoint(fmt.Sprintf("%s:%s", host, port)),
 		// TODO(andrei): Add support for secure connections to the collector.
 		otlptracegrpc.WithInsecure())
-	if err != nil {
-		return nil, err
-	}
-	spanProcessor := otelsdk.NewBatchSpanProcessor(exporter)
-	return spanProcessor, nil
-}
-
-func createJaegerSpanCollector(
-	ctx context.Context, agentAddr string,
-) (otelsdk.SpanProcessor, error) {
-	host, port, err := addr.SplitHostPort(agentAddr, "6831")
-	if err != nil {
-		return nil, err
-	}
-	exporter, err := jaeger.New(jaeger.WithAgentEndpoint(
-		jaeger.WithAgentHost(host),
-		jaeger.WithAgentPort(port)))
-	if err != nil {
-		return nil, err
-	}
-	spanProcessor := otelsdk.NewBatchSpanProcessor(exporter)
-	return spanProcessor, nil
-}
-
-func createZipkinCollector(ctx context.Context, zipkinAddr string) (otelsdk.SpanProcessor, error) {
-	host, port, err := addr.SplitHostPort(zipkinAddr, "9411")
-	if err != nil {
-		return nil, err
-	}
-	exporter, err := zipkin.New(fmt.Sprintf("http://%s:%s/api/v2/spans", host, port))
 	if err != nil {
 		return nil, err
 	}

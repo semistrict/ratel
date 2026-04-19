@@ -6,7 +6,6 @@ go_library(
         "commandbuilder.go",
         "disk_usage.go",
         "health_checker.go",
-        "jaeger.go",
         "utils.go",
         "validation_check.go",
     ],

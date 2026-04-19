@@ -5,6 +5,7 @@ load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 go_library(
     name = "tracingpb",
     srcs = [
+        "jaeger_json.go",
         "recorded_span.go",
         "recording.go",
         "tracing.go",
@@ -20,7 +21,6 @@ go_library(
         "@com_github_gogo_protobuf//jsonpb",
         "@com_github_gogo_protobuf//proto",
         "@com_github_gogo_protobuf//types",
-        "@com_github_jaegertracing_jaeger//model/json",
     ],
 )
 

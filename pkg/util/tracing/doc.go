@@ -78,7 +78,7 @@
 //
 // The tracing package internally makes use of OpenTelemetry[2]. This gives us
 // the ability to configure external collectors for tracing information,
-// like Jaeger, DataDog, Lightstep or Zipkin.
+// like an OTLP collector, DataDog, or Lightstep.
 //
 // -----------------------------------------------------------------------------
 //

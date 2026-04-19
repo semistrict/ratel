@@ -12,9 +12,11 @@ This rule takes precedence over convenience. If the only way to build/test somet
 
 ### License headers
 
-All source files in this repo (both new files and files modified from upstream) must use the Apache-2.0 header attributed to **The Ratel Authors**. Do NOT carry forward the upstream BSL/CRL header.
+**New files** in this repo must use the Apache-2.0 header attributed to **The Ratel Authors** (template below). Do not carry forward the upstream BSL/CRL header on new files.
 
-When editing an existing file that still has the Business Source License header, replace it with the Apache-2.0 Ratel header as part of your edit. When creating a new file, use this exact template:
+**Existing files**: leave the header as-is. Do not rewrite BSL headers just because you're editing the file — that creates noisy churn. A global relicense pass will handle existing files separately.
+
+Template for new files:
 
 ```go
 // Copyright <year> The Ratel Authors.

@@ -14,6 +14,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"go/format"
 	"os"
 	"regexp"
 	"sort"
@@ -23,7 +24,6 @@ import (
 
 	"github.com/cockroachdb/cockroach/pkg/cli/exit"
 	"github.com/cockroachdb/errors"
-	"github.com/cockroachdb/gostdlib/go/format"
 )
 
 func main() {

@@ -38,7 +38,6 @@ go_binary(
     deps = [
         "//pkg/cli/exit",
         "@com_github_cockroachdb_errors//:errors",
-        "@com_github_cockroachdb_gostdlib//go/format",
     ],
 )
 

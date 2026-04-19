@@ -68,12 +68,12 @@ export HOME=$(GENDIR)
 export GOPATH=/nonexist-gopath
 $(location //pkg/sql/colexec/execgen/cmd/execgen) \
     -fmt=false pkg/col/coldata/$@ > $@
-$(location @com_github_cockroachdb_gostdlib//x/tools/cmd/goimports) -w $@
+$(location @org_golang_x_tools//cmd/goimports) -w $@
 """,
     tools = [
         "//pkg/sql/colexec/execgen/cmd/execgen",
-        "@com_github_cockroachdb_gostdlib//x/tools/cmd/goimports",
         "@go_sdk//:bin/go",
+        "@org_golang_x_tools//cmd/goimports",
     ],
     visibility = [
         ":__pkg__",

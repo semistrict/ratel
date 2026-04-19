@@ -8,7 +8,7 @@ go_library(
     deps = [
         "//pkg/util/hlc",
         "@com_github_cockroachdb_errors//:errors",
-        "@com_github_cockroachdb_gostdlib//x/sync/errgroup",
+        "@org_golang_x_sync//errgroup",
     ],
 )
 

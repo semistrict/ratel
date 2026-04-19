@@ -39,8 +39,12 @@ func (r *pebbleTempEngine) Close() {
 	if err := r.db.Close(); err != nil {
 		log.Fatalf(context.TODO(), "%v", err)
 	}
-	if err := r.closer.Close(); err != nil {
-		log.Fatalf(context.TODO(), "%v", err)
+	// r.closer is nil when the engine was opened on an in-memory FS (see
+	// wrapFilesystemMiddleware in pebble.go).
+	if r.closer != nil {
+		if err := r.closer.Close(); err != nil {
+			log.Fatalf(context.TODO(), "%v", err)
+		}
 	}
 }
 

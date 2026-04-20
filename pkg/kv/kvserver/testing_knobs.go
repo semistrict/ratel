@@ -174,6 +174,10 @@ type StoreTestingKnobs struct {
 	DisableReplicaGCQueue bool
 	// DisableReplicateQueue disables the replication queue.
 	DisableReplicateQueue bool
+	// DisableRangeLogWrite skips the INSERT INTO system.rangelog during
+	// replica changes and splits. This avoids a potential hang when the
+	// SQL internal executor deadlocks with the KV transaction.
+	DisableRangeLogWrite bool
 	// DisableReplicaRebalancing disables rebalancing of replicas but otherwise
 	// leaves the replicate queue operational.
 	DisableReplicaRebalancing bool

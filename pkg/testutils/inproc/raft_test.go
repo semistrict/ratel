@@ -24,6 +24,58 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestAddVoters verifies that explicit Raft replication via AddVoters
+// works with in-memory networking.
+func TestAddVoters(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+	defer log.Scope(t).Close(t)
+
+	c := inproc.StartCluster(t, 3)
+	defer c.Stop()
+
+	ctx := context.Background()
+	db := c.Server(0).DB()
+
+	key := keys.ScratchRangeMin
+	require.NoError(t, db.Put(ctx, key, []byte("data")))
+
+	desc := c.LookupRangeOrFatal(t, key)
+	c.AddVotersOrFatal(t, desc.StartKey.AsRawKey(), c.Target(1), c.Target(2))
+
+	for i := 0; i < 3; i++ {
+		val, err := c.Server(i).DB().Get(ctx, key)
+		require.NoError(t, err)
+		require.Equal(t, []byte("data"), val.ValueBytes())
+	}
+}
+
+// TestSyncAddVoters verifies that explicit Raft replication via
+// AddVoters works inside a synctest bubble with fake time.
+func TestSyncAddVoters(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+	defer log.Scope(t).Close(t)
+
+	synctest.Test(t, func(t *testing.T) {
+		c := inproc.StartCluster(t, 3)
+		defer c.Stop()
+
+		ctx := t.Context()
+		db := c.Server(0).DB()
+
+		key := keys.ScratchRangeMin
+		require.NoError(t, db.Put(ctx, key, []byte("data")))
+
+		desc := c.LookupRangeOrFatal(t, key)
+		c.AddVotersOrFatal(t, desc.StartKey.AsRawKey(), c.Target(1), c.Target(2))
+
+		for i := 0; i < 3; i++ {
+			val, err := c.Server(i).DB().Get(ctx, key)
+			require.NoError(t, err)
+			require.Equal(t, []byte("data"), val.ValueBytes())
+		}
+	})
+}
+
 // TestAutoReplication verifies that Raft replication works with
 // in-memory networking: a cluster with ReplicationAuto automatically
 // replicates ranges and data is readable from any node.

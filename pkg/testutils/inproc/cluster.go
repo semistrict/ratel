@@ -73,7 +73,11 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 		rpcListeners[i] = rpcListener
 		httpListener := NewListener(httpAddr)
 
-		args := clusterArgs.ServerArgsPerNode[i]
+		// Start from ServerArgs defaults, then overlay per-node overrides.
+		args := clusterArgs.ServerArgs
+		if perNode, ok := clusterArgs.ServerArgsPerNode[i]; ok {
+			args = perNode
+		}
 		args.Insecure = true
 		args.Addr = rpcAddr
 		// Route SQL client connections through the in-memory registry.
@@ -111,6 +115,10 @@ func StartCluster(t testing.TB, nodes int, extraArgs ...func(*base.TestClusterAr
 		storeKnobs.DisableTimeSeriesMaintenanceQueue = true
 		storeKnobs.DisableLoadBasedSplitting = true
 		storeKnobs.DisableReplicaRebalancing = true
+		// Disable range log writes to avoid a deadlock where the SQL
+		// INSERT INTO system.rangelog inside ChangeReplicas/Split
+		// transactions hangs waiting for its own Raft proposal.
+		storeKnobs.DisableRangeLogWrite = true
 		args.Knobs.Store = storeKnobs
 
 		serverKnobs := args.Knobs.Server

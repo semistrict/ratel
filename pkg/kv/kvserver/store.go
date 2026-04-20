@@ -1345,6 +1345,9 @@ func NewStore(
 	s.cfg.RangeLogWriter = newWrappedRangeLogWriter(
 		s.metrics.getCounterForRangeLogEventType,
 		func() bool {
+			if cfg.TestingKnobs.DisableRangeLogWrite {
+				return false
+			}
 			return cfg.LogRangeAndNodeEvents &&
 				logRangeAndNodeEventsEnabled.Get(&cfg.Settings.SV)
 		},

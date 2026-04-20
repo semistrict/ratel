@@ -18,6 +18,7 @@ import (
 
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/testutils/inproc"
+	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
 	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/stretchr/testify/require"
@@ -171,6 +172,7 @@ func TestSyncNetworkPartition(t *testing.T) {
 func TestSyncClockJump(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
+	skip.UnderRace(t, "synctest+race hangs or crashes in this clock-jump case; non-race still checks intended behavior")
 
 	synctest.Test(t, func(t *testing.T) {
 		c := inproc.StartCluster(t, 1)

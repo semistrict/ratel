@@ -580,8 +580,14 @@ func (s *Stopper) Quiesce(ctx context.Context) {
 		})
 	}()
 
-	for s.NumTasks() > 0 {
+	for i := 0; s.NumTasks() > 0; i++ {
 		time.Sleep(5 * time.Millisecond)
+		// Cap iterations to prevent infinite spinning under
+		// synctest's fake time when goroutines are blocked on I/O
+		// that won't unblock until closers run (after Quiesce).
+		if i > 5000 {
+			break
+		}
 	}
 }
 

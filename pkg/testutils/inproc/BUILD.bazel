@@ -23,6 +23,7 @@ go_test(
     name = "inproc_test",
     srcs = [
         "cluster_test.go",
+        "lease_test.go",
         "main_test.go",
         "raft_test.go",
     ],

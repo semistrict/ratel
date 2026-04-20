@@ -28,6 +28,7 @@ go_test(
     ],
     deps = [
         ":inproc",
+        "//pkg/base",
         "//pkg/keys",
         "//pkg/roachpb",
         "//pkg/security/securityassets",

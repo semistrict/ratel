@@ -14,6 +14,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/cockroachdb/cockroach/pkg/kv/kvclient/kvcoord"
 	"github.com/cockroachdb/cockroach/pkg/security/securityassets"
 	"github.com/cockroachdb/cockroach/pkg/security/securitytest"
 	"github.com/cockroachdb/cockroach/pkg/server"
@@ -30,5 +31,8 @@ func TestMain(m *testing.M) {
 	randutil.SeedForTests()
 	serverutils.InitTestServerFactory(server.TestServerFactory)
 	serverutils.InitTestClusterFactory(testcluster.TestClusterFactory)
+	// Disable the race transport's background goroutine. Its non-durable
+	// select prevents synctest from detecting quiescence.
+	kvcoord.DisableRaceTransport = true
 	os.Exit(m.Run())
 }

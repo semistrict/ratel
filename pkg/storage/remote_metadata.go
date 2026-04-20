@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/cockroachdb/errors"
+	"github.com/cockroachdb/errors/oserror"
 	"github.com/cockroachdb/pebble/objstorage/remote"
 	"github.com/cockroachdb/pebble/vfs"
 )
@@ -149,7 +150,7 @@ func ManifestBundleExists(
 ) (bool, error) {
 	_, err := store.Size(manifestBundleName(storeID))
 	if err != nil {
-		if store.IsNotExistError(err) {
+		if store.IsNotExistError(err) || oserror.IsNotExist(err) {
 			return false, nil
 		}
 		return false, errors.Wrap(err, "checking manifest bundle existence")

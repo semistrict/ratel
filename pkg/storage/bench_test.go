@@ -1904,14 +1904,16 @@ func BenchmarkMVCCScannerWithIntentsAndVersions(b *testing.B) {
 		numPrevKeys = numKeys
 		// Read the keys from the Batch and write them to a sstable to ingest.
 		reader := batch.(*pebbleBatch).batch.Reader()
-		kind, key, value, ok := reader.Next()
+		kind, key, value, ok, err := reader.Next()
+		require.NoError(b, err)
 		type kvPair struct {
 			key   []byte
 			kind  pebble.InternalKeyKind
 			value []byte
 		}
 		var kvPairs []kvPair
-		for ; ok; kind, key, value, ok = reader.Next() {
+		for ; ok; kind, key, value, ok, err = reader.Next() {
+			require.NoError(b, err)
 			kvPairs = append(kvPairs, kvPair{key: key, kind: kind, value: value})
 		}
 		sort.Slice(kvPairs, func(i, j int) bool {

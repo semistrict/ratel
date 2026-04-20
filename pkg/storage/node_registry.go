@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
+	"github.com/cockroachdb/errors/oserror"
 	"github.com/cockroachdb/pebble/objstorage/remote"
 )
 
@@ -141,7 +142,7 @@ func NodeRegistrationExists(
 ) (NodeRegistration, bool, error) {
 	_, err := store.Size(nodeFileNameByRatelID(ratelNodeID))
 	if err != nil {
-		if store.IsNotExistError(err) {
+		if store.IsNotExistError(err) || oserror.IsNotExist(err) {
 			return NodeRegistration{}, false, nil
 		}
 		return NodeRegistration{}, false, errors.Wrapf(err, "checking node %s", ratelNodeID)

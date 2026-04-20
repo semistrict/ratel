@@ -15,6 +15,9 @@
 package storage
 
 import (
+	"bytes"
+	"crypto/x509"
+	"encoding/pem"
 	"os"
 	"path/filepath"
 	"testing"
@@ -23,7 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGenerateAndUploadCerts(t *testing.T) {
+func TestGenerateAndUploadCertsPlaintext(t *testing.T) {
 	ctx := t.Context()
 	store := remote.NewInMem()
 	defer func() { _ = store.Close() }()
@@ -32,7 +35,7 @@ func TestGenerateAndUploadCerts(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, exists)
 
-	require.NoError(t, GenerateAndUploadCerts(ctx, store))
+	require.NoError(t, GenerateAndUploadCerts(ctx, store, nil))
 
 	exists, err = CertsExist(ctx, store)
 	require.NoError(t, err)
@@ -47,6 +50,76 @@ func TestGenerateAndUploadCerts(t *testing.T) {
 		require.NoError(t, err, "cert %s should exist", name)
 		require.Greater(t, size, int64(0), "cert %s should be non-empty", name)
 	}
+
+	// With no passphrase, ca.key is stored as plaintext PEM.
+	raw, err := ReadObject(ctx, store, "ca.key")
+	require.NoError(t, err)
+	require.False(t, bytes.HasPrefix(raw, encBundleMagic),
+		"ca.key should be plaintext when no passphrase is set")
+	block, _ := pem.Decode(raw)
+	require.NotNil(t, block, "ca.key should be valid PEM")
+	require.Equal(t, "RSA PRIVATE KEY", block.Type)
+}
+
+func TestGenerateAndUploadCertsEncrypted(t *testing.T) {
+	ctx := t.Context()
+	store := remote.NewInMem()
+	defer func() { _ = store.Close() }()
+
+	passphrase := []byte("correct horse battery staple")
+	require.NoError(t, GenerateAndUploadCerts(ctx, store, passphrase))
+
+	// Private keys are encrypted at rest.
+	for _, name := range []string{"ca.key", "node.key", "client.root.key"} {
+		raw, err := ReadObject(ctx, store, name)
+		require.NoError(t, err)
+		require.True(t, bytes.HasPrefix(raw, encBundleMagic),
+			"%s should be encrypted with passphrase", name)
+	}
+
+	// Public certs are plaintext.
+	for _, name := range []string{"ca.crt", "node.crt", "client.root.crt"} {
+		raw, err := ReadObject(ctx, store, name)
+		require.NoError(t, err)
+		require.False(t, bytes.HasPrefix(raw, encBundleMagic),
+			"%s should not be encrypted", name)
+	}
+
+	// Round-trip download decrypts correctly.
+	localDir := t.TempDir()
+	require.NoError(t, DownloadCerts(ctx, store, localDir, passphrase))
+	keyPEM, err := os.ReadFile(filepath.Join(localDir, "ca.key"))
+	require.NoError(t, err)
+	block, _ := pem.Decode(keyPEM)
+	require.NotNil(t, block)
+	_, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+	require.NoError(t, err, "decrypted ca.key should be a valid RSA key")
+}
+
+func TestDownloadCertsWrongPassphrase(t *testing.T) {
+	ctx := t.Context()
+	store := remote.NewInMem()
+	defer func() { _ = store.Close() }()
+
+	require.NoError(t, GenerateAndUploadCerts(ctx, store, []byte("right")))
+
+	localDir := t.TempDir()
+	err := DownloadCerts(ctx, store, localDir, []byte("wrong"))
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "decrypting")
+}
+
+func TestDownloadCertsMissingPassphrase(t *testing.T) {
+	ctx := t.Context()
+	store := remote.NewInMem()
+	defer func() { _ = store.Close() }()
+
+	require.NoError(t, GenerateAndUploadCerts(ctx, store, []byte("secret")))
+
+	localDir := t.TempDir()
+	err := DownloadCerts(ctx, store, localDir, nil)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "passphrase")
 }
 
 func TestDownloadCerts(t *testing.T) {
@@ -54,10 +127,10 @@ func TestDownloadCerts(t *testing.T) {
 	store := remote.NewInMem()
 	defer func() { _ = store.Close() }()
 
-	require.NoError(t, GenerateAndUploadCerts(ctx, store))
+	require.NoError(t, GenerateAndUploadCerts(ctx, store, nil))
 
 	localDir := t.TempDir()
-	require.NoError(t, DownloadCerts(ctx, store, localDir))
+	require.NoError(t, DownloadCerts(ctx, store, localDir, nil))
 
 	for _, name := range []string{
 		"ca.crt", "ca.key",
@@ -75,10 +148,10 @@ func TestDownloadClientCerts(t *testing.T) {
 	store := remote.NewInMem()
 	defer func() { _ = store.Close() }()
 
-	require.NoError(t, GenerateAndUploadCerts(ctx, store))
+	require.NoError(t, GenerateAndUploadCerts(ctx, store, nil))
 
 	localDir := t.TempDir()
-	require.NoError(t, DownloadClientCerts(ctx, store, localDir))
+	require.NoError(t, DownloadClientCerts(ctx, store, localDir, nil))
 
 	for _, name := range []string{"ca.crt", "client.root.crt", "client.root.key"} {
 		data, err := os.ReadFile(filepath.Join(localDir, name))

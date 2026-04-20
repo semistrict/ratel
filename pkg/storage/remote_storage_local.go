@@ -24,6 +24,54 @@ import (
 	"github.com/cockroachdb/pebble/vfs"
 )
 
+// listableLocalFS wraps pebble's remote.LocalFS with a working List
+// implementation. Pebble's built-in localFSStore stubs out List to return
+// (nil, nil) — fine for pebble's own benchmarking use case, but ratel relies
+// on List to discover nodes and cluster certs.
+type listableLocalFS struct {
+	remote.Storage
+	dir string
+}
+
+func newListableLocalFS(dir string) remote.Storage {
+	return &listableLocalFS{
+		Storage: remote.NewLocalFS(dir, vfs.Default),
+		dir:     dir,
+	}
+}
+
+// List walks the backing directory, returning the file names. The prefix and
+// delimiter arguments follow the pebble remote.Storage contract: names with
+// the given prefix are returned, and delimiter truncates at the next occurrence
+// after the prefix. We don't use delimiters today, so support is minimal.
+func (l *listableLocalFS) List(prefix, delimiter string) ([]string, error) {
+	entries, err := os.ReadDir(l.dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, errors.Wrapf(err, "listing %s", l.dir)
+	}
+	var out []string
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if !strings.HasPrefix(name, prefix) {
+			continue
+		}
+		if delimiter != "" {
+			if idx := strings.Index(name[len(prefix):], delimiter); idx >= 0 {
+				name = name[:len(prefix)+idx+len(delimiter)]
+			}
+		}
+		out = append(out, name)
+	}
+	return out, nil
+}
+
+
 // LocalFSStorageFactory implements remote.StorageFactory using a local
 // filesystem directory.
 type LocalFSStorageFactory struct {
@@ -43,7 +91,7 @@ func (f *LocalFSStorageFactory) CreateStorage(locator remote.Locator) (remote.St
 	if err := os.MkdirAll(f.dir, 0755); err != nil {
 		return nil, errors.Wrapf(err, "creating local storage dir %s", f.dir)
 	}
-	return remote.NewLocalFS(f.dir, vfs.Default), nil
+	return newListableLocalFS(f.dir), nil
 }
 
 // layoutVersion is prepended to all sub-paths in the storage URL so that
@@ -120,7 +168,7 @@ func RemoteStorageFromURL(rawURL string) (remote.StorageFactory, remote.Storage,
 			return nil, nil, errors.Wrapf(err, "creating metadata dir %s", metaDir)
 		}
 		factory := NewLocalFSStorageFactory(sstDir)
-		metaStore := remote.NewLocalFS(metaDir, vfs.Default)
+		metaStore := newListableLocalFS(metaDir)
 		return factory, metaStore, nil
 	case "s3":
 		cfg := parseS3URL(u)
@@ -165,9 +213,9 @@ func ClusterStorageFromURL(rawURL string) (*ClusterStorage, error) {
 		}
 		return &ClusterStorage{
 			SSTableFactory: NewLocalFSStorageFactory(dirs[0]),
-			Metadata:       remote.NewLocalFS(dirs[1], vfs.Default),
-			Nodes:          remote.NewLocalFS(dirs[2], vfs.Default),
-			Certs:          remote.NewLocalFS(dirs[3], vfs.Default),
+			Metadata:       newListableLocalFS(dirs[1]),
+			Nodes:          newListableLocalFS(dirs[2]),
+			Certs:          newListableLocalFS(dirs[3]),
 		}, nil
 	case "s3":
 		cfg := parseS3URL(u)

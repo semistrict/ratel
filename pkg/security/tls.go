@@ -127,7 +127,7 @@ func newBaseTLSConfig(settings TLSSettings, caPEM []byte) (*tls.Config, error) {
 		}
 	}
 
-	return &tls.Config{
+	cfg := &tls.Config{
 		RootCAs: certPool,
 
 		VerifyPeerCertificate: makeOCSPVerifier(settings),
@@ -135,5 +135,42 @@ func newBaseTLSConfig(settings TLSSettings, caPEM []byte) (*tls.Config, error) {
 		CipherSuites: RecommendedCipherSuites(),
 
 		MinVersion: tls.VersionTLS12,
-	}, nil
+	}
+
+	if settings.skipHostnameVerification() {
+		// Ratel's shared-cert model: verify that the peer cert chains to our
+		// CA, but do not verify the hostname / IP SAN. Setting
+		// InsecureSkipVerify bypasses all of Go's built-in verification, so
+		// we install a VerifyPeerCertificate that re-runs the chain build
+		// (without DNSName) and then delegates to the OCSP verifier.
+		ocspVerifier := makeOCSPVerifier(settings)
+		cfg.InsecureSkipVerify = true
+		cfg.VerifyPeerCertificate = func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
+			if len(rawCerts) == 0 {
+				return errors.New("tls: peer presented no certificate")
+			}
+			certs := make([]*x509.Certificate, 0, len(rawCerts))
+			for _, raw := range rawCerts {
+				cert, err := x509.ParseCertificate(raw)
+				if err != nil {
+					return errors.Wrap(err, "tls: parsing peer certificate")
+				}
+				certs = append(certs, cert)
+			}
+			intermediates := x509.NewCertPool()
+			for _, c := range certs[1:] {
+				intermediates.AddCert(c)
+			}
+			if _, err := certs[0].Verify(x509.VerifyOptions{
+				Roots:         certPool,
+				Intermediates: intermediates,
+				KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+			}); err != nil {
+				return errors.Wrap(err, "tls: chain verification failed")
+			}
+			return ocspVerifier(rawCerts, [][]*x509.Certificate{certs})
+		}
+	}
+
+	return cfg, nil
 }

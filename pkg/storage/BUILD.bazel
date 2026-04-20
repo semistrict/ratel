@@ -115,6 +115,7 @@ go_library(
         "@com_github_gogo_protobuf//proto",
         "@com_github_prometheus_client_model//go",
         "@io_etcd_go_raft_v3//raftpb",
+        "@org_golang_x_crypto//scrypt",
     ],
 )
 

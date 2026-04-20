@@ -33,6 +33,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/cli/clisqlexec"
 	"github.com/cockroachdb/cockroach/pkg/cli/clisqlshell"
 	"github.com/cockroachdb/cockroach/pkg/cli/exit"
+	"github.com/cockroachdb/cockroach/pkg/security"
 	"github.com/cockroachdb/cockroach/pkg/server"
 	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
 	"github.com/cockroachdb/cockroach/pkg/storage"
@@ -44,14 +45,16 @@ import (
 	"github.com/cockroachdb/pebble/objstorage/remote"
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/unix"
+	"golang.org/x/term"
 )
 
 var (
-	ratelListenAddr string
-	ratelHTTPAddr   string
-	ratelNodeID     string
-	ratelSQLHost    string
-	ratelTLS        bool
+	ratelListenAddr    string
+	ratelHTTPAddr      string
+	ratelNodeID        string
+	ratelSQLHost       string
+	ratelTLS           bool
+	ratelNoPassphrase  bool
 )
 
 var ratelCmd = &cobra.Command{
@@ -106,6 +109,8 @@ func init() {
 			"Address to listen on for the admin HTTP interface")
 		cmd.Flags().BoolVar(&ratelTLS, "tls", false,
 			"Enable application-level TLS (generates and manages certificates via the storage URL)")
+		cmd.Flags().BoolVar(&ratelNoPassphrase, "no-passphrase", false,
+			"Store cert private keys in plaintext (skip passphrase prompt; only meaningful with --tls)")
 		cmd.Flags().StringVar(&ratelNodeID, "node-id", "",
 			"Stable operator-assigned node identity (e.g. ratel-1)")
 		_ = cmd.MarkFlagRequired("node-id")
@@ -116,6 +121,8 @@ func init() {
 		"Override the node address to connect to (e.g. localhost:26257 when using a proxy)")
 	ratelSQLCmd.Flags().BoolVar(&ratelTLS, "tls", false,
 		"Connect using TLS (download client certs from the storage URL)")
+	ratelSQLCmd.Flags().BoolVar(&ratelNoPassphrase, "no-passphrase", false,
+		"Client keys are stored in plaintext (skip passphrase prompt; only meaningful with --tls)")
 }
 
 // ratelSQLExecStmts holds -e statements for ratel sql.
@@ -123,6 +130,12 @@ var ratelSQLExecStmts clisqlshell.StatementsValue
 
 // RatelMain is the entry point for the ratel binary.
 func RatelMain() {
+	// Ratel uses a single shared cert across all nodes and clients; hostname
+	// pinning would require per-node cert issuance we intentionally avoid.
+	// Force hostname verification off for every TLS handshake in this process.
+	// CA chain verification still runs — see pkg/security/tls.go.
+	_ = os.Setenv(security.SkipHostnameVerificationEnv, "true")
+
 	if err := ratelCmd.Execute(); err != nil {
 		clierror.OutputError(os.Stderr, err, true, false)
 		exit.WithCode(exit.UnspecifiedError())
@@ -133,6 +146,40 @@ func RatelMain() {
 func ratelLocalDir(clusterURL string) string {
 	h := sha256.Sum256([]byte(clusterURL))
 	return filepath.Join(os.TempDir(), fmt.Sprintf("ratel-%x", h[:8]))
+}
+
+// ratelPassphrase returns the passphrase used to encrypt cert private keys in
+// remote storage. Precedence: --no-passphrase > RATEL_PASSPHRASE env > prompt.
+// Returns nil (plaintext-at-rest) when --no-passphrase is set. When prompting
+// for a new passphrase (confirm=true), requires a non-empty match.
+func ratelPassphrase(confirm bool) ([]byte, error) {
+	if ratelNoPassphrase {
+		return nil, nil
+	}
+	if env := os.Getenv("RATEL_PASSPHRASE"); env != "" {
+		return []byte(env), nil
+	}
+	fmt.Fprint(os.Stderr, "Cert key passphrase: ")
+	pass, err := term.ReadPassword(int(os.Stdin.Fd()))
+	fmt.Fprintln(os.Stderr)
+	if err != nil {
+		return nil, errors.Wrap(err, "reading passphrase")
+	}
+	if len(pass) == 0 {
+		return nil, errors.New("passphrase cannot be empty (use --no-passphrase to skip encryption)")
+	}
+	if confirm {
+		fmt.Fprint(os.Stderr, "Confirm passphrase: ")
+		pass2, err := term.ReadPassword(int(os.Stdin.Fd()))
+		fmt.Fprintln(os.Stderr)
+		if err != nil {
+			return nil, errors.Wrap(err, "reading passphrase confirmation")
+		}
+		if string(pass) != string(pass2) {
+			return nil, errors.New("passphrases do not match")
+		}
+	}
+	return pass, nil
 }
 
 // checkNodeLiveness returns an error if a registration for the given ratel
@@ -155,24 +202,35 @@ func checkNodeLiveness(ctx context.Context, store remote.Storage, nodeID string)
 
 // prepareCertsDir downloads (and generates-on-first-use) the cert set into
 // ld/certs and returns the directory. Returns "" when TLS is disabled.
+//
+// On first-use (generation path), prompts for and confirms a new passphrase.
+// On download path, prompts once for the existing passphrase.
 func prepareCertsDir(ctx context.Context, cs *storage.ClusterStorage, ld string, genIfMissing bool) (string, error) {
 	if !ratelTLS {
 		return "", nil
 	}
-	if genIfMissing {
-		exists, err := storage.CertsExist(ctx, cs.Certs)
+	exists, err := storage.CertsExist(ctx, cs.Certs)
+	if err != nil {
+		return "", err
+	}
+	var passphrase []byte
+	if genIfMissing && !exists {
+		passphrase, err = ratelPassphrase(true /* confirm */)
 		if err != nil {
 			return "", err
 		}
-		if !exists {
-			fmt.Fprintln(os.Stderr, "Generating TLS certificates...")
-			if err := storage.GenerateAndUploadCerts(ctx, cs.Certs); err != nil {
-				return "", err
-			}
+		fmt.Fprintln(os.Stderr, "Generating TLS certificates...")
+		if err := storage.GenerateAndUploadCerts(ctx, cs.Certs, passphrase); err != nil {
+			return "", err
+		}
+	} else {
+		passphrase, err = ratelPassphrase(false /* confirm */)
+		if err != nil {
+			return "", err
 		}
 	}
 	certsDir := filepath.Join(ld, "certs")
-	if err := storage.DownloadCerts(ctx, cs.Certs, certsDir); err != nil {
+	if err := storage.DownloadCerts(ctx, cs.Certs, certsDir, passphrase); err != nil {
 		return "", errors.Wrap(err, "downloading certs (is the cluster initialized?)")
 	}
 	return certsDir, nil
@@ -442,9 +500,13 @@ func runRatelSQL(cmd *cobra.Command, args []string) error {
 			}
 		}
 		if ratelTLS {
+			passphrase, pErr := ratelPassphrase(false /* confirm */)
+			if pErr != nil {
+				return pErr
+			}
 			ld := ratelLocalDir(arg)
 			certsDir = filepath.Join(ld, "certs")
-			if err := storage.DownloadClientCerts(ctx, cs.Certs, certsDir); err != nil {
+			if err := storage.DownloadClientCerts(ctx, cs.Certs, certsDir, passphrase); err != nil {
 				return err
 			}
 		}
@@ -485,8 +547,12 @@ func runRatelSQL(cmd *cobra.Command, args []string) error {
 	for _, addr := range addrs {
 		var connURL string
 		if ratelTLS {
+			// sslmode=verify-ca validates that the server cert chains to our CA
+			// without checking hostname SANs. Ratel clusters use a single shared
+			// cert for all nodes (see pkg/storage/cluster_certs.go), so hostname
+			// pinning would require per-node certs that we intentionally avoid.
 			connURL = fmt.Sprintf(
-				"postgresql://root@%s/defaultdb?sslmode=verify-full&sslrootcert=%s&sslcert=%s&sslkey=%s",
+				"postgresql://root@%s/defaultdb?sslmode=verify-ca&sslrootcert=%s&sslcert=%s&sslkey=%s",
 				addr,
 				filepath.Join(certsDir, "ca.crt"),
 				filepath.Join(certsDir, "client.root.crt"),

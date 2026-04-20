@@ -27,6 +27,14 @@ const (
 	// use of old cipher suites for backwards compatibility with applications
 	// that do not support any of the recommended cipher suites.
 	OldCipherSuitesEnabledEnv = "COCKROACH_TLS_ENABLE_OLD_CIPHER_SUITES"
+
+	// SkipHostnameVerificationEnv forces TLS clients (including intra-cluster
+	// gRPC) to skip hostname/IP SAN verification. Chain verification against
+	// the cluster CA still happens — we only drop the hostname check. Ratel
+	// uses a single shared cert across all nodes, so hostname pinning is both
+	// impossible and unnecessary; this knob makes that model work without
+	// requiring per-node cert issuance.
+	SkipHostnameVerificationEnv = "RATEL_TLS_SKIP_HOSTNAME_VERIFICATION"
 )
 
 // TLSSettings allows for customization of TLS behavior. It's called
@@ -38,6 +46,7 @@ type TLSSettings interface {
 	ocspStrict() bool
 	ocspTimeout() time.Duration
 	oldCipherSuitesEnabled() bool
+	skipHostnameVerification() bool
 }
 
 var ocspMode = settings.RegisterEnumSetting(
@@ -76,6 +85,10 @@ func (c clusterTLSSettings) oldCipherSuitesEnabled() bool {
 	return areOldCipherSuitesEnabled()
 }
 
+func (c clusterTLSSettings) skipHostnameVerification() bool {
+	return isHostnameVerificationSkipped()
+}
+
 // ClusterTLSSettings creates a TLSSettings backed by the
 // given cluster settings.
 func ClusterTLSSettings(settings *cluster.Settings) TLSSettings {
@@ -104,9 +117,19 @@ func (c CommandTLSSettings) oldCipherSuitesEnabled() bool {
 	return areOldCipherSuitesEnabled()
 }
 
+func (c CommandTLSSettings) skipHostnameVerification() bool {
+	return isHostnameVerificationSkipped()
+}
+
 // areOldCipherSuites returns true if CRDB should enable the use of
 // old, no longer recommended TLS cipher suites for the sake of
 // compatibility.
 func areOldCipherSuitesEnabled() bool {
 	return envutil.EnvOrDefaultBool(OldCipherSuitesEnabledEnv, false)
+}
+
+// isHostnameVerificationSkipped returns true when the env var is set,
+// disabling hostname/IP SAN checks on intra-cluster TLS handshakes.
+func isHostnameVerificationSkipped() bool {
+	return envutil.EnvOrDefaultBool(SkipHostnameVerificationEnv, false)
 }

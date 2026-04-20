@@ -57,9 +57,9 @@ func checkVarName(name string) {
 
 func checkInternalVarName(name string) {
 	// Env vars must:
-	//  - start with COCKROACH_
+	//  - start with COCKROACH_ (upstream) or RATEL_ (this fork)
 	//  - pass basic validity checks in checkVarName
-	if !strings.HasPrefix(name, "COCKROACH_") {
+	if !strings.HasPrefix(name, "COCKROACH_") && !strings.HasPrefix(name, "RATEL_") {
 		panic("invalid env var name " + name)
 	}
 	checkVarName(name)

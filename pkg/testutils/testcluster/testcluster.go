@@ -1658,7 +1658,11 @@ func (tc *TestCluster) RestartServerWithInspect(idx int, inspect func(s *server.
 				}
 			}
 		}
-	} else if ln, ok := serverArgs.Listener.(*listenerutil.ReusableListener); !ok {
+	} else if reopener, ok := serverArgs.Listener.(interface{ Reopen() error }); ok {
+		if err := reopener.Reopen(); err != nil {
+			return err
+		}
+	} else {
 		// Restarting a server without a reusable listener can cause flakes since the
 		// port may be occupied by a different process now. Use a reusable listener
 		// to avoid that problem.
@@ -1666,8 +1670,6 @@ func (tc *TestCluster) RestartServerWithInspect(idx int, inspect func(s *server.
 			"ReusableListeners must be set on ClusterArgs or compatible Listener "+
 				"needs to be set in serverArgs to restart server %d", idx,
 		)
-	} else if err := ln.Reopen(); err != nil {
-		return err
 	}
 
 	for i, specs := range serverArgs.StoreSpecs {

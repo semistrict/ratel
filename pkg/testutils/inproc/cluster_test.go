@@ -99,6 +99,72 @@ func TestSyncFakeTime(t *testing.T) {
 	})
 }
 
+// TestSyncRestart reimplements the "restart/down-for-2m" roachtest:
+// stop a node, verify the cluster still serves traffic, restart the
+// node, verify it recovers. Inside synctest, the downtime is instant.
+func TestSyncRestart(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+	defer log.Scope(t).Close(t)
+
+	synctest.Test(t, func(t *testing.T) {
+		c := inproc.StartCluster(t, 3)
+		defer c.Stop()
+
+		ctx := t.Context()
+		db := c.Server(0).DB()
+
+		require.NoError(t, db.Put(ctx, roachpb.Key("before-stop"), []byte("v1")))
+
+		c.StopNode(2)
+
+		require.NoError(t, db.Put(ctx, roachpb.Key("during-stop"), []byte("v2")))
+		val, err := db.Get(ctx, roachpb.Key("during-stop"))
+		require.NoError(t, err)
+		require.Equal(t, []byte("v2"), val.ValueBytes())
+
+		c.RestartNode(t, 2)
+
+		val, err = db.Get(ctx, roachpb.Key("before-stop"))
+		require.NoError(t, err)
+		require.Equal(t, []byte("v1"), val.ValueBytes())
+
+		val, err = db.Get(ctx, roachpb.Key("during-stop"))
+		require.NoError(t, err)
+		require.Equal(t, []byte("v2"), val.ValueBytes())
+	})
+}
+
+// TestSyncNetworkPartition verifies that a 3-node cluster survives a
+// network partition: block a node, verify reads/writes on remaining
+// nodes, then heal the partition.
+func TestSyncNetworkPartition(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+	defer log.Scope(t).Close(t)
+
+	synctest.Test(t, func(t *testing.T) {
+		c := inproc.StartCluster(t, 3)
+		defer c.Stop()
+
+		ctx := t.Context()
+		db := c.Server(0).DB()
+
+		require.NoError(t, db.Put(ctx, roachpb.Key("pre-partition"), []byte("v1")))
+
+		c.PartitionNode(2)
+
+		require.NoError(t, db.Put(ctx, roachpb.Key("during-partition"), []byte("v2")))
+		val, err := db.Get(ctx, roachpb.Key("during-partition"))
+		require.NoError(t, err)
+		require.Equal(t, []byte("v2"), val.ValueBytes())
+
+		c.HealPartition(2)
+
+		val, err = db.Get(ctx, roachpb.Key("pre-partition"))
+		require.NoError(t, err)
+		require.Equal(t, []byte("v1"), val.ValueBytes())
+	})
+}
+
 // TestSyncClockJump reimplements the "clock-jump" roachtest: verify
 // that the HLC tracks time advancement correctly under synctest's
 // full control over time progression.

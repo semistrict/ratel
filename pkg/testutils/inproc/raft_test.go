@@ -163,3 +163,40 @@ func TestSyncRaftRestartWithReplication(t *testing.T) {
 		require.Equal(t, []byte("v2"), val.ValueBytes())
 	})
 }
+
+// TestSyncLeaseTransfer replicates to all 3 nodes via ReplicationAuto,
+// stops the leaseholder, and verifies the lease transfers and data
+// remains accessible from a surviving node.
+func TestSyncLeaseTransfer(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+	defer log.Scope(t).Close(t)
+
+	synctest.Test(t, func(t *testing.T) {
+		c := inproc.StartCluster(t, 3, func(args *base.TestClusterArgs) {
+			args.ReplicationMode = base.ReplicationAuto
+		})
+		defer c.Stop()
+
+		ctx := t.Context()
+		db := c.Server(0).DB()
+
+		key := keys.ScratchRangeMin
+		require.NoError(t, db.Put(ctx, key, []byte("lease-data")))
+
+		desc := c.LookupRangeOrFatal(t, key)
+
+		lease, _, err := c.FindRangeLease(desc, nil)
+		require.NoError(t, err)
+		leaseholderIdx := int(lease.Replica.NodeID) - 1
+		t.Logf("leaseholder is node %d, stopping it", leaseholderIdx+1)
+		c.StopNode(leaseholderIdx)
+
+		liveIdx := (leaseholderIdx + 1) % 3
+		t.Logf("reading from live node %d", liveIdx+1)
+		val, err := c.Server(liveIdx).DB().Get(ctx, key)
+		require.NoError(t, err)
+		require.Equal(t, []byte("lease-data"), val.ValueBytes())
+
+		c.RestartNode(t, leaseholderIdx)
+	})
+}

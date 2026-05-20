@@ -13,7 +13,6 @@ package inproc_test
 import (
 	"context"
 	"testing"
-	"testing/synctest"
 	"time"
 
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
@@ -49,9 +48,9 @@ func TestSyncInprocSmoke(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
 
-	synctest.Test(t, func(t *testing.T) {
+	runSyncTest(t, func(t *testing.T) {
 		c := inproc.StartCluster(t, 3)
-		defer c.Stop()
+		defer stopSyncCluster(c)
 
 		db := c.Server(0).DB()
 
@@ -82,9 +81,9 @@ func TestSyncTestSmoke(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
 
-	synctest.Test(t, func(t *testing.T) {
+	runSyncTest(t, func(t *testing.T) {
 		c := inproc.StartCluster(t, 3)
-		defer c.Stop()
+		defer stopSyncCluster(c)
 
 		db := c.Server(0).DB()
 
@@ -102,9 +101,9 @@ func TestSyncFakeTime(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
 
-	synctest.Test(t, func(t *testing.T) {
+	runSyncTest(t, func(t *testing.T) {
 		c := inproc.StartCluster(t, 1)
-		defer c.Stop()
+		defer stopSyncCluster(c)
 
 		clock := c.Server(0).Clock()
 
@@ -127,9 +126,9 @@ func TestSyncRestart(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
 
-	synctest.Test(t, func(t *testing.T) {
+	runSyncTest(t, func(t *testing.T) {
 		c := inproc.StartCluster(t, 3)
-		defer c.Stop()
+		defer stopSyncCluster(c)
 
 		ctx := t.Context()
 		db := c.Server(0).DB()
@@ -162,9 +161,9 @@ func TestSyncNetworkPartition(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
 
-	synctest.Test(t, func(t *testing.T) {
+	runSyncTest(t, func(t *testing.T) {
 		c := inproc.StartCluster(t, 3)
-		defer c.Stop()
+		defer stopSyncCluster(c)
 
 		ctx := t.Context()
 		db := c.Server(0).DB()
@@ -194,9 +193,9 @@ func TestSyncClockJump(t *testing.T) {
 	defer log.Scope(t).Close(t)
 	skip.UnderRace(t, "synctest+race hangs or crashes in this clock-jump case; non-race still checks intended behavior")
 
-	synctest.Test(t, func(t *testing.T) {
+	runSyncTest(t, func(t *testing.T) {
 		c := inproc.StartCluster(t, 1)
-		defer c.Stop()
+		defer stopSyncCluster(c)
 
 		ctx := t.Context()
 		db := c.Server(0).DB()

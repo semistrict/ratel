@@ -26,6 +26,7 @@ type Registry struct {
 	mu        sync.Mutex
 	listeners map[string]*Listener
 	blocked   map[string]bool
+	links     map[string]map[string]bool
 }
 
 // NewRegistry creates a new in-memory network registry.
@@ -33,6 +34,7 @@ func NewRegistry() *Registry {
 	return &Registry{
 		listeners: make(map[string]*Listener),
 		blocked:   make(map[string]bool),
+		links:     make(map[string]map[string]bool),
 	}
 }
 
@@ -53,8 +55,14 @@ func (r *Registry) Register(addr string) *Listener {
 // if the address is not registered, is blocked (partitioned), or the
 // context is canceled.
 func (r *Registry) Dial(ctx context.Context, addr string) (net.Conn, error) {
+	return r.DialFrom(ctx, "", addr)
+}
+
+// DialFrom connects to the listener at the given address on behalf of a
+// logical source address.
+func (r *Registry) DialFrom(ctx context.Context, source, addr string) (net.Conn, error) {
 	r.mu.Lock()
-	if r.blocked[addr] {
+	if r.blocked[addr] || r.links[source][addr] {
 		r.mu.Unlock()
 		return nil, errors.Newf("connection to %q refused: node is partitioned", addr)
 	}
@@ -63,7 +71,7 @@ func (r *Registry) Dial(ctx context.Context, addr string) (net.Conn, error) {
 	if !ok {
 		return nil, errors.Newf("no listener registered for %q", addr)
 	}
-	return l.Dial(ctx)
+	return l.DialWithSource(ctx, source)
 }
 
 // DialerFunc returns a function compatible with
@@ -71,6 +79,14 @@ func (r *Registry) Dial(ctx context.Context, addr string) (net.Conn, error) {
 // through this registry.
 func (r *Registry) DialerFunc() func(ctx context.Context, addr string) (net.Conn, error) {
 	return r.Dial
+}
+
+// DialerFuncFor returns a dialer that records a logical source address for
+// directed-link partitioning.
+func (r *Registry) DialerFuncFor(source string) func(ctx context.Context, addr string) (net.Conn, error) {
+	return func(ctx context.Context, addr string) (net.Conn, error) {
+		return r.DialFrom(ctx, source, addr)
+	}
 }
 
 // SQLDialFunc returns a function compatible with
@@ -86,8 +102,12 @@ func (r *Registry) SQLDialFunc() func(network, addr string) (net.Conn, error) {
 // network partition. Existing connections are not affected.
 func (r *Registry) Block(addr string) {
 	r.mu.Lock()
-	defer r.mu.Unlock()
+	l := r.listeners[addr]
 	r.blocked[addr] = true
+	r.mu.Unlock()
+	if l != nil {
+		l.CloseActiveConns()
+	}
 }
 
 // Unblock re-allows connections to the given address, healing a
@@ -96,6 +116,56 @@ func (r *Registry) Unblock(addr string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.blocked, addr)
+}
+
+// BlockLink prevents new connections from source to addr and tears down any
+// existing directed connections on that link.
+func (r *Registry) BlockLink(source, addr string) {
+	r.mu.Lock()
+	l := r.listeners[addr]
+	if r.links[source] == nil {
+		r.links[source] = make(map[string]bool)
+	}
+	r.links[source][addr] = true
+	r.mu.Unlock()
+	if l != nil {
+		l.CloseActiveConnsFrom(source)
+	}
+}
+
+// UnblockLink heals a previously blocked directed link.
+func (r *Registry) UnblockLink(source, addr string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if links := r.links[source]; links != nil {
+		delete(links, addr)
+		if len(links) == 0 {
+			delete(r.links, source)
+		}
+	}
+}
+
+// PartitionGroups blocks all directed traffic between distinct groups while
+// preserving connectivity within each group.
+func (r *Registry) PartitionGroups(groups [][]string) {
+	r.PartitionGrudge(CompleteGrudge(groups))
+}
+
+// PartitionGrudge blocks all directed links specified by the given grudge.
+func (r *Registry) PartitionGrudge(grudge map[string][]string) {
+	for source, blocked := range grudge {
+		for _, addr := range blocked {
+			r.BlockLink(source, addr)
+		}
+	}
+}
+
+// HealAllLinks removes all directed link partitions while leaving whole-node
+// partitions untouched.
+func (r *Registry) HealAllLinks() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.links = make(map[string]map[string]bool)
 }
 
 // Unregister removes a listener from the registry and closes it.
@@ -117,6 +187,7 @@ func (r *Registry) Close() {
 	listeners := r.listeners
 	r.listeners = make(map[string]*Listener)
 	r.blocked = make(map[string]bool)
+	r.links = make(map[string]map[string]bool)
 	r.mu.Unlock()
 	for _, l := range listeners {
 		_ = l.Close()

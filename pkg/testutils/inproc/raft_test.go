@@ -13,7 +13,6 @@ package inproc_test
 import (
 	"context"
 	"testing"
-	"testing/synctest"
 
 	"github.com/cockroachdb/cockroach/pkg/base"
 	"github.com/cockroachdb/cockroach/pkg/keys"
@@ -55,9 +54,9 @@ func TestSyncAddVoters(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
 
-	synctest.Test(t, func(t *testing.T) {
+	runSyncTest(t, func(t *testing.T) {
 		c := inproc.StartCluster(t, 3)
-		defer c.Stop()
+		defer stopSyncCluster(c)
 
 		ctx := t.Context()
 		db := c.Server(0).DB()
@@ -109,11 +108,11 @@ func TestSyncAutoReplication(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
 
-	synctest.Test(t, func(t *testing.T) {
+	runSyncTest(t, func(t *testing.T) {
 		c := inproc.StartCluster(t, 3, func(args *base.TestClusterArgs) {
 			args.ReplicationMode = base.ReplicationAuto
 		})
-		defer c.Stop()
+		defer stopSyncCluster(c)
 
 		ctx := t.Context()
 		db := c.Server(0).DB()
@@ -137,11 +136,11 @@ func TestSyncRaftRestartWithReplication(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
 
-	synctest.Test(t, func(t *testing.T) {
+	runSyncTest(t, func(t *testing.T) {
 		c := inproc.StartCluster(t, 3, func(args *base.TestClusterArgs) {
 			args.ReplicationMode = base.ReplicationAuto
 		})
-		defer c.Stop()
+		defer stopSyncCluster(c)
 
 		ctx := t.Context()
 		db := c.Server(0).DB()
@@ -171,11 +170,11 @@ func TestSyncLeaseTransfer(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
 
-	synctest.Test(t, func(t *testing.T) {
+	runSyncTest(t, func(t *testing.T) {
 		c := inproc.StartCluster(t, 3, func(args *base.TestClusterArgs) {
 			args.ReplicationMode = base.ReplicationAuto
 		})
-		defer c.Stop()
+		defer stopSyncCluster(c)
 
 		ctx := t.Context()
 		db := c.Server(0).DB()

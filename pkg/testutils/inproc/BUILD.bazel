@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "cluster.go",
         "listener.go",
+        "network_topology.go",
         "registry.go",
     ],
     importpath = "github.com/cockroachdb/cockroach/pkg/testutils/inproc",
@@ -21,19 +22,30 @@ go_library(
 
 go_test(
     name = "inproc_test",
+    embed = [":inproc"],
     srcs = [
         "cluster_test.go",
         "decommission_test.go",
+        "jepsen_bank_test.go",
+        "jepsen_comments_test.go",
+        "jepsen_partition_nemesis_test.go",
+        "jepsen_register_test.go",
+        "jepsen_sequential_test.go",
+        "jepsen_sets_test.go",
+        "liveness_poller_test.go",
         "lease_test.go",
         "main_test.go",
         "raft_test.go",
+        "ratel_chaos_test.go",
+        "registry_test.go",
+        "synctest_helpers_test.go",
     ],
     tags = ["manual"],
     deps = [
-        ":inproc",
         "//pkg/base",
         "//pkg/keys",
         "//pkg/kv/kvclient/kvcoord",
+        "//pkg/kv/kvserver/liveness",
         "//pkg/kv/kvserver/liveness/livenesspb",
         "//pkg/roachpb",
         "//pkg/testutils/skip",
@@ -45,6 +57,7 @@ go_test(
         "//pkg/util/leaktest",
         "//pkg/util/log",
         "//pkg/util/randutil",
+        "@com_github_anishathalye_porcupine//:porcupine",
         "@com_github_stretchr_testify//require",
     ],
 )

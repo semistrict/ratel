@@ -65,9 +65,9 @@ Expected paths/features:
 
 ## Inproc Synctest / Jepsen Coverage
 
-Status: partially ported.
+Status: mostly ported.
 
-The base `pkg/testutils/inproc` package exists, but several `origin/main` tests and topology helpers are still missing.
+The base `pkg/testutils/inproc` package, topology helpers, liveness tests, registry tests, chaos smoke tests, and Jepsen bank/comments/register/sequential/sets coverage are ported. The default Bazel target runs the synctest cluster cases one per subprocess because this branch still has background gossip/rangefeed loops that can outlive one synctest bubble and poison the next in the same Go process.
 
 Refs:
 - `2e5dce0` Add in-process cluster testing support
@@ -93,12 +93,8 @@ Refs:
 - `1a761af` Final inproc/synctest cleanup
 
 Expected missing paths/features:
-- `pkg/testutils/inproc/jepsen_*_test.go`
-- `pkg/testutils/inproc/network_topology.go`
-- `pkg/testutils/inproc/ratel_chaos_test.go`
-- `pkg/testutils/inproc/synctest_helpers_test.go`
-- `pkg/testutils/inproc/liveness_poller_test.go`
 - distributed UDF tests and UDF benches
+- full `TestSyncRatelChaos` stress run in the default target; narrower chaos cases are enabled, but the full churn stress is too slow without further server-background-loop cleanup
 
 ## SQL Query UI Page
 

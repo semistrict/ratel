@@ -17,7 +17,6 @@ package inproc_test
 import (
 	"context"
 	"testing"
-	"testing/synctest"
 
 	"github.com/cockroachdb/cockroach/pkg/base"
 	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/liveness/livenesspb"
@@ -62,11 +61,11 @@ func TestSyncDecommission(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
 
-	synctest.Test(t, func(t *testing.T) {
+	runSyncTest(t, func(t *testing.T) {
 		c := inproc.StartCluster(t, 4, func(args *base.TestClusterArgs) {
 			args.ReplicationMode = base.ReplicationAuto
 		})
-		defer c.Stop()
+		defer stopSyncCluster(c)
 
 		ctx := t.Context()
 		db := c.Server(0).DB()

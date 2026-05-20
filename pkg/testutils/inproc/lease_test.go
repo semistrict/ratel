@@ -17,7 +17,6 @@ package inproc_test
 import (
 	"context"
 	"testing"
-	"testing/synctest"
 
 	"github.com/cockroachdb/cockroach/pkg/keys"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
@@ -81,9 +80,9 @@ func TestLeaseTransferAfterAddVotersSynctest(t *testing.T) {
 
 	t.Skip("WIP: deadlocks under synctest; see commit 09751515290")
 
-	synctest.Test(t, func(t *testing.T) {
+	runSyncTest(t, func(t *testing.T) {
 		c := inproc.StartCluster(t, 3)
-		defer c.Stop()
+		defer stopSyncCluster(c)
 
 		ctx := t.Context()
 		db := c.Server(0).DB()

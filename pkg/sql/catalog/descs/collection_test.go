@@ -809,11 +809,11 @@ func TestGetAllDescriptorsInDatabase(t *testing.T) {
 		}
 		require.Equal(t, `
 parent schema name   id  kind     version dropped public
-0      0      db     104 database 2       false   true
-104    0      public 105 schema   1       false   true
-104    0      schema 106 schema   1       false   true
-104    105    table  107 relation 1       false   true
-104    106    table  108 relation 1       false   true
+0      0      db     108 database 2       false   true
+108    0      public 109 schema   1       false   true
+108    0      schema 110 schema   1       false   true
+108    109    table  111 relation 1       false   true
+108    110    table  112 relation 1       false   true
 `, formatCatalog(allDescs.OrderedDescriptors()))
 		for _, stmt := range []string{
 			`ALTER SCHEMA schema RENAME TO sc`,
@@ -833,15 +833,15 @@ parent schema name   id  kind     version dropped public
 		}
 		require.Equal(t, `
 parent schema name   id  kind     version dropped public
-0      0      db     104 database 3       false   true
-104    0      public 105 schema   2       false   true
-104    0      sc     106 schema   2       false   true
-104    0      sc_foo 109 schema   1       false   true
-104    105    f      111 function 1       false   true
-104    105    table  107 relation 2       true    false
-104    106    foo    110 relation 1       false   true
-104    106    table  108 relation 1       false   true
-104    109    f      112 function 1       false   true
+0      0      db     108 database 3       false   true
+108    0      public 109 schema   2       false   true
+108    0      sc     110 schema   2       false   true
+108    0      sc_foo 113 schema   1       false   true
+108    109    f      115 function 1       false   true
+108    109    table  111 relation 2       true    false
+108    110    foo    114 relation 1       false   true
+108    110    table  112 relation 1       false   true
+108    113    f      116 function 1       false   true
 `, formatCatalog(allDescs.OrderedDescriptors()))
 		return nil
 	}
@@ -1000,12 +1000,12 @@ func TestHydrateCatalog(t *testing.T) {
 			expectedError string
 		}
 		for _, tc := range []testCase{
-			{deleteDescriptor("typ"), "type \"[107]\" does not exist"},
-			{deleteDescriptor("ctyp"), "type \"[109]\" does not exist"},
-			{deleteDescriptor("db"), "database \"[104]\" does not exist"},
-			{deleteDescriptor("schema"), "unknown schema \"[106]\""},
-			{replaceTypeDescWithNonTypeDesc("typ"), "referenced type ID 107: descriptor is a *dbdesc." + "immutable: unexpected descriptor type"},
-			{replaceTypeDescWithNonTypeDesc("ctyp"), "referenced type ID 109: descriptor is a *dbdesc." + "" + "immutable: unexpected descriptor type"},
+			{deleteDescriptor("typ"), "type \"[111]\" does not exist"},
+			{deleteDescriptor("ctyp"), "type \"[113]\" does not exist"},
+			{deleteDescriptor("db"), "database \"[108]\" does not exist"},
+			{deleteDescriptor("schema"), "unknown schema \"[110]\""},
+			{replaceTypeDescWithNonTypeDesc("typ"), "referenced type ID 111: descriptor is a *dbdesc." + "immutable: unexpected descriptor type"},
+			{replaceTypeDescWithNonTypeDesc("ctyp"), "referenced type ID 113: descriptor is a *dbdesc." + "" + "immutable: unexpected descriptor type"},
 		} {
 			require.NoError(t, sql.DescsTxn(ctx, &execCfg, func(
 				ctx context.Context, txn isql.Txn, descriptors *descs.Collection,

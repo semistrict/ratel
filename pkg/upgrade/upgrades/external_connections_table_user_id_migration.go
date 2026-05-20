@@ -24,7 +24,6 @@ import (
 const addOwnerIDColumnToExternalConnectionsTableStmt = `
 ALTER TABLE system.external_connections
 ADD COLUMN IF NOT EXISTS owner_id OID
-FAMILY "primary"
 `
 
 func alterExternalConnectionsTableAddOwnerIDColumn(

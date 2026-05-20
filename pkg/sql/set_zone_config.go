@@ -1233,14 +1233,16 @@ func writeZoneConfigUpdate(
 	if err := txn.KV().Run(ctx, b); err != nil {
 		return 0, err
 	}
-	r := b.Results[0]
-	if r.Err != nil {
-		panic("run succeeded even through the result has an error")
-	}
-	// We don't really care how many keys are affected since this function always
-	// write one single zone config.
-	if len(r.Keys) > 0 {
-		numAffected = 1
+	if len(b.Results) > 0 {
+		r := b.Results[0]
+		if r.Err != nil {
+			panic("run succeeded even through the result has an error")
+		}
+		// We don't really care how many keys are affected since this function always
+		// write one single zone config.
+		if len(r.Keys) > 0 {
+			numAffected = 1
+		}
 	}
 	return numAffected, err
 }

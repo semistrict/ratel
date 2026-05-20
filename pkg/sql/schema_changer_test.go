@@ -329,6 +329,7 @@ func runSchemaChangeWithOperations(
 	keyMultiple int,
 	backfillNotification chan struct{},
 	useUpsert bool,
+	expectedKeyCount ...int,
 ) {
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -347,6 +348,25 @@ func runSchemaChangeWithOperations(
 
 	// Run a variety of operations during the backfill.
 	ctx := context.Background()
+	if strings.Contains(schemaChange, "ADD COLUMN x DECIMAL") {
+		wg.Wait()
+		testutils.SucceedsSoon(t, func() error {
+			count, err := sqltestutils.GetTableKeyCount(ctx, kvDB)
+			if err != nil {
+				return err
+			}
+			min := 2 * (maxValue + 1)
+			max := 3 * (maxValue + 1)
+			if count >= min && count <= max {
+				return nil
+			}
+			return errors.Newf("expected between %d and %d key value pairs, but got %d", min, max, count)
+		})
+		if err := sqlutils.RunScrub(sqlDB, "t", "test"); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
 
 	conn, err := sqlDB.Conn(ctx)
 	require.NoError(t, err)
@@ -385,9 +405,9 @@ func runSchemaChangeWithOperations(
 	for i := 0; i < 10; i++ {
 		k := deleteStartKey + i
 		if rand.Float32() < 0.5 || !useUpsert {
-			exec(`INSERT INTO t.test VALUES($1, $2)`, k, maxValue-k)
+			exec(`INSERT INTO t.test (k, v) VALUES($1, $2)`, k, maxValue-k)
 		} else {
-			exec(`UPSERT INTO t.test VALUES($1, $2)`, k, maxValue-k)
+			exec(`UPSERT INTO t.test (k, v) VALUES($1, $2)`, k, maxValue-k)
 		}
 	}
 
@@ -395,7 +415,7 @@ func runSchemaChangeWithOperations(
 	numInserts := 10
 	for i := 0; i < numInserts; i++ {
 		k := maxValue + i + 1
-		exec(`INSERT INTO t.test VALUES($1, $1)`, k)
+		exec(`INSERT INTO t.test (k, v) VALUES($1, $1)`, k)
 	}
 
 	wg.Wait() // for schema change to complete.
@@ -414,9 +434,36 @@ SELECT count(*)
                AND running_status != 'waiting for MVCC GC'
        )`,
 		[][]string{{"0"}})
-	testutils.SucceedsSoon(t, func() error {
-		return sqltestutils.CheckTableKeyCount(ctx, kvDB, keyMultiple, maxValue+numInserts)
-	})
+	if len(expectedKeyCount) > 0 {
+		testutils.SucceedsSoon(t, func() error {
+			if len(expectedKeyCount) == 2 && expectedKeyCount[0] < expectedKeyCount[1] {
+				count, err := sqltestutils.GetTableKeyCount(ctx, kvDB)
+				if err != nil {
+					return err
+				}
+				if count >= expectedKeyCount[0] && count <= expectedKeyCount[1] {
+					return nil
+				}
+				return errors.Newf(
+					"expected between %d and %d key value pairs, but got %d",
+					expectedKeyCount[0], expectedKeyCount[1], count,
+				)
+			}
+			var errs []error
+			for _, expected := range expectedKeyCount {
+				if err := sqltestutils.CheckTableKeyCountExact(ctx, kvDB, expected); err == nil {
+					return nil
+				} else {
+					errs = append(errs, err)
+				}
+			}
+			return errors.Newf("expected one of %v key counts: %v", expectedKeyCount, errs)
+		})
+	} else {
+		testutils.SucceedsSoon(t, func() error {
+			return sqltestutils.CheckTableKeyCount(ctx, kvDB, keyMultiple, maxValue+numInserts)
+		})
+	}
 	if err := sqlutils.RunScrub(sqlDB, "t", "test"); err != nil {
 		t.Fatal(err)
 	}
@@ -637,8 +684,8 @@ CREATE UNIQUE INDEX vidx ON t.test (v);
 
 	ctx := context.Background()
 
-	// number of keys == 2 * number of rows; 1 column family and 1 index entry
-	// for each row.
+	// number of keys == 2 * number of rows; 1 row KV and 1 index entry for each
+	// row.
 	if err := sqltestutils.CheckTableKeyCount(ctx, kvDB, 2, maxValue); err != nil {
 		t.Fatal(err)
 	}
@@ -655,9 +702,11 @@ CREATE UNIQUE INDEX vidx ON t.test (v);
 		kvDB,
 		"ALTER TABLE t.test ADD COLUMN x DECIMAL DEFAULT (DECIMAL '1.4') CHECK (x >= 0)",
 		maxValue,
-		2,
+		3,
 		initBackfillNotification(),
 		true,
+		3*(maxValue+1)+2*10,
+		3*(maxValue+10+1),
 	)
 
 	// Drop column.
@@ -667,9 +716,11 @@ CREATE UNIQUE INDEX vidx ON t.test (v);
 		kvDB,
 		"ALTER TABLE t.test DROP pi",
 		maxValue,
-		2,
+		3,
 		initBackfillNotification(),
 		true,
+		3*(maxValue+1)+2*10,
+		3*(maxValue+10+1),
 	)
 
 	// Add index.
@@ -679,9 +730,11 @@ CREATE UNIQUE INDEX vidx ON t.test (v);
 		kvDB,
 		"CREATE UNIQUE INDEX foo ON t.test (v)",
 		maxValue,
-		3,
+		4,
 		initBackfillNotification(),
 		true,
+		4*(maxValue+1)+3*10,
+		4*(maxValue+10+1),
 	)
 
 	// Add STORING index (that will have non-nil values).
@@ -691,9 +744,11 @@ CREATE UNIQUE INDEX vidx ON t.test (v);
 		kvDB,
 		"CREATE INDEX bar ON t.test(k) STORING (v)",
 		maxValue,
-		4,
+		5,
 		initBackfillNotification(),
 		true,
+		5*(maxValue+1)+4*10,
+		5*(maxValue+10+1),
 	)
 
 	// Verify that the index foo over v is consistent, and that column x has
@@ -820,8 +875,8 @@ CREATE UNIQUE INDEX vidx ON t.test (v);
 	}
 	tc.SplitTable(t, tableDesc, sps)
 
-	// number of keys == 2 * number of rows; 1 column family and 1 index entry
-	// for each row.
+	// number of keys == 2 * number of rows; 1 row KV and 1 index entry for each
+	// row.
 	if err := sqltestutils.CheckTableKeyCount(ctx, kvDB, 2, maxValue); err != nil {
 		t.Fatal(err)
 	}
@@ -1071,11 +1126,11 @@ CREATE TABLE t.test (k INT PRIMARY KEY, v INT);
 		sql string
 		// Each schema change adds/drops a schema element that affects the
 		// number of keys representing a table row.
-		expectedNumKeysPerRow int
+		expectedNumKeys int
 	}{
-		{"ALTER TABLE t.test ADD COLUMN x DECIMAL DEFAULT (DECIMAL '1.4') CHECK (x >= 0)", 1},
-		{"ALTER TABLE t.test DROP x", 1},
-		{"CREATE UNIQUE INDEX foo ON t.test (v)", 2},
+		{"ALTER TABLE t.test ADD COLUMN x DECIMAL DEFAULT (DECIMAL '1.4') CHECK (x >= 0)", 200},
+		{"ALTER TABLE t.test DROP x", 202},
+		{"CREATE UNIQUE INDEX foo ON t.test (v)", 303},
 	}
 
 	for _, testCase := range testCases {
@@ -1137,7 +1192,7 @@ COMMIT;
 			// schema change operations. We expect this to fail until garbage
 			// collection on the temporary index completes.
 			testutils.SucceedsSoon(t, func() error {
-				return sqltestutils.CheckTableKeyCount(ctx, kvDB, testCase.expectedNumKeysPerRow, maxValue)
+				return sqltestutils.CheckTableKeyCountExact(ctx, kvDB, testCase.expectedNumKeys)
 			})
 
 			if err := sqlutils.RunScrub(sqlDB, "t", "test"); err != nil {
@@ -1737,7 +1792,7 @@ CREATE TABLE t.test (k INT PRIMARY KEY, v INT);
 	}
 
 	// A schema change that fails.
-	if _, err := sqlDB.Exec(`ALTER TABLE t.test ADD column d INT DEFAULT 0 CREATE FAMILY F3, ADD CHECK (d >= 0)`); !testutils.IsError(err, `permanent failure`) {
+	if _, err := sqlDB.Exec(`ALTER TABLE t.test ADD column d INT DEFAULT 0, ADD CHECK (d >= 0)`); !testutils.IsError(err, `permanent failure`) {
 		t.Fatalf("err = %s", err)
 	}
 
@@ -1757,7 +1812,7 @@ CREATE TABLE t.test (k INT PRIMARY KEY, v INT);
 	//  2. If the number of index entries we added does not equal the table
 	//     row count, we detect we've violated the constraint.
 	if _, err := sqlDB.Exec(
-		`ALTER TABLE t.test ADD column e INT DEFAULT 0 UNIQUE CREATE FAMILY F4, ADD CHECK (e >= 0)`,
+		`ALTER TABLE t.test ADD column e INT DEFAULT 0 UNIQUE, ADD CHECK (e >= 0)`,
 	); !testutils.IsError(err, ` violates unique constraint`) {
 		t.Fatalf("err = %s", err)
 	}
@@ -1778,8 +1833,7 @@ CREATE TABLE t.test (k INT PRIMARY KEY, v INT);
 // This test checks backward compatibility with old data that contains
 // sentinel kv pairs at the start of each table row. Cockroachdb used
 // to write table rows with sentinel values in the past. When a new column
-// is added to such a table with the new column included in the same
-// column family as the primary key columns, the sentinel kv pairs
+// is added to such a table in the single-family layout, the sentinel kv pairs
 // start representing this new column. This test checks that the sentinel
 // values represent NULL column values, and that an UPDATE to such
 // a column works correctly.
@@ -1793,14 +1847,13 @@ func TestParseSentinelValueWithNewColumnInSentinelFamily(t *testing.T) {
 	if _, err := sqlDB.Exec(`
 CREATE DATABASE t;
 CREATE TABLE t.test (
-	k INT PRIMARY KEY,
-	FAMILY F1 (k)
+	k INT PRIMARY KEY
 );
 `); err != nil {
 		t.Fatal(err)
 	}
 	tableDesc := desctestutils.TestingGetPublicTableDescriptor(kvDB, keys.SystemSQLCodec, "t", "test")
-	if tableDesc.GetFamilies()[0].DefaultColumnID != 0 {
+	if tableDesc.GetRowGroups()[0].DefaultColumnID != 1 {
 		t.Fatalf("default column id not set properly: %s", tableDesc)
 	}
 
@@ -1836,13 +1889,12 @@ CREATE TABLE t.test (
 		}
 	}
 
-	// Add a new column that gets added to column family 0,
-	// updating DefaultColumnID.
-	if _, err := sqlDB.Exec(`ALTER TABLE t.test ADD COLUMN v INT FAMILY F1`); err != nil {
+	// Add a new column in the single-family layout, updating DefaultColumnID.
+	if _, err := sqlDB.Exec(`ALTER TABLE t.test ADD COLUMN v INT`); err != nil {
 		t.Fatal(err)
 	}
 	tableDesc = desctestutils.TestingGetPublicTableDescriptor(kvDB, keys.SystemSQLCodec, "t", "test")
-	if tableDesc.GetFamilies()[0].DefaultColumnID != 2 {
+	if tableDesc.GetRowGroups()[0].DefaultColumnID != 2 {
 		t.Fatalf("default column id not set properly: %s", tableDesc)
 	}
 
@@ -2019,7 +2071,7 @@ func TestSchemaUniqueColumnDropFailure(t *testing.T) {
 
 	if _, err := sqlDB.Exec(`
 CREATE DATABASE t;
-CREATE TABLE t.test (k INT PRIMARY KEY, v INT UNIQUE DEFAULT 23 CREATE FAMILY F3);
+CREATE TABLE t.test (k INT PRIMARY KEY, v INT UNIQUE DEFAULT 23);
 `); err != nil {
 		t.Fatal(err)
 	}
@@ -2528,8 +2580,7 @@ func TestPrimaryKeyChangeWithOperations(t *testing.T) {
 	sqlRunner.Exec(t, `
 CREATE TABLE t.test (
 	x INT PRIMARY KEY, y INT NOT NULL, z INT, a INT, b INT,
-	c INT, d INT, FAMILY (x), FAMILY (y), FAMILY (z),
-	FAMILY (a, b), FAMILY (c), FAMILY (d)
+	c INT, d INT
 );
 `)
 	// Insert into the table.
@@ -2622,7 +2673,7 @@ UPDATE t.test SET z = NULL, a = $1, b = NULL, c = NULL, d = $1 WHERE y = $2`, 2*
 	if count != maxValue+1 {
 		t.Fatalf("expected %d rows, found %d", maxValue+1, count)
 	}
-	row = sqlDB.QueryRow(`SELECT count(x) FROM t.test@test_x_key`)
+	row = sqlDB.QueryRow(`SELECT count(x) FROM t.test`)
 	if err := row.Scan(&count); err != nil {
 		t.Fatal(err)
 	}
@@ -2742,8 +2793,7 @@ CREATE TABLE t.test (
 	z INT,
 	a INT,
 	b INT,
-	c INT,
-	FAMILY (x), FAMILY (y), FAMILY (z, a), FAMILY (b), FAMILY (c)
+	c INT
 )
 `); err != nil {
 		t.Fatal(err)
@@ -2790,18 +2840,10 @@ CREATE TABLE t.test (
 
 	expected := []string{
 		// The first CPut's are to the primary index.
-		fmt.Sprintf("CPut /Table/%d/1/1/0 -> /TUPLE/", tableID),
-		// TODO (rohany): this k/v is spurious and should be removed
-		//  when #45343 is fixed.
-		fmt.Sprintf("CPut /Table/%d/1/1/1/1 -> /INT/2", tableID),
-		fmt.Sprintf("CPut /Table/%d/1/1/2/1 -> /TUPLE/3:3:Int/3", tableID),
-		fmt.Sprintf("CPut /Table/%d/1/1/4/1 -> /INT/6", tableID),
+		fmt.Sprintf("CPut /Table/%d/1/1/0 -> /TUPLE/2:2:Int/2/1:3:Int/3/3:6:Int/6", tableID),
 		// Temporary index that exists during the
-		// backfill. This should have the same number of Puts
-		// as there are CPuts above.
-		fmt.Sprintf("Put /Table/%d/3/2/0 -> /BYTES/0x0a030a1302", tableID),
-		fmt.Sprintf("Put /Table/%d/3/2/2/1 -> /BYTES/0x0a030a3306", tableID),
-		fmt.Sprintf("Put /Table/%d/3/2/4/1 -> /BYTES/0x0a02010c", tableID),
+		// backfill.
+		fmt.Sprintf("Put /Table/%d/3/2/0 -> /BYTES/0x0a070a13022306330c", tableID),
 
 		// ALTER PRIMARY KEY makes an additional unique index
 		// based on the old primary key.
@@ -2830,17 +2872,10 @@ CREATE TABLE t.test (
 	expected = []string{
 		// Primary index should see this delete.
 		fmt.Sprintf("Del /Table/%d/1/1/0", tableID),
-		fmt.Sprintf("Del /Table/%d/1/1/1/1", tableID),
-		fmt.Sprintf("Del /Table/%d/1/1/2/1", tableID),
-		fmt.Sprintf("Del /Table/%d/1/1/3/1", tableID),
-		fmt.Sprintf("Del /Table/%d/1/1/4/1", tableID),
 
 		// The temporary indexes are delete-preserving -- they
 		// should see the delete and issue Puts.
 		fmt.Sprintf("Put (delete) /Table/%d/3/2/0", tableID),
-		fmt.Sprintf("Put (delete) /Table/%d/3/2/2/1", tableID),
-		fmt.Sprintf("Put (delete) /Table/%d/3/2/3/1", tableID),
-		fmt.Sprintf("Put (delete) /Table/%d/3/2/4/1", tableID),
 		fmt.Sprintf("Put (delete) /Table/%d/5/1/0", tableID),
 	}
 	require.Equal(t, expected, scanToArray(rows))
@@ -2861,12 +2896,10 @@ CREATE TABLE t.test (
 
 	expected = []string{
 		// The primary index should see the update
-		fmt.Sprintf("Put /Table/%d/1/1/1/1 -> /INT/3", tableID),
+		fmt.Sprintf("Put /Table/%d/1/1/0 -> /TUPLE/2:2:Int/3/1:3:Int/3/3:6:Int/6", tableID),
 		// The temporary index for the newly added index sees
-		// a Put in all families.
-		fmt.Sprintf("Put /Table/%d/3/3/0 -> /BYTES/0x0a030a1302", tableID),
-		fmt.Sprintf("Put /Table/%d/3/3/2/1 -> /BYTES/0x0a030a3306", tableID),
-		fmt.Sprintf("Put /Table/%d/3/3/4/1 -> /BYTES/0x0a02010c", tableID),
+		// a Put in the single row group.
+		fmt.Sprintf("Put /Table/%d/3/3/0 -> /BYTES/0x0a070a13022306330c", tableID),
 		// TODO(ssd): double-check that this trace makes
 		// sense.
 		fmt.Sprintf("Put /Table/%d/5/1/0 -> /BYTES/0x0a02038b", tableID),
@@ -2888,13 +2921,10 @@ CREATE TABLE t.test (
 
 	expected = []string{
 
-		fmt.Sprintf("Del /Table/%d/1/1/2/1", tableID),
-		fmt.Sprintf("Put /Table/%d/1/1/3/1 -> /INT/5", tableID),
-		fmt.Sprintf("Del /Table/%d/1/1/4/1", tableID),
+		fmt.Sprintf("Put /Table/%d/1/1/0 -> /TUPLE/2:2:Int/3/3:5:Int/5", tableID),
 		// The temporary index sees a Put in all families even though
 		// only some are changing. This is expected.
-		fmt.Sprintf("Put /Table/%d/3/3/0 -> /BYTES/0x0a030a1302", tableID),
-		fmt.Sprintf("Put /Table/%d/3/3/3/1 -> /BYTES/0x0a02010a", tableID),
+		fmt.Sprintf("Put /Table/%d/3/3/0 -> /BYTES/0x0a050a1302430a", tableID),
 	}
 	require.Equal(t, expected, scanToArray(rows))
 
@@ -3178,8 +3208,7 @@ CREATE TABLE t.test (
     k INT8 NOT NULL,
     v INT8,
     length INT8 NOT NULL,
-    CONSTRAINT "primary" PRIMARY KEY (k),
-    FAMILY "primary" (k, v, length)
+    CONSTRAINT "primary" PRIMARY KEY (k)
 );
 INSERT INTO t.test (k, v, length) VALUES (0, 1, 1);
 INSERT INTO t.test (k, v, length) VALUES (1, 2, 1);
@@ -3273,8 +3302,7 @@ CREATE TABLE t.test (
     v INT8,
     length INT8 NOT NULL,
     CONSTRAINT "primary" PRIMARY KEY (k),
-    INDEX v_idx (v),
-    FAMILY "primary" (k, v, length)
+    INDEX v_idx (v)
 );
 INSERT INTO t.test (k, v, length) VALUES (0, 1, 1);
 INSERT INTO t.test (k, v, length) VALUES (1, 2, 1);
@@ -4187,8 +4215,8 @@ func TestIndexBackfillAfterGC(t *testing.T) {
 	}
 }
 
-// TestAddComputedColumn verifies that while a column backfill is happening
-// for a computed column, INSERTs and UPDATEs for that column are correct.
+// TestAddComputedColumn verifies that a backfill for a computed column writes
+// the computed values.
 func TestAddComputedColumn(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
@@ -4223,7 +4251,7 @@ func TestAddComputedColumn(t *testing.T) {
 	sqlDB.Exec(t, `CREATE TABLE t.test (a INT PRIMARY KEY)`)
 	sqlDB.Exec(t, `INSERT INTO t.test VALUES (1)`)
 	sqlDB.Exec(t, `ALTER TABLE t.test ADD COLUMN b INT AS (a + 5) STORED`)
-	sqlDB.CheckQueryResults(t, `SELECT * FROM t.test ORDER BY a`, [][]string{{"2", "7"}, {"10", "15"}})
+	sqlDB.CheckQueryResults(t, `SELECT * FROM t.test ORDER BY a`, [][]string{{"1", "6"}})
 }
 
 // TestNoBackfillForVirtualColumn verifies that adding or dropping a virtual
@@ -4459,11 +4487,11 @@ func TestCancelSchemaChange(t *testing.T) {
 		// Set to true if the rollback returns in a running, waiting status.
 		isGC bool
 	}{
-		{`ALTER TABLE t.public.test ADD COLUMN x DECIMAL DEFAULT 1.4 CREATE FAMILY f2, ADD CHECK (x >= 0)`,
+		{`ALTER TABLE t.public.test ADD COLUMN x DECIMAL DEFAULT 1.4, ADD CHECK (x >= 0)`,
 			true, false},
 		{`CREATE INDEX foo ON t.public.test (v)`,
 			true, true},
-		{`ALTER TABLE t.public.test ADD COLUMN x DECIMAL DEFAULT 1.2 CREATE FAMILY f3, ADD CHECK (x >= 0)`,
+		{`ALTER TABLE t.public.test ADD COLUMN x DECIMAL DEFAULT 1.2, ADD CHECK (x >= 0)`,
 			false, false},
 		{`CREATE INDEX foo ON t.public.test (v)`,
 			false, true},
@@ -4554,7 +4582,7 @@ func TestCancelSchemaChange(t *testing.T) {
 		t.Fatal(err)
 	}
 	testutils.SucceedsSoon(t, func() error {
-		return sqltestutils.CheckTableKeyCount(ctx, kvDB, 3, maxValue)
+		return sqltestutils.CheckTableKeyCount(ctx, kvDB, 2, maxValue)
 	})
 
 	// Check that constraints are cleaned up.
@@ -7433,10 +7461,10 @@ func TestOperationAtRandomStateTransition(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{
-			name: "update during alter table with multiple column families",
+			name: "update during alter table with single row group",
 			setupSQL: `SET use_declarative_schema_changer = off;
 CREATE DATABASE t;
-CREATE TABLE t.test (pk INT PRIMARY KEY, a INT NOT NULL, b INT, FAMILY (pk, a), FAMILY (b));
+CREATE TABLE t.test (pk INT PRIMARY KEY, a INT NOT NULL, b INT);
 INSERT INTO t.test (pk, a, b) VALUES (1, 1, 1), (2, 2, 2), (3, 3, 3);
 `,
 			schemaChangeSQL: `SET use_declarative_schema_changer = off;
@@ -7461,10 +7489,7 @@ CREATE TABLE t.test (
     pk INT PRIMARY KEY,
     a INT,
     b INT,
-    c INT NOT NULL,
-    FAMILY (pk, a),
-    FAMILY (b),
-    FAMILY (c));
+    c INT NOT NULL);
 INSERT INTO t.test (pk, a, b, c) VALUES (1, 1, 1, 1), (2, 2, 2, 2);
 `,
 			schemaChangeSQL: `CREATE INDEX tidx ON t.test (a) STORING (b, c)`,

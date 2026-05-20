@@ -225,8 +225,7 @@ func (e *distSQLSpecExecFactory) ConstructScan(
 	if params.InvertedConstraint != nil {
 		spans, err = sb.SpansFromInvertedSpans(params.InvertedConstraint, params.IndexConstraint, nil /* scratch */)
 	} else {
-		splitter := span.MakeSplitter(tabDesc, idx, params.NeededCols)
-		spans, err = sb.SpansFromConstraint(params.IndexConstraint, splitter)
+		spans, err = sb.SpansFromConstraint(params.IndexConstraint, span.NoopSplitter())
 	}
 	if err != nil {
 		return nil, err

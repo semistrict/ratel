@@ -61,6 +61,11 @@ func TestSpanAssembler(t *testing.T) {
 	defer testMemAcc.Close(ctx)
 	rng, _ := randutil.NewTestRand()
 	typs := []*types.T{types.Int, types.Bytes, types.Decimal}
+	testTable, err := makeTable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	neededColumns := util.MakeFastIntSet(1, 2, 3, 4)
 
 	for _, useColFamilies := range []bool{true, false} {
 		name := "WithColFamilies"
@@ -185,6 +190,79 @@ func TestSpanAssembler(t *testing.T) {
 							}
 						})
 					}
+					source := colexectestutils.NewChunkingBatchSource(testAllocator, typs, cols, nTuples)
+					source.Init(ctx)
+					oracleSource := colexectestutils.NewChunkingBatchSource(testAllocator, typs, cols, nTuples)
+					oracleSource.Init(ctx)
+					converter := colconv.NewAllVecToDatumConverter(len(typs))
+
+					var builder span.Builder
+					builder.Init(&evalCtx, keys.TODOSQLCodec, testTable, testTable.GetPrimaryIndex())
+					splitter := span.MakeSplitter(testTable, testTable.GetPrimaryIndex(), neededColumns)
+
+					var fetchSpec descpb.IndexFetchSpec
+					if err := rowenc.InitIndexFetchSpec(
+						&fetchSpec, keys.TODOSQLCodec, testTable, testTable.GetPrimaryIndex(), nil, /* fetchedColumnIDs */
+					); err != nil {
+						t.Fatal(err)
+					}
+
+					colBuilder := NewColSpanAssembler(
+						keys.TODOSQLCodec,
+						testAllocator,
+						&fetchSpec,
+						typs,
+					)
+					defer func() {
+						colBuilder.Close()
+						colBuilder.Release()
+					}()
+
+					var testSpans roachpb.Spans
+					for batch := source.Next(); ; batch = source.Next() {
+						if batch.Length() == 0 {
+							// Reached the end of the input.
+							testSpans = append(testSpans, colBuilder.GetSpans()...)
+							break
+						}
+						if useSel {
+							batch.SetSelection(true)
+							copy(batch.Selection(), sel)
+							batch.SetLength(len(sel))
+						}
+						colBuilder.ConsumeBatch(batch, 0 /* startIdx */, batch.Length() /* endIdx */)
+					}
+
+					var oracleSpans roachpb.Spans
+					for batch := oracleSource.Next(); batch.Length() > 0; batch = oracleSource.Next() {
+						batch.SetSelection(true)
+						copy(batch.Selection(), sel)
+						batch.SetLength(len(sel))
+						converter.ConvertBatchAndDeselect(batch)
+						rows := make(rowenc.EncDatumRows, len(sel))
+						for i := range sel {
+							// Note that sel contains all rows if useSel=false.
+							row := make(rowenc.EncDatumRow, len(typs))
+							for j := range typs {
+								datum := converter.GetDatumColumn(j)[i]
+								row[j] = rowenc.DatumToEncDatum(typs[j], datum)
+							}
+							rows[i] = row
+						}
+						oracleSpans = append(oracleSpans, spanGeneratorOracle(t, &builder, splitter, rows, len(typs))...)
+					}
+
+					if len(oracleSpans) != len(testSpans) {
+						t.Fatalf("Expected %d spans, got %d.", len(oracleSpans), len(testSpans))
+					}
+					for i := range oracleSpans {
+						oracleSpan := oracleSpans[i]
+						testSpan := testSpans[i]
+						if !reflect.DeepEqual(oracleSpan, testSpan) {
+							t.Fatalf("Span at index %d incorrect.\n\nExpected:\n%v\n\nFound:\n%v\n",
+								i, oracleSpan, testSpan)
+						}
+					}
 				})
 			}
 		})
@@ -206,21 +284,13 @@ func spanGeneratorOracle(
 		if err != nil {
 			t.Fatal(err)
 		}
-		spans = spanSplitter.MaybeSplitSpanIntoSeparateFamilies(
+		spans = spanSplitter.AppendSpan(
 			spans, generatedSpan, lookupCols, containsNull)
 	}
 	return spans
 }
 
-func makeTable(useColFamilies bool) (catalog.TableDescriptor, error) {
-	tableID := bootstrap.TestingUserDescID(0)
-	if !useColFamilies {
-		// We can prevent the span builder from splitting spans into separate column
-		// families by using a system table ID, since system tables do not have
-		// column families.
-		tableID = keys.SystemDatabaseID
-	}
-
+func makeTable() (catalog.TableDescriptor, error) {
 	var testTableDesc = descpb.TableDescriptor{
 		Name:       "abcd",
 		ID:         descpb.ID(tableID),

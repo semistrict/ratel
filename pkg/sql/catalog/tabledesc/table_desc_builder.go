@@ -342,6 +342,7 @@ func maybeFillInDescriptor(
 	}
 	set(catalog.SetCreateAsOfTimeUsingModTime, maybeSetCreateAsOfTime(desc))
 	set(catalog.UpgradedFormatVersion, maybeUpgradeFormatVersion(desc))
+	set(catalog.CollapsedRowGroups, maybeCollapseRowGroups(desc))
 	set(catalog.FixedIndexEncodingType, maybeFixPrimaryIndexEncoding(&desc.PrimaryIndex))
 	set(catalog.UpgradedIndexFormatVersion, maybeUpgradePrimaryIndexFormatVersion(desc))
 	for i := range desc.Indexes {
@@ -390,6 +391,47 @@ func maybeFillInDescriptor(
 	set(catalog.StrippedDanglingSelfBackReferences, maybeStripDanglingSelfBackReferences(desc))
 	set(catalog.FixSecondaryIndexEncodingType, maybeFixSecondaryIndexEncodingType(desc))
 	return changes, nil
+}
+
+func maybeCollapseRowGroups(desc *descpb.TableDescriptor) (hasChanged bool) {
+	if !desc.IsPhysicalTable() || len(desc.RowGroups) == 1 && desc.RowGroups[0].ID == 0 {
+		return false
+	}
+	primaryIndexColumnIDs := make(map[descpb.ColumnID]struct{})
+	for _, colID := range desc.PrimaryIndex.KeyColumnIDs {
+		primaryIndexColumnIDs[colID] = struct{}{}
+	}
+	rowGroup := descpb.RowGroupDescriptor{
+		Name: FamilyPrimaryName,
+		ID:   0,
+	}
+	var nonKeyColumnIDs []descpb.ColumnID
+	addColumn := func(col descpb.ColumnDescriptor) {
+		if col.Virtual {
+			return
+		}
+		rowGroup.ColumnNames = append(rowGroup.ColumnNames, col.Name)
+		rowGroup.ColumnIDs = append(rowGroup.ColumnIDs, col.ID)
+		if _, ok := primaryIndexColumnIDs[col.ID]; !ok {
+			nonKeyColumnIDs = append(nonKeyColumnIDs, col.ID)
+		}
+	}
+	for i := range desc.Columns {
+		addColumn(desc.Columns[i])
+	}
+	for i := range desc.Mutations {
+		if col := desc.Mutations[i].GetColumn(); col != nil {
+			addColumn(*col)
+		}
+	}
+	if len(rowGroup.ColumnIDs) == 1 {
+		rowGroup.DefaultColumnID = rowGroup.ColumnIDs[0]
+	} else if len(nonKeyColumnIDs) == 1 {
+		rowGroup.DefaultColumnID = nonKeyColumnIDs[0]
+	}
+	desc.RowGroups = []descpb.RowGroupDescriptor{rowGroup}
+	desc.NextRowGroupID = 1
+	return true
 }
 
 // maybeRemoveDefaultExprFromComputedColumns removes DEFAULT expressions on
@@ -640,23 +682,8 @@ func upgradeToFamilyFormatVersion(desc *descpb.TableDescriptor) {
 	}
 	desc.NextRowGroupID = desc.RowGroups[0].ID + 1
 	addFamilyForCol := func(col *descpb.ColumnDescriptor) {
-		if primaryIndexColumnIDs.Contains(col.ID) {
-			desc.RowGroups[0].ColumnNames = append(desc.RowGroups[0].ColumnNames, col.Name)
-			desc.RowGroups[0].ColumnIDs = append(desc.RowGroups[0].ColumnIDs, col.ID)
-			return
-		}
-		colNames := []string{col.Name}
-		family := descpb.RowGroupDescriptor{
-			ID:              descpb.RowGroupID(col.ID),
-			Name:            generatedFamilyName(descpb.RowGroupID(col.ID), colNames),
-			ColumnNames:     colNames,
-			ColumnIDs:       []descpb.ColumnID{col.ID},
-			DefaultColumnID: col.ID,
-		}
-		desc.RowGroups = append(desc.RowGroups, family)
-		if family.ID >= desc.NextRowGroupID {
-			desc.NextRowGroupID = family.ID + 1
-		}
+		desc.RowGroups[0].ColumnNames = append(desc.RowGroups[0].ColumnNames, col.Name)
+		desc.RowGroups[0].ColumnIDs = append(desc.RowGroups[0].ColumnIDs, col.ID)
 	}
 
 	for i := range desc.Columns {
@@ -668,6 +695,9 @@ func upgradeToFamilyFormatVersion(desc *descpb.TableDescriptor) {
 			addFamilyForCol(c)
 		}
 	}
+	desc.RowGroups[0].DefaultColumnID = defaultColumnIDForSingleRowGroup(
+		desc.RowGroups[0].ColumnIDs, primaryIndexColumnIDs,
+	)
 }
 
 // maybeUpgradePrimaryIndexFormatVersion tries to promote a primary index to

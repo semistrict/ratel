@@ -49,7 +49,6 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/eval"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/sessiondatapb"
-	"github.com/cockroachdb/cockroach/pkg/sql/span"
 	"github.com/cockroachdb/cockroach/pkg/sql/sqlerrors"
 	"github.com/cockroachdb/cockroach/pkg/sql/sqlinstance"
 	"github.com/cockroachdb/cockroach/pkg/sql/types"
@@ -2907,10 +2906,8 @@ func (dsp *DistSQLPlanner) createPlanForIndexJoin(
 	}
 
 	fetchColIDs := make([]descpb.ColumnID, len(n.cols))
-	var fetchOrdinals intsets.Fast
 	for i := range n.cols {
 		fetchColIDs[i] = n.cols[i].GetID()
-		fetchOrdinals.Add(n.cols[i].Ordinal())
 	}
 	index := n.table.desc.GetPrimaryIndex()
 	if err := rowenc.InitIndexFetchSpec(
@@ -2922,9 +2919,6 @@ func (dsp *DistSQLPlanner) createPlanForIndexJoin(
 	); err != nil {
 		return nil, err
 	}
-
-	splitter := span.MakeSplitter(n.table.desc, index, fetchOrdinals)
-	joinReaderSpec.SplitFamilyIDs = splitter.FamilyIDs()
 
 	plan.PlanToStreamColMap = identityMap(plan.PlanToStreamColMap, len(fetchColIDs))
 
@@ -2992,10 +2986,8 @@ func (dsp *DistSQLPlanner) createPlanForLookupJoin(
 	}
 
 	fetchColIDs := make([]descpb.ColumnID, len(n.table.cols))
-	var fetchOrdinals intsets.Fast
 	for i := range n.table.cols {
 		fetchColIDs[i] = n.table.cols[i].GetID()
-		fetchOrdinals.Add(n.table.cols[i].Ordinal())
 	}
 	if err := rowenc.InitIndexFetchSpec(
 		&joinReaderSpec.FetchSpec,
@@ -3006,9 +2998,6 @@ func (dsp *DistSQLPlanner) createPlanForLookupJoin(
 	); err != nil {
 		return nil, err
 	}
-
-	splitter := span.MakeSplitter(n.table.desc, n.table.index, fetchOrdinals)
-	joinReaderSpec.SplitFamilyIDs = splitter.FamilyIDs()
 
 	joinReaderSpec.LookupColumns = make([]uint32, len(n.eqCols))
 	for i, col := range n.eqCols {

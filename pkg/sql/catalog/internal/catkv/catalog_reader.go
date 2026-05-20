@@ -289,6 +289,7 @@ func (cr catalogReader) GetByIDs(
 			// Only a single descriptor run, so generate a Get request.
 			if startID == endID {
 				get(ctx, b, catalogkeys.MakeDescMetadataKey(codec, startID))
+				get(ctx, b, catalogkeys.MakeLegacyDescMetadataKey(codec, startID))
 				for _, t := range catalogkeys.AllCommentTypes {
 					scan(ctx, b, catalogkeys.MakeObjectCommentsMetadataPrefix(codec, t, startID))
 				}
@@ -298,6 +299,8 @@ func (cr catalogReader) GetByIDs(
 				// so we will need to increment the endID.
 				scanRange(ctx, b, catalogkeys.MakeDescMetadataKey(codec, startID),
 					catalogkeys.MakeDescMetadataKey(codec, endID+1))
+				scanRange(ctx, b, catalogkeys.MakeLegacyDescMetadataKey(codec, startID),
+					catalogkeys.MakeLegacyDescMetadataKey(codec, endID+1))
 				for _, t := range catalogkeys.AllCommentTypes {
 					scanRange(ctx, b, catalogkeys.MakeObjectCommentsMetadataPrefix(codec, t, startID),
 						catalogkeys.MakeObjectCommentsMetadataPrefix(codec, t, endID+1))
@@ -334,6 +337,7 @@ func (cr catalogReader) GetByNames(
 		for _, nameInfo := range nameInfos {
 			if nameInfo.Name != "" {
 				get(ctx, b, catalogkeys.EncodeNameKey(codec, nameInfo))
+				get(ctx, b, catalogkeys.EncodeLegacyNameKey(codec, nameInfo))
 			}
 		}
 	})

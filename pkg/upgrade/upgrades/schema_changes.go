@@ -319,38 +319,38 @@ func doesNotHaveIndex(
 // the contrary, expectedTable must be accessed directly from systemschema
 // package. This function returns an error if the column doesn't exist in the
 // expectedTable descriptor.
-func hasColumnFamily(
-	storedTable, expectedTable catalog.TableDescriptor, colFamily string,
+func hasRowGroup(
+	storedTable, expectedTable catalog.TableDescriptor, rowGroupName string,
 ) (bool, error) {
-	var storedFamily, expectedFamily *descpb.ColumnFamilyDescriptor
-	for _, fam := range storedTable.GetFamilies() {
-		if fam.Name == colFamily {
-			storedFamily = &fam
+	var storedRowGroup, expectedRowGroup *descpb.RowGroupDescriptor
+	for _, rowGroup := range storedTable.GetRowGroups() {
+		if rowGroup.Name == rowGroupName {
+			storedRowGroup = &rowGroup
 			break
 		}
 	}
-	if storedFamily == nil {
+	if storedRowGroup == nil {
 		return false, nil
 	}
 
-	for _, fam := range expectedTable.GetFamilies() {
-		if fam.Name == colFamily {
-			expectedFamily = &fam
+	for _, rowGroup := range expectedTable.GetRowGroups() {
+		if rowGroup.Name == rowGroupName {
+			expectedRowGroup = &rowGroup
 			break
 		}
 	}
-	if expectedFamily == nil {
-		return false, errors.Errorf("column family %s does not exist", colFamily)
+	if expectedRowGroup == nil {
+		return false, errors.Errorf("row group %s does not exist", rowGroupName)
 	}
 
 	// Check that columns match.
-	storedFamilyCols := storedFamily.ColumnNames
-	expectedFamilyCols := expectedFamily.ColumnNames
-	if len(storedFamilyCols) != len(expectedFamilyCols) {
+	storedRowGroupCols := storedRowGroup.ColumnNames
+	expectedRowGroupCols := expectedRowGroup.ColumnNames
+	if len(storedRowGroupCols) != len(expectedRowGroupCols) {
 		return false, nil
 	}
-	for i, storedCol := range storedFamilyCols {
-		if storedCol != expectedFamilyCols[i] {
+	for i, storedCol := range storedRowGroupCols {
+		if storedCol != expectedRowGroupCols[i] {
 			return false, nil
 		}
 	}
@@ -366,8 +366,8 @@ func hasColumnFamily(
 func onlyHasColumnFamily(
 	storedTable, expectedTable catalog.TableDescriptor, colFamily string,
 ) (bool, error) {
-	var storedFamily, expectedFamily *descpb.ColumnFamilyDescriptor
-	storedFamilies := storedTable.GetFamilies()
+	var storedFamily, expectedFamily *descpb.RowGroupDescriptor
+	storedFamilies := storedTable.GetRowGroups()
 	if len(storedFamilies) > 1 {
 		return false, nil
 	}
@@ -379,7 +379,7 @@ func onlyHasColumnFamily(
 		return false, nil
 	}
 
-	expectedFamilies := expectedTable.GetFamilies()
+	expectedFamilies := expectedTable.GetRowGroups()
 	if expectedFamilies[0].Name == colFamily {
 		expectedFamily = &expectedFamilies[0]
 	}

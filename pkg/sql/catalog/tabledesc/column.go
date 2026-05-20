@@ -298,18 +298,17 @@ func (w column) HasGeneratedAsIdentitySequenceOption() bool {
 
 // columnCache contains precomputed slices of catalog.Column interfaces.
 type columnCache struct {
-	all                  []catalog.Column
-	public               []catalog.Column
-	writable             []catalog.Column
-	deletable            []catalog.Column
-	nonDrop              []catalog.Column
-	visible              []catalog.Column
-	accessible           []catalog.Column
-	readable             []catalog.Column
-	withUDTs             []catalog.Column
-	system               []catalog.Column
-	familyDefaultColumns []fetchpb.IndexFetchSpec_FamilyDefaultColumn
-	index                []indexColumnCache
+	all        []catalog.Column
+	public     []catalog.Column
+	writable   []catalog.Column
+	deletable  []catalog.Column
+	nonDrop    []catalog.Column
+	visible    []catalog.Column
+	accessible []catalog.Column
+	readable   []catalog.Column
+	withUDTs   []catalog.Column
+	system     []catalog.Column
+	index      []indexColumnCache
 }
 
 type indexColumnCache struct {
@@ -383,19 +382,6 @@ func newColumnCache(desc *descpb.TableDescriptor, mutations *mutationCache) *col
 		}
 		if col.HasType() && col.GetType().UserDefined() {
 			lazyAllocAppendColumn(&c.withUDTs, col, numDeletable)
-		}
-	}
-
-	// Populate familyDefaultColumns.
-	for i := range desc.RowGroups {
-		if f := &desc.RowGroups[i]; f.DefaultColumnID != 0 {
-			if c.familyDefaultColumns == nil {
-				c.familyDefaultColumns = make([]fetchpb.IndexFetchSpec_FamilyDefaultColumn, 0, len(desc.RowGroups)-i)
-			}
-			c.familyDefaultColumns = append(c.familyDefaultColumns, fetchpb.IndexFetchSpec_FamilyDefaultColumn{
-				FamilyID:        f.ID,
-				DefaultColumnID: f.DefaultColumnID,
-			})
 		}
 	}
 

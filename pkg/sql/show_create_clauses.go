@@ -532,7 +532,7 @@ func ShowCreateSequence(
 func showFamilyClause(desc catalog.TableDescriptor, f *tree.FmtCtx) {
 	// Do not show family in SHOW CREATE TABLE if there is only one and
 	// it is named "primary".
-	families := desc.GetFamilies()
+	families := desc.GetRowGroups()
 	if len(families) == 1 && families[0].Name == tabledesc.FamilyPrimaryName {
 		return
 	}

@@ -209,23 +209,23 @@ func (desc *wrapper) ForeachDependedOnBy(
 	return nil
 }
 
-// NumFamilies implements the TableDescriptor interface.
-func (desc *wrapper) NumFamilies() int {
+// NumRowGroups implements the TableDescriptor interface.
+func (desc *wrapper) NumRowGroups() int {
 	return len(desc.RowGroups)
 }
 
-// GetFamilies implements the TableDescriptor interface.
-func (desc *wrapper) GetFamilies() []descpb.ColumnFamilyDescriptor {
+// GetRowGroups implements the TableDescriptor interface.
+func (desc *wrapper) GetRowGroups() []descpb.RowGroupDescriptor {
 	return desc.RowGroups
 }
 
-// GetNextFamilyID implements the TableDescriptor interface.
-func (desc *wrapper) GetNextFamilyID() descpb.FamilyID {
+// GetNextRowGroupID implements the TableDescriptor interface.
+func (desc *wrapper) GetNextRowGroupID() descpb.RowGroupID {
 	return desc.NextRowGroupID
 }
 
-// ForeachFamily implements the TableDescriptor interface.
-func (desc *wrapper) ForeachFamily(f func(family *descpb.RowGroupDescriptor) error) error {
+// ForeachRowGroup implements the TableDescriptor interface.
+func (desc *wrapper) ForeachRowGroup(f func(rowGroup *descpb.RowGroupDescriptor) error) error {
 	for i := range desc.RowGroups {
 		if err := f(&desc.RowGroups[i]); err != nil {
 			return iterutil.Map(err)
@@ -573,12 +573,13 @@ func (desc *Mutable) AllocateIDsWithoutValidation(ctx context.Context) error {
 		}
 	}
 
-	// Only tables and materialized views can have / need indexes and column families.
+	// Only tables and materialized views can have / need indexes and physical
+	// row-group metadata.
 	if desc.IsTable() || desc.MaterializedView() {
 		if err := desc.allocateIndexIDs(columnNames); err != nil {
 			return err
 		}
-		// Virtual tables don't have column families.
+		// Virtual tables don't have row-group metadata.
 		if desc.IsPhysicalTable() {
 			desc.allocateColumnRowGroupIDs(columnNames)
 		}
@@ -822,41 +823,9 @@ func (desc *Mutable) allocateColumnRowGroupIDs(columnNames map[string]descpb.Col
 		if columnsInFamilies.Contains(col.ID) {
 			return
 		}
-		if primaryIndexColIDs.Contains(col.ID) {
-			// Primary index columns are required to be assigned to family 0.
-			desc.RowGroups[0].ColumnNames = append(desc.RowGroups[0].ColumnNames, col.Name)
-			desc.RowGroups[0].ColumnIDs = append(desc.RowGroups[0].ColumnIDs, col.ID)
-			return
-		}
-		var familyID descpb.RowGroupID
-		if desc.ParentID == keys.SystemDatabaseID {
-			// TODO(dan): This assigns families such that the encoding is exactly the
-			// same as before column families. It's used for all system tables because
-			// reads of them don't go through the normal sql layer, which is where the
-			// knowledge of families lives. Fix that and remove this workaround.
-			familyID = descpb.RowGroupID(col.ID)
-			desc.RowGroups = append(desc.RowGroups, descpb.RowGroupDescriptor{
-				ID:          familyID,
-				ColumnNames: []string{col.Name},
-				ColumnIDs:   []descpb.ColumnID{col.ID},
-			})
-		} else {
-			idx, ok := fitColumnToFamily(desc, *col)
-			if !ok {
-				idx = len(desc.RowGroups)
-				desc.RowGroups = append(desc.RowGroups, descpb.RowGroupDescriptor{
-					ID:          desc.NextRowGroupID,
-					ColumnNames: []string{},
-					ColumnIDs:   []descpb.ColumnID{},
-				})
-			}
-			familyID = desc.RowGroups[idx].ID
-			desc.RowGroups[idx].ColumnNames = append(desc.RowGroups[idx].ColumnNames, col.Name)
-			desc.RowGroups[idx].ColumnIDs = append(desc.RowGroups[idx].ColumnIDs, col.ID)
-		}
-		if familyID >= desc.NextRowGroupID {
-			desc.NextRowGroupID = familyID + 1
-		}
+		desc.RowGroups[0].ColumnNames = append(desc.RowGroups[0].ColumnNames, col.Name)
+		desc.RowGroups[0].ColumnIDs = append(desc.RowGroups[0].ColumnIDs, col.ID)
+		columnsInFamilies.Add(col.ID)
 	}
 	for i := range desc.Columns {
 		ensureColumnInFamily(&desc.Columns[i])
@@ -867,29 +836,32 @@ func (desc *Mutable) allocateColumnRowGroupIDs(columnNames map[string]descpb.Col
 		}
 	}
 
-	for i := range desc.RowGroups {
-		family := &desc.RowGroups[i]
-		if len(family.Name) == 0 {
-			family.Name = generatedFamilyName(family.ID, family.ColumnNames)
-		}
-
-		if family.DefaultColumnID == 0 {
-			defaultColumnID := descpb.ColumnID(0)
-			for _, colID := range family.ColumnIDs {
-				if !primaryIndexColIDs.Contains(colID) {
-					if defaultColumnID == 0 {
-						defaultColumnID = colID
-					} else {
-						defaultColumnID = descpb.ColumnID(0)
-						break
-					}
-				}
-			}
-			family.DefaultColumnID = defaultColumnID
-		}
-
-		desc.RowGroups[i] = *family
+	desc.RowGroups = desc.RowGroups[:1]
+	family := &desc.RowGroups[0]
+	if len(family.Name) == 0 {
+		family.Name = FamilyPrimaryName
 	}
+	family.DefaultColumnID = defaultColumnIDForSingleRowGroup(family.ColumnIDs, primaryIndexColIDs)
+	desc.NextRowGroupID = 1
+}
+
+func defaultColumnIDForSingleRowGroup(
+	columnIDs []descpb.ColumnID, primaryIndexColIDs catalog.TableColSet,
+) descpb.ColumnID {
+	if len(columnIDs) == 1 {
+		return columnIDs[0]
+	}
+	var defaultColumnID descpb.ColumnID
+	for _, colID := range columnIDs {
+		if primaryIndexColIDs.Contains(colID) {
+			continue
+		}
+		if defaultColumnID != 0 {
+			return 0
+		}
+		defaultColumnID = colID
+	}
+	return defaultColumnID
 }
 
 // fitColumnToFamily attempts to fit a new column into the existing column
@@ -1135,10 +1107,8 @@ func (desc *Mutable) AddSecondaryIndex(idx descpb.IndexDescriptor) error {
 	return nil
 }
 
-// AddColumnToFamilyMaybeCreate adds the specified column to the specified
-// family. If it doesn't exist and create is true, creates it. If it does exist
-// adds it unless "strict" create (`true` for create but `false` for
-// ifNotExists) is specified.
+// AddColumnToFamilyMaybeCreate adds the specified column to the table's single
+// physical row-group.
 //
 // AllocateIDs must be called before the TableDescriptor will be valid.
 func (desc *Mutable) AddColumnToFamilyMaybeCreate(
@@ -1693,33 +1663,17 @@ func (desc *Mutable) performComputedColumnSwap(swap *descpb.ComputedColumnSwap) 
 	desc.RenameColumnDescriptor(oldCol, uniqueName)
 	desc.RenameColumnDescriptor(newCol, oldColName)
 
-	// Swap Column Family ordering for oldCol and newCol.
-	// Both columns must be in the same family since the new column is
-	// created explicitly with the same column family as the old column.
-	// This preserves the ordering of column families when querying
-	// for column families.
-	oldColColumnFamily, err := desc.GetFamilyOfColumn(oldCol.GetID())
-	if err != nil {
-		return err
+	if len(desc.RowGroups) == 0 {
+		return errors.Newf("no physical row group found while swapping columns %q and %q", oldColName, uniqueName)
 	}
-	newColColumnFamily, err := desc.GetFamilyOfColumn(newCol.GetID())
-	if err != nil {
-		return err
-	}
-
-	if oldColColumnFamily.ID != newColColumnFamily.ID {
-		return errors.Newf("expected the column families of the old and new columns to match,"+
-			"oldCol column family: %v, newCol column family: %v",
-			oldColColumnFamily.ID, newColColumnFamily.ID)
-	}
-
-	for i := range oldColColumnFamily.ColumnIDs {
-		if oldColColumnFamily.ColumnIDs[i] == oldCol.GetID() {
-			oldColColumnFamily.ColumnIDs[i] = newCol.GetID()
-			oldColColumnFamily.ColumnNames[i] = newCol.GetName()
-		} else if oldColColumnFamily.ColumnIDs[i] == newCol.GetID() {
-			oldColColumnFamily.ColumnIDs[i] = oldCol.GetID()
-			oldColColumnFamily.ColumnNames[i] = oldCol.GetName()
+	rowGroup := &desc.RowGroups[0]
+	for i := range rowGroup.ColumnIDs {
+		if rowGroup.ColumnIDs[i] == oldCol.GetID() {
+			rowGroup.ColumnIDs[i] = newCol.GetID()
+			rowGroup.ColumnNames[i] = newCol.GetName()
+		} else if rowGroup.ColumnIDs[i] == newCol.GetID() {
+			rowGroup.ColumnIDs[i] = oldCol.GetID()
+			rowGroup.ColumnNames[i] = oldCol.GetName()
 		}
 	}
 

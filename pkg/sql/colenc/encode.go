@@ -184,7 +184,7 @@ func (b *BatchEncoder) init() {
 		b.resetBuffers()
 
 		// Store the index up to the family id so we can reuse the prefixes.
-		if len(b.rh.TableDesc.GetFamilies()) > 1 {
+		if len(b.rh.TableDesc.GetRowGroups()) > 1 {
 			b.keyPrefixOffsets = make([]int32, b.count)
 		}
 	} else {
@@ -240,7 +240,7 @@ func (b *BatchEncoder) encodePK(ctx context.Context, ind catalog.Index) error {
 	vecs := b.b.ColVecs()
 	keyAndSuffixCols := desc.IndexFetchSpecKeyAndSuffixColumns(ind)
 	keyCols := keyAndSuffixCols[:ind.NumKeyColumns()]
-	families := desc.GetFamilies()
+	families := desc.GetRowGroups()
 	fetchedCols := desc.PublicColumns()
 
 	b.setupPrefixes(ind, b.rh.PrimaryIndexKeyPrefix)
@@ -444,7 +444,7 @@ func (b *BatchEncoder) encodeSecondaryIndex(ctx context.Context, ind catalog.Ind
 			return err
 		}
 	}
-	noFamilies := b.rh.TableDesc.NumFamilies() == 1 || ind.GetVersion() == descpb.BaseIndexFormatVersion
+	noFamilies := b.rh.TableDesc.NumRowGroups() == 1 || ind.GetVersion() == descpb.BaseIndexFormatVersion
 	for row := 0; row < b.count; row++ {
 		// Elided partial index keys will be empty.
 		if len(kys[row]) == 0 {

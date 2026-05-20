@@ -30,7 +30,6 @@ import (
 
 // NewColSpanAssembler returns a ColSpanAssembler operator that is able to
 // generate lookup spans from input batches.
-// See JoinReaderSpec for more info on fetchSpec and splitFamilyIDs.
 func NewColSpanAssembler(
 	codec keys.SQLCodec,
 	allocator *colmem.Allocator,
@@ -235,6 +234,15 @@ func (sa *spanAssembler) ConsumeBatch(batch coldata.Batch, startIdx, endIdx int)
 				sa.spans = append(sa.spans, span)
 			}
 		}
+		var span roachpb.Span
+		span.Key = make(roachpb.Key, 0, len(sa.scratchKey))
+		span.Key = append(span.Key, sa.scratchKey...)
+		sa.keyBytes += len(span.Key)
+		span.EndKey = make(roachpb.Key, 0, len(sa.scratchKey)+1)
+		span.EndKey = append(span.EndKey, sa.scratchKey...)
+		span.EndKey = span.EndKey.PrefixEnd()
+		sa.keyBytes += len(span.EndKey)
+		sa.spans = append(sa.spans, span)
 	}
 
 	// Account for the memory allocated for the span slice and keys.

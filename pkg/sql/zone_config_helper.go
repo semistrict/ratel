@@ -22,6 +22,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descbuilder"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/zone"
+	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
 )
 
 type systemZoneConfigHelper struct {
@@ -59,11 +60,11 @@ func (h *systemZoneConfigHelper) MaybeGetZoneConfig(
 	}
 
 	var z zonepb.ZoneConfig
-	if err := val.GetProto(&z); err != nil {
+	rawBytes, err := config.DecodeZoneConfigBytes(val)
+	if err != nil {
 		return nil, err
 	}
-	rawBytes, err := val.GetBytes()
-	if err != nil {
+	if err := protoutil.Unmarshal(rawBytes, &z); err != nil {
 		return nil, err
 	}
 	return zone.NewZoneConfigWithRawBytes(&z, rawBytes), nil

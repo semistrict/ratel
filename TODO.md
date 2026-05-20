@@ -1,0 +1,181 @@
+# Outstanding Ramon-Origin Work
+
+This branch has already ported the core CF actors work, explicit actor syntax, subordinate array encoding, S3-backed cluster storage, and the Bazel 9.1.0 migration. The items below were inspected against `origin/main` and still have code missing from this branch.
+
+## Full Column-Family Removal
+
+Status: partially ported in this branch.
+
+The core single physical row-group path is now ported through table descriptor allocation, system descriptor collapsing, row/columnar fetch, row writes, catalog decoding, zone/comment decoding, and declarative schema-change backfills for stored/default `ADD COLUMN`.
+
+Refs:
+- `c1c5836` Remove column family descriptor/runtime APIs
+- `2e2822e` Remove remaining column family syntax
+- `6ee32f5` Remove stale test shims and old compatibility logic
+
+Remaining:
+- Remove or rewrite stale SQL tests that still use explicit `FAMILY (...)` / `CREATE FAMILY` syntax.
+- Update hard-coded descriptor/function ID expectations shifted by the newer bootstrap descriptor set.
+- Audit old key-count tests whose expected KV counts assumed multiple physical families.
+- Continue the mechanical API cleanup for leftover `Family`-named descriptor surfaces that are now row-group compatibility shims.
+
+## Workers / Workerd / Durable Objects
+
+Status: missing.
+
+The worker platform files from `origin/main` are absent here, including the workerd dependency, embedded binary packaging, server sidecar/router/proxy/config code, worker API endpoints, actor storage, worker script catalog plumbing, and Durable Object KV key helpers.
+
+Refs:
+- `0d70f6f` RFC: workers sidecar
+- `749e8ef` Deploy JS workers with DO storage
+- `eb095b8` Update workerd submodule
+- `fb9ab31` Embed workerd binary
+- `f31ebc1` Multi-node DO routing
+- `fa26fd8` Remove gossip, KV-backed descriptor stores
+- `38d0f8c` Remove WASM UDF, JS-only
+- `930e965` Fix CI/workerd submodule SSH URL
+
+Expected paths/features:
+- `c-deps/workerd`
+- `pkg/server/workerd_*`
+- `pkg/server/workerd_bin`
+- `pkg/server/api_v2_workers.go`
+- `pkg/server/actorstorage/*`
+- `system.worker_scripts`
+- Durable Object key helpers such as `MakeDOKVKey` / `MakeDOKVPrefix`
+
+## JavaScript UDF Runtime
+
+Status: missing.
+
+This branch has older SQL UDF support, but not the JS/V8 runtime work from `origin/main`.
+
+Refs:
+- `4abab6a` Add JS/WASM UDFs
+- `b8d1bb5` Cache TxnContext
+- `38d0f8c` Remove WASM UDF, JS-only
+
+Expected paths/features:
+- `pkg/sql/udfruntime/*`
+- `pkg/sql/udf_resolver.go`
+- JS UDF integration in function creation/execution
+- `pkg/sql/colexec/udf_bench_test.go`
+- JS/plv8 UDF logictests
+- inproc distributed UDF tests and benches
+
+## Inproc Synctest / Jepsen Coverage
+
+Status: partially ported.
+
+The base `pkg/testutils/inproc` package exists, but several `origin/main` tests and topology helpers are still missing.
+
+Refs:
+- `2e5dce0` Add in-process cluster testing support
+- `21da7d7` Add synctest workflow
+- `f3b4a84` Add Jepsen-style inproc tests
+- `d3d66ea` Add partition nemesis coverage
+- `ae2fa73` Add network topology support
+- `5b15db4` Add liveness poller tests
+- `24e72dd` Add chaos tests
+- `884990f` Add sequential/register/set/bank coverage
+- `d66adca` Add inproc UDF coverage
+- `392db7c` Add inproc benchmark coverage
+- `76a0d85` Add synctest helpers
+- `bdcfc62` Refine inproc registry tests
+- `d3dc5f6` Add/adjust synctest Jepsen workflow
+- `874909a` Refine inproc raft/lease behavior
+- `592e640` Fix inproc workflow/test wiring
+- `6176565` Add CI wiring for inproc tests
+- `809bbbf` Refine synctest flakes/timeouts
+- `d0f2f63` Add missing inproc test coverage
+- `7df0877` Fix inproc/synctest race or timing issue
+- `e889015` Refine Jepsen test behavior
+- `1a761af` Final inproc/synctest cleanup
+
+Expected missing paths/features:
+- `pkg/testutils/inproc/jepsen_*_test.go`
+- `pkg/testutils/inproc/network_topology.go`
+- `pkg/testutils/inproc/ratel_chaos_test.go`
+- `pkg/testutils/inproc/synctest_helpers_test.go`
+- `pkg/testutils/inproc/liveness_poller_test.go`
+- distributed UDF tests and UDF benches
+
+## SQL Query UI Page
+
+Status: missing.
+
+The pnpm/build migration is mostly covered here, but the DB Console SQL Query page from `origin/main` is absent.
+
+Refs:
+- `c3feaf3` Migrate UI build to pnpm, add SQL Query page
+- `e638d34` UI dependency/build follow-up
+- `6a3060b` UI dependency/build follow-up
+- `2d22211` UI dependency/build follow-up
+- `969aa31` UI dependency/build follow-up
+- `2c29151` UI dependency/build follow-up
+
+Expected paths/features:
+- `pkg/ui/workspaces/db-console/src/views/sqlQuery/sqlQueryPage.tsx`
+- Any associated routing, exports, tests, and generated UI dependency updates.
+
+## Deploy / Demo Packaging
+
+Status: partially ported.
+
+Runtime S3 storage, node registry, cluster cert upload/download, and Ratel storage URL paths are present. The deployment/demo packaging from `origin/main` is still missing.
+
+Refs:
+- `afc42d5` Add S3-backed cluster storage
+- `90fb6fc` Add cluster cert storage support
+- `3a3ad5e` Add node registry support
+- `57218ba` Add Ratel cluster storage wiring
+- `c6a0e67` Add deploy/demo support
+- `be4255c` Add fly cluster deployment support
+- `96b5149` Add Docker/RustFS demo support
+- `3fc8e67` Refine storage CLI behavior
+- `ff0ab20` Add deploy documentation
+- `dcea9cc` Refine cluster storage behavior
+- `a8352b0` Refine ratel CLI flags
+- `b7d312b` Add storage/deploy follow-up
+- `5890d5d` Add deploy/demo follow-up
+- `e8979af` Add Ratel storage follow-up
+- `829fc4a` Add S3/deploy follow-up
+- `777f3a0` Add storage docs/fixes
+- `01f9d4f` Add deploy cleanup
+- `54cf02b` Add fly deploy cleanup
+- `ac390ce` Add storage/CLI cleanup
+- `22775ce` Add deployment cleanup
+- `a2332eb` Add deploy/demo cleanup
+- `8530a47` Add deploy README updates
+- `23db2c2` Add final deploy/storage cleanup
+
+Expected missing paths/features:
+- `demo/`
+- `deploy/fly-cluster/`
+- related README/deploy docs and assets
+
+## Tracing Dependency Cleanup
+
+Status: missing.
+
+Jaeger/Zipkin dependencies and code references are still present in this branch.
+
+Refs:
+- `f9053da` Remove Jaeger/Zipkin tracing dependencies
+
+Expected affected areas:
+- `DEPS.bzl`
+- tracing/export code and tests
+- SQL/CLI references to Jaeger output where removed upstream
+
+## Lower Priority / Mostly Non-Functional Follow-Ups
+
+Status: not yet triaged individually.
+
+These are lower-risk outstanding commits from `origin/main` that appear to be docs, release notes, metadata, dependency/security bumps, merge commits, formatting, or CI cleanup. Some are likely superseded by the Bazel/Go migration already on this branch.
+
+Refs to audit before porting:
+- README / release note / branding updates from `origin/main`
+- CI cleanup around duplicate runs, runner versions, regex anchoring, and workflow naming
+- dependency/security bumps not already covered by the latest Bazel/Go update
+- merge/gofmt-only commits

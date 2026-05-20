@@ -19,6 +19,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/config/zonepb"
 	"github.com/cockroachdb/cockroach/pkg/keys"
 	"github.com/cockroachdb/cockroach/pkg/kv"
+	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descs"
@@ -27,8 +28,11 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/zone"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
+	"github.com/cockroachdb/cockroach/pkg/sql/rowenc/valueside"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/sqlerrors"
+	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
 	"github.com/cockroachdb/errors"
 )
 
@@ -39,6 +43,35 @@ func init() {
 }
 
 var errNoZoneConfigApplies = errors.New("no zone config applies")
+
+func decodeZoneConfigValue(zoneVal *roachpb.Value) (*zonepb.ZoneConfig, error) {
+	var zone zonepb.ZoneConfig
+	switch zoneVal.GetTag() {
+	case roachpb.ValueType_BYTES:
+		if err := zoneVal.GetProto(&zone); err != nil {
+			return nil, err
+		}
+	case roachpb.ValueType_TUPLE:
+		tupleBytes, err := zoneVal.GetTuple()
+		if err != nil {
+			return nil, err
+		}
+		var alloc tree.DatumAlloc
+		datum, remaining, err := valueside.Decode(&alloc, types.Bytes, tupleBytes)
+		if err != nil {
+			return nil, err
+		}
+		if len(remaining) != 0 {
+			return nil, errors.AssertionFailedf("unexpected trailing bytes in zone config tuple")
+		}
+		if err := protoutil.Unmarshal([]byte(tree.MustBeDBytes(datum)), &zone); err != nil {
+			return nil, err
+		}
+	default:
+		return nil, errors.Newf("unsupported zone config value tag %s", zoneVal.GetTag())
+	}
+	return &zone, nil
+}
 
 // getZoneConfig recursively looks up entries in system.zones until an
 // entry that applies to the object with the specified id is

@@ -166,6 +166,9 @@ func (ms MetadataSchema) GetInitialValues() ([]roachpb.KeyValue, []roachpb.RKey)
 		value := roachpb.Value{}
 		value.SetInt(int64(ms.FirstNonSystemDescriptorID()))
 		add(ms.codec.SequenceKey(keys.DescIDSequenceID), value)
+		roleIDValue := roachpb.Value{}
+		roleIDValue.SetInt(100)
+		add(ms.codec.SequenceKey(keys.RoleIDSequenceID), roleIDValue)
 		if ms.codec.ForSystemTenant() {
 			legacyValue := roachpb.Value{}
 			legacyValue.SetInt(int64(ms.FirstNonSystemDescriptorID()))
@@ -425,6 +428,12 @@ func addSystemDescriptorsToSchema(target *MetadataSchema) {
 	target.AddDescriptorForNonSystemTenant(systemschema.SpanCountTable)
 	target.AddDescriptor(systemschema.ActorsTable)
 	target.AddDescriptor(systemschema.SystemJobInfoTable)
+	target.AddDescriptor(systemschema.StatementActivityTable)
+	target.AddDescriptor(systemschema.TransactionActivityTable)
+	target.AddDescriptor(systemschema.SystemPrivilegeTable)
+	target.AddDescriptorForSystemTenant(systemschema.SystemExternalConnectionsTable)
+	target.AddDescriptorForSystemTenant(systemschema.SystemTenantTasksTable)
+	target.AddDescriptorForSystemTenant(systemschema.SystemTaskPayloadsTable)
 
 	// Adding a new system table? It should be added here to the metadata schema,
 	// and also created as a migration for older clusters.

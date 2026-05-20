@@ -813,28 +813,22 @@ func (cf *cFetcher) NextBatch(ctx context.Context) (coldata.Batch, error) {
 				cf.machine.lastRowPrefix = cf.machine.nextKV.Key[:prefixLen+(origRemainingBytesLen-len(remainingBytes))]
 			}
 
-			familyID, err := cf.getCurrentColumnFamilyID()
-			if err != nil {
-				return nil, err
-			}
 			cf.machine.remainingValueColsByIdx.CopyFrom(cf.table.neededValueColsByIdx)
 			// Process the current KV's value component.
-			if err := cf.processValue(ctx, familyID); err != nil {
+			if err := cf.processValue(ctx); err != nil {
 				return nil, err
 			}
 			// Update the MVCC values for this row.
 			if cf.table.rowLastModified.Less(cf.machine.nextKV.Value.Timestamp) {
 				cf.table.rowLastModified = cf.machine.nextKV.Value.Timestamp
 			}
-			// If the index has only one column family, then the next KV will
-			// always belong to a different row than the current KV.
+			// When the index emits one key per row, the next KV will always
+			// belong to a different row than the current KV.
 			if cf.table.spec.MaxKeysPerRow == 1 {
 				cf.machine.state[0] = stateFinalizeRow
 				cf.machine.state[1] = stateInitFetch
 				continue
 			}
-			// If the table has more than one column family, then the next KV
-			// may belong to the same row as the current KV.
 			cf.machine.state[0] = stateFetchNextKVWithUnfinishedRow
 
 		case stateFetchNextKVWithUnfinishedRow:
@@ -879,13 +873,8 @@ func (cf *cFetcher) NextBatch(ctx context.Context) (coldata.Batch, error) {
 			// invalidate it).
 			cf.machine.nextKV = kv
 
-			familyID, err := cf.getCurrentColumnFamilyID()
-			if err != nil {
-				return nil, err
-			}
-
 			// Process the current KV's value component.
-			if err := cf.processValue(ctx, familyID); err != nil {
+			if err := cf.processValue(ctx); err != nil {
 				return nil, err
 			}
 
@@ -894,14 +883,7 @@ func (cf *cFetcher) NextBatch(ctx context.Context) (coldata.Batch, error) {
 				cf.table.rowLastModified = cf.machine.nextKV.Value.Timestamp
 			}
 
-			if familyID == cf.table.spec.MaxFamilyID {
-				// We know the row can't have any more keys, so finalize the row.
-				cf.machine.state[0] = stateFinalizeRow
-				cf.machine.state[1] = stateInitFetch
-			} else {
-				// Continue with current state.
-				cf.machine.state[0] = stateFetchNextKVWithUnfinishedRow
-			}
+			cf.machine.state[0] = stateFetchNextKVWithUnfinishedRow
 
 		case stateFinalizeRow:
 			// Populate the timestamp system column if needed. We have to do it
@@ -1007,7 +989,7 @@ func (cf *cFetcher) writeDecodedCols(buf *strings.Builder, colOrdinals []int, se
 // processValue processes the state machine's current value component, setting
 // columns in the rowIdx'th tuple in the current batch depending on what data
 // is found in the current value component.
-func (cf *cFetcher) processValue(ctx context.Context, familyID descpb.FamilyID) (err error) {
+func (cf *cFetcher) processValue(ctx context.Context) (err error) {
 	table := cf.table
 
 	var prettyKey, prettyValue string
@@ -1057,27 +1039,25 @@ func (cf *cFetcher) processValue(ctx context.Context, familyID descpb.FamilyID) 
 			}
 			prettyKey, prettyValue, err = cf.processValueBytes(ctx, table, tupleBytes, prettyKey)
 
-		default:
-			// If familyID is 0, this is the row sentinel (in the legacy pre-family format),
-			// and a value is not expected, so we're done.
-			if familyID == 0 {
+		case roachpb.ValueType_BYTES:
+			var tupleBytes []byte
+			tupleBytes, err = val.GetBytes()
+			if err != nil {
 				break
 			}
-			// Find the default column ID for the family.
-			var defaultColumnID descpb.ColumnID
-			for _, f := range table.spec.FamilyDefaultColumns {
-				if f.FamilyID == familyID {
-					defaultColumnID = f.DefaultColumnID
-					break
-				}
+			if len(tupleBytes) == 0 {
+				break
 			}
-			if defaultColumnID == 0 {
-				return scrub.WrapError(
-					scrub.IndexKeyDecodingError,
-					errors.Errorf("single entry value with no default column id"),
-				)
+			if table.spec.DefaultColumnID == 0 {
+				prettyKey, prettyValue, err = cf.processValueBytes(ctx, table, tupleBytes, prettyKey)
+			} else {
+				prettyKey, prettyValue, err = cf.processValueSingle(ctx, table, table.spec.DefaultColumnID, prettyKey)
 			}
-			prettyKey, prettyValue, err = cf.processValueSingle(ctx, table, defaultColumnID, prettyKey)
+
+		default:
+			if table.spec.DefaultColumnID != 0 {
+				prettyKey, prettyValue, err = cf.processValueSingle(ctx, table, table.spec.DefaultColumnID, prettyKey)
+			}
 		}
 		if err != nil {
 			return scrub.WrapError(scrub.IndexValueDecodingError, err)
@@ -1117,6 +1097,11 @@ func (cf *cFetcher) processValue(ctx context.Context, familyID descpb.FamilyID) 
 					buf.WriteByte('/')
 					cf.writeDecodedCols(&buf, table.extraValColOrdinals, '/')
 					prettyValue = buf.String()
+				}
+			} else {
+				valueBytes, err = val.GetBytes()
+				if err != nil {
+					return scrub.WrapError(scrub.IndexValueDecodingError, err)
 				}
 			}
 		case roachpb.ValueType_TUPLE:
@@ -1318,26 +1303,6 @@ func (cf *cFetcher) finalizeBatch() {
 	}
 	cf.machine.batch.SetLength(cf.machine.rowIdx)
 	cf.machine.rowIdx = 0
-}
-
-// getCurrentColumnFamilyID returns the column family id of the key in
-// cf.machine.nextKV.Key.
-func (cf *cFetcher) getCurrentColumnFamilyID() (descpb.FamilyID, error) {
-	// If the table only has 1 column family, and its ID is 0, we know that the
-	// key has to be the 0th column family.
-	if cf.table.spec.MaxFamilyID == 0 {
-		return 0, nil
-	}
-	// The column family is encoded in the final bytes of the key. The last
-	// byte of the key is the length of the column family id encoding
-	// itself. See encoding.md for more details, and see MakeFamilyKey for
-	// the routine that performs this encoding.
-	var id uint64
-	_, id, err := encoding.DecodeUvarintAscending(cf.machine.nextKV.Key[len(cf.machine.lastRowPrefix):])
-	if err != nil {
-		return 0, scrub.WrapError(scrub.IndexKeyDecodingError, err)
-	}
-	return descpb.FamilyID(id), nil
 }
 
 // convertFetchError converts an error generated during a key-value fetch to a

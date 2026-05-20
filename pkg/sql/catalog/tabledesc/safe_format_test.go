@@ -55,7 +55,7 @@ func TestSafeMessage(t *testing.T) {
 				"NextColumnID: 2, " +
 				"Columns: [{ID: 1, TypeID: 20, Null: false, Hidden: true, HasDefault: true}], " +
 				"NextRowGroupID: 1, " +
-				"Families: [{ID: 0, Columns: [1]}], " +
+				"RowGroups: [{ID: 0, Columns: [1]}], " +
 				"PrimaryIndex: 1, " +
 				"NextIndexID: 2, " +
 				"Indexes: [{ID: 1, Unique: true, KeyColumns: [{ID: 1, Dir: ASC}]}]" +
@@ -75,7 +75,7 @@ func TestSafeMessage(t *testing.T) {
 				`{ID: 3, TypeID: 25, Null: true, IsComputed: true}` +
 				`], ` +
 				`NextRowGroupID: 1, ` +
-				`Families: [{ID: 0, Columns: [1, 2, 3, 5]}], ` +
+				`RowGroups: [{ID: 0, Columns: [1, 2, 3, 5]}], ` +
 				`MutationJobs: [` +
 				`{MutationID: 1, JobID: 12345}, ` +
 				`{MutationID: 2, JobID: 67890}, ` +
@@ -259,7 +259,7 @@ func TestSafeMessage(t *testing.T) {
 				"NextColumnID: 2, " +
 				"Columns: [{ID: 1, TypeID: 20, Null: false, Hidden: true, HasDefault: true}], " +
 				"NextRowGroupID: 1, " +
-				"Families: [{ID: 0, Columns: [1]}], " +
+				"RowGroups: [{ID: 0, Columns: [1]}], " +
 				"PrimaryIndex: 1, " +
 				"NextIndexID: 2, " +
 				"Indexes: [{ID: 1, Unique: true, KeyColumns: [{ID: 1, Dir: ASC}]}]" +

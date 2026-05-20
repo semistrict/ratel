@@ -101,7 +101,7 @@ func prepareInsertOrUpdateBatch(
 	putFn func(ctx context.Context, b Putter, key *roachpb.Key, value *roachpb.Value, traceKV bool),
 	overwrite, traceKV bool,
 ) ([]byte, error) {
-	families := helper.TableDesc.GetFamilies()
+	families := helper.TableDesc.GetRowGroups()
 	for i := range families {
 		family := &families[i]
 		update := false

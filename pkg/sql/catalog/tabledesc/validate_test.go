@@ -87,7 +87,7 @@ var validationMap = []struct {
 				reason: "initial import: TODO(features): add validation"},
 			"Columns":        {status: iSolemnlySwearThisFieldIsValidated},
 			"NextColumnID":   {status: iSolemnlySwearThisFieldIsValidated},
-			"Families":       {status: iSolemnlySwearThisFieldIsValidated},
+			"RowGroups":      {status: iSolemnlySwearThisFieldIsValidated},
 			"NextRowGroupID": {status: thisFieldReferencesNoObjects},
 			"PrimaryIndex":   {status: iSolemnlySwearThisFieldIsValidated},
 			"Indexes":        {status: iSolemnlySwearThisFieldIsValidated},
@@ -495,7 +495,7 @@ func TestValidateTableDesc(t *testing.T) {
 				},
 				NextColumnID: 2,
 			}},
-		{`at least 1 column family must be specified`,
+		{`tables must have exactly 1 physical row group, found 0`,
 			descpb.TableDescriptor{
 				ID:            2,
 				ParentID:      1,
@@ -517,7 +517,7 @@ func TestValidateTableDesc(t *testing.T) {
 				},
 				NextColumnID: 2,
 			}},
-		{`the 0th family must have ID 0`,
+		{`the only physical row group must have ID 0`,
 			descpb.TableDescriptor{
 				ID:            2,
 				ParentID:      1,
@@ -531,7 +531,7 @@ func TestValidateTableDesc(t *testing.T) {
 				},
 				NextColumnID: 2,
 			}},
-		{`duplicate family name: "baz"`,
+		{`tables must have exactly 1 physical row group, found 2`,
 			descpb.TableDescriptor{
 				ID:            2,
 				ParentID:      1,
@@ -547,7 +547,7 @@ func TestValidateTableDesc(t *testing.T) {
 				NextColumnID:   2,
 				NextRowGroupID: 2,
 			}},
-		{`family "qux" duplicate ID of family "baz": 0`,
+		{`tables must have exactly 1 physical row group, found 2`,
 			descpb.TableDescriptor{
 				ID:            2,
 				ParentID:      1,
@@ -563,7 +563,7 @@ func TestValidateTableDesc(t *testing.T) {
 				NextColumnID:   2,
 				NextRowGroupID: 2,
 			}},
-		{`duplicate family name: "baz"`,
+		{`tables must have exactly 1 physical row group, found 2`,
 			descpb.TableDescriptor{
 				ID:            2,
 				ParentID:      1,
@@ -624,7 +624,7 @@ func TestValidateTableDesc(t *testing.T) {
 				NextColumnID:   2,
 				NextRowGroupID: 1,
 			}},
-		{`column "bar" is not in any column family`,
+		{`column "bar" is not in the physical row group`,
 			descpb.TableDescriptor{
 				ID:            2,
 				ParentID:      1,
@@ -639,7 +639,7 @@ func TestValidateTableDesc(t *testing.T) {
 				NextColumnID:   2,
 				NextRowGroupID: 1,
 			}},
-		{`column 1 is in both family 0 and 1`,
+		{`tables must have exactly 1 physical row group, found 2`,
 			descpb.TableDescriptor{
 				ID:            2,
 				ParentID:      1,
@@ -655,7 +655,7 @@ func TestValidateTableDesc(t *testing.T) {
 				NextColumnID:   2,
 				NextRowGroupID: 2,
 			}},
-		{`virtual computed column "virt" cannot be part of a family`,
+		{`tables must have exactly 1 physical row group, found 2`,
 			descpb.TableDescriptor{
 				ID:            2,
 				ParentID:      1,

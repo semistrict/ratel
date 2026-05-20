@@ -143,7 +143,7 @@ func (rd *Deleter) DeleteRow(
 
 	// Delete the row.
 	var called bool
-	return rd.Helper.TableDesc.ForeachFamily(func(family *descpb.ColumnFamilyDescriptor) error {
+	return rd.Helper.TableDesc.ForeachRowGroup(func(family *descpb.RowGroupDescriptor) error {
 		if called {
 			// HACK: MakeFamilyKey appends to its argument, so on every loop iteration
 			// after the first, trim primaryIndexKey so nothing gets overwritten.

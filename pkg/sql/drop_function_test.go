@@ -62,7 +62,7 @@ CREATE SCHEMA test_sc;
 	)
 
 	err := sql.TestingDescsTxn(ctx, s, func(ctx context.Context, txn isql.Txn, col *descs.Collection) error {
-		funcDesc, err := col.ByIDWithLeased(txn.KV()).WithoutNonPublic().Get().Function(ctx, 109)
+		funcDesc, err := col.ByIDWithLeased(txn.KV()).WithoutNonPublic().Get().Function(ctx, 113)
 		require.NoError(t, err)
 		require.Equal(t, funcDesc.GetName(), "f")
 
@@ -71,21 +71,21 @@ CREATE SCHEMA test_sc;
 SELECT b FROM defaultdb.public.t@t_idx_b;
 SELECT c FROM defaultdb.public.t@t_idx_c;
 SELECT a FROM defaultdb.public.v;
-SELECT nextval(105:::REGCLASS);`,
+SELECT nextval(109:::REGCLASS);`,
 			funcDesc.GetFunctionBody())
 
 		sort.Slice(funcDesc.GetDependsOn(), func(i, j int) bool {
 			return funcDesc.GetDependsOn()[i] < funcDesc.GetDependsOn()[j]
 		})
 		require.Equal(t,
-			[]descpb.ID{104, 105, 106},
+			[]descpb.ID{108, 109, 110},
 			funcDesc.GetDependsOn(),
 		)
 		sort.Slice(funcDesc.GetDependsOnTypes(), func(i, j int) bool {
 			return funcDesc.GetDependsOnTypes()[i] < funcDesc.GetDependsOnTypes()[j]
 		})
 		require.Equal(t,
-			[]descpb.ID{107, 108},
+			[]descpb.ID{111, 112},
 			funcDesc.GetDependsOnTypes(),
 		)
 
@@ -96,10 +96,10 @@ SELECT nextval(105:::REGCLASS);`,
 		require.Equal(t, "t", tbl.GetName())
 		require.Equal(t,
 			[]descpb.TableDescriptor_Reference{
-				{ID: 106, ColumnIDs: []catid.ColumnID{1}},
-				{ID: 109, ColumnIDs: []catid.ColumnID{1}},
-				{ID: 109, IndexID: 2, ColumnIDs: []catid.ColumnID{2}},
-				{ID: 109, IndexID: 3, ColumnIDs: []catid.ColumnID{3}},
+				{ID: 110, ColumnIDs: []catid.ColumnID{1}},
+				{ID: 113, ColumnIDs: []catid.ColumnID{1}},
+				{ID: 113, IndexID: 2, ColumnIDs: []catid.ColumnID{2}},
+				{ID: 113, IndexID: 3, ColumnIDs: []catid.ColumnID{3}},
 			},
 			tbl.GetDependedOnBy(),
 		)
@@ -111,7 +111,7 @@ SELECT nextval(105:::REGCLASS);`,
 		require.Equal(t, "sq1", seq.GetName())
 		require.Equal(t,
 			[]descpb.TableDescriptor_Reference{
-				{ID: 109, ByID: true},
+				{ID: 113, ByID: true},
 			},
 			seq.GetDependedOnBy(),
 		)
@@ -123,7 +123,7 @@ SELECT nextval(105:::REGCLASS);`,
 		require.Equal(t, "v", view.GetName())
 		require.Equal(t,
 			[]descpb.TableDescriptor_Reference{
-				{ID: 109, ColumnIDs: []catid.ColumnID{1}},
+				{ID: 113, ColumnIDs: []catid.ColumnID{1}},
 			},
 			view.GetDependedOnBy(),
 		)
@@ -134,7 +134,7 @@ SELECT nextval(105:::REGCLASS);`,
 		require.NoError(t, err)
 		require.Equal(t, "notmyworkday", typ.GetName())
 		require.Equal(t, 1, typ.NumReferencingDescriptors())
-		require.Equal(t, descpb.ID(109), typ.GetReferencingDescriptorID(0))
+		require.Equal(t, descpb.ID(113), typ.GetReferencingDescriptorID(0))
 
 		return nil
 	})
@@ -143,7 +143,7 @@ SELECT nextval(105:::REGCLASS);`,
 	// DROP the function and make sure dependencies are cleared.
 	tDB.Exec(t, "DROP FUNCTION f")
 	err = sql.TestingDescsTxn(ctx, s, func(ctx context.Context, txn isql.Txn, col *descs.Collection) error {
-		_, err := col.ByIDWithLeased(txn.KV()).WithoutNonPublic().Get().Function(ctx, 109)
+		_, err := col.ByIDWithLeased(txn.KV()).WithoutNonPublic().Get().Function(ctx, 113)
 		require.Error(t, err)
 		require.Regexp(t, "function undefined", err.Error())
 
@@ -153,7 +153,7 @@ SELECT nextval(105:::REGCLASS);`,
 		require.NoError(t, err)
 		require.Equal(t,
 			[]descpb.TableDescriptor_Reference{
-				{ID: 106, ColumnIDs: []catid.ColumnID{1}},
+				{ID: 110, ColumnIDs: []catid.ColumnID{1}},
 			},
 			tbl.GetDependedOnBy(),
 		)
@@ -383,7 +383,7 @@ $$;
 			tDB.Exec(t, "SET use_declarative_schema_changer = off;")
 
 			err := sql.TestingDescsTxn(ctx, s, func(ctx context.Context, txn isql.Txn, col *descs.Collection) error {
-				fnDesc, err := col.ByIDWithLeased(txn.KV()).WithoutNonPublic().Get().Function(ctx, 113)
+				fnDesc, err := col.ByIDWithLeased(txn.KV()).WithoutNonPublic().Get().Function(ctx, 117)
 				require.NoError(t, err)
 				require.Equal(t, "f", fnDesc.GetName())
 				require.True(t, fnDesc.Public())
@@ -394,7 +394,7 @@ $$;
 			tDB.Exec(t, tc.stmt)
 
 			err = sql.TestingDescsTxn(ctx, s, func(ctx context.Context, txn isql.Txn, col *descs.Collection) error {
-				_, err := col.ByIDWithLeased(txn.KV()).WithoutNonPublic().Get().Function(ctx, 113)
+				_, err := col.ByIDWithLeased(txn.KV()).WithoutNonPublic().Get().Function(ctx, 117)
 				require.Error(t, err)
 				require.Regexp(t, "function undefined", err.Error())
 				return nil
@@ -416,7 +416,7 @@ $$;
 			tDB.Exec(t, "SET use_declarative_schema_changer = on;")
 
 			err := sql.TestingDescsTxn(ctx, s, func(ctx context.Context, txn isql.Txn, col *descs.Collection) error {
-				fnDesc, err := col.ByIDWithLeased(txn.KV()).WithoutNonPublic().Get().Function(ctx, 113)
+				fnDesc, err := col.ByIDWithLeased(txn.KV()).WithoutNonPublic().Get().Function(ctx, 117)
 				require.NoError(t, err)
 				require.Equal(t, "f", fnDesc.GetName())
 				require.True(t, fnDesc.Public())
@@ -427,7 +427,7 @@ $$;
 			tDB.Exec(t, tc.stmt)
 
 			err = sql.TestingDescsTxn(ctx, s, func(ctx context.Context, txn isql.Txn, col *descs.Collection) error {
-				_, err := col.ByIDWithLeased(txn.KV()).WithoutNonPublic().Get().Function(ctx, 113)
+				_, err := col.ByIDWithLeased(txn.KV()).WithoutNonPublic().Get().Function(ctx, 117)
 				require.Error(t, err)
 				require.Regexp(t, "function undefined", err.Error())
 				return nil

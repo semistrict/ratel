@@ -745,7 +745,7 @@ func (desc *wrapper) ValidateSelf(vea catalog.ValidationErrorAccumulator) {
 
 	// TODO(dt): Validate each column only appears at-most-once in any FKs.
 
-	// Only validate column families, constraints, and indexes if this is
+	// Only validate physical row-group metadata, constraints, and indexes if this is
 	// actually a table, not if it's just a view.
 	if desc.IsPhysicalTable() {
 		desc.validateConstraintNamesAndIDs(vea)
@@ -1099,11 +1099,11 @@ func (desc *wrapper) validateColumns() error {
 }
 
 func (desc *wrapper) validateColumnFamilies(columnsByID map[descpb.ColumnID]catalog.Column) error {
-	if len(desc.RowGroups) < 1 {
-		return errors.Newf("at least 1 column family must be specified")
+	if len(desc.RowGroups) != 1 {
+		return errors.Newf("tables must have exactly 1 physical row group, found %d", len(desc.RowGroups))
 	}
 	if desc.RowGroups[0].ID != descpb.RowGroupID(0) {
-		return errors.Newf("the 0th family must have ID 0")
+		return errors.Newf("the only physical row group must have ID 0")
 	}
 
 	familyNames := map[string]struct{}{}
@@ -1170,7 +1170,7 @@ func (desc *wrapper) validateColumnFamilies(columnsByID map[descpb.ColumnID]cata
 	for colID, col := range columnsByID {
 		if !col.IsVirtual() {
 			if _, ok := colIDToRowGroupID[colID]; !ok {
-				return errors.Newf("column %q is not in any column family", col.GetName())
+				return errors.Newf("column %q is not in the physical row group", col.GetName())
 			}
 		}
 	}

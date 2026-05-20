@@ -239,6 +239,9 @@ func (i InfoStorage) Write(ctx context.Context, infoKey string, value []byte) er
 		return errors.AssertionFailedf("missing value (infoKey %q)", infoKey)
 	}
 	if err := i.write(ctx, infoKey, value); err != nil {
+		if isJobInfoNotReadyError(err) {
+			return nil
+		}
 		return MaybeGenerateForcedRetryableError(ctx, i.txn.KV(), err)
 	}
 	return nil
@@ -246,7 +249,13 @@ func (i InfoStorage) Write(ctx context.Context, infoKey string, value []byte) er
 
 // Delete removes the info record for the provided infoKey.
 func (i InfoStorage) Delete(ctx context.Context, infoKey string) error {
-	return i.write(ctx, infoKey, nil /* value */)
+	if err := i.write(ctx, infoKey, nil /* value */); err != nil {
+		if isJobInfoNotReadyError(err) {
+			return nil
+		}
+		return err
+	}
+	return nil
 }
 
 // DeleteRange removes the info records between the provided

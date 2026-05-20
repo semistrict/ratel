@@ -202,7 +202,7 @@ func TestUnsplitRanges(t *testing.T) {
 	}
 
 	const numRows = 2*row.TableTruncateChunkSize + 1
-	const numKeys = 3 * numRows
+	const numKeys = 2 * numRows
 	const tableName string = "test1"
 
 	tableDropSucceed := func(kvDB *kv.DB, sqlDB *gosql.DB, tableDesc catalog.TableDescriptor, indexSpan roachpb.Span) error {
@@ -259,7 +259,7 @@ func TestUnsplitRanges(t *testing.T) {
 		{
 			name:                   "drop-index-unsplit-async",
 			query:                  "DROP INDEX t.test1@foo",
-			allKeyCntAfterGC:       numRows * 2,
+			allKeyCntAfterGC:       numRows,
 			hasSplitOnTableAfterGC: true, // It's true since we only unsplit ranges of index foo
 			hasSplitOnKeyAfterGC:   true,
 			gcSucceedFunc:          indexDropSucceed,

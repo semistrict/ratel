@@ -543,12 +543,7 @@ func NewColIndexJoin(
 		// below.
 		cFetcherMemoryLimit = int64(math.Ceil(float64(totalMemoryLimit) / 16.0))
 		streamerBudgetLimit := 14 * cFetcherMemoryLimit
-		// When we have SplitFamilyIDs with more than one family ID, then it's
-		// possible for a single lookup span to be split into multiple "family"
-		// spans, and in order to preserve the invariant that all KVs for a
-		// single SQL row are contiguous we must ask the streamer to preserve
-		// the ordering. See #113013 for an example.
-		maintainOrdering := spec.MaintainOrdering || len(spec.SplitFamilyIDs) > 1
+		maintainOrdering := spec.MaintainOrdering
 		if flowCtx.EvalCtx.SessionData().StreamerAlwaysMaintainOrdering {
 			maintainOrdering = true
 		}
@@ -605,7 +600,7 @@ func NewColIndexJoin(
 	}
 
 	spanAssembler := colexecspan.NewColSpanAssembler(
-		flowCtx.Codec(), allocator, &spec.FetchSpec, spec.SplitFamilyIDs, inputTypes,
+		flowCtx.Codec(), allocator, &spec.FetchSpec, nil /* splitRowGroupIDs */, inputTypes,
 	)
 
 	op := &ColIndexJoin{

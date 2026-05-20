@@ -31,6 +31,7 @@ go_library(
     deps = [
         "//pkg/base",
         "//pkg/clusterversion",
+        "//pkg/config",
         "//pkg/config/zonepb",
         "//pkg/keys",
         "//pkg/kv",

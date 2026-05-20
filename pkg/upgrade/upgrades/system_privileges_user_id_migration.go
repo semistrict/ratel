@@ -26,7 +26,6 @@ import (
 const addUserIDColumnToSystemPrivilegesStmt = `
 ALTER TABLE system.privileges
 ADD COLUMN IF NOT EXISTS user_id OID
-FAMILY "primary"
 `
 
 const createUniqueIndexOnUserIDAndPathOnSystemPrivilegesStmt = `

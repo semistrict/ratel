@@ -420,7 +420,7 @@ func TestSpanToQueryBoundsCompositeKeys(t *testing.T) {
 
 				// Run test function.
 				actualBounds, actualHasRows, err := ttljob.SpanToQueryBounds(
-					ctx, kvDB, codec, pkColIDs, pkColTypes, pkColDirs, tableDesc.NumFamilies(),
+					ctx, kvDB, codec, pkColIDs, pkColTypes, pkColDirs, tableDesc.NumRowGroups(),
 					roachpb.Span{
 						Key:    startKey,
 						EndKey: endKey,

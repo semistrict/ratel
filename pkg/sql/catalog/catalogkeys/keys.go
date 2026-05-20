@@ -24,6 +24,8 @@ import (
 	"github.com/cockroachdb/redact"
 )
 
+const legacyDescriptorTableDescriptorColFamID = 2
+
 const (
 	// DefaultDatabaseName is the name ofthe default CockroachDB database used
 	// for connections without a current db set.
@@ -231,6 +233,18 @@ func EncodeNameKey(codec keys.SQLCodec, nameKey catalog.NameKey) roachpb.Key {
 	return r
 }
 
+// EncodeLegacyNameKey returns the namespace key used by pre-row-group
+// bootstrap data where system.namespace stored the ID column in family 4.
+func EncodeLegacyNameKey(codec keys.SQLCodec, nameKey catalog.NameKey) roachpb.Key {
+	r := MakeDatabaseChildrenNameKeyPrefix(codec, nameKey.GetParentID())
+	r = encoding.EncodeUvarintAscending(r, uint64(nameKey.GetParentSchemaID()))
+	if nameKey.GetName() != "" {
+		r = encoding.EncodeBytesAscending(r, []byte(nameKey.GetName()))
+		r = keys.MakeFamilyKey(r, uint32(catconstants.NamespaceTableRowGroupID))
+	}
+	return r
+}
+
 // DecodeNameMetadataKey is the reciprocal of EncodeNameKey.
 func DecodeNameMetadataKey(
 	codec keys.SQLCodec, k roachpb.Key,
@@ -279,6 +293,15 @@ func MakeAllDescsMetadataKey(codec keys.SQLCodec) roachpb.Key {
 // MakeDescMetadataKey returns the key for the descriptor.
 func MakeDescMetadataKey(codec keys.SQLCodec, descID descpb.ID) roachpb.Key {
 	return codec.DescMetadataKey(uint32(descID))
+}
+
+// MakeLegacyDescMetadataKey returns the descriptor key used by pre-row-group
+// bootstrap data where system.descriptor stored the descriptor column in family
+// 2. New writes use MakeDescMetadataKey.
+func MakeLegacyDescMetadataKey(codec keys.SQLCodec, descID descpb.ID) roachpb.Key {
+	k := codec.DescMetadataPrefix()
+	k = encoding.EncodeUvarintAscending(k, uint64(descID))
+	return keys.MakeFamilyKey(k, legacyDescriptorTableDescriptorColFamID)
 }
 
 // CommentsMetadataPrefix returns the key prefix for all comments in the

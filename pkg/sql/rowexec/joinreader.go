@@ -357,7 +357,7 @@ func newJoinReader(
 
 	jr := &joinReader{
 		fetchSpec:                           spec.FetchSpec,
-		splitFamilyIDs:                      spec.SplitFamilyIDs,
+		splitFamilyIDs:                      nil,
 		maintainOrdering:                    spec.MaintainOrdering,
 		input:                               input,
 		lookupCols:                          lookupCols,
@@ -517,12 +517,7 @@ func newJoinReader(
 		jr.streamerInfo.unlimitedMemMonitor.StartNoReserved(ctx, flowCtx.Mon)
 		jr.streamerInfo.budgetAcc = jr.streamerInfo.unlimitedMemMonitor.MakeBoundAccount()
 		jr.streamerInfo.txnKVStreamerMemAcc = jr.streamerInfo.unlimitedMemMonitor.MakeBoundAccount()
-		// When we have SplitFamilyIDs with more than one family ID, then it's
-		// possible for a single lookup span to be split into multiple "family"
-		// spans, and in order to preserve the invariant that all KVs for a
-		// single SQL row are contiguous we must ask the streamer to preserve
-		// the ordering. See #113013 for an example.
-		jr.streamerInfo.maintainOrdering = len(spec.SplitFamilyIDs) > 1
+		jr.streamerInfo.maintainOrdering = false
 		if readerType == indexJoinReaderType {
 			if spec.MaintainOrdering {
 				// The index join can rely on the streamer to maintain the input

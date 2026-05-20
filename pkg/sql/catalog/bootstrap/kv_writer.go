@@ -59,7 +59,7 @@ func (w KVWriter) RecordToKeyValues(values ...tree.Datum) (ret []roachpb.KeyValu
 			)
 		}
 		for _, e := range indexEntries {
-			if w.skippedFamilyIDs.Contains(int(e.Family)) {
+			if w.skippedFamilyIDs.Contains(int(e.RowGroup)) {
 				continue
 			}
 			ret = append(ret, roachpb.KeyValue{Key: e.Key, Value: e.Value})
@@ -77,7 +77,7 @@ func (w KVWriter) RecordToKeyValues(values ...tree.Datum) (ret []roachpb.KeyValu
 			)
 		}
 		for _, e := range indexEntries {
-			if w.skippedFamilyIDs.Contains(int(e.Family)) {
+			if w.skippedFamilyIDs.Contains(int(e.RowGroup)) {
 				continue
 			}
 			ret = append(ret, roachpb.KeyValue{Key: e.Key, Value: e.Value})
@@ -103,6 +103,24 @@ func (w KVWriter) Insert(
 			log.VEventf(ctx, 2, "CPut %s -> %s", kv.Key, kv.Value)
 		}
 		b.CPutAllowingIfNotExists(kv.Key, &kv.Value, nil /* expValue */)
+	}
+	return nil
+}
+
+// Upsert updates a batch with the KV operations required to write a record into
+// the table, regardless of whether the record already exists.
+func (w KVWriter) Upsert(
+	ctx context.Context, b *kv.Batch, kvTrace bool, values ...tree.Datum,
+) error {
+	kvs, err := w.RecordToKeyValues(values...)
+	if err != nil {
+		return err
+	}
+	for _, kv := range kvs {
+		if kvTrace {
+			log.VEventf(ctx, 2, "Put %s -> %s", kv.Key, kv.Value)
+		}
+		b.Put(kv.Key, &kv.Value)
 	}
 	return nil
 }

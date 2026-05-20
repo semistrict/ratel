@@ -32,6 +32,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/util/errorutil/unimplemented"
 	"github.com/cockroachdb/cockroach/pkg/util/log/eventpb"
 	"github.com/cockroachdb/errors"
+	"github.com/lib/pq/oid"
 )
 
 // CreateRoleNode creates entries in the system.users table.
@@ -165,7 +166,7 @@ func (n *CreateRoleNode) startExec(params runParams) error {
 	rowsAffected, err := params.p.InternalSQLTxn().ExecEx(
 		params.ctx, opName, params.p.txn,
 		sessiondata.InternalExecutorOverride{User: username.NodeUserName()},
-		stmt, n.roleName, hashedPassword, n.isRole, roleID,
+		stmt, n.roleName, hashedPassword, n.isRole, tree.NewDOid(oid.Oid(roleID)),
 	)
 	if err != nil {
 		return err

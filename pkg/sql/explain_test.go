@@ -259,7 +259,7 @@ func TestPrepareExplain(t *testing.T) {
 		}
 
 		// Verify that the output contains a scan for abc.
-		scanRe := regexp.MustCompile(`scan|ColBatchScan`)
+		scanRe := regexp.MustCompile(`scan|ColBatchScan|ColBatchDirectScan`)
 		if scanRe.FindString(rowsBuf.String()) == "" {
 			t.Fatalf("%s: invalid output: \n%s\n", sql, rowsBuf.String())
 		}
@@ -370,7 +370,7 @@ func TestExplainKVInfo(t *testing.T) {
 			assert.Equal(t, 1000, info.counters[rowsRead])
 			assert.LessOrEqual(t, 13 /* KiB */, info.counters[bytesRead])
 			assert.Equal(t, 1, info.counters[gRPCCalls])
-			assert.Equal(t, 0, info.counters[stepCount])
+			assert.Equal(t, 1000, info.counters[stepCount])
 			assert.Equal(t, 1000, info.counters[seekCount])
 		}
 	}

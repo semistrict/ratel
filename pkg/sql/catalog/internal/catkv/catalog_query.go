@@ -25,9 +25,12 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/nstree"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
+	"github.com/cockroachdb/cockroach/pkg/sql/rowenc/valueside"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/sqlerrors"
+	"github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/cockroachdb/cockroach/pkg/util/encoding"
+	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
 	"github.com/cockroachdb/errors"
 )
 
@@ -94,7 +97,11 @@ func (cq catalogQuery) processNamespaceResultRow(row kv.KeyValue, cb *nstree.Mut
 		return err
 	}
 	if row.Exists() {
-		cb.UpsertNamespaceEntry(nameInfo, descpb.ID(row.ValueInt()), row.Value.Timestamp)
+		id, err := decodeNamespaceValue(row.Value)
+		if err != nil {
+			return err
+		}
+		cb.UpsertNamespaceEntry(nameInfo, id, row.Value.Timestamp)
 	}
 	return nil
 }
@@ -102,6 +109,9 @@ func (cq catalogQuery) processNamespaceResultRow(row kv.KeyValue, cb *nstree.Mut
 func (cq catalogQuery) processDescriptorResultRow(
 	row kv.KeyValue, cb *nstree.MutableCatalog,
 ) error {
+	if !row.Exists() {
+		return nil
+	}
 	u32ID, err := cq.codec.DecodeDescMetadataID(row.Key)
 	if err != nil {
 		return err
@@ -111,7 +121,17 @@ func (cq catalogQuery) processDescriptorResultRow(
 	if expectedType == "" {
 		expectedType = catalog.Any
 	}
-	desc, err := build(expectedType, id, row.Value, cq.isDescriptorRequired)
+	rawBytesInStorage := row.Value.TagAndDataBytes()
+	isLegacyDescriptorRow := false
+	if rowGroupID, err := keys.DecodeFamilyKey(row.Key); err == nil &&
+		rowGroupID != keys.DescriptorTableDescriptorColFamID {
+		isLegacyDescriptorRow = true
+		rawBytesInStorage = nil
+	}
+	if isLegacyDescriptorRow && cb.LookupDescriptor(id) != nil {
+		return nil
+	}
+	desc, err := build(expectedType, id, row.Value, rawBytesInStorage, cq.isDescriptorRequired)
 	if err != nil {
 		return wrapError(expectedType, id, err)
 	}
@@ -129,11 +149,18 @@ func (cq catalogQuery) processCommentsResultRow(row kv.KeyValue, cb *nstree.Muta
 		return err
 	}
 
-	// Skip the primary column family since only the comment string is interested.
-	if famID != keys.CommentsTableCommentColFamID {
+	// Skip row groups which cannot contain the comment string.
+	if famID != 0 && famID != keys.CommentsTableCommentColFamID {
 		return nil
 	}
-	return cb.UpsertComment(cmtKey, string(row.ValueBytes()))
+	comment, err := decodeCommentValue(row.Value)
+	if err != nil {
+		return err
+	}
+	if comment == "" {
+		return nil
+	}
+	return cb.UpsertComment(cmtKey, comment)
 }
 
 func (cq catalogQuery) processZonesResultRow(row kv.KeyValue, cb *nstree.MutableCatalog) error {
@@ -146,17 +173,144 @@ func (cq catalogQuery) processZonesResultRow(row kv.KeyValue, cb *nstree.Mutable
 		return err
 	}
 
-	// Skip not interested column families or non-existing keys.
-	if famID != keys.ZonesTableConfigColFamID || len(row.ValueBytes()) == 0 {
+	// Skip not interested row groups or non-existing keys.
+	if famID != 0 {
+		return nil
+	}
+
+	zoneBytes, err := decodeZoneConfigValue(row)
+	if err != nil {
+		return err
+	}
+	if len(zoneBytes) == 0 {
 		return nil
 	}
 
 	var zoneConfig zonepb.ZoneConfig
-	if err := row.ValueProto(&zoneConfig); err != nil {
+	if err := protoutil.Unmarshal(zoneBytes, &zoneConfig); err != nil {
 		return errors.Wrapf(err, "decoding zone config for id %d", id)
 	}
-	cb.UpsertZoneConfig(descpb.ID(id), &zoneConfig, row.ValueBytes())
+	cb.UpsertZoneConfig(descpb.ID(id), &zoneConfig, zoneBytes)
 	return nil
+}
+
+func decodeZoneConfigValue(row kv.KeyValue) ([]byte, error) {
+	if row.Value == nil {
+		return nil, nil
+	}
+	switch row.Value.GetTag() {
+	case roachpb.ValueType_BYTES:
+		return row.Value.GetBytes()
+	case roachpb.ValueType_TUPLE:
+		valueBytes, err := row.Value.GetTuple()
+		if err != nil {
+			return nil, err
+		}
+		var alloc tree.DatumAlloc
+		var lastColID descpb.ColumnID
+		for len(valueBytes) > 0 {
+			_, dataOffset, colIDDiff, typ, err := encoding.DecodeValueTag(valueBytes)
+			if err != nil {
+				return nil, err
+			}
+			colID := lastColID + descpb.ColumnID(colIDDiff)
+			lastColID = colID
+			if colID != keys.ZonesTableConfigColumnID {
+				length, err := encoding.PeekValueLengthWithOffsetsAndType(valueBytes, dataOffset, typ)
+				if err != nil {
+					return nil, err
+				}
+				valueBytes = valueBytes[length:]
+				continue
+			}
+			datum, _, err := valueside.Decode(&alloc, types.Bytes, valueBytes)
+			if err != nil {
+				return nil, err
+			}
+			if datum == tree.DNull {
+				return nil, nil
+			}
+			return []byte(*datum.(*tree.DBytes)), nil
+		}
+		return nil, nil
+	default:
+		return nil, errors.AssertionFailedf("unexpected zone config value type %s", row.Value.GetTag())
+	}
+}
+
+func decodeNamespaceValue(value *roachpb.Value) (descpb.ID, error) {
+	const namespaceIDColumnID = descpb.ColumnID(4)
+	if value == nil {
+		return descpb.InvalidID, nil
+	}
+	switch value.GetTag() {
+	case roachpb.ValueType_INT:
+		id, err := value.GetInt()
+		return descpb.ID(id), err
+	case roachpb.ValueType_TUPLE:
+		datum, err := decodeTupleColumn(value, namespaceIDColumnID, types.Int)
+		if err != nil || datum == tree.DNull {
+			return descpb.InvalidID, err
+		}
+		return descpb.ID(tree.MustBeDInt(datum)), nil
+	default:
+		return descpb.InvalidID, errors.AssertionFailedf("unexpected namespace value type %s", value.GetTag())
+	}
+}
+
+func decodeCommentValue(value *roachpb.Value) (string, error) {
+	const commentColumnID = descpb.ColumnID(4)
+	if value == nil {
+		return "", nil
+	}
+	switch value.GetTag() {
+	case roachpb.ValueType_BYTES:
+		b, err := value.GetBytes()
+		return string(b), err
+	case roachpb.ValueType_TUPLE:
+		datum, err := decodeTupleColumn(value, commentColumnID, types.String)
+		if err != nil || datum == tree.DNull {
+			return "", err
+		}
+		return string(tree.MustBeDString(datum)), nil
+	default:
+		return "", errors.AssertionFailedf("unexpected comment value type %s", value.GetTag())
+	}
+}
+
+func decodeTupleColumn(
+	value *roachpb.Value, targetColumnID descpb.ColumnID, typ *types.T,
+) (tree.Datum, error) {
+	valueBytes, err := value.GetTuple()
+	if err != nil {
+		return nil, err
+	}
+	var alloc tree.DatumAlloc
+	var lastColID descpb.ColumnID
+	for len(valueBytes) > 0 {
+		_, dataOffset, colIDDiff, valueType, err := encoding.DecodeValueTag(valueBytes)
+		if err != nil {
+			return nil, err
+		}
+		colID := lastColID + descpb.ColumnID(colIDDiff)
+		lastColID = colID
+		length, err := encoding.PeekValueLengthWithOffsetsAndType(valueBytes, dataOffset, valueType)
+		if err != nil {
+			return nil, err
+		}
+		if colID == targetColumnID {
+			datum, remaining, err := valueside.Decode(&alloc, typ, valueBytes[:length])
+			if err != nil {
+				return nil, err
+			}
+			if len(remaining) != 0 {
+				return nil, errors.AssertionFailedf("unexpected trailing bytes decoding column %d", targetColumnID)
+			}
+			return datum, nil
+		}
+		valueBytes = valueBytes[length:]
+	}
+	return tree.DNull, nil
 }
 
 func wrapError(expectedType catalog.DescriptorType, id descpb.ID, err error) error {
@@ -176,7 +330,11 @@ func wrapError(expectedType catalog.DescriptorType, id descpb.ID, err error) err
 // build unmarshals and builds a descriptor from its value in the descriptor
 // table.
 func build(
-	expectedType catalog.DescriptorType, id descpb.ID, rowValue *roachpb.Value, isRequired bool,
+	expectedType catalog.DescriptorType,
+	id descpb.ID,
+	rowValue *roachpb.Value,
+	rawBytesInStorage []byte,
+	isRequired bool,
 ) (catalog.Descriptor, error) {
 	b, err := descbuilder.FromSerializedValue(rowValue)
 	if err != nil {
@@ -191,7 +349,7 @@ func build(
 	if expectedType != catalog.Any && b.DescriptorType() != expectedType {
 		return nil, pgerror.Newf(pgcode.WrongObjectType, "descriptor is a %s", b.DescriptorType())
 	}
-	b.SetRawBytesInStorage(rowValue.TagAndDataBytes())
+	b.SetRawBytesInStorage(rawBytesInStorage)
 	desc := b.BuildImmutable()
 	if id != desc.GetID() {
 		return nil, errors.AssertionFailedf("unexpected ID %d in descriptor", desc.GetID())

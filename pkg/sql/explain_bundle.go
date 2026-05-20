@@ -374,15 +374,19 @@ func (b *stmtBundleBuilder) addOptPlans(ctx context.Context) {
 		b.z.AddFile("opt-vv.txt", noPlan)
 		return
 	}
+	if b.flags.RedactValues {
+		// Optimizer debug output can contain unmarked scalar values embedded in
+		// constraints and memo internals. Do not include it in redacted bundles.
+		b.z.AddFile("opt.txt", noPlan)
+		b.z.AddFile("opt-v.txt", noPlan)
+		b.z.AddFile("opt-vv.txt", noPlan)
+		return
+	}
 
 	formatOptPlan := func(flags memo.ExprFmtFlags) string {
 		f := memo.MakeExprFmtCtx(ctx, flags, b.flags.RedactValues, b.plan.mem, b.plan.catalog)
 		f.FormatExpr(b.plan.mem.RootExpr())
-		output := f.Buffer.String()
-		if b.flags.RedactValues {
-			output = string(redact.RedactableString(output).Redact())
-		}
-		return output
+		return f.Buffer.String()
 	}
 
 	b.z.AddFile("opt.txt", formatOptPlan(memo.ExprFmtHideAll))

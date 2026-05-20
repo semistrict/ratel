@@ -231,7 +231,7 @@ func formatSafeTableColumnFamilies(w *redact.StringBuilder, desc catalog.TableDe
 	for i := range td.RowGroups {
 		w.Printf(", ")
 		if i == 0 {
-			w.Printf("Families: [")
+			w.Printf("RowGroups: [")
 		}
 		formatSafeTableColumnFamily(w, &td.RowGroups[i])
 	}

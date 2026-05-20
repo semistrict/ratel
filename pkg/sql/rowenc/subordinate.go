@@ -104,7 +104,7 @@ func EncodeSubordinateKeysForColumns(
 					return nil, err
 				}
 			}
-			entries = append(entries, IndexEntry{Key: subKey, Value: val, Family: 0})
+			entries = append(entries, IndexEntry{Key: subKey, Value: val})
 		}
 	}
 

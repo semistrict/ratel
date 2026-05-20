@@ -47,7 +47,7 @@ const (
 var maxRowSizeLog = settings.RegisterByteSizeSetting(
 	settings.TenantWritable,
 	"sql.guardrails.max_row_size_log",
-	"maximum size of row (or column family if multiple column families are in use) that SQL can "+
+	"maximum size of row data that SQL can "+
 		"write to the database, above which an event is logged to SQL_PERF (or SQL_INTERNAL_PERF "+
 		"if the mutating statement was internal); use 0 to disable",
 	kvserverbase.MaxCommandSizeDefault,
@@ -70,7 +70,7 @@ var maxRowSizeLog = settings.RegisterByteSizeSetting(
 var maxRowSizeErr = settings.RegisterByteSizeSetting(
 	settings.TenantWritable,
 	"sql.guardrails.max_row_size_err",
-	"maximum size of row (or column family if multiple column families are in use) that SQL can "+
+	"maximum size of row data that SQL can "+
 		"write to the database, above which an error is returned; use 0 to disable",
 	512<<20, /* 512 MiB */
 	func(size int64) error {
@@ -106,7 +106,7 @@ type RowHelper struct {
 	PrimaryIndexKeyPrefix []byte
 	primaryIndexKeyCols   catalog.TableColSet
 	primaryIndexValueCols catalog.TableColSet
-	sortedColumnFamilies  map[descpb.FamilyID][]descpb.ColumnID
+	sortedColumnFamilies  map[descpb.RowGroupID][]descpb.ColumnID
 
 	// Used to check row size.
 	maxRowSizeLog, maxRowSizeErr uint32
@@ -245,6 +245,9 @@ func (rh *RowHelper) SkipColumnNotInPrimaryIndexValue(
 		rh.primaryIndexValueCols = rh.TableDesc.GetPrimaryIndex().CollectPrimaryStoredColumnIDs()
 	}
 	if !rh.primaryIndexKeyCols.Contains(colID) {
+		if rowGroups := rh.TableDesc.GetRowGroups(); len(rowGroups) == 1 && rowGroups[0].ID == 0 {
+			return false
+		}
 		return !rh.primaryIndexValueCols.Contains(colID)
 	}
 	if cdatum, ok := value.(tree.CompositeDatum); ok {
@@ -257,11 +260,11 @@ func (rh *RowHelper) SkipColumnNotInPrimaryIndexValue(
 	return true
 }
 
-func (rh *RowHelper) SortedColumnFamily(famID descpb.FamilyID) ([]descpb.ColumnID, bool) {
+func (rh *RowHelper) SortedColumnFamily(famID descpb.RowGroupID) ([]descpb.ColumnID, bool) {
 	if rh.sortedColumnFamilies == nil {
-		rh.sortedColumnFamilies = make(map[descpb.FamilyID][]descpb.ColumnID, rh.TableDesc.NumFamilies())
+		rh.sortedColumnFamilies = make(map[descpb.RowGroupID][]descpb.ColumnID, rh.TableDesc.NumRowGroups())
 
-		_ = rh.TableDesc.ForeachFamily(func(family *descpb.ColumnFamilyDescriptor) error {
+		_ = rh.TableDesc.ForeachRowGroup(func(family *descpb.RowGroupDescriptor) error {
 			colIDs := append([]descpb.ColumnID{}, family.ColumnIDs...)
 			sort.Sort(descpb.ColumnIDs(colIDs))
 			rh.sortedColumnFamilies[family.ID] = colIDs
@@ -275,7 +278,7 @@ func (rh *RowHelper) SortedColumnFamily(famID descpb.FamilyID) ([]descpb.ColumnI
 // CheckRowSize compares the size of a primary key column family against the
 // max_row_size limits.
 func (rh *RowHelper) CheckRowSize(
-	ctx context.Context, key *roachpb.Key, valueBytes []byte, family descpb.FamilyID,
+	ctx context.Context, key *roachpb.Key, valueBytes []byte, family descpb.RowGroupID,
 ) error {
 	size := uint32(len(*key)) + uint32(len(valueBytes))
 	shouldLog := rh.maxRowSizeLog != 0 && size > rh.maxRowSizeLog

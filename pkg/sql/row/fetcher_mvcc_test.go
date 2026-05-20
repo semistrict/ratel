@@ -84,8 +84,7 @@ func TestRowFetcherMVCCMetadata(t *testing.T) {
 	sqlDB.Exec(t, `CREATE DATABASE d`)
 	sqlDB.Exec(t, `USE d`)
 	sqlDB.Exec(t, `CREATE TABLE parent (
-		a STRING PRIMARY KEY, b STRING, c STRING, d STRING,
-		FAMILY (a, b, c), FAMILY (d)
+		a STRING PRIMARY KEY, b STRING, c STRING, d STRING
 	)`)
 	desc := desctestutils.TestingGetPublicTableDescriptor(kvDB, keys.SystemSQLCodec, `d`, `parent`)
 	var spec fetchpb.IndexFetchSpec

@@ -90,7 +90,7 @@ func (t *ttlProcessor) work(ctx context.Context) error {
 			return err
 		}
 
-		numFamilies = desc.NumFamilies()
+		numFamilies = desc.NumRowGroups()
 		var buf bytes.Buffer
 		primaryIndexDesc := desc.GetPrimaryIndex().IndexDesc()
 		pkColNames = make([]string, 0, len(primaryIndexDesc.KeyColumnNames))

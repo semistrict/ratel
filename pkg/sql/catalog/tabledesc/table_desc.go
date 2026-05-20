@@ -434,11 +434,6 @@ func (desc *wrapper) SystemColumns() []catalog.Column {
 	return desc.getExistingOrNewColumnCache().system
 }
 
-// FamilyDefaultColumns implements the TableDescriptor interface.
-func (desc *wrapper) FamilyDefaultColumns() []fetchpb.IndexFetchSpec_FamilyDefaultColumn {
-	return desc.getExistingOrNewColumnCache().familyDefaultColumns
-}
-
 // PublicColumnIDs implements the TableDescriptor interface.
 func (desc *wrapper) PublicColumnIDs() []descpb.ColumnID {
 	cols := desc.PublicColumns()

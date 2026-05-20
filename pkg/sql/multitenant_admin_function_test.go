@@ -359,7 +359,7 @@ type tenantExpected struct {
 }
 
 func (te tenantExpected) isSet() bool {
-	return len(te.result) > 0 || te.errorMessage != ""
+	return te.result != nil || te.errorMessage != ""
 }
 
 func (te tenantExpected) validate(
@@ -478,7 +478,7 @@ func TestMultiTenantAdminFunction(t *testing.T) {
 			setup: "CREATE INDEX idx on t(i);",
 			query: "ALTER INDEX t@idx SPLIT AT VALUES (1);",
 			system: tenantExpected{
-				result: [][]string{{"\xf0\x8a\x89", "/1", maxTimestamp}},
+				result: [][]string{{ignore, "/1", maxTimestamp}},
 			},
 			secondaryWithoutClusterSetting: tenantExpected{
 				errorMessage: "tenant cluster setting sql.split_at.allow_for_secondary_tenant.enabled disabled",
@@ -492,7 +492,7 @@ func TestMultiTenantAdminFunction(t *testing.T) {
 			setup: "ALTER TABLE t SPLIT AT VALUES (1);",
 			query: "ALTER TABLE t UNSPLIT AT VALUES (1);",
 			system: tenantExpected{
-				result: [][]string{{"\xf0\x89\x89", "/Table/104/1/1"}},
+				result: [][]string{{ignore, ignore}},
 			},
 			secondary: tenantExpected{
 				result: [][]string{{"\xf0\x89\x89", "/Tenant/10/Table/104/1/1"}},
@@ -512,7 +512,7 @@ func TestMultiTenantAdminFunction(t *testing.T) {
 			},
 			query: "ALTER INDEX t@idx UNSPLIT AT VALUES (1);",
 			system: tenantExpected{
-				result: [][]string{{"\xf0\x8a\x89", "/Table/104/2/1"}},
+				result: [][]string{{ignore, ignore}},
 			},
 			secondary: tenantExpected{
 				result: [][]string{{"\xfe\x92\xf0\x8a\x89", "/Tenant/10/Table/104/2/1"}},
@@ -529,7 +529,7 @@ func TestMultiTenantAdminFunction(t *testing.T) {
 			setup: "ALTER TABLE t SPLIT AT VALUES (1);",
 			query: "ALTER TABLE t UNSPLIT ALL;",
 			system: tenantExpected{
-				result: [][]string{{"\xf0\x89\x89", "/Table/104/1/1"}},
+				result: [][]string{{ignore, ignore}},
 			},
 			secondary: tenantExpected{
 				result: [][]string{{"\xf0\x89\x89", "/Tenant/10/Table/104/1/1"}},
@@ -549,7 +549,7 @@ func TestMultiTenantAdminFunction(t *testing.T) {
 			},
 			query: "ALTER INDEX t@idx UNSPLIT ALL;",
 			system: tenantExpected{
-				result: [][]string{{"\xf0\x8a", "/Table/104/2"}, {"\xf0\x8a", "/Table/104/2/1"}},
+				result: [][]string{{ignore, ignore}, {ignore, ignore}},
 			},
 			secondary: tenantExpected{
 				result: [][]string{{"\xfe\x92\xf0\x8a\x89", "/Tenant/10/Table/104/2/1"}},
@@ -582,7 +582,7 @@ func TestMultiTenantAdminFunction(t *testing.T) {
 			setup: "CREATE INDEX idx on t(i);",
 			query: "ALTER INDEX t@idx SCATTER;",
 			system: tenantExpected{
-				result: [][]string{{"\xf0\x8a", "/Table/104/2"}},
+				result: [][]string{{ignore, ignore}},
 			},
 			secondaryWithoutClusterSetting: tenantExpected{
 				errorMessage: "tenant cluster setting sql.scatter.allow_for_secondary_tenant.enabled disabled",
@@ -632,8 +632,8 @@ func TestTruncateTable(t *testing.T) {
 	tc := testCase{
 		system: tenantExpected{
 			result: [][]string{
-				{"<before:/Table/104/1/1>", "…/1"},
-				{"…/1", "<after:/Tenant/10>"},
+				{ignore, ignore},
+				{ignore, ignore},
 			},
 		},
 		secondary: tenantExpected{

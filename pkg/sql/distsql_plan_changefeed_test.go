@@ -71,9 +71,7 @@ CREATE TABLE foo (
   extra STRING NOT NULL,
   CONSTRAINT "pk" PRIMARY KEY (a, b),
   UNIQUE (c),
-  UNIQUE (extra),
-  FAMILY main (a,b,c),
-  FAMILY extra (extra)
+  UNIQUE (extra)
 )`)
 
 	sqlDB.Exec(t, `CREATE TABLE bar (a INT)`)
@@ -100,24 +98,13 @@ CREATE TABLE foo (
 		return colinfo.ResultColumn{Name: n, Typ: typ}
 	}
 	mainColumns := colinfo.ResultColumns{
-		rc("a", types.Int), rc("b", types.Int), rc("c", types.String),
+		rc("a", types.Int), rc("b", types.Int), rc("c", types.String), rc("extra", types.String),
 	}
 	// mainColumns as tuple.
 	mainColumnsTuple := colinfo.ResultColumns{
 		rc("foo", types.MakeLabeledTuple(
-			[]*types.T{types.Int, types.Int, types.String},
-			[]string{"a", "b", "c"}),
-		)}
-
-	extraColumns := colinfo.ResultColumns{
-		rc("a", types.Int), rc("b", types.Int), rc("extra", types.String),
-	}
-
-	// extraColumnsAs tuple.
-	extraColumnsTuple := colinfo.ResultColumns{
-		rc("foo", types.MakeLabeledTuple(
-			[]*types.T{types.Int, types.Int, types.String},
-			[]string{"a", "b", "extra"}),
+			[]*types.T{types.Int, types.Int, types.String, types.String},
+			[]string{"a", "b", "c", "extra"}),
 		)}
 
 	checkPresentation := func(t *testing.T, expected, found colinfo.ResultColumns) {
@@ -159,12 +146,6 @@ CREATE TABLE foo (
 			present:     append(mainColumns, rc("mvcc", colinfo.MVCCTimestampColumnType)),
 		},
 		{
-			// Star scoped to column family.
-			stmt:        "SELECT * FROM foo@{FAMILY=[1]} WHERE 5 > 1",
-			expectSpans: roachpb.Spans{primarySpan},
-			present:     extraColumns,
-		},
-		{
 			stmt:      "SELECT * FROM foo WHERE 0 != 0",
 			expectErr: "does not match any rows",
 		},
@@ -173,13 +154,8 @@ CREATE TABLE foo (
 			expectErr: "does not match any rows",
 		},
 		{
-			stmt:      "SELECT * FROM foo@{FAMILY=[1]} WHERE extra IS NULL",
-			expectErr: "does not match any rows",
-		},
-		{
-			// Cannot reference extra column when targeting main column family.
 			stmt:      "SELECT * FROM foo WHERE extra IS NULL",
-			expectErr: `column "extra" does not exist`,
+			expectErr: "does not match any rows",
 		},
 		{
 			// Can access system columns.
@@ -188,10 +164,9 @@ CREATE TABLE foo (
 			present:     append(mainColumns, rc("tableoid", colinfo.TableOIDColumnDesc.Type)),
 		},
 		{
-			// Can access system columns in extra family.
-			stmt:        "SELECT *, crdb_internal_mvcc_timestamp AS mvcc FROM foo@{FAMILY=[1]}",
+			stmt:        "SELECT *, crdb_internal_mvcc_timestamp AS mvcc FROM foo",
 			expectSpans: roachpb.Spans{primarySpan},
-			present:     append(extraColumns, rc("mvcc", colinfo.MVCCTimestampColumnDesc.Type)),
+			present:     append(mainColumns, rc("mvcc", colinfo.MVCCTimestampColumnDesc.Type)),
 		},
 		{
 			stmt:      "SELECT * FROM foo, bar WHERE foo.a = bar.a",
@@ -337,7 +312,7 @@ CREATE TABLE foo (
 		{
 			// Point lookup.
 			stmt:        `SELECT a as apple, b as boy, pi()/2 as "halfPie" FROM foo WHERE (a = 5 AND b = 10)`,
-			expectSpans: roachpb.Spans{{Key: mkPkKey(t, fooID, 5, 10, 0)}},
+			expectSpans: roachpb.Spans{{Key: mkPkKey(t, fooID, 5, 10, 0), EndKey: mkPkKey(t, fooID, 5, 10, 1)}},
 			present: colinfo.ResultColumns{
 				rc("apple", types.Int), rc("boy", types.Int), rc("halfPie", types.Float),
 			},
@@ -361,18 +336,6 @@ CREATE TABLE foo (
 			stmt:        `SELECT foo FROM foo`,
 			expectSpans: roachpb.Spans{primarySpan},
 			present:     mainColumnsTuple,
-		},
-		{
-			// foo as a table-typed tuple; extra column family.
-			stmt:        `SELECT foo FROM foo@{FAMILY=[1]}`,
-			expectSpans: roachpb.Spans{primarySpan},
-			present:     extraColumnsTuple,
-		},
-		{
-			// foo as a table typed tuple (extra column family), but using table reference.
-			stmt:        fmt.Sprintf(`SELECT foo FROM [%d AS foo]@{FAMILY=[1]}`, fooDesc.GetID()),
-			expectSpans: roachpb.Spans{primarySpan},
-			present:     extraColumnsTuple,
 		},
 		{
 			// System columns
@@ -406,25 +369,25 @@ CREATE TABLE foo (
 		}{
 			{
 				stmt:       "SELECT * FROM foo",
-				expectCols: []string{"a", "b", "c"},
+				expectCols: []string{"a", "b", "c", "extra"},
 			},
 			{
 				stmt: "SELECT * FROM foo",
 				opts: []CDCOption{
 					WithExtraColumn(copyColumnAs(t, fooDesc, colinfo.MVCCTimestampColumnName, "mvcc")),
 				},
-				expectCols: []string{"a", "b", "c"},
+				expectCols: []string{"a", "b", "c", "extra"},
 			},
 			{
 				stmt:       "SELECT * FROM foo WHERE crdb_internal_mvcc_timestamp > 0",
-				expectCols: []string{"a", "b", "c", "crdb_internal_mvcc_timestamp"},
+				expectCols: []string{"a", "b", "c", "crdb_internal_mvcc_timestamp", "extra"},
 			},
 			{
 				stmt: "SELECT *, mvcc FROM foo WHERE crdb_internal_mvcc_timestamp > 0",
 				opts: []CDCOption{
 					WithExtraColumn(copyColumnAs(t, fooDesc, colinfo.MVCCTimestampColumnName, "mvcc")),
 				},
-				expectCols: []string{"a", "b", "c", "crdb_internal_mvcc_timestamp", "mvcc"},
+				expectCols: []string{"a", "b", "c", "crdb_internal_mvcc_timestamp", "extra", "mvcc"},
 			},
 		} {
 			stmt, err := parser.ParseOne(tc.stmt)
@@ -500,12 +463,7 @@ func TestCdcExpressionExecution(t *testing.T) {
 
 	sqlDB := sqlutils.MakeSQLRunner(db)
 	sqlDB.Exec(t, `CREATE TABLE foo (
-a INT PRIMARY KEY, b INT, c STRING, extra STRING,
-FAMILY main(a,b,c),
--- We will target primary family in the foo table.
--- The semantics around * expansion should be adopted to
--- only reference columns in the main family.
-FAMILY extra (extra)
+a INT PRIMARY KEY, b INT, c STRING, extra STRING
 )`)
 
 	fooDesc := desctestutils.TestingGetTableDescriptor(
@@ -536,7 +494,8 @@ FAMILY extra (extra)
 					a := tree.AsStringWithFlags(row[0].Datum, tree.FmtExport)
 					b := tree.AsStringWithFlags(row[1].Datum, tree.FmtExport)
 					c := tree.AsStringWithFlags(row[2].Datum, tree.FmtExport)
-					expected = append(expected, a, b, c)
+					extra := tree.AsStringWithFlags(row[3].Datum, tree.FmtExport)
+					expected = append(expected, a, b, c, extra)
 				}
 				return expected
 			},
@@ -582,8 +541,7 @@ FAMILY extra (extra)
 
 			var inputCols catalog.TableColMap
 			var inputTypes []*types.T
-			// We target main family; so only 3 columns should be used.
-			for _, id := range fooDesc.GetFamilies()[0].ColumnIDs {
+			for _, id := range fooDesc.GetRowGroups()[0].ColumnIDs {
 				col, err := catalog.MustFindColumnByID(fooDesc, id)
 				require.NoError(t, err)
 				inputCols.Set(col.GetID(), len(inputTypes))

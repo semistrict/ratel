@@ -247,16 +247,6 @@ message IndexSkipTableReaderSpec {
 message JoinReaderSpec {
   optional sqlbase.IndexFetchSpec fetch_spec = 19 [(gogoproto.nullable) = false];
 
-  // SplitFamilyIDs indicates that spans which fully constrain the index should
-  // be split into single-family spans for the given families. Unset if
-  // splitting is not possible.
-  //
-  // See span.MakeSplitter for the conditions that must hold for splitting to be
-  // allowed. It is recommended to use span.MakeSplitter() followed by
-  // splitter.FamilyIDs() to populate this field.
-  repeated uint32 split_family_ids = 20 [(gogoproto.customname) = "SplitFamilyIDs",
-    (gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb.FamilyID"];
-
   reserved 1, 2;
 
   // LookupExpr represents the part of the join condition used to perform the

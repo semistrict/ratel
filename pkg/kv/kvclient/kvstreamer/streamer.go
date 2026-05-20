@@ -429,7 +429,7 @@ func NewStreamer(
 // looked-up keys are unique (e.g. in the case of an index-join).
 //
 // maxKeysPerRow indicates the maximum number of KV pairs that comprise a single
-// SQL row (i.e. the number of column families in the index being scanned).
+// SQL row for the scanned index.
 //
 // In InOrder mode, diskBuffer argument must be non-nil.
 func (s *Streamer) Init(

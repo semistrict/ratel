@@ -14,6 +14,7 @@ import (
 	"context"
 
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catenumpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scerrors"
 	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scop"
@@ -36,6 +37,9 @@ func executeValidateUniqueIndex(
 	index, err := catalog.MustFindIndexByID(table, op.IndexID)
 	if err != nil {
 		return err
+	}
+	if index.Primary() || index.GetEncodingType() == catenumpb.PrimaryIndexEncoding {
+		return nil
 	}
 	// Execute the validation operation as a root user.
 	execOverride := sessiondata.RootUserSessionDataOverride

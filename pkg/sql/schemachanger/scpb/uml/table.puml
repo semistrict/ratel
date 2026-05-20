@@ -71,7 +71,7 @@ ColumnOnUpdateExpression :  Expression
 object ColumnType
 
 ColumnType :  TableID
-ColumnType :  FamilyID
+ColumnType :  RowGroupID
 ColumnType :  ColumnID
 ColumnType :  TypeT
 ColumnType :  IsNullable

@@ -62,7 +62,7 @@ func (i *immediateVisitor) SetAddedColumnType(
 	}
 	col := mut.AsColumn().ColumnDesc()
 	col.Type = op.ColumnType.Type
-	if op.ColumnType.ElementCreationMetadata.In_23_1OrLater {
+	if op.ColumnType.ElementCreationMetadata != nil && op.ColumnType.ElementCreationMetadata.In_23_1OrLater {
 		col.Nullable = true
 	} else {
 		col.Nullable = op.ColumnType.IsNullable

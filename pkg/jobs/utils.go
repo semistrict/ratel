@@ -158,6 +158,23 @@ func isJobInfoTableDoesNotExistError(err error) bool {
 		strings.Contains(err.Error(), "relation \"system.job_info\" does not exist")
 }
 
+// isJobInfoColumnDoesNotExistError returns true if the error indicates that a
+// query observed an old descriptor for system.job_info.
+func isJobInfoColumnDoesNotExistError(err error) bool {
+	if pgerror.GetPGCode(err) != pgcode.UndefinedColumn {
+		return false
+	}
+	errString := err.Error()
+	return strings.Contains(errString, "column \"job_id\" does not exist") ||
+		strings.Contains(errString, "column \"info_key\" does not exist") ||
+		strings.Contains(errString, "column \"written\" does not exist") ||
+		strings.Contains(errString, "column \"value\" does not exist")
+}
+
+func isJobInfoNotReadyError(err error) bool {
+	return isJobInfoTableDoesNotExistError(err) || isJobInfoColumnDoesNotExistError(err)
+}
+
 // MaybeGenerateForcedRetryableError returns a
 // TransactionRetryWithProtoRefreshError that will cause the txn to be retried
 // if the error is because of an undefined job_type column or missing job_info
@@ -180,6 +197,10 @@ func MaybeGenerateForcedRetryableError(ctx context.Context, txn *kv.Txn, err err
 			"to push timestamp to after the `job_type` upgrade has run")
 	}
 	if err != nil && isJobInfoTableDoesNotExistError(err) {
+		return txn.GenerateForcedRetryableError(ctx, "synthetic error "+
+			"to push timestamp to after the `job_info` upgrade has run")
+	}
+	if err != nil && isJobInfoColumnDoesNotExistError(err) {
 		return txn.GenerateForcedRetryableError(ctx, "synthetic error "+
 			"to push timestamp to after the `job_info` upgrade has run")
 	}

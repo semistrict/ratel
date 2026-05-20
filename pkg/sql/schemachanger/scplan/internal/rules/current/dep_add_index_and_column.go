@@ -67,6 +67,23 @@ func init() {
 	)
 
 	registerDepRule(
+		"column is WRITE_ONLY before index is backfilled",
+		scgraph.Precedence,
+		"column", "index",
+		func(from, to NodeVars) rel.Clauses {
+			ic := MkNodeVars("index-column")
+			relationID, columnID := rel.Var("table-id"), rel.Var("column-id")
+			return rel.Clauses{
+				from.Type((*scpb.Column)(nil)),
+				to.Type((*scpb.PrimaryIndex)(nil), (*scpb.SecondaryIndex)(nil)),
+				JoinOnColumnID(from, ic, relationID, columnID),
+				ColumnInIndex(ic, to, relationID, columnID, "index-id"),
+				StatusesToPublicOrTransient(from, scpb.Status_WRITE_ONLY, to, scpb.Status_BACKFILLED),
+			}
+		},
+	)
+
+	registerDepRule(
 		"column existence precedes temp index existence",
 		scgraph.Precedence,
 		"column", "index",

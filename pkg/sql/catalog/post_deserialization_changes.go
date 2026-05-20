@@ -123,4 +123,8 @@ const (
 	// FixSecondaryIndexEncodingType indicates that a secondary index had its
 	// encoding type fixed, so it is not incorrectly marked as a primary index.
 	FixSecondaryIndexEncodingType
+
+	// CollapsedRowGroups indicates that legacy physical row groups were
+	// collapsed into the single-row-group descriptor representation.
+	CollapsedRowGroups
 )

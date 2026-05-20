@@ -593,7 +593,7 @@ func getAvailableTenantID(
 	// The HAVING clause is responsible for checking for duplicate names.
 	row, err := txn.QueryRowEx(ctx, "next-tenant-id", txn.KV(),
 		sessiondata.NodeUserSessionDataOverride,
-		`SELECT max(id)+1 AS newid FROM system.tenants
+		`SELECT coalesce(max(id), 1)+1 AS newid FROM system.tenants
 HAVING ($1 = '' OR NOT EXISTS (SELECT 1 FROM system.tenants t WHERE t.name = $1))`,
 		tenantName)
 	if err != nil {

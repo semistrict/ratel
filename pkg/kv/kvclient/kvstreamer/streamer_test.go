@@ -288,9 +288,9 @@ func TestStreamerCorrectlyDiscardsResponses(t *testing.T) {
 	}
 }
 
-// TestStreamerColumnFamilies verifies that the Streamer works correctly with
-// large rows and multiple column families. The goal is to make sure that KVs
-// from different rows are not intertwined.
+// TestStreamerWideRows verifies that the Streamer works correctly with large
+// rows. The goal is to make sure that KVs from different rows are not
+// intertwined.
 func TestStreamerWideRows(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
@@ -404,9 +404,7 @@ func TestStreamerEmptyScans(t *testing.T) {
 	defer s.Stopper().Stop(ctx)
 
 	// Create a dummy table for which we know the encoding of valid keys.
-	// Although not strictly necessary, we set up two column families since with
-	// a single family in production a Get request would have been used.
-	_, err := db.Exec("CREATE TABLE t (pk INT PRIMARY KEY, k INT, blob STRING, INDEX (k), FAMILY (pk, k), FAMILY (blob))")
+	_, err := db.Exec("CREATE TABLE t (pk INT PRIMARY KEY, k INT, blob STRING, INDEX (k))")
 	require.NoError(t, err)
 
 	const tableID = 104

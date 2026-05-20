@@ -102,7 +102,7 @@ func TestGetTenantIds(t *testing.T) {
 	idb := s.ExecutorConfig().(sql.ExecutorConfig).InternalDB
 	tdb := sqlutils.MakeSQLRunner(sqlDB)
 
-	// Create 2 tenants in addition to the system tenant.
+	// Create 2 non-system tenants.
 	tdb.Exec(t, "CREATE TENANT t1")
 	tdb.Exec(t, "CREATE TENANT t2")
 
@@ -112,7 +112,6 @@ func TestGetTenantIds(t *testing.T) {
 		return err
 	}))
 	expectedIds := []roachpb.TenantID{
-		roachpb.MustMakeTenantID(1),
 		roachpb.MustMakeTenantID(2),
 		roachpb.MustMakeTenantID(3),
 	}
@@ -126,7 +125,6 @@ func TestGetTenantIds(t *testing.T) {
 		return err
 	}))
 	expectedIds = []roachpb.TenantID{
-		roachpb.MustMakeTenantID(1),
 		roachpb.MustMakeTenantID(3),
 	}
 	require.Equal(t, expectedIds, ids)

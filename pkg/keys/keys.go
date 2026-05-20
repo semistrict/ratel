@@ -826,11 +826,11 @@ func MakeTableIDIndexID(key []byte, tableID uint32, indexID uint32) []byte {
 	return key
 }
 
-// MakeFamilyKey returns the key for the family in the given row by appending to
-// the passed key.
+// MakeFamilyKey returns the row-group-suffixed key for the given row by
+// appending to the passed key.
 func MakeFamilyKey(key []byte, famID uint32) []byte {
 	if famID == 0 {
-		// As an optimization, family 0 is encoded without a length suffix.
+		// As an optimization, row-group 0 is encoded without a length suffix.
 		return encoding.EncodeUvarintAscending(key, 0)
 	}
 	size := len(key)
@@ -841,8 +841,8 @@ func MakeFamilyKey(key []byte, famID uint32) []byte {
 	return encoding.EncodeUvarintAscending(key, uint64(len(key)-size))
 }
 
-// DecodeFamilyKey returns the family ID in the given row key. Returns an error
-// if the key does not contain a family ID.
+// DecodeFamilyKey returns the physical row-group ID in the given row key.
+// Returns an error if the key does not contain one.
 func DecodeFamilyKey(key []byte) (uint32, error) {
 	n, err := GetRowPrefixLength(key)
 	if err != nil {
@@ -856,7 +856,7 @@ func DecodeFamilyKey(key []byte) (uint32, error) {
 		return 0, err
 	}
 	if colFamilyID > math.MaxUint32 {
-		return 0, errors.Errorf("column family ID overflow, got %d", colFamilyID)
+		return 0, errors.Errorf("row-group ID overflow, got %d", colFamilyID)
 	}
 	return uint32(colFamilyID), nil
 }
@@ -932,13 +932,13 @@ func GetRowPrefixLength(key roachpb.Key) (int, error) {
 	// byte.
 	colFamIDLenByte := sqlKey[sqlN-1:]
 	if encoding.PeekType(colFamIDLenByte) != encoding.Int {
-		// The last byte is not a valid column family ID suffix.
+		// The last byte is not a valid row-group ID suffix.
 		return 0, errors.Errorf("%s: not a valid table key", key)
 	}
 
-	// Strip off the column family ID suffix from the buf. The last byte of the
-	// buf contains the length of the column family ID suffix, which might be 0
-	// if the buf does not contain a column ID suffix or if the column family is
+	// Strip off the row-group ID suffix from the buf. The last byte of the
+	// buf contains the length of the row-group ID suffix, which might be 0
+	// if the buf does not contain a column ID suffix or if the row-group is
 	// 0 (see the optimization in MakeFamilyKey).
 	_, colFamIDLen, err := encoding.DecodeUvarintAscending(colFamIDLenByte)
 	if err != nil {
@@ -948,13 +948,13 @@ func GetRowPrefixLength(key roachpb.Key) (int, error) {
 	// overflow-safe. There are more intuitive ways of writing this that aren't
 	// as safe. See #18628.
 	if colFamIDLen > uint64(sqlN-1) {
-		// The column family ID length was impossible. colFamIDLen is the length
-		// of the encoded column family ID suffix. We add 1 to account for the
-		// byte holding the length of the encoded column family ID and if that
+		// The row-group ID length was impossible. colFamIDLen is the length
+		// of the encoded row-group ID suffix. We add 1 to account for the
+		// byte holding the length of the encoded row-group ID and if that
 		// total (colFamIDLen+1) is greater than the key suffix (sqlN ==
 		// len(sqlKey)) then we bail. Note that we don't consider this an error
 		// because EnsureSafeSplitKey can be called on keys that look like table
-		// keys but which do not have a column family ID length suffix (e.g by
+		// keys but which do not have a row-group ID length suffix (e.g by
 		// SystemConfig.ComputeSplitKey).
 		return 0, errors.Errorf("%s: malformed table key", key)
 	}

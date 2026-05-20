@@ -235,7 +235,7 @@ func TestNextRowBatchLimiting(t *testing.T) {
 	for tableName, table := range tables {
 		sqlutils.CreateTable(
 			t, sqlDB, tableName,
-			"k INT PRIMARY KEY, v INT, FAMILY f1 (k), FAMILY f2(v)",
+			"k INT PRIMARY KEY, v INT",
 			table.nRows,
 			sqlutils.ToRowFn(sqlutils.RowIdxFn, sqlutils.RowModuloFn(table.modFactor)),
 		)
@@ -378,15 +378,14 @@ func TestNextRowPartialColumnFamily(t *testing.T) {
 		nCols:     4,
 	}
 
-	// Initialize a table with multiple column families with some not null ones.
-	// We'll insert rows that contain nulls for the nullable column families, to
-	// trick the rowfetcher heuristic that multiplies the input batch size by the
-	// number of columns in the table.
+	// Initialize a simple table with not-null columns and one nullable column.
+	// We'll insert rows that contain nulls in the nullable column and then scan
+	// the table across multiple spans to verify that batch boundaries do not
+	// confuse the fetcher into treating the next row as malformed or incomplete.
 	sqlutils.CreateTable(
 		t, sqlDB, tableName,
 		`
 k INT PRIMARY KEY, a INT NOT NULL, b INT NOT NULL, c INT NULL,
-FAMILY f1 (k), FAMILY f2(a), FAMILY f3(b), FAMILY f4(c),
 INDEX(c)
 `,
 		table.nRows,
@@ -526,18 +525,6 @@ func TestNextRowSecondaryIndex(t *testing.T) {
 		sqlutils.RowModuloFn(storingMods[0]),
 		sqlutils.RowModuloFn(storingMods[1]),
 	)
-
-	// Add family definitions to each table.
-	tablesWithFamilies := make(map[string]*fetcherEntryArgs)
-	for tableName, table := range tables {
-		argCopy := *table
-		argCopy.schema = argCopy.schema + ", FAMILY (p), FAMILY (idx), FAMILY (s1), FAMILY (s2)"
-		familyName := tableName + "_with_families"
-		tablesWithFamilies[familyName] = &argCopy
-	}
-	for tableName, args := range tablesWithFamilies {
-		tables[tableName] = args
-	}
 
 	r := sqlutils.MakeSQLRunner(sqlDB)
 	// Initialize tables first.

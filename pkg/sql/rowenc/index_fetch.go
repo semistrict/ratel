@@ -54,18 +54,7 @@ func InitIndexFetchSpec(
 		encoding.EncodedLengthUvarintAscending(uint64(s.TableID)) +
 		encoding.EncodedLengthUvarintAscending(uint64(index.GetID())))
 
-	families := table.GetFamilies()
-	for i := range families {
-		if defaultColID := families[i].DefaultColumnID; defaultColID != 0 {
-			s.FamilyDefaultColumns = append(s.FamilyDefaultColumns, fetchpb.IndexFetchSpec_FamilyDefaultColumn{
-				FamilyID:        families[i].ID,
-				DefaultColumnID: defaultColID,
-			})
-		}
-		if id := families[i].ID; id > s.MaxFamilyID {
-			s.MaxFamilyID = id
-		}
-	}
+	s.DefaultColumnID = table.GetRowGroups()[0].DefaultColumnID
 
 	s.KeyAndSuffixColumns = table.IndexFetchSpecKeyAndSuffixColumns(index)
 

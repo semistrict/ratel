@@ -392,7 +392,7 @@ const (
 	// for a hard-coded descriptor ID.
 	// Note that this is NO LONGER a higher bound on ALL POSSIBLE system
 	// descriptor IDs.
-	MaxReservedDescID = 50
+	MaxReservedDescID = 70
 
 	// RootNamespaceID is the ID of the root namespace.
 	RootNamespaceID = 0
@@ -419,7 +419,7 @@ const (
 
 	DescriptorTablePrimaryKeyIndexID         = 1
 	DescriptorTableDescriptorColID           = 2
-	DescriptorTableDescriptorColFamID        = 2
+	DescriptorTableDescriptorColFamID        = 0
 	TenantsTablePrimaryKeyIndexID            = 1
 	SpanConfigurationsTablePrimaryKeyIndexID = 1
 	CommentsTablePrimaryKeyIndexID           = 1
@@ -482,7 +482,7 @@ const (
 	SpanConfigurationsTableID           = 47
 	RoleIDSequenceID                    = 48
 	ActorsTableID                       = 49
-	SystemJobInfoTableID                = 50
+	SystemJobInfoTableID                = 70
 )
 
 const (

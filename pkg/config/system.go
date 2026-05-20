@@ -28,6 +28,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/rowenc/valueside"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/cockroachdb/cockroach/pkg/util/encoding"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
 	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
@@ -82,32 +83,58 @@ type zoneEntry struct {
 // DecodeZoneConfigValue decodes a zone config from a roachpb.Value, handling
 // both legacy BYTES encoding and post-row-group-migration TUPLE encoding.
 func DecodeZoneConfigValue(v *roachpb.Value) (*zonepb.ZoneConfig, error) {
+	zoneBytes, err := DecodeZoneConfigBytes(v)
+	if err != nil {
+		return nil, err
+	}
 	var zone zonepb.ZoneConfig
+	if err := protoutil.Unmarshal(zoneBytes, &zone); err != nil {
+		return nil, err
+	}
+	return &zone, nil
+}
+
+// DecodeZoneConfigBytes decodes the serialized zone config bytes from a
+// roachpb.Value.
+func DecodeZoneConfigBytes(v *roachpb.Value) ([]byte, error) {
 	switch v.GetTag() {
 	case roachpb.ValueType_BYTES:
-		if err := v.GetProto(&zone); err != nil {
-			return nil, err
-		}
+		return v.GetBytes()
 	case roachpb.ValueType_TUPLE:
 		tupleBytes, err := v.GetTuple()
 		if err != nil {
 			return nil, err
 		}
 		var alloc tree.DatumAlloc
-		datum, remaining, err := valueside.Decode(&alloc, types.Bytes, tupleBytes)
-		if err != nil {
-			return nil, err
+		var lastColID descpb.ColumnID
+		for len(tupleBytes) > 0 {
+			_, dataOffset, colIDDiff, typ, err := encoding.DecodeValueTag(tupleBytes)
+			if err != nil {
+				return nil, err
+			}
+			colID := lastColID + descpb.ColumnID(colIDDiff)
+			lastColID = colID
+			length, err := encoding.PeekValueLengthWithOffsetsAndType(tupleBytes, dataOffset, typ)
+			if err != nil {
+				return nil, err
+			}
+			if colID != keys.ZonesTableConfigColumnID {
+				tupleBytes = tupleBytes[length:]
+				continue
+			}
+			datum, remaining, err := valueside.Decode(&alloc, types.Bytes, tupleBytes[:length])
+			if err != nil {
+				return nil, err
+			}
+			if len(remaining) != 0 {
+				return nil, fmt.Errorf("unexpected trailing bytes in zone config tuple")
+			}
+			return []byte(tree.MustBeDBytes(datum)), nil
 		}
-		if len(remaining) != 0 {
-			return nil, fmt.Errorf("unexpected trailing bytes in zone config tuple")
-		}
-		if err := protoutil.Unmarshal([]byte(tree.MustBeDBytes(datum)), &zone); err != nil {
-			return nil, err
-		}
+		return nil, fmt.Errorf("zone config tuple did not contain config column")
 	default:
 		return nil, fmt.Errorf("unsupported zone config value tag %s", v.GetTag())
 	}
-	return &zone, nil
 }
 
 // SystemConfig embeds a SystemConfigEntries message which contains an

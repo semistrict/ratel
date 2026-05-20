@@ -25,7 +25,6 @@ import (
 const addRoleIDColumnToDatabaseRoleSettingsTableStmt = `
 ALTER TABLE system.database_role_settings
 ADD COLUMN IF NOT EXISTS role_id OID
-FAMILY "primary"
 `
 
 const createUniqueIndexOnDatabaseIDAndRoleIDOnDatabaseRoleSettingsTableStmt = `

@@ -120,11 +120,9 @@ func TestDropDatabase(t *testing.T) {
 	defer s.Stopper().Stop(context.Background())
 	defer cancel()
 
-	// Fix the column families so the key counts below don't change if the
-	// family heuristics are updated.
 	if _, err := sqlDB.Exec(`
 CREATE DATABASE t;
-CREATE TABLE t.kv (k CHAR PRIMARY KEY, v CHAR, FAMILY (k), FAMILY (v));
+CREATE TABLE t.kv (k CHAR PRIMARY KEY, v CHAR);
 INSERT INTO t.kv VALUES ('c', 'e'), ('a', 'c'), ('b', 'd');
 `); err != nil {
 		t.Fatal(err)
@@ -158,7 +156,7 @@ INSERT INTO t.kv VALUES ('c', 'e'), ('a', 'c'), ('b', 'd');
 	}
 
 	tableSpan := tbDesc.TableSpan(keys.SystemSQLCodec)
-	tests.CheckKeyCount(t, kvDB, tableSpan, 6)
+	tests.CheckKeyCount(t, kvDB, tableSpan, 3)
 
 	if _, err := sqlDB.Exec(`DROP DATABASE t RESTRICT`); !testutils.IsError(err,
 		`database "t" is not empty`) {
@@ -170,7 +168,7 @@ INSERT INTO t.kv VALUES ('c', 'e'), ('a', 'c'), ('b', 'd');
 	}
 
 	// Data is not deleted.
-	tests.CheckKeyCount(t, kvDB, tableSpan, 6)
+	tests.CheckKeyCount(t, kvDB, tableSpan, 3)
 
 	if err := descExists(sqlDB, true, tbDesc.GetID()); err != nil {
 		t.Fatal(err)
@@ -287,13 +285,11 @@ func TestDropDatabaseDeleteData(t *testing.T) {
 	// TTL into the system with AddImmediateGCZoneConfig.
 	defer sqltestutils.DisableGCTTLStrictEnforcement(t, sqlDB)()
 
-	// Fix the column families so the key counts below don't change if the
-	// family heuristics are updated.
 	if _, err := sqlDB.Exec(`
 CREATE DATABASE t;
-CREATE TABLE t.kv (k CHAR PRIMARY KEY, v CHAR, FAMILY (k), FAMILY (v));
+CREATE TABLE t.kv (k CHAR PRIMARY KEY, v CHAR);
 INSERT INTO t.kv VALUES ('c', 'e'), ('a', 'c'), ('b', 'd');
-CREATE TABLE t.kv2 (k CHAR PRIMARY KEY, v CHAR, FAMILY (k), FAMILY (v));
+CREATE TABLE t.kv2 (k CHAR PRIMARY KEY, v CHAR);
 INSERT INTO t.kv2 VALUES ('c', 'd'), ('a', 'b'), ('e', 'a');
 `); err != nil {
 		t.Fatal(err)
@@ -309,8 +305,8 @@ INSERT INTO t.kv2 VALUES ('c', 'd'), ('a', 'b'), ('e', 'a');
 
 	tableSpan := tbDesc.TableSpan(keys.SystemSQLCodec)
 	table2Span := tb2Desc.TableSpan(keys.SystemSQLCodec)
-	tests.CheckKeyCount(t, kvDB, tableSpan, 6)
-	tests.CheckKeyCount(t, kvDB, table2Span, 6)
+	tests.CheckKeyCount(t, kvDB, tableSpan, 3)
+	tests.CheckKeyCount(t, kvDB, table2Span, 3)
 
 	if _, err := sqltestutils.AddDefaultZoneConfig(sqlDB, dbDesc.GetID()); err != nil {
 		t.Fatal(err)
@@ -325,8 +321,8 @@ INSERT INTO t.kv2 VALUES ('c', 'd'), ('a', 'b'), ('e', 'a');
 		t.Fatal(err)
 	}
 
-	tests.CheckKeyCountIncludingTombstoned(t, s, tableSpan, 6)
-	tests.CheckKeyCountIncludingTombstoned(t, s, table2Span, 6)
+	tests.CheckKeyCountIncludingTombstoned(t, s, tableSpan, 3)
+	tests.CheckKeyCountIncludingTombstoned(t, s, table2Span, 3)
 
 	sqlRun := sqlutils.MakeSQLRunner(sqlDB)
 	if err := jobutils.VerifySystemJob(t, sqlRun, 0,
@@ -352,7 +348,7 @@ INSERT INTO t.kv2 VALUES ('c', 'd'), ('a', 'b'), ('e', 'a');
 
 	// Table 1 data is deleted.
 	tests.CheckKeyCountIncludingTombstoned(t, s, tableSpan, 0)
-	tests.CheckKeyCountIncludingTombstoned(t, s, table2Span, 6)
+	tests.CheckKeyCountIncludingTombstoned(t, s, table2Span, 3)
 
 	def := zonepb.DefaultZoneConfig()
 	if err := zoneExists(sqlDB, &def, dbDesc.GetID()); err != nil {
@@ -426,7 +422,7 @@ func TestDropIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 	tableDesc := desctestutils.TestingGetPublicTableDescriptor(kvDB, keys.SystemSQLCodec, "t", "kv")
-	tests.CheckKeyCount(t, kvDB, tableDesc.TableSpan(keys.SystemSQLCodec), 3*numRows)
+	tests.CheckKeyCount(t, kvDB, tableDesc.TableSpan(keys.SystemSQLCodec), 2*numRows)
 	idx, err := catalog.MustFindIndexByName(tableDesc, "foo")
 	if err != nil {
 		t.Fatal(err)
@@ -488,7 +484,7 @@ func TestDropIndex(t *testing.T) {
 
 	tests.CheckKeyCount(t, kvDB, newIdxSpan, numRows)
 	tests.CheckKeyCount(t, kvDB, indexSpan, 0)
-	tests.CheckKeyCount(t, kvDB, tableDesc.TableSpan(keys.SystemSQLCodec), 3*numRows)
+	tests.CheckKeyCount(t, kvDB, tableDesc.TableSpan(keys.SystemSQLCodec), 2*numRows)
 }
 
 func TestDropIndexWithZoneConfigOSS(t *testing.T) {
@@ -608,7 +604,7 @@ func TestDropTable(t *testing.T) {
 	}
 
 	tableSpan := tableDesc.TableSpan(keys.SystemSQLCodec)
-	tests.CheckKeyCount(t, kvDB, tableSpan, 3*numRows)
+	tests.CheckKeyCount(t, kvDB, tableSpan, 2*numRows)
 	if _, err := sqlDB.Exec(`DROP TABLE t.kv`); err != nil {
 		t.Fatal(err)
 	}
@@ -646,7 +642,7 @@ func TestDropTable(t *testing.T) {
 
 	// A lot of garbage has been left behind to be cleaned up by the
 	// asynchronous path.
-	tests.CheckKeyCount(t, kvDB, tableSpan, 3*numRows)
+	tests.CheckKeyCount(t, kvDB, tableSpan, 2*numRows)
 
 	if err := descExists(sqlDB, true, tableDesc.GetID()); err != nil {
 		t.Fatal(err)
@@ -676,7 +672,7 @@ func TestDropTableDeleteData(t *testing.T) {
 	defer sqltestutils.DisableGCTTLStrictEnforcement(t, sqlDB)()
 
 	const numRows = 2*row.TableTruncateChunkSize + 1
-	const numKeys = 3 * numRows
+	const numKeys = 2 * numRows
 	const numTables = 5
 	var descs []catalog.TableDescriptor
 	for i := 0; i < numTables; i++ {

@@ -341,6 +341,22 @@ func TestAsOfRetry(t *testing.T) {
 						return kvpb.NewErrorWithTxn(err, txn)
 					}
 				}
+			case *kvpb.ScanRequest:
+				for key, count := range magicVals.restartCounts {
+					if err := checkCorrectTxn(string(req.Key), magicVals, args.Hdr.Txn); err != nil {
+						return kvpb.NewError(err)
+					}
+					if count > 0 && bytes.Contains(req.Key, []byte(key)) {
+						magicVals.restartCounts[key]--
+						err := kvpb.NewTransactionRetryError(
+							kvpb.RETRY_REASON_UNKNOWN, "filter err")
+						magicVals.failedValues[string(req.Key)] =
+							failureRecord{err, args.Hdr.Txn}
+						txn := args.Hdr.Txn.Clone()
+						txn.WriteTimestamp = txn.WriteTimestamp.Add(0, 1)
+						return kvpb.NewErrorWithTxn(err, txn)
+					}
+				}
 			}
 			return nil
 		}, false)

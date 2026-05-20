@@ -326,7 +326,8 @@ type TableDescriptor interface {
 	// IsPhysicalTable returns true if the TableDescriptor actually describes a
 	// physical Table that needs to be stored in the kv layer, as opposed to a
 	// different resource like a view or a virtual table. Physical tables have
-	// primary keys, column families, and indexes (unlike virtual tables).
+	// primary keys, physical row-group metadata, and indexes (unlike virtual
+	// tables).
 	// Sequences count as physical tables because their values are stored in
 	// the KV layer.
 	IsPhysicalTable() bool
@@ -532,9 +533,7 @@ type TableDescriptor interface {
 	IndexStoredColumns(idx Index) []Column
 
 	// IndexKeysPerRow returns the maximum number of keys used to encode a row for
-	// the given index. If a secondary index doesn't store any columns, then it
-	// only has one k/v pair, but if it stores some columns, it can return up to
-	// one k/v pair per family in the table, just like a primary index.
+	// the given index.
 	IndexKeysPerRow(idx Index) int
 
 	// IndexFetchSpecKeyAndSuffixColumns returns information about the key and
@@ -551,17 +550,17 @@ type TableDescriptor interface {
 	// index. This method assumes that col is currently a member of desc.
 	IsShardColumn(col Column) bool
 
-	// GetFamilies returns the column families of this table. All tables contain
-	// at least one column family. The returned list is sorted by family ID.
-	GetFamilies() []descpb.ColumnFamilyDescriptor
-	// NumFamilies returns the number of column families in the descriptor.
-	NumFamilies() int
-	// ForeachFamily calls f for every column family key in desc until an
-	// error is returned.
-	ForeachFamily(f func(family *descpb.ColumnFamilyDescriptor) error) error
-	// GetNextFamilyID returns the next unused family ID for this table. Family
-	// IDs are unique per table, but not unique globally.
-	GetNextFamilyID() descpb.FamilyID
+	// GetRowGroups returns the row groups of this table. All tables contain at
+	// least one row group. The returned list is sorted by row group ID.
+	GetRowGroups() []descpb.RowGroupDescriptor
+	// NumRowGroups returns the number of row groups in the descriptor.
+	NumRowGroups() int
+	// ForeachRowGroup calls f for every row group in desc until an error is
+	// returned.
+	ForeachRowGroup(f func(rowGroup *descpb.RowGroupDescriptor) error) error
+	// GetNextRowGroupID returns the next unused row group ID for this table. Row
+	// group IDs are unique per table, but not unique globally.
+	GetNextRowGroupID() descpb.RowGroupID
 
 	// HasColumnBackfillMutation returns whether the table has any queued column
 	// mutations that require a backfill.

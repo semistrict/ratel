@@ -34,7 +34,6 @@ var JobsBackfillBatchSize_22_2_20 = envutil.EnvOrDefaultInt("COCKROACH_UPGRADE_2
 const addTypeColumnStmt = `
 ALTER TABLE system.jobs
 ADD COLUMN IF NOT EXISTS job_type STRING
-FAMILY "fam_0_id_status_created_payload"
 `
 
 const addTypeColumnIdxStmt = `

@@ -97,7 +97,7 @@ CREATE FUNCTION f(INT) RETURNS INT VOLATILE LANGUAGE SQL AS $$ SELECT a FROM t $
 		sort.Slice(funcDef.Overloads, func(i, j int) bool {
 			return funcDef.Overloads[i].Overload.Oid < funcDef.Overloads[j].Overload.Oid
 		})
-		require.Equal(t, 100110, int(funcDef.Overloads[0].Oid))
+		require.Equal(t, 100114, int(funcDef.Overloads[0].Oid))
 		require.True(t, funcDef.Overloads[0].UDFContainsOnlySignature)
 		require.True(t, funcDef.Overloads[0].IsUDF)
 		require.Equal(t, 1, len(funcDef.Overloads[0].Types.Types()))
@@ -105,13 +105,13 @@ CREATE FUNCTION f(INT) RETURNS INT VOLATILE LANGUAGE SQL AS $$ SELECT a FROM t $
 		require.Equal(t, types.EnumFamily, funcDef.Overloads[0].Types.Types()[0].Family())
 		require.Equal(t, types.Int, funcDef.Overloads[0].ReturnType([]tree.TypedExpr{}))
 
-		require.Equal(t, 100111, int(funcDef.Overloads[1].Oid))
+		require.Equal(t, 100115, int(funcDef.Overloads[1].Oid))
 		require.True(t, funcDef.Overloads[1].UDFContainsOnlySignature)
 		require.True(t, funcDef.Overloads[1].IsUDF)
 		require.Equal(t, 0, len(funcDef.Overloads[1].Types.Types()))
 		require.Equal(t, types.Void, funcDef.Overloads[1].ReturnType([]tree.TypedExpr{}))
 
-		require.Equal(t, 100112, int(funcDef.Overloads[2].Oid))
+		require.Equal(t, 100116, int(funcDef.Overloads[2].Oid))
 		require.True(t, funcDef.Overloads[2].UDFContainsOnlySignature)
 		require.True(t, funcDef.Overloads[2].IsUDF)
 		require.Equal(t, 1, len(funcDef.Overloads[2].Types.Types()))
@@ -124,7 +124,7 @@ CREATE FUNCTION f(INT) RETURNS INT VOLATILE LANGUAGE SQL AS $$ SELECT a FROM t $
 SELECT b FROM defaultdb.public.t@t_idx_b;
 SELECT c FROM defaultdb.public.t@t_idx_c;
 SELECT a FROM defaultdb.public.v;
-SELECT nextval(105:::REGCLASS);`, overload.Body)
+SELECT nextval(109:::REGCLASS);`, overload.Body)
 		require.True(t, overload.IsUDF)
 		require.False(t, overload.UDFContainsOnlySignature)
 		require.Equal(t, 1, len(overload.Types.Types()))
@@ -338,28 +338,28 @@ CREATE FUNCTION sc1.lower(a STRING) RETURNS STRING VOLATILE LANGUAGE SQL AS $$ S
 			testName:         "explicit schema",
 			exprStr:          "sc1.f(1)",
 			searchPath:       []string{"sc2", "sc1"},
-			expectedFuncOID:  100107,
+			expectedFuncOID:  100111,
 			expectedFuncBody: "SELECT 2;",
 		},
 		{
 			testName:         "explicit schema not in path",
 			exprStr:          "sc1.f(1)",
 			searchPath:       []string{"sc2"},
-			expectedFuncOID:  100107,
+			expectedFuncOID:  100111,
 			expectedFuncBody: "SELECT 2;",
 		},
 		{
 			testName:         "implicit schema",
 			exprStr:          "f(1)",
 			searchPath:       []string{"sc2", "sc1"},
-			expectedFuncOID:  100108,
+			expectedFuncOID:  100112,
 			expectedFuncBody: "SELECT 3;",
 		},
 		{
 			testName:         "implicit schema but unique signature",
 			exprStr:          "f(1, 1)",
 			searchPath:       []string{"sc2", "sc1"},
-			expectedFuncOID:  100106,
+			expectedFuncOID:  100110,
 			expectedFuncBody: "SELECT 1;",
 		},
 		{
@@ -374,7 +374,7 @@ CREATE FUNCTION sc1.lower(a STRING) RETURNS STRING VOLATILE LANGUAGE SQL AS $$ S
 			testName:         "explicit pg_catalog schema in path",
 			exprStr:          "lower('HI')",
 			searchPath:       []string{"sc1", "sc2", "pg_catalog"},
-			expectedFuncOID:  100109,
+			expectedFuncOID:  100113,
 			expectedFuncBody: "SELECT lower('HI':::STRING);",
 			desiredType:      types.String,
 		},

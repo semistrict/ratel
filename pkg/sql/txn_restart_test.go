@@ -1108,19 +1108,7 @@ func TestNonRetryableError(t *testing.T) {
 	s, sqlDB, _ := serverutils.StartServer(t, params)
 	defer s.Stopper().Stop(context.Background())
 
-	testKey := []byte("test_key")
 	hitError := false
-	cleanupFilter := cmdFilters.AppendFilter(
-		func(args kvserverbase.FilterArgs) *kvpb.Error {
-			if req, ok := args.Req.(*kvpb.GetRequest); ok {
-				if bytes.Contains(req.Key, testKey) && !kv.TestingIsRangeLookupRequest(req) {
-					hitError = true
-					return kvpb.NewErrorWithTxn(fmt.Errorf("testError"), args.Hdr.Txn)
-				}
-			}
-			return nil
-		}, false)
-	defer cleanupFilter()
 
 	// We need to do everything on one connection as we'll want to observe the
 	// connection state after a COMMIT.
@@ -1129,8 +1117,27 @@ func TestNonRetryableError(t *testing.T) {
 CREATE DATABASE t;
 CREATE TABLE t.test (k TEXT PRIMARY KEY, v TEXT);
 INSERT INTO t.test (k, v) VALUES ('test_key', 'test_val');
-SELECT * from t.test WHERE k = 'test_key';
-`); !testutils.IsError(err, "pq: testError") {
+`); err != nil {
+		t.Fatal(err)
+	}
+	cleanupFilter := cmdFilters.AppendFilter(
+		func(args kvserverbase.FilterArgs) *kvpb.Error {
+			switch req := args.Req.(type) {
+			case *kvpb.GetRequest:
+				if !kv.TestingIsRangeLookupRequest(req) {
+					hitError = true
+					return kvpb.NewErrorWithTxn(fmt.Errorf("testError"), args.Hdr.Txn)
+				}
+			case *kvpb.ScanRequest:
+				if !kv.TestingIsRangeLookupRequest(req) {
+					hitError = true
+					return kvpb.NewErrorWithTxn(fmt.Errorf("testError"), args.Hdr.Txn)
+				}
+			}
+			return nil
+		}, false)
+	defer cleanupFilter()
+	if _, err := sqlDB.Exec(`SELECT * from t.test WHERE k = 'test_key'`); !testutils.IsError(err, "pq: testError") {
 		t.Errorf("unexpected error %v", err)
 	}
 	if !hitError {
@@ -1153,15 +1160,17 @@ func TestReacquireLeaseOnRestart(t *testing.T) {
 		MaxTxnRefreshAttempts: refreshAttempts,
 	}
 
-	testKey := []byte("test_key")
 	var s serverutils.TestServerInterface
-	var clockUpdate, restartDone int32
+	var clockUpdate, restartDone, injectEnabled int32
 	testingResponseFilter := func(
 		ctx context.Context, ba *kvpb.BatchRequest, br *kvpb.BatchResponse,
 	) *kvpb.Error {
+		if atomic.LoadInt32(&injectEnabled) == 0 {
+			return nil
+		}
 		for _, ru := range ba.Requests {
 			if req := ru.GetGet(); req != nil {
-				if bytes.Contains(req.Key, testKey) && !kv.TestingIsRangeLookupRequest(req) {
+				if !kv.TestingIsRangeLookupRequest(req) {
 					if atomic.LoadInt32(&clockUpdate) == 0 {
 						atomic.AddInt32(&clockUpdate, 1)
 						// Hack to advance the transaction timestamp on a
@@ -1183,6 +1192,32 @@ func TestReacquireLeaseOnRestart(t *testing.T) {
 						now := s.Clock().NowAsClockTimestamp()
 						txn.UpdateObservedTimestamp(s.(*server.TestServer).Gossip().NodeID.Get(), now)
 						return kvpb.NewErrorWithTxn(kvpb.NewReadWithinUncertaintyIntervalError(now.ToTimestamp(), now, txn, now.ToTimestamp(), now), txn)
+					}
+				}
+				if req := ru.GetScan(); req != nil {
+					if !kv.TestingIsRangeLookupRequest(req) {
+						if atomic.LoadInt32(&clockUpdate) == 0 {
+							atomic.AddInt32(&clockUpdate, 1)
+							// Hack to advance the transaction timestamp on a
+							// transaction restart.
+							const advancement = 2 * base.DefaultDescriptorLeaseDuration
+							now := s.Clock().NowAsClockTimestamp()
+							now.WallTime += advancement.Nanoseconds()
+							s.Clock().Update(now)
+						}
+
+						// Allow a set number of restarts so that the auto retry on
+						// the first few uncertainty interval errors also fails.
+						if atomic.LoadInt32(&restartDone) <= refreshAttempts {
+							atomic.AddInt32(&restartDone, 1)
+							// Return ReadWithinUncertaintyIntervalError to update
+							// the transaction timestamp on retry.
+							txn := ba.Txn
+							txn.ResetObservedTimestamps()
+							now := s.Clock().NowAsClockTimestamp()
+							txn.UpdateObservedTimestamp(s.(*server.TestServer).Gossip().NodeID.Get(), now)
+							return kvpb.NewErrorWithTxn(kvpb.NewReadWithinUncertaintyIntervalError(now.ToTimestamp(), now, txn, now.ToTimestamp(), now), txn)
+						}
 					}
 				}
 			}
@@ -1216,6 +1251,7 @@ INSERT INTO t.test (k, v) VALUES ('test_key', 'test_val');
 	// transaction timestamp due to txnSpanRefresher-initiated span refreshes.
 	// The transaction timestamp will exceed the lease expiration time, and the
 	// last read attempt will re-acquire the lease.
+	atomic.StoreInt32(&injectEnabled, 1)
 	if _, err := sqlDB.Exec(`
 SELECT * from t.test WHERE k = 'test_key';
 `); err != nil {
@@ -1239,7 +1275,7 @@ func TestFlushUncommitedDescriptorCacheOnRestart(t *testing.T) {
 	defer log.Scope(t).Close(t)
 
 	var cmdFilters tests.CommandFilters
-	testKey := []byte("test_key")
+	var injectEnabled int32
 	testingKnobs := &kvserver.StoreTestingKnobs{
 		EvalKnobs: kvserverbase.BatchEvalTestingKnobs{
 			TestingEvalFilter: cmdFilters.RunFilters,
@@ -1258,8 +1294,22 @@ func TestFlushUncommitedDescriptorCacheOnRestart(t *testing.T) {
 				return nil
 			}
 
+			if atomic.LoadInt32(&injectEnabled) == 0 {
+				return nil
+			}
 			if req, ok := args.Req.(*kvpb.GetRequest); ok {
-				if bytes.Contains(req.Key, testKey) && !kv.TestingIsRangeLookupRequest(req) {
+				if !kv.TestingIsRangeLookupRequest(req) {
+					atomic.AddInt32(&restartDone, 1)
+					// Return ReadWithinUncertaintyIntervalError.
+					txn := args.Hdr.Txn
+					txn.ResetObservedTimestamps()
+					now := s.Clock().NowAsClockTimestamp()
+					txn.UpdateObservedTimestamp(s.(*server.TestServer).Gossip().NodeID.Get(), now)
+					return kvpb.NewErrorWithTxn(kvpb.NewReadWithinUncertaintyIntervalError(now.ToTimestamp(), now, txn, now.ToTimestamp(), now), txn)
+				}
+			}
+			if req, ok := args.Req.(*kvpb.ScanRequest); ok {
+				if !kv.TestingIsRangeLookupRequest(req) {
 					atomic.AddInt32(&restartDone, 1)
 					// Return ReadWithinUncertaintyIntervalError.
 					txn := args.Hdr.Txn
@@ -1284,6 +1334,7 @@ INSERT INTO t.test (k, v) VALUES ('test_key', 'test_val');
 	// Read from a table, rename it, and then read from the table to trigger
 	// the retry. On the second attempt the first read from the table should
 	// not see the uncommitted renamed table.
+	atomic.StoreInt32(&injectEnabled, 1)
 	if _, err := sqlDB.Exec(`
 BEGIN;
 SELECT * from t.test WHERE k = 'foobar';
@@ -1633,12 +1684,21 @@ func TestTxnAutoRetryReasonAvailable(t *testing.T) {
 
 	s, sqlDB, _ := serverutils.StartServer(t, params)
 	defer s.Stopper().Stop(context.Background())
-	retriedStmtKey := []byte("test_key")
 
+	var injectEnabled int32
 	cleanupFilter := cmdFilters.AppendFilter(
 		func(args kvserverbase.FilterArgs) *kvpb.Error {
+			if atomic.LoadInt32(&injectEnabled) == 0 {
+				return nil
+			}
 			if req, ok := args.Req.(*kvpb.GetRequest); ok {
-				if bytes.Contains(req.Key, retriedStmtKey) && retryCount < numRetries {
+				if !kv.TestingIsRangeLookupRequest(req) && retryCount < numRetries {
+					return kvpb.NewErrorWithTxn(kvpb.NewTransactionRetryError(kvpb.RETRY_REASON_UNKNOWN,
+						redact.Sprintf("injected err %d", retryCount+1)), args.Hdr.Txn)
+				}
+			}
+			if req, ok := args.Req.(*kvpb.ScanRequest); ok {
+				if !kv.TestingIsRangeLookupRequest(req) && retryCount < numRetries {
 					return kvpb.NewErrorWithTxn(kvpb.NewTransactionRetryError(kvpb.RETRY_REASON_UNKNOWN,
 						redact.Sprintf("injected err %d", retryCount+1)), args.Hdr.Txn)
 				}
@@ -1654,8 +1714,9 @@ func TestTxnAutoRetryReasonAvailable(t *testing.T) {
 CREATE DATABASE t;
 CREATE TABLE t.test (k TEXT PRIMARY KEY, v TEXT);
 INSERT INTO t.test (k, v) VALUES ('test_key', 'test_val');
-SELECT * from t.test WHERE k = 'test_key';
 `)
+	atomic.StoreInt32(&injectEnabled, 1)
+	r.Exec(t, `SELECT * from t.test WHERE k = 'test_key'`)
 
 	require.Equal(t, numRetries, retryCount)
 }

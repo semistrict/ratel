@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	"github.com/cockroachdb/cockroach/pkg/clusterversion"
+	"github.com/cockroachdb/cockroach/pkg/config"
 	"github.com/cockroachdb/cockroach/pkg/keys"
 	"github.com/cockroachdb/cockroach/pkg/kv"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
@@ -504,7 +505,6 @@ func (tc *Collection) DeleteTableComments(
 func (tc *Collection) WriteZoneConfigToBatch(
 	ctx context.Context, kvTrace bool, b *kv.Batch, descID descpb.ID, zc catalog.ZoneConfig,
 ) error {
-	zcWriter := bootstrap.MakeKVWriter(tc.codec(), systemschema.ZonesTable, 0 /* SkippedColumnFamilyIDs*/)
 	var val roachpb.Value
 	if err := val.SetProto(zc.ZoneConfigProto()); err != nil {
 		return err
@@ -513,27 +513,12 @@ func (tc *Collection) WriteZoneConfigToBatch(
 	if err != nil {
 		return err
 	}
-	values := []tree.Datum{
-		tree.NewDInt(tree.DInt(descID)),
-		tree.NewDBytes(tree.DBytes(valBytes)),
-	}
 
-	var expValues []tree.Datum
-	if zc.GetRawBytesInStorage() != nil {
-		expValues = []tree.Datum{
-			tree.NewDInt(tree.DInt(descID)),
-			tree.NewDBytes(tree.DBytes(zc.GetRawBytesInStorage())),
-		}
+	zoneKey := config.MakeZoneKey(tc.codec(), descID)
+	if kvTrace {
+		log.VEventf(ctx, 2, "Put %s -> %s", zoneKey, valBytes)
 	}
-
-	if expValues == nil {
-		err = zcWriter.Insert(ctx, b, kvTrace, values...)
-	} else {
-		err = zcWriter.Update(ctx, b, kvTrace, values, expValues)
-	}
-	if err != nil {
-		return err
-	}
+	b.Put(zoneKey, &val)
 
 	return tc.AddUncommittedZoneConfig(descID, zc.ZoneConfigProto())
 }

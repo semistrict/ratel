@@ -21,10 +21,8 @@ import (
 
 const addPartialStatisticsPredicateAndIDCol = `
 ALTER TABLE system.table_statistics
-ADD COLUMN IF NOT EXISTS "partialPredicate" STRING
-FAMILY "fam_0_tableID_statisticID_name_columnIDs_createdAt_rowCount_distinctCount_nullCount_histogram",
-ADD COLUMN IF NOT EXISTS "fullStatisticID" INT8
-FAMILY "fam_0_tableID_statisticID_name_columnIDs_createdAt_rowCount_distinctCount_nullCount_histogram"`
+ADD COLUMN IF NOT EXISTS "partialPredicate" STRING,
+ADD COLUMN IF NOT EXISTS "fullStatisticID" INT8`
 
 func alterSystemTableStatisticsAddPartialPredicateAndID(
 	ctx context.Context, cs clusterversion.ClusterVersion, d upgrade.TenantDeps,

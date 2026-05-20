@@ -160,6 +160,12 @@ func TestLargeKeys(t *testing.T) {
 					_, err = db.Exec("INSERT INTO bar SELECT repeat($1, $2);", letter, valueSize)
 					require.NoError(t, err)
 				}
+				// We randomize the value size for 'blob' column to improve
+				// the test coverage.
+				blobSize := int(float64(valueSize)*5.0*rng.Float64()) + 1
+				_, err = db.Exec("INSERT INTO foo SELECT repeat($1, $2), 1, 1, repeat($1, $3);", letter, valueSize, blobSize)
+				require.NoError(t, err)
+			}
 
 				// Try two scenarios: one with a single range (so no parallelism
 				// within the Streamer) and another with a random number of
@@ -193,8 +199,8 @@ func TestLargeKeys(t *testing.T) {
 							_, err = db.Exec("SET vectorize = " + vectorizeMode)
 							require.NoError(t, err)
 							t.Run(fmt.Sprintf(
-								"%s/size=%s/scans=%t/onlyLarge=%t/numRows=%d/newRangeProb=%.2f/vec=%s",
-								tc.name, humanize.Bytes(uint64(pkBlobSize)), useScans,
+								"%s/size=%s/onlyLarge=%t/numRows=%d/newRangeProb=%.2f/vec=%s",
+								tc.name, humanize.Bytes(uint64(pkBlobSize)),
 								onlyLarge, numRows, newRangeProbability, vectorizeMode,
 							),
 								func(t *testing.T) {
@@ -234,7 +240,6 @@ func TestLargeKeys(t *testing.T) {
 								})
 						}
 					}
-				}
 			}
 		}
 	}

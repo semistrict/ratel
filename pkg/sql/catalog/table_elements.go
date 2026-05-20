@@ -1167,10 +1167,10 @@ var _ = MustFindConstraintWithName
 // FindFamilyByID traverses the family descriptors on the table descriptor
 // and returns the first column family with the desired ID, or nil if none was
 // found.
-func FindFamilyByID(tbl TableDescriptor, id descpb.FamilyID) (ret *descpb.ColumnFamilyDescriptor) {
-	_ = tbl.ForeachFamily(func(family *descpb.ColumnFamilyDescriptor) error {
-		if family.ID == id {
-			ret = family
+func FindFamilyByID(tbl TableDescriptor, id descpb.FamilyID) (ret *descpb.RowGroupDescriptor) {
+	_ = tbl.ForeachRowGroup(func(rowGroup *descpb.RowGroupDescriptor) error {
+		if rowGroup.ID == id {
+			ret = rowGroup
 			return iterutil.StopIteration()
 		}
 		return nil
@@ -1182,7 +1182,7 @@ func FindFamilyByID(tbl TableDescriptor, id descpb.FamilyID) (ret *descpb.Column
 // family was found.
 func MustFindFamilyByID(
 	tbl TableDescriptor, id descpb.FamilyID,
-) (*descpb.ColumnFamilyDescriptor, error) {
+) (*descpb.RowGroupDescriptor, error) {
 	if f := FindFamilyByID(tbl, id); f != nil {
 		return f, nil
 	}

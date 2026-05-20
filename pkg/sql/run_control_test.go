@@ -867,12 +867,16 @@ func TestTenantStatementTimeoutAdmissionQueueCancelation(t *testing.T) {
 	matchBatch := func(ctx context.Context, req *kvpb.BatchRequest) bool {
 		tid, ok := roachpb.ClientTenantFromContext(ctx)
 		if ok && tid == tenantID && len(req.Requests) > 0 {
-			scan, ok := req.Requests[0].GetInner().(*kvpb.GetRequest)
-			if ok {
-				if tableSpan.ContainsKey(scan.Key) {
-					log.Infof(ctx, "matchBatch %d", goid.Get())
-					return true
-				}
+			var key roachpb.Key
+			switch request := req.Requests[0].GetInner().(type) {
+			case *kvpb.GetRequest:
+				key = request.Key
+			case *kvpb.ScanRequest:
+				key = request.Key
+			}
+			if key != nil && tableSpan.ContainsKey(key) {
+				log.Infof(ctx, "matchBatch %d", goid.Get())
+				return true
 			}
 		}
 		return false

@@ -25,7 +25,7 @@ import (
 const (
 	addSamplingProbColToStmtDiagReqs = `
 ALTER TABLE system.statement_diagnostics_requests
-  ADD COLUMN sampling_probability FLOAT NULL FAMILY "primary"`
+  ADD COLUMN sampling_probability FLOAT NULL`
 
 	dropCompletedIdxV1 = `DROP INDEX IF EXISTS system.statement_diagnostics_requests@completed_idx`
 

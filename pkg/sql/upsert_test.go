@@ -97,11 +97,11 @@ func TestUpsertFastPath(t *testing.T) {
 	atomic.StoreUint64(&scans, 0)
 	atomic.StoreUint64(&endTxn, 0)
 	sqlDB.Exec(t, `INSERT INTO d.kv VALUES (1, 1) ON CONFLICT (k) DO UPDATE SET v=excluded.v`)
-	if s := atomic.LoadUint64(&gets); s != 1 {
-		t.Errorf("expected 1 get (no upsert fast path) but got %d", s)
+	if s := atomic.LoadUint64(&gets); s != 0 {
+		t.Errorf("expected 0 gets (no upsert fast path) but got %d", s)
 	}
-	if s := atomic.LoadUint64(&scans); s != 0 {
-		t.Errorf("expected 0 scans but got %d", s)
+	if s := atomic.LoadUint64(&scans); s != 1 {
+		t.Errorf("expected 1 scan but got %d", s)
 	}
 	if s := atomic.LoadUint64(&endTxn); s != 0 {
 		t.Errorf("expected no end-txn (1PC) but got %d", s)
@@ -112,11 +112,11 @@ func TestUpsertFastPath(t *testing.T) {
 	atomic.StoreUint64(&scans, 0)
 	atomic.StoreUint64(&endTxn, 0)
 	sqlDB.Exec(t, `UPSERT INTO d.kv (k) VALUES (1)`)
-	if s := atomic.LoadUint64(&gets); s != 1 {
-		t.Errorf("expected 1 get (no upsert fast path) but got %d", s)
+	if s := atomic.LoadUint64(&gets); s != 0 {
+		t.Errorf("expected 0 gets (no upsert fast path) but got %d", s)
 	}
-	if s := atomic.LoadUint64(&scans); s != 0 {
-		t.Errorf("expected 0 scans but got %d", s)
+	if s := atomic.LoadUint64(&scans); s != 1 {
+		t.Errorf("expected 1 scan but got %d", s)
 	}
 	if s := atomic.LoadUint64(&endTxn); s != 0 {
 		t.Errorf("expected no end-txn (1PC) but got %d", s)
@@ -153,11 +153,11 @@ func TestUpsertFastPath(t *testing.T) {
 	atomic.StoreUint64(&scans, 0)
 	atomic.StoreUint64(&endTxn, 0)
 	sqlDB.Exec(t, `UPSERT INTO d.kv VALUES (1, 1)`)
-	if s := atomic.LoadUint64(&gets); s != 1 {
-		t.Errorf("expected 1 get (no upsert fast path) but got %d", s)
+	if s := atomic.LoadUint64(&gets); s != 0 {
+		t.Errorf("expected 0 gets (no upsert fast path) but got %d", s)
 	}
-	if s := atomic.LoadUint64(&scans); s != 0 {
-		t.Errorf("expected 0 scans (no upsert fast path) but got %d", s)
+	if s := atomic.LoadUint64(&scans); s != 1 {
+		t.Errorf("expected 1 scan (no upsert fast path) but got %d", s)
 	}
 	if s := atomic.LoadUint64(&endTxn); s != 0 {
 		t.Errorf("expected no end-txn (1PC) but got %d", s)

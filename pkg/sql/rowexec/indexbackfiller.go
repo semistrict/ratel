@@ -182,7 +182,7 @@ func (ib *indexBackfiller) ingestIndexEntries(
 		Name:                     ib.desc.GetName() + " backfill",
 		MinBufferSize:            minBufferSize,
 		MaxBufferSize:            maxBufferSize,
-		SkipDuplicates:           ib.ContainsInvertedIndex(),
+		SkipDuplicates:           ib.ContainsInvertedIndex() || ib.backfillsPrimaryIndex(),
 		BatchTimestamp:           ib.spec.ReadAsOf,
 		InitialSplitsIfUnordered: int(ib.spec.InitialSplits),
 		WriteAtBatchTimestamp:    ib.spec.WriteAtBatchTimestamp,
@@ -297,6 +297,16 @@ func (ib *indexBackfiller) ingestIndexEntries(
 	pushProgress()
 
 	return nil
+}
+
+func (ib *indexBackfiller) backfillsPrimaryIndex() bool {
+	for _, indexID := range ib.spec.IndexesToBackfill {
+		idx := catalog.FindIndexByID(ib.desc, indexID)
+		if idx != nil && idx.Primary() {
+			return true
+		}
+	}
+	return false
 }
 
 func (ib *indexBackfiller) runBackfill(

@@ -23,7 +23,6 @@ import (
 const addUserIDColumnToWebSessionsTableStmt = `
 ALTER TABLE system.web_sessions
 ADD COLUMN IF NOT EXISTS user_id OID
-FAMILY "fam_0_id_hashedSecret_username_createdAt_expiresAt_revokedAt_lastUsedAt_auditInfo"
 `
 
 func alterWebSessionsTableAddUserIDColumn(

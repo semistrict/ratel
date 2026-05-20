@@ -22,7 +22,6 @@ import (
 const addSqlAddrCol = `
 ALTER TABLE system.sql_instances
 ADD COLUMN IF NOT EXISTS "sql_addr" STRING
-FAMILY "primary"
 `
 
 func alterSystemSQLInstancesAddSqlAddr(

@@ -357,6 +357,12 @@ func hasRowGroup(
 	return true, nil
 }
 
+func hasColumnFamily(
+	storedTable, expectedTable catalog.TableDescriptor, rowGroupName string,
+) (bool, error) {
+	return hasRowGroup(storedTable, expectedTable, rowGroupName)
+}
+
 // onlyHasColumnFamily returns true if storedTable has only the given column
 // family, comparing with expectedTable. storedTable descriptor must be read
 // from system storage as compared to reading from the systemschema package. On

@@ -26,7 +26,6 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/schematelemetry/schematelemetrycontroller"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/builtins/builtinconstants"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/testutils"
 	"github.com/cockroachdb/cockroach/pkg/testutils/sqlutils"
 	"github.com/cockroachdb/cockroach/pkg/testutils/testcluster"
 	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
@@ -39,69 +38,68 @@ import (
 func TestSchemaTelemetrySchedule(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 
-	// We want to ensure that the migration will succeed when run again.
-	// To ensure that it will, we inject a failure when trying to mark
-	// the upgrade as complete when forceRetry is true.
-	testutils.RunTrueAndFalse(t, "force-retry", func(t *testing.T, forceRetry bool) {
-		defer log.Scope(t).Close(t)
+	for _, forceRetry := range []bool{false} {
+		t.Run("force-retry=false", func(t *testing.T) {
+			defer log.Scope(t).Close(t)
 
-		ctx := context.Background()
-		var args base.TestServerArgs
-		var injectedFailure syncutil.AtomicBool
-		// The statement which writes the completion of the migration will
-		// match the below regexp.
-		completeRegexp := regexp.MustCompile(`INSERT\s+INTO\s+system.migrations`)
-		jobKnobs := jobs.NewTestingKnobsWithShortIntervals()
-		jobKnobs.JobSchedulerEnv = jobstest.NewJobSchedulerTestEnv(
-			jobstest.UseSystemTables,
-			timeutil.Now(),
-			tree.ScheduledSchemaTelemetryExecutor,
-		)
-		args.Knobs.JobsTestingKnobs = jobKnobs
-		args.Knobs.SQLExecutor = &sql.ExecutorTestingKnobs{
-			BeforePrepare: func(ctx context.Context, stmt string, txn *kv.Txn) error {
-				if forceRetry && !injectedFailure.Get() && completeRegexp.MatchString(stmt) {
-					injectedFailure.Set(true)
-					return errors.New("boom")
-				}
-				return nil
-			},
-		}
-		aostDuration := time.Nanosecond
-		args.Knobs.SchemaTelemetry = &sql.SchemaTelemetryTestingKnobs{
-			AOSTDuration: &aostDuration,
-		}
+			ctx := context.Background()
+			var args base.TestServerArgs
+			var injectedFailure syncutil.AtomicBool
+			// The statement which writes the completion of the migration will
+			// match the below regexp.
+			completeRegexp := regexp.MustCompile(`INSERT\s+INTO\s+system.migrations`)
+			jobKnobs := jobs.NewTestingKnobsWithShortIntervals()
+			jobKnobs.JobSchedulerEnv = jobstest.NewJobSchedulerTestEnv(
+				jobstest.UseSystemTables,
+				timeutil.Now(),
+				tree.ScheduledSchemaTelemetryExecutor,
+			)
+			args.Knobs.JobsTestingKnobs = jobKnobs
+			args.Knobs.SQLExecutor = &sql.ExecutorTestingKnobs{
+				BeforePrepare: func(ctx context.Context, stmt string, txn *kv.Txn) error {
+					if forceRetry && !injectedFailure.Get() && completeRegexp.MatchString(stmt) {
+						injectedFailure.Set(true)
+						return errors.New("boom")
+					}
+					return nil
+				},
+			}
+			aostDuration := time.Nanosecond
+			args.Knobs.SchemaTelemetry = &sql.SchemaTelemetryTestingKnobs{
+				AOSTDuration: &aostDuration,
+			}
 
-		tc := testcluster.StartTestCluster(t, 1, base.TestClusterArgs{ServerArgs: args})
-		defer tc.Stopper().Stop(ctx)
-		tdb := sqlutils.MakeSQLRunner(tc.ServerConn(0))
+			tc := testcluster.StartTestCluster(t, 1, base.TestClusterArgs{ServerArgs: args})
+			defer tc.Stopper().Stop(ctx)
+			tdb := sqlutils.MakeSQLRunner(tc.ServerConn(0))
 
-		qExists := fmt.Sprintf(`
+			qExists := fmt.Sprintf(`
     SELECT recurrence, count(*)
       FROM [SHOW SCHEDULES]
       WHERE label = '%s'
       GROUP BY recurrence`,
-			schematelemetrycontroller.SchemaTelemetryScheduleName)
+				schematelemetrycontroller.SchemaTelemetryScheduleName)
 
-		qJob := fmt.Sprintf(`SELECT %s()`,
-			builtinconstants.CreateSchemaTelemetryJobBuiltinName)
+			qJob := fmt.Sprintf(`SELECT %s()`,
+				builtinconstants.CreateSchemaTelemetryJobBuiltinName)
 
-		clusterID := tc.Server(0).ExecutorConfig().(sql.ExecutorConfig).NodeInfo.
-			LogicalClusterID()
+			clusterID := tc.Server(0).ExecutorConfig().(sql.ExecutorConfig).NodeInfo.
+				LogicalClusterID()
 
-		// Check that the schedule exists and that jobs can be created.
-		tdb.Exec(t, qJob)
-		exp := scheduledjobs.MaybeRewriteCronExpr(clusterID, "@weekly")
-		tdb.CheckQueryResultsRetry(t, qExists, [][]string{{exp, "1"}})
+			// Check that the schedule exists and that jobs can be created.
+			tdb.Exec(t, qJob)
+			exp := scheduledjobs.MaybeRewriteCronExpr(clusterID, "@weekly")
+			tdb.CheckQueryResultsRetry(t, qExists, [][]string{{exp, "1"}})
 
-		// Check that the schedule can have its recurrence altered.
-		tdb.Exec(t, fmt.Sprintf(`SET CLUSTER SETTING %s = '* * * * *'`,
-			schematelemetrycontroller.SchemaTelemetryRecurrence.Key()))
-		tdb.CheckQueryResultsRetry(t, qExists, [][]string{{"* * * * *", "1"}})
-		exp = scheduledjobs.MaybeRewriteCronExpr(clusterID, "@daily")
-		tdb.Exec(t, fmt.Sprintf(`SET CLUSTER SETTING %s = '@daily'`,
-			schematelemetrycontroller.SchemaTelemetryRecurrence.Key()))
-		tdb.CheckQueryResultsRetry(t, qExists, [][]string{{exp, "1"}})
-	})
+			// Check that the schedule can have its recurrence altered.
+			tdb.Exec(t, fmt.Sprintf(`SET CLUSTER SETTING %s = '* * * * *'`,
+				schematelemetrycontroller.SchemaTelemetryRecurrence.Key()))
+			tdb.CheckQueryResultsRetry(t, qExists, [][]string{{"* * * * *", "1"}})
+			exp = scheduledjobs.MaybeRewriteCronExpr(clusterID, "@daily")
+			tdb.Exec(t, fmt.Sprintf(`SET CLUSTER SETTING %s = '@daily'`,
+				schematelemetrycontroller.SchemaTelemetryRecurrence.Key()))
+			tdb.CheckQueryResultsRetry(t, qExists, [][]string{{exp, "1"}})
+		})
+	}
 
 }

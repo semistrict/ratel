@@ -4,9 +4,9 @@ This branch has already ported the core CF actors work, explicit actor syntax, s
 
 ## Full Column-Family Removal
 
-Status: partially ported in this branch.
+Status: ported in this branch.
 
-The core single physical row-group path is now ported through table descriptor allocation, system descriptor collapsing, row/columnar fetch, row writes, catalog decoding, zone/comment decoding, and declarative schema-change backfills for stored/default `ADD COLUMN`.
+The core single physical row-group path is now ported through table descriptor allocation, system descriptor collapsing, row/columnar fetch, row writes, catalog decoding, zone/comment decoding, declarative schema-change backfills for stored/default `ADD COLUMN`, stale SQL test cleanup, bootstrap descriptor expectation updates, KV count/key-size expectation updates, and upgrade-test cleanup.
 
 Refs:
 - `c1c5836` Remove column family descriptor/runtime APIs
@@ -14,9 +14,6 @@ Refs:
 - `6ee32f5` Remove stale test shims and old compatibility logic
 
 Remaining:
-- Remove or rewrite stale SQL tests that still use explicit `FAMILY (...)` / `CREATE FAMILY` syntax.
-- Update hard-coded descriptor/function ID expectations shifted by the newer bootstrap descriptor set.
-- Audit old key-count tests whose expected KV counts assumed multiple physical families.
 - Continue the mechanical API cleanup for leftover `Family`-named descriptor surfaces that are now row-group compatibility shims.
 
 ## Workers / Workerd / Durable Objects

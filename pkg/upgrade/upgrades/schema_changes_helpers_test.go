@@ -27,9 +27,9 @@ type SchemaChangeTestMigrationFunc func() (m upgrade.TenantUpgradeFunc, expected
 const (
 	// TestingAddColsQuery is used by TestMigrationWithFailures.
 	TestingAddColsQuery = `
-ALTER TABLE test.test_table
-  ADD COLUMN num_runs INT8 FAMILY claim, 
-  ADD COLUMN last_run TIMESTAMP FAMILY claim`
+	ALTER TABLE test.test_table
+	  ADD COLUMN num_runs INT8,
+	  ADD COLUMN last_run TIMESTAMP`
 
 	// TestingAddIndexQuery is used by TestMigrationWithFailures.
 	TestingAddIndexQuery = `

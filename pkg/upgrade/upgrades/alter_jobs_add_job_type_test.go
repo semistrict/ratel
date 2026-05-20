@@ -126,7 +126,6 @@ func TestAlterSystemJobsTableAddJobTypeColumn(t *testing.T) {
 	var (
 		validationSchemas = []upgrades.Schema{
 			{Name: "job_type", ValidationFn: upgrades.HasColumn},
-			{Name: "fam_0_id_status_created_payload", ValidationFn: upgrades.HasColumnFamily},
 			{Name: "jobs_job_type_idx", ValidationFn: upgrades.HasIndex},
 		}
 	)

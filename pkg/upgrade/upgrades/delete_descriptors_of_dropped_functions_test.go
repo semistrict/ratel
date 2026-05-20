@@ -12,15 +12,17 @@ package upgrades_test
 
 import (
 	"context"
-	gosql "database/sql"
 	"encoding/hex"
 	"testing"
 
 	"github.com/cockroachdb/cockroach/pkg/base"
 	"github.com/cockroachdb/cockroach/pkg/clusterversion"
+	"github.com/cockroachdb/cockroach/pkg/keys"
+	"github.com/cockroachdb/cockroach/pkg/kv"
 	"github.com/cockroachdb/cockroach/pkg/server"
 	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catalogkeys"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descbuilder"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/funcdesc"
@@ -145,6 +147,8 @@ func TestDeleteDescriptorsOfDroppedFunctions(t *testing.T) {
 
 	sqlDB := tc.ServerConn(0)
 	tdb := sqlutils.MakeSQLRunner(sqlDB)
+	kvDB := tc.Server(0).DB()
+	codec := tc.Server(0).Codec()
 
 	var parentID, parentSchemaID descpb.ID
 	tdb.Exec(t, "CREATE TABLE temp_tbl()")
@@ -152,10 +156,10 @@ func TestDeleteDescriptorsOfDroppedFunctions(t *testing.T) {
 		Scan(&parentID, &parentSchemaID)
 
 	for _, fnHex := range droppedFunctionsHex {
-		decodeFunctionDescriptorAndInsert(t, ctx, sqlDB, fnHex, parentID, parentSchemaID, true /* dropped */)
+		decodeFunctionDescriptorAndInsert(t, ctx, kvDB, codec, fnHex, parentID, parentSchemaID, true /* dropped */)
 	}
-	decodeFunctionDescriptorAndInsert(t, ctx, sqlDB, droppedFunctionsHexDeclarative, parentID, parentSchemaID, true /* dropped */)
-	decodeFunctionDescriptorAndInsert(t, ctx, sqlDB, publicFunctionHex, parentID, parentSchemaID, false /* dropped */)
+	decodeFunctionDescriptorAndInsert(t, ctx, kvDB, codec, droppedFunctionsHexDeclarative, parentID, parentSchemaID, true /* dropped */)
+	decodeFunctionDescriptorAndInsert(t, ctx, kvDB, codec, publicFunctionHex, parentID, parentSchemaID, false /* dropped */)
 
 	// Make sure that the number of function descriptors to delete is right.
 	row := tdb.QueryRow(t, countToDeleteFunctionQuery)
@@ -204,7 +208,8 @@ func TestDeleteDescriptorsOfDroppedFunctions(t *testing.T) {
 func decodeFunctionDescriptorAndInsert(
 	t *testing.T,
 	ctx context.Context,
-	sqlDB *gosql.DB,
+	kvDB *kv.DB,
+	codec keys.SQLCodec,
 	hexEncodedDescriptor string,
 	parentID, parentSchemaID descpb.ID,
 	dropped bool,
@@ -222,8 +227,7 @@ func decodeFunctionDescriptorAndInsert(
 	fnDesc.ParentID = parentID
 	fnDesc.ParentSchemaID = parentSchemaID
 	require.Equal(t, dropped, fnDesc.Dropped())
-	// Insert the descriptor into test cluster.
-	require.NoError(t, sqlutils.InjectDescriptors(
-		ctx, sqlDB, []*descpb.Descriptor{fnDesc.DescriptorProto()}, true, /* force */
-	))
+	require.NoError(t, kvDB.Txn(ctx, func(ctx context.Context, txn *kv.Txn) error {
+		return txn.Put(ctx, catalogkeys.MakeDescMetadataKey(codec, fnDesc.GetID()), fnDesc.DescriptorProto())
+	}))
 }

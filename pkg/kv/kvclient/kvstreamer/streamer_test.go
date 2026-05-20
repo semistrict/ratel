@@ -138,7 +138,7 @@ func TestStreamerBudgetErrorInEnqueue(t *testing.T) {
 	_, err := db.Exec("CREATE TABLE foo (pk_blob STRING PRIMARY KEY, attribute INT, blob TEXT, INDEX(attribute))")
 	require.NoError(t, err)
 
-	const tableID = 104
+	const tableID = 108
 	// Sanity check that the table 'foo' has the expected TableID.
 	assertTableID(t, db, "foo" /* tableName */, tableID)
 
@@ -306,7 +306,7 @@ func TestStreamerWideRows(t *testing.T) {
 	const blobSize = 10 * initialAvgResponseSize
 	const numRows = 2
 
-	_, err := db.Exec("CREATE TABLE t (pk INT PRIMARY KEY, k INT, blob1 STRING, blob2 STRING, INDEX (k), FAMILY (pk, k, blob1), FAMILY (blob2))")
+	_, err := db.Exec("CREATE TABLE t (pk INT PRIMARY KEY, k INT, blob1 STRING, blob2 STRING, INDEX (k))")
 	require.NoError(t, err)
 	for i := 0; i < numRows; i++ {
 		if i > 0 {
@@ -407,7 +407,7 @@ func TestStreamerEmptyScans(t *testing.T) {
 	_, err := db.Exec("CREATE TABLE t (pk INT PRIMARY KEY, k INT, blob STRING, INDEX (k))")
 	require.NoError(t, err)
 
-	const tableID = 104
+	const tableID = 108
 	// Sanity check that the table 't' has the expected TableID.
 	assertTableID(t, db, "t" /* tableName */, tableID)
 
@@ -421,8 +421,7 @@ func TestStreamerEmptyScans(t *testing.T) {
 
 	getStreamer := func() *Streamer {
 		s := getStreamer(ctx, s, math.MaxInt64, nil /* acc */)
-		// There are two column families in the table.
-		s.Init(OutOfOrder, Hints{UniqueRequests: true}, 2 /* maxKeysPerRow */, nil /* diskBuffer */)
+		s.Init(OutOfOrder, Hints{UniqueRequests: true}, 1 /* maxKeysPerRow */, nil /* diskBuffer */)
 		return s
 	}
 
@@ -545,7 +544,7 @@ func TestStreamerMemoryAccounting(t *testing.T) {
 	_, err := db.Exec("CREATE TABLE t (pk PRIMARY KEY, k) AS VALUES (0, 0)")
 	require.NoError(t, err)
 
-	const tableID = 104
+	const tableID = 108
 	// Sanity check that the table 't' has the expected TableID.
 	assertTableID(t, db, "t" /* tableName */, tableID)
 

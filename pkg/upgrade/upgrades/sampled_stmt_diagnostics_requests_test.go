@@ -65,7 +65,6 @@ func TestSampledStmtDiagReqsMigration(t *testing.T) {
 		}
 		validationSchemas = []upgrades.Schema{
 			{Name: "sampling_probability", ValidationFn: upgrades.HasColumn},
-			{Name: "primary", ValidationFn: upgrades.HasColumnFamily},
 			{Name: "completed_idx_v2", ValidationFn: upgrades.DoesNotHaveIndex},
 		}
 	)

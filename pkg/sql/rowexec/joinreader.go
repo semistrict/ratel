@@ -136,14 +136,11 @@ type joinReader struct {
 		// maintainOrdering indicates whether the ordering of the input stream
 		// needs to be maintained AND that we rely on the streamer for that. We
 		// currently rely on the streamer in the following cases:
-		//   1. When spec.SplitFamilyIDs has more than one family, for both
-		//      index and lookup joins (this is needed to ensure that all KVs
-		//      for a single row are returned contiguously).
-		//   2. We are performing an index join and spec.MaintainOrdering is
+		//   1. We are performing an index join and spec.MaintainOrdering is
 		//      true.
-		//   3. We are performing a lookup join and spec.MaintainLookupOrdering
+		//   2. We are performing a lookup join and spec.MaintainLookupOrdering
 		//      is true.
-		// Note that in case (3), we don't rely on the streamer for maintaining
+		// Note that in case (2), we don't rely on the streamer for maintaining
 		// the ordering for lookup joins when spec.MaintainOrdering is true due
 		// to implementation details (since we still buffer all looked up rows
 		// and restore the ordering explicitly via the

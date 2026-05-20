@@ -70,23 +70,20 @@ type schemaChangeTestCase struct {
 // regressions.
 func TestMigrationWithFailures(t *testing.T) {
 	const createTableBefore = `
-CREATE TABLE test.test_table (
-	id                INT8      DEFAULT unique_rowid() PRIMARY KEY,
-	status            STRING    NOT NULL,
-	created           TIMESTAMP NOT NULL DEFAULT now(),
+	CREATE TABLE test.test_table (
+		id                INT8      DEFAULT unique_rowid() PRIMARY KEY,
+		status            STRING    NOT NULL,
+		created           TIMESTAMP NOT NULL DEFAULT now(),
 	payload           BYTES     NOT NULL,
 	progress          BYTES,
 	created_by_type   STRING,
 	created_by_id     INT,
 	claim_session_id  BYTES,
-	claim_instance_id INT8,
-	INDEX (status, created),
-	INDEX (created_by_type, created_by_id) STORING (status),
-	FAMILY fam_0_id_status_created_payload (id, status, created, payload, created_by_type, created_by_id),
-	FAMILY progress (progress),
-	FAMILY claim (claim_session_id, claim_instance_id)
-);
-`
+		claim_instance_id INT8,
+		INDEX (status, created),
+		INDEX (created_by_type, created_by_id) STORING (status)
+	);
+	`
 	const createTableAfter = `
 CREATE TABLE test.test_table (
 	id                INT8      DEFAULT unique_rowid() PRIMARY KEY,
@@ -102,17 +99,14 @@ CREATE TABLE test.test_table (
 	last_run          TIMESTAMP,
 	INDEX (status, created),
 	INDEX (created_by_type, created_by_id) STORING (status),
-	INDEX jobs_run_stats_idx (
-    claim_session_id,
-    status,
-    created
-  ) STORING(last_run, num_runs, claim_instance_id)
-    WHERE ` + systemschema.JobsRunStatsIdxPredicate + `,
-	FAMILY fam_0_id_status_created_payload (id, status, created, payload, created_by_type, created_by_id),
-	FAMILY progress (progress),
-	FAMILY claim (claim_session_id, claim_instance_id, num_runs, last_run)
-);
-`
+		INDEX jobs_run_stats_idx (
+	    claim_session_id,
+	    status,
+	    created
+	  ) STORING(last_run, num_runs, claim_instance_id)
+	    WHERE ` + systemschema.JobsRunStatsIdxPredicate + `
+	);
+	`
 
 	testCases := []schemaChangeTestCase{
 		{

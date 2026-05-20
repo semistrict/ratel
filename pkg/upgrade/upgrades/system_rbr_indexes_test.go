@@ -165,10 +165,10 @@ func patchDescriptor(desc catalog.TableDescriptor) catalog.TableDescriptor {
 	table.NextIndexID += 1
 	table.NextConstraintID += 1
 
-	// Add crdb_region to the column family
-	family := &table.RowGroups[0]
-	family.ColumnNames = append(family.ColumnNames, crdbRegionColumn.Name)
-	family.ColumnIDs = append(family.ColumnIDs, crdbRegionColumn.ID)
+	// Add crdb_region to the physical row group for the test table descriptor.
+	rowGroup := &table.RowGroups[0]
+	rowGroup.ColumnNames = append(rowGroup.ColumnNames, crdbRegionColumn.Name)
+	rowGroup.ColumnIDs = append(rowGroup.ColumnIDs, crdbRegionColumn.ID)
 
 	return table.MakePublic()
 }

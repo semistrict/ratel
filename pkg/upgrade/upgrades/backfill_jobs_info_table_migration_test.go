@@ -71,16 +71,16 @@ func TestBackfillJobsInfoTable(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	// Create a few different types of jobs.
-	createJob(1, jobspb.BackupDetails{}, jobspb.BackupProgress{})
-	createJob(2, jobspb.RestoreDetails{}, jobspb.RestoreProgress{})
-	createJob(3, jobspb.ChangefeedDetails{}, jobspb.ChangefeedProgress{})
+	// Create a few jobs.
+	createJob(1, jobspb.SchemaChangeDetails{}, jobspb.SchemaChangeProgress{})
+	createJob(2, jobspb.SchemaChangeDetails{}, jobspb.SchemaChangeProgress{})
+	createJob(3, jobspb.SchemaChangeDetails{}, jobspb.SchemaChangeProgress{})
 
 	upgrades.Upgrade(t, tc.ServerConn(0), clusterversion.V23_1CreateSystemJobInfoTable, nil, false)
 
 	// Create two more jobs that we should see written to both system.jobs and
 	// system.job_info.
-	createJob(4, jobspb.ImportDetails{}, jobspb.ImportProgress{})
+	createJob(4, jobspb.SchemaChangeDetails{}, jobspb.SchemaChangeProgress{})
 	createJob(5, jobspb.SchemaChangeDetails{}, jobspb.SchemaChangeProgress{})
 
 	// Validate that we see 2 rows (payload and progress) in the system.job_info

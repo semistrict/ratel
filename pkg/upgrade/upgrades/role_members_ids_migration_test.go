@@ -127,11 +127,7 @@ func runTestRoleMembersIDMigration(t *testing.T, numUsers int) {
 	INDEX role_members_member_idx (member ASC),
 	INDEX role_members_role_id_idx (role_id ASC),
 	INDEX role_members_member_id_idx (member_id ASC),
-	UNIQUE INDEX role_members_role_id_member_id_key (role_id ASC, member_id ASC),
-	FAMILY "primary" ("role", member),
-	FAMILY "fam_3_isAdmin" ("isAdmin"),
-	FAMILY fam_4_role_id (role_id),
-	FAMILY fam_5_member_id (member_id)
+	UNIQUE INDEX role_members_role_id_member_id_key (role_id ASC, member_id ASC)
 )`
 	r := tc.Conns[0].QueryRow("SELECT create_statement FROM [SHOW CREATE TABLE system.role_members]")
 	var actualSchema string

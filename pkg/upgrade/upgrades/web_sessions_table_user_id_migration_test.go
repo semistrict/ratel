@@ -114,8 +114,7 @@ VALUES (
 	INDEX "web_sessions_expiresAt_idx" ("expiresAt" ASC),
 	INDEX "web_sessions_createdAt_idx" ("createdAt" ASC),
 	INDEX "web_sessions_revokedAt_idx" ("revokedAt" ASC),
-	INDEX "web_sessions_lastUsedAt_idx" ("lastUsedAt" ASC),
-	FAMILY "fam_0_id_hashedSecret_username_createdAt_expiresAt_revokedAt_lastUsedAt_auditInfo" (id, "hashedSecret", username, "createdAt", "expiresAt", "revokedAt", "lastUsedAt", "auditInfo", user_id)
+	INDEX "web_sessions_lastUsedAt_idx" ("lastUsedAt" ASC)
 )`
 	r := tdb.QueryRow(t, "SELECT create_statement FROM [SHOW CREATE TABLE system.web_sessions]")
 	var actualSchema string

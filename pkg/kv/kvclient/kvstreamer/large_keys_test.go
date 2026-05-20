@@ -110,136 +110,76 @@ func TestLargeKeys(t *testing.T) {
 	// - 10000 is interesting because a single row already exceeds the buffer
 	// size.
 	for _, pkBlobSize := range []int{1000 + rng.Intn(2000), 6000, 10000} {
-		// useScans indicates whether we want Scan requests to be used by the
-		// Streamer (if we do, then we need to have multiple column families).
-		for _, useScans := range []bool{false, true} {
-			// onlyLarge determines whether only large blobs are inserted or a
-			// mix of large and small blobs.
-			for _, onlyLarge := range []bool{false, true} {
-				_, err = db.Exec("DROP TABLE IF EXISTS foo")
-				require.NoError(t, err)
-				_, err = db.Exec("DROP TABLE IF EXISTS bar")
-				require.NoError(t, err)
-				// We set up such a table that contains two large columns, one
-				// of them being the primary key. The idea is that the test
-				// query will first read from the secondary index which would
-				// include only the PK blob, and that will be used to construct
-				// index join lookups (i.e. the PK blobs will be the enqueued
-				// requests for the Streamer) whereas the other blob will be
-				// part of the response.
-				var familiesSuffix string
-				// In order to use Scan requests we need to have multiple column
-				// families.
-				if useScans {
-					familiesSuffix = ", FAMILY (pk_blob, attribute, extra), FAMILY (blob)"
-				}
-				_, err = db.Exec(fmt.Sprintf(
-					`CREATE TABLE foo (
-						pk_blob STRING PRIMARY KEY, attribute INT8, extra INT8, blob STRING,
-						INDEX (attribute)%s
-					);`, familiesSuffix))
-				require.NoError(t, err)
-				_, err = db.Exec("CREATE TABLE bar (lookup_blob STRING PRIMARY KEY)")
-				require.NoError(t, err)
+		for _, onlyLarge := range []bool{false, true} {
+			_, err = db.Exec("DROP TABLE IF EXISTS foo")
+			require.NoError(t, err)
+			_, err = db.Exec("DROP TABLE IF EXISTS bar")
+			require.NoError(t, err)
+			_, err = db.Exec(`
+				CREATE TABLE foo (
+					pk_blob STRING PRIMARY KEY, attribute INT8, extra INT8, blob STRING,
+					INDEX (attribute)
+				);
+			`)
+			require.NoError(t, err)
+			_, err = db.Exec("CREATE TABLE bar (lookup_blob STRING PRIMARY KEY)")
+			require.NoError(t, err)
 
-				// Insert some number of rows.
-				numRows := rng.Intn(10) + 10
-				for i := 0; i < numRows; i++ {
-					letter := string(byte('a') + byte(i))
-					valueSize := pkBlobSize
-					if !onlyLarge && rng.Float64() < 0.5 {
-						// If we're using a mix of large and small values, with
-						// 50% use a small value now.
-						valueSize = rng.Intn(10) + 1
-					}
-					// We randomize the value size for 'blob' column to improve
-					// the test coverage.
-					blobSize := int(float64(valueSize)*5.0*rng.Float64()) + 1
-					_, err = db.Exec("INSERT INTO foo SELECT repeat($1, $2), 1, 1, repeat($1, $3);", letter, valueSize, blobSize)
-					require.NoError(t, err)
-					_, err = db.Exec("INSERT INTO bar SELECT repeat($1, $2);", letter, valueSize)
-					require.NoError(t, err)
+			numRows := rng.Intn(10) + 10
+			for i := 0; i < numRows; i++ {
+				letter := string(byte('a') + byte(i))
+				valueSize := pkBlobSize
+				if !onlyLarge && rng.Float64() < 0.5 {
+					valueSize = rng.Intn(10) + 1
 				}
-				// We randomize the value size for 'blob' column to improve
-				// the test coverage.
 				blobSize := int(float64(valueSize)*5.0*rng.Float64()) + 1
 				_, err = db.Exec("INSERT INTO foo SELECT repeat($1, $2), 1, 1, repeat($1, $3);", letter, valueSize, blobSize)
 				require.NoError(t, err)
+				_, err = db.Exec("INSERT INTO bar SELECT repeat($1, $2);", letter, valueSize)
+				require.NoError(t, err)
 			}
 
-				// Try two scenarios: one with a single range (so no parallelism
-				// within the Streamer) and another with a random number of
-				// ranges (which might add parallelism within the Streamer).
-				//
-				// Note that a single range scenario needs to be exercised first
-				// in order to reuse the same table without dropping it (we
-				// don't want to deal with merging ranges).
-				for _, newRangeProbability := range []float64{0, rng.Float64()} {
-					for i := 1; i < numRows; i++ {
-						if rng.Float64() < newRangeProbability {
-							// Create a new range.
-							letter := string(byte('a') + byte(i))
-							_, err = db.Exec("ALTER TABLE foo SPLIT AT VALUES ($1);", letter)
-							require.NoError(t, err)
-						}
+			for _, newRangeProbability := range []float64{0, rng.Float64()} {
+				for i := 1; i < numRows; i++ {
+					if rng.Float64() < newRangeProbability {
+						letter := string(byte('a') + byte(i))
+						_, err = db.Exec("ALTER TABLE foo SPLIT AT VALUES ($1);", letter)
+						require.NoError(t, err)
 					}
-					// Populate the range cache.
-					_, err = db.Exec("SELECT count(*) FROM foo")
-					require.NoError(t, err)
+				}
+				_, err = db.Exec("SELECT count(*) FROM foo")
+				require.NoError(t, err)
 
-					for _, tc := range testCases {
-						vectorizeModes := []string{"on", "off"}
-						if strings.Contains(tc.name, "lookup") {
-							// Lookup joins currently only have a single
-							// implementation, so there is no point in changing
-							// the vectorize mode.
-							vectorizeModes = []string{"on"}
-						}
-						for _, vectorizeMode := range vectorizeModes {
-							_, err = db.Exec("SET vectorize = " + vectorizeMode)
-							require.NoError(t, err)
-							t.Run(fmt.Sprintf(
-								"%s/size=%s/onlyLarge=%t/numRows=%d/newRangeProb=%.2f/vec=%s",
-								tc.name, humanize.Bytes(uint64(pkBlobSize)),
-								onlyLarge, numRows, newRangeProbability, vectorizeMode,
-							),
-								func(t *testing.T) {
-									_, err = db.Exec(tc.query)
-									if err != nil {
-										// Make sure to discard the trace of the
-										// query that resulted in an error. If
-										// we don't do this, then the next test
-										// case will hang.
-										<-recCh
-										t.Fatal(err)
-									}
-									// Now examine the trace and count the async
-									// requests issued by the Streamer.
-									tr := <-recCh
-									var numStreamerRequests int
-									for _, rs := range tr {
-										if rs.Operation == kvstreamer.AsyncRequestOp {
-											numStreamerRequests++
-										}
-									}
-									// Assert that the number of requests is
-									// reasonable using the number of rows as
-									// the proxy for how many requests need to
-									// be issued. We expect some requests to
-									// come back empty because of a low initial
-									// TargetBytes limit, some requests might
-									// get an empty result multiple times while
-									// we're figuring out the correct limit, so
-									// we use a 4x multiple on the number of
-									// rows.
-									require.Greater(t, 4*numRows, numStreamerRequests)
-									// Also assert that there were at least some
-									// requests to verify that the streamer is,
-									// in fact, used when we expect.
-									require.Greater(t, numStreamerRequests, 0)
-								})
-						}
+				for _, tc := range testCases {
+					vectorizeModes := []string{"on", "off"}
+					if strings.Contains(tc.name, "lookup") {
+						vectorizeModes = []string{"on"}
 					}
+					for _, vectorizeMode := range vectorizeModes {
+						_, err = db.Exec("SET vectorize = " + vectorizeMode)
+						require.NoError(t, err)
+						t.Run(fmt.Sprintf(
+							"%s/size=%s/onlyLarge=%t/numRows=%d/newRangeProb=%.2f/vec=%s",
+							tc.name, humanize.Bytes(uint64(pkBlobSize)),
+							onlyLarge, numRows, newRangeProbability, vectorizeMode,
+						), func(t *testing.T) {
+							_, err = db.Exec(tc.query)
+							if err != nil {
+								<-recCh
+								t.Fatal(err)
+							}
+							tr := <-recCh
+							var numStreamerRequests int
+							for _, rs := range tr {
+								if rs.Operation == kvstreamer.AsyncRequestOp {
+									numStreamerRequests++
+								}
+							}
+							require.Greater(t, 4*numRows, numStreamerRequests)
+							require.Greater(t, numStreamerRequests, 0)
+						})
+					}
+				}
 			}
 		}
 	}

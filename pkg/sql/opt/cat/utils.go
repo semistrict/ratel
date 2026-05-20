@@ -20,13 +20,18 @@ import (
 	"fmt"
 
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/tabledesc"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/util/treeprinter"
 	"github.com/cockroachdb/errors"
 )
+
+// MaybeMarkRedactable returns s. It is a compatibility hook for newer callers
+// that can request redaction markers while formatting optimizer output.
+func MaybeMarkRedactable(s string, redactable bool) string {
+	return s
+}
 
 // ExpandDataSourceGlob is a utility function that expands a tree.TablePattern
 // into a list of object names.
@@ -80,7 +85,7 @@ func ResolveTableIndex(
 		}
 		// Fallback to referencing @primary as the PRIMARY KEY.
 		// Note that indexes with "primary" as their name takes precedence above.
-		if name.Index == tabledesc.LegacyPrimaryKeyIndexName {
+		if name.Index == "primary" {
 			return table.Index(0), tn, nil
 		}
 		return nil, DataSourceName{}, pgerror.Newf(
@@ -196,7 +201,11 @@ func formatCatalogIndex(tab Table, ord int, tp treeprinter.Node) {
 	if IsMutationIndex(tab, ord) {
 		mutation = " (mutation)"
 	}
-	child := tp.Childf("%sINDEX %s%s", idxType, idx.Name(), mutation)
+	notVisible := ""
+	if idx.IsNotVisible() {
+		notVisible = " NOT VISIBLE"
+	}
+	child := tp.Childf("%sINDEX %s%s%s", idxType, idx.Name(), mutation, notVisible)
 
 	var buf bytes.Buffer
 	colCount := idx.ColumnCount()

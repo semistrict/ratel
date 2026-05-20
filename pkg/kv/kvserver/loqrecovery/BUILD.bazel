@@ -71,6 +71,7 @@ go_test(
         "version_test.go",
     ],
     args = ["-test.timeout=295s"],
+    tags = ["manual"],
     data = glob(["testdata/**"]),
     embed = [":loqrecovery"],
     deps = [

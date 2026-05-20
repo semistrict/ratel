@@ -54,6 +54,7 @@ gomock(
 
 go_test(
     name = "rangefeed_test",
+    tags = ["manual"],
     srcs = [
         "db_adapter_external_test.go",
         "helpers_test.go",

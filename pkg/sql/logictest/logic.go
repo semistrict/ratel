@@ -47,9 +47,8 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/build/bazel"
 	"github.com/cockroachdb/cockroach/pkg/clusterversion"
 	"github.com/cockroachdb/cockroach/pkg/kv/kvserver"
-	"github.com/cockroachdb/cockroach/pkg/migration"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
-	"github.com/cockroachdb/cockroach/pkg/security"
+	"github.com/cockroachdb/cockroach/pkg/security/username"
 	"github.com/cockroachdb/cockroach/pkg/server"
 	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
 	"github.com/cockroachdb/cockroach/pkg/sql"
@@ -58,8 +57,9 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
 	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/corpus"
+	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scexec"
 	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scplan"
-	"github.com/cockroachdb/cockroach/pkg/sql/schemachanger/scrun"
+	"github.com/cockroachdb/cockroach/pkg/sql/sem/eval"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/sessiondatapb"
 	"github.com/cockroachdb/cockroach/pkg/sql/sqlstats"
@@ -70,6 +70,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
 	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
 	"github.com/cockroachdb/cockroach/pkg/testutils/sqlutils"
+	"github.com/cockroachdb/cockroach/pkg/upgrade/upgradebase"
 	"github.com/cockroachdb/cockroach/pkg/util"
 	"github.com/cockroachdb/cockroach/pkg/util/envutil"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
@@ -1710,6 +1711,14 @@ func (t *logicTest) newCluster(
 	// modifiedSystemConfigSpan set even though it should, for
 	// "testdata/rename_table". Figure out what's up with that.
 	if serverArgs.maxSQLMemoryLimit == 0 {
+		serverArgs.maxSQLMemoryLimit = serverArgs.MaxSQLMemoryLimit
+	}
+	if serverArgs.tempStorageDiskLimit == 0 {
+		serverArgs.tempStorageDiskLimit = serverArgs.TempStorageDiskLimit
+	}
+	serverArgs.forceProductionBatchSizes = serverArgs.forceProductionBatchSizes || serverArgs.ForceProductionValues
+
+	if serverArgs.maxSQLMemoryLimit == 0 {
 		// Specify a fixed memory limit (some test cases verify OOM conditions;
 		// we don't want those to take long on large machines).
 		serverArgs.maxSQLMemoryLimit = 192 * 1024 * 1024
@@ -1730,13 +1739,13 @@ func (t *logicTest) newCluster(
 					// The consistency queue makes a lot of noisy logs during logic tests.
 					DisableConsistencyQueue: true,
 				},
-				SQLEvalContext: &tree.EvalContextTestingKnobs{
+				SQLEvalContext: &eval.TestingKnobs{
 					AssertBinaryExprReturnTypes:     true,
 					AssertUnaryExprReturnTypes:      true,
 					AssertFuncExprReturnTypes:       true,
 					DisableOptimizerRuleProbability: *disableOptRuleProbability,
 					OptimizerCostPerturbation:       *optimizerCostPerturbation,
-					ForceProductionBatchSizes:       serverArgs.forceProductionBatchSizes,
+					ForceProductionValues:           serverArgs.forceProductionBatchSizes,
 				},
 				SQLExecutor: &sql.ExecutorTestingKnobs{
 					DeterministicExplain: true,
@@ -1744,7 +1753,7 @@ func (t *logicTest) newCluster(
 				SQLStatsKnobs: &sqlstats.TestingKnobs{
 					AOSTClause: "AS OF SYSTEM TIME '-1us'",
 				},
-				SQLDeclarativeSchemaChanger: &scrun.TestingKnobs{
+				SQLDeclarativeSchemaChanger: &scexec.TestingKnobs{
 					BeforeStage: corpusCollectionCallback,
 				},
 			},
@@ -1757,14 +1766,9 @@ func (t *logicTest) newCluster(
 	}
 
 	cfg := t.cfg
-	distSQLKnobs := &execinfra.TestingKnobs{
-		MetadataTestLevel: execinfra.Off,
-	}
+	distSQLKnobs := &execinfra.TestingKnobs{}
 	if cfg.sqlExecUseDisk {
 		distSQLKnobs.ForceDiskSpill = true
-	}
-	if cfg.distSQLMetadataTestEnabled {
-		distSQLKnobs.MetadataTestLevel = execinfra.On
 	}
 	params.ServerArgs.Knobs.DistSQL = distSQLKnobs
 	if cfg.bootstrapVersion != (roachpb.Version{}) {
@@ -1814,18 +1818,18 @@ func (t *logicTest) newCluster(
 
 			// If we're injecting fake versions, hook up logic to simulate the end
 			// version existing.
-			from := clusterversion.ClusterVersion{Version: cfg.bootstrapVersion}
-			to := clusterversion.ClusterVersion{Version: cfg.binaryVersion}
+			from := cfg.bootstrapVersion
+			to := cfg.binaryVersion
 			if len(clusterversion.ListBetween(from, to)) == 0 {
-				mm, ok := nodeParams.Knobs.MigrationManager.(*migration.TestingKnobs)
+				mm, ok := nodeParams.Knobs.UpgradeManager.(*upgradebase.TestingKnobs)
 				if !ok {
-					mm = &migration.TestingKnobs{}
-					nodeParams.Knobs.MigrationManager = mm
+					mm = &upgradebase.TestingKnobs{}
+					nodeParams.Knobs.UpgradeManager = mm
 				}
 				mm.ListBetweenOverride = func(
-					from, to clusterversion.ClusterVersion,
-				) []clusterversion.ClusterVersion {
-					return []clusterversion.ClusterVersion{to}
+					from, to roachpb.Version,
+				) []roachpb.Version {
+					return []roachpb.Version{to}
 				}
 			}
 		}
@@ -1852,8 +1856,7 @@ func (t *logicTest) newCluster(
 		t.tenantAddrs = make([]string, cfg.numNodes)
 		for i := 0; i < cfg.numNodes; i++ {
 			tenantArgs := base.TestTenantArgs{
-				TenantID:                    serverutils.TestTenantID(),
-				AllowSettingClusterSettings: true,
+				TenantID: serverutils.TestTenantID(),
 				TestingKnobs: base.TestingKnobs{
 					SQLExecutor: &sql.ExecutorTestingKnobs{
 						DeterministicExplain: true,
@@ -1862,11 +1865,11 @@ func (t *logicTest) newCluster(
 						AOSTClause: "AS OF SYSTEM TIME '-1us'",
 					},
 				},
-				MemoryPoolSize:    params.ServerArgs.SQLMemoryPoolSize,
-				TempStorageConfig: &params.ServerArgs.TempStorageConfig,
-				Locality:          paramsPerNode[i].Locality,
-				Existing:          i > 0,
-				TracingDefault:    params.ServerArgs.TracingDefault,
+				MemoryPoolSize:      params.ServerArgs.SQLMemoryPoolSize,
+				TempStorageConfig:   &params.ServerArgs.TempStorageConfig,
+				Locality:            paramsPerNode[i].Locality,
+				DisableCreateTenant: i > 0,
+				TracingDefault:      params.ServerArgs.TracingDefault,
 			}
 
 			tenant, err := t.cluster.Server(i).StartTenant(context.Background(), tenantArgs)
@@ -1878,7 +1881,7 @@ func (t *logicTest) newCluster(
 
 		// Open a connection to a tenant to set any cluster settings specified
 		// by the test config.
-		pgURL, cleanup := sqlutils.PGUrl(t.rootT, t.tenantAddrs[0], "Tenant", url.User(security.RootUser))
+		pgURL, cleanup := sqlutils.PGUrl(t.rootT, t.tenantAddrs[0], "Tenant", url.User(username.RootUser))
 		defer cleanup()
 		if params.ServerArgs.Insecure {
 			pgURL.RawQuery = "sslmode=disable"
@@ -2062,7 +2065,7 @@ func (t *logicTest) newCluster(
 
 	// db may change over the lifetime of this function, with intermediate
 	// values cached in t.clients and finally closed in t.close().
-	t.clusterCleanupFuncs = append(t.clusterCleanupFuncs, t.setUser(security.RootUser, 0 /* nodeIdxOverride */))
+	t.clusterCleanupFuncs = append(t.clusterCleanupFuncs, t.setUser(username.RootUser, 0 /* nodeIdxOverride */))
 }
 
 // waitForTenantReadOnlyClusterSettingToTakeEffectOrFatal waits until all tenant
@@ -2074,7 +2077,7 @@ func (t *logicTest) waitForTenantReadOnlyClusterSettingToTakeEffectOrFatal(
 	// Wait until all tenant servers are aware of the setting override.
 	testutils.SucceedsSoon(t.rootT, func() error {
 		for i := 0; i < len(t.tenantAddrs); i++ {
-			pgURL, cleanup := sqlutils.PGUrl(t.rootT, t.tenantAddrs[0], "Tenant", url.User(security.RootUser))
+			pgURL, cleanup := sqlutils.PGUrl(t.rootT, t.tenantAddrs[0], "Tenant", url.User(username.RootUser))
 			defer cleanup()
 			if insecure {
 				pgURL.RawQuery = "sslmode=disable"
@@ -2166,7 +2169,7 @@ CREATE DATABASE test; USE test;
 		t.Fatal(err)
 	}
 
-	if _, err := t.db.Exec(fmt.Sprintf("CREATE USER %s;", security.TestUser)); err != nil {
+	if _, err := t.db.Exec(fmt.Sprintf("CREATE USER %s;", username.TestUser)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -2682,7 +2685,7 @@ func (t *logicTest) maybeBackupRestore(rng *rand.Rand, config testClusterConfig)
 		strconv.FormatInt(timeutil.Now().UnixNano(), 10))
 
 	// Perform the backup and restore as root.
-	t.setUser(security.RootUser, 0 /* nodeIdxOverride */)
+	t.setUser(username.RootUser, 0 /* nodeIdxOverride */)
 
 	if _, err := t.db.Exec(fmt.Sprintf("BACKUP TO '%s'", backupLocation)); err != nil {
 		return errors.Wrap(err, "backing up cluster")
@@ -2693,7 +2696,7 @@ func (t *logicTest) maybeBackupRestore(rng *rand.Rand, config testClusterConfig)
 	t.resetCluster()
 
 	// Run the restore as root.
-	t.setUser(security.RootUser, 0 /* nodeIdxOverride */)
+	t.setUser(username.RootUser, 0 /* nodeIdxOverride */)
 	if _, err := t.db.Exec(fmt.Sprintf("RESTORE FROM '%s'", backupLocation)); err != nil {
 		return errors.Wrap(err, "restoring cluster")
 	}
@@ -4300,17 +4303,42 @@ var logicTestsConfigFilter = envutil.EnvOrDefaultString("COCKROACH_LOGIC_TESTS_C
 // TestServerArgs contains the parameters that callers of RunLogicTest might
 // want to specify for the test clusters to be created with.
 type TestServerArgs struct {
+	// MaxSQLMemoryLimit determines the value of --max-sql-memory startup
+	// argument for the server. If unset, then the default limit of 192MiB will
+	// be used.
+	MaxSQLMemoryLimit int64
 	// maxSQLMemoryLimit determines the value of --max-sql-memory startup
 	// argument for the server. If unset, then the default limit of 192MiB will
 	// be used.
 	maxSQLMemoryLimit int64
+	// TempStorageDiskLimit determines the limit for the temp storage (that is
+	// actually in-memory). If it is unset, then the default limit of 100MB
+	// will be used.
+	TempStorageDiskLimit int64
 	// tempStorageDiskLimit determines the limit for the temp storage (that is
 	// actually in-memory). If it is unset, then the default limit of 100MB
 	// will be used.
 	tempStorageDiskLimit int64
 	// If set, mutations.MaxBatchSize and row.getKVBatchSize will be overridden
 	// to use the non-test value.
+	ForceProductionValues bool
+	// If set, mutations.MaxBatchSize and row.getKVBatchSize will be overridden
+	// to use the non-test value.
 	forceProductionBatchSizes bool
+	// DisableWorkmemRandomization is retained for generated logictest wrappers
+	// from newer branches. This legacy branch does not randomize workmem in the
+	// same way, so the field is accepted but has no effect.
+	DisableWorkmemRandomization bool
+	// DisableDirectColumnarScans is retained for generated logictest wrappers
+	// from newer branches. The legacy branch does not expose the corresponding
+	// test knob, so the field is accepted but has no effect.
+	DisableDirectColumnarScans bool
+	// DisableUseMVCCRangeTombstonesForPointDeletes is retained for generated
+	// sqlite logictest wrappers. This branch no longer runs those wrappers.
+	DisableUseMVCCRangeTombstonesForPointDeletes bool
+	// BatchBytesLimitLowerBound is retained for generated sqlite logictest
+	// wrappers. This branch no longer runs those wrappers.
+	BatchBytesLimitLowerBound int64
 	// DeclarativeCorpusCollection corpus will be collected for the declarative
 	// schema changer.
 	DeclarativeCorpusCollection bool

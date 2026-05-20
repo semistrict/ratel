@@ -1,16 +1,12 @@
 // Copyright 2020 The Cockroach Authors.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License
+// included in the file licenses/BSL.txt.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// permissions and limitations under the License.
+// As of the Change Date specified in that file, in accordance with
+// the Business Source License, use of this software will be governed
+// by the Apache License, Version 2.0, included in the file
+// licenses/APL.txt.
 
 package keys
 
@@ -39,6 +35,18 @@ func MakeTenantPrefix(tenID roachpb.TenantID) roachpb.Key {
 	return encoding.EncodeUvarintAscending(TenantPrefix, tenID.ToUint64())
 }
 
+// MakeTenantSpan creates the start/end key pair associated with the specified tenant.
+func MakeTenantSpan(tenID roachpb.TenantID) roachpb.Span {
+	if tenID == roachpb.SystemTenantID {
+		return roachpb.Span{Key: MinKey, EndKey: MaxKey}
+	}
+	tenIDint := tenID.ToUint64()
+	return roachpb.Span{
+		Key:    encoding.EncodeUvarintAscending(TenantPrefix, tenIDint),
+		EndKey: encoding.EncodeUvarintAscending(TenantPrefix, tenIDint+1),
+	}
+}
+
 // DecodeTenantPrefix determines the tenant ID from the key prefix, returning
 // the remainder of the key (with the prefix removed) and the decoded tenant ID.
 func DecodeTenantPrefix(key roachpb.Key) ([]byte, roachpb.TenantID, error) {
@@ -52,7 +60,85 @@ func DecodeTenantPrefix(key roachpb.Key) ([]byte, roachpb.TenantID, error) {
 	if err != nil {
 		return nil, roachpb.TenantID{}, err
 	}
-	return rem, roachpb.MakeTenantID(tenID), nil
+	id, err := roachpb.MakeTenantID(tenID)
+	if err != nil {
+		return nil, roachpb.TenantID{}, err
+	}
+	return rem, id, nil
+}
+
+// DecodeTenantPrefixE determines the tenant ID from the key prefix, returning
+// the remainder of the key (with the prefix removed) and the decoded tenant ID.
+// Unlike DecodeTenantPrefix, it returns an error rather than panicking if the
+// tenant ID is invalid.
+func DecodeTenantPrefixE(key roachpb.Key) ([]byte, roachpb.TenantID, error) {
+	if len(key) == 0 { // key.Equal(roachpb.RKeyMin)
+		return nil, roachpb.SystemTenantID, nil
+	}
+	if key[0] != tenantPrefixByte {
+		return key, roachpb.SystemTenantID, nil
+	}
+	rem, tenID, err := encoding.DecodeUvarintAscending(key[1:])
+	if err != nil {
+		return nil, roachpb.TenantID{}, err
+	}
+	id, err := roachpb.MakeTenantID(tenID)
+	if err != nil {
+		return rem, roachpb.TenantID{}, err
+	}
+	return rem, id, nil
+}
+
+// StripTenantPrefix removes the tenant prefix from the provided key. This
+// function should be used instead of sqlDecoder.StripTenantPrefix, if the user
+// cannot instantiate a codec that operates on a single tenant.
+func StripTenantPrefix(key roachpb.Key) ([]byte, error) {
+	var err error
+	if len(key) == 0 { // key.Equal(roachpb.RKeyMin)
+		return nil, nil
+	}
+	if key[0] != tenantPrefixByte {
+		return key, nil
+	}
+	key, _, err = encoding.DecodeUvarintAscending(key[1:])
+	return key, err
+}
+
+// StripTablePrefix removes the table and tenant prefix from the provided key.
+// This function should be used instead of sqlDecoder.DecodeTablePrefix, if the
+// user cannot instantiate a codec that operates on a single tenant.
+func StripTablePrefix(key roachpb.Key) ([]byte, error) {
+	var err error
+	key, err = StripTenantPrefix(key)
+	if err != nil {
+		return nil, err
+	}
+	key, _, err = DecodeActorPrefix(key)
+	if err != nil {
+		return nil, err
+	}
+	if encoding.PeekType(key) != encoding.Int {
+		return nil, errors.Errorf("invalid table key prefix: %q", key)
+	}
+	key, _, err = encoding.DecodeUvarintAscending(key)
+	return key, err
+}
+
+// StripIndexPrefix removes the index, table and tenant prefix from the provided
+// key. This function should be used instead of sqlDecoder.DecodeIndexPrefix, if
+// the user cannot instantiate a codec that operates on a single tenant.
+func StripIndexPrefix(key roachpb.Key) ([]byte, error) {
+	var err error
+	// StripTablePrefix automatically removes the tenant prefix as well.
+	key, err = StripTablePrefix(key)
+	if err != nil {
+		return nil, err
+	}
+	if encoding.PeekType(key) != encoding.Int {
+		return nil, errors.Errorf("invalid index key prefix: %q", key)
+	}
+	key, _, err = encoding.DecodeUvarintAscending(key)
+	return key, err
 }
 
 // SQLCodec provides methods for encoding SQL table keys bound to a given
@@ -72,6 +158,11 @@ type SQLCodec struct {
 // value of a sqlEncoder will panic.
 type sqlEncoder struct {
 	buf *roachpb.Key
+	// endKey is the end key of the tenant, in the context of which the sqlEncoder
+	// exists, that it can access. It is set to /Max for the system tenant. We
+	// compute it once, and store it here, instead of having to do so every time
+	// we need access to it.
+	endKey *roachpb.Key
 }
 
 // sqlDecoder implements the decoding logic for SQL keys.
@@ -85,11 +176,12 @@ type sqlDecoder struct {
 
 // MakeSQLCodec creates a new  SQLCodec suitable for manipulating SQL keys.
 func MakeSQLCodec(tenID roachpb.TenantID) SQLCodec {
-	k := MakeTenantPrefix(tenID)
-	k = k[:len(k):len(k)] // bound capacity, avoid aliasing
+	sp := MakeTenantSpan(tenID)
+	sp.Key = sp.Key[:len(sp.Key):len(sp.Key)]             // bound capacity, avoid aliasing
+	sp.EndKey = sp.EndKey[:len(sp.EndKey):len(sp.EndKey)] // bound capacity, avoid aliasing
 	return SQLCodec{
-		sqlEncoder: sqlEncoder{&k},
-		sqlDecoder: sqlDecoder{&k},
+		sqlEncoder: sqlEncoder{&sp.Key, &sp.EndKey},
+		sqlDecoder: sqlDecoder{&sp.Key},
 	}
 }
 
@@ -106,7 +198,7 @@ func ActorHash(name string) [ActorHashLen]byte {
 // given tenant prefix.
 func MakeActorPrefix(tenantPrefix roachpb.Key, actorName string) roachpb.Key {
 	hash := ActorHash(actorName)
-	k := append(tenantPrefix, ActorPrefixByte)
+	k := append(append(roachpb.Key(nil), tenantPrefix...), ActorPrefixByte)
 	return append(k, hash[:]...)
 }
 
@@ -118,9 +210,10 @@ func MakeActorSQLCodec(base SQLCodec, actorName string) SQLCodec {
 		return base
 	}
 	k := MakeActorPrefix(base.TenantPrefix(), actorName)
-	k = k[:len(k):len(k)] // bound capacity, avoid aliasing
+	k = k[:len(k):len(k)]
+	endKey := k.PrefixEnd()
 	return SQLCodec{
-		sqlEncoder: sqlEncoder{&k},
+		sqlEncoder: sqlEncoder{&k, &endKey},
 		sqlDecoder: sqlDecoder{&k},
 	}
 }
@@ -152,6 +245,18 @@ func (e sqlEncoder) TenantID() roachpb.TenantID {
 	return tenID
 }
 
+// TenantEndKey returns the end key of the tenant's keyspace.
+func (e sqlEncoder) TenantEndKey() roachpb.Key {
+	return *e.endKey
+}
+
+// TenantSpan returns a span representing the tenant's keyspace.
+func (e sqlEncoder) TenantSpan() roachpb.Span {
+	key := *e.buf
+	endKey := *e.endKey
+	return roachpb.Span{Key: key, EndKey: endKey}
+}
+
 // TablePrefix returns the key prefix used for the table's data.
 func (e sqlEncoder) TablePrefix(tableID uint32) roachpb.Key {
 	k := e.TenantPrefix()
@@ -175,7 +280,7 @@ func (e sqlEncoder) DescMetadataPrefix() roachpb.Key {
 func (e sqlEncoder) DescMetadataKey(descID uint32) roachpb.Key {
 	k := e.DescMetadataPrefix()
 	k = encoding.EncodeUvarintAscending(k, uint64(descID))
-	return MakeFamilyKey(k, 0)
+	return MakeFamilyKey(k, DescriptorTableDescriptorColFamID)
 }
 
 // TenantMetadataKey returns the key for the tenant metadata in the
@@ -190,41 +295,14 @@ func (e sqlEncoder) TenantMetadataKey(tenID roachpb.TenantID) roachpb.Key {
 func (e sqlEncoder) SequenceKey(tableID uint32) roachpb.Key {
 	k := e.IndexPrefix(tableID, SequenceIndexID)
 	k = encoding.EncodeUvarintAscending(k, 0)    // Primary key value
-	k = MakeFamilyKey(k, SequenceColumnRowGroupID) // Row-group suffix
+	k = MakeFamilyKey(k, SequenceColumnFamilyID) // Column family
 	return k
 }
 
-// DescIDSequenceKey returns the key used for the descriptor ID sequence.
-func (e sqlEncoder) DescIDSequenceKey() roachpb.Key {
-	if e.ForSystemTenant() {
-		// To maintain backwards compatibility, the system tenant uses a
-		// separate, non-SQL, key to store its descriptor ID sequence.
-		return descIDGenerator
-	}
-	return e.SequenceKey(DescIDSequenceID)
-}
-
-// ZoneKeyPrefix returns the key prefix for id's row in the system.zones table.
-func (e sqlEncoder) ZoneKeyPrefix(id uint32) roachpb.Key {
-	k := e.IndexPrefix(ZonesTableID, ZonesTablePrimaryIndexID)
-	return encoding.EncodeUvarintAscending(k, uint64(id))
-}
-
-// ZoneKey returns the key for id's entry in the system.zones table.
-func (e sqlEncoder) ZoneKey(id uint32) roachpb.Key {
-	k := e.ZoneKeyPrefix(id)
-	return MakeFamilyKey(k, 0)
-}
-
-// MigrationKeyPrefix returns the key prefix to store all migration details.
-func (e sqlEncoder) MigrationKeyPrefix() roachpb.Key {
-	return append(e.TenantPrefix(), MigrationPrefix...)
-}
-
-// MigrationLeaseKey returns the key that nodes must take a lease on in order to
-// run system migrations on the cluster.
-func (e sqlEncoder) MigrationLeaseKey() roachpb.Key {
-	return append(e.TenantPrefix(), MigrationLease...)
+// StartupMigrationKeyPrefix returns the key prefix to store all startup
+// migration details.
+func (e sqlEncoder) StartupMigrationKeyPrefix() roachpb.Key {
+	return append(e.TenantPrefix(), StartupMigrationPrefix...)
 }
 
 // unexpected to avoid colliding with sqlEncoder.tenantPrefix.
@@ -264,7 +342,8 @@ func (d sqlDecoder) DecodeTablePrefix(key roachpb.Key) ([]byte, uint32, error) {
 }
 
 // DecodeActorPrefix strips an actor-scoped SQL data prefix from key if one is
-// present. The returned hash is only meaningful when stripped is true.
+// present. The returned hash is only meaningful when an actor prefix was
+// stripped.
 func DecodeActorPrefix(key []byte) (remaining []byte, hash [ActorHashLen]byte, err error) {
 	if len(key) == 0 || key[0] != ActorPrefixByte {
 		return key, hash, nil
@@ -353,11 +432,11 @@ func (d sqlDecoder) DecodeDescMetadataID(key roachpb.Key) (uint32, error) {
 // DecodeTenantMetadataID decodes a tenant ID from a tenant metadata key.
 func (d sqlDecoder) DecodeTenantMetadataID(key roachpb.Key) (roachpb.TenantID, error) {
 	// Extract table and index ID from key.
-	remaining, tableID, _, err := d.DecodeIndexPrefix(key)
+	remaining, tableID, indexID, err := d.DecodeIndexPrefix(key)
 	if err != nil {
 		return roachpb.TenantID{}, err
 	}
-	if tableID != TenantsTableID {
+	if tableID != TenantsTableID || indexID != TenantsTablePrimaryKeyIndexID {
 		return roachpb.TenantID{}, errors.Errorf("key is not a tenant table entry: %v", key)
 	}
 	// Extract the tenant ID.
@@ -365,7 +444,23 @@ func (d sqlDecoder) DecodeTenantMetadataID(key roachpb.Key) (roachpb.TenantID, e
 	if err != nil {
 		return roachpb.TenantID{}, err
 	}
-	return roachpb.MakeTenantID(id), nil
+	return roachpb.MustMakeTenantID(id), nil
+}
+
+// DecodeZoneConfigMetadataID decodes a descriptor id from zones key.
+func (d sqlDecoder) DecodeZoneConfigMetadataID(key roachpb.Key) ([]byte, uint32, error) {
+	remaining, tableID, indexID, err := d.DecodeIndexPrefix(key)
+	if err != nil {
+		return nil, 0, err
+	}
+	if tableID != ZonesTableID || indexID != ZonesTablePrimaryIndexID {
+		return nil, 0, errors.Errorf("key is not a zones table entry: %v", key)
+	}
+	remaining, id, err := encoding.DecodeUvarintAscending(remaining)
+	if err != nil {
+		return nil, 0, err
+	}
+	return remaining, uint32(id), nil
 }
 
 // RewriteSpanToTenantPrefix updates the passed Span, potentially in-place, to
@@ -373,15 +468,18 @@ func (d sqlDecoder) DecodeTenantMetadataID(key roachpb.Key) (roachpb.TenantID, e
 // prior tenant prefix, if any, they had before, and returns the updated Span.
 func RewriteSpanToTenantPrefix(sp roachpb.Span, prefix roachpb.Key) (roachpb.Span, error) {
 	var err error
-	sp.Key, err = rewriteKeyToTenantPrefix(sp.Key, prefix)
+	sp.Key, err = RewriteKeyToTenantPrefix(sp.Key, prefix)
 	if err != nil {
 		return sp, err
 	}
-	sp.EndKey, err = rewriteKeyToTenantPrefix(sp.EndKey, prefix)
+	sp.EndKey, err = RewriteKeyToTenantPrefix(sp.EndKey, prefix)
 	return sp, err
 }
 
-func rewriteKeyToTenantPrefix(key roachpb.Key, prefix roachpb.Key) (roachpb.Key, error) {
+// RewriteKeyToTenantPrefix updates the passed key, potentially in-place, to
+// ensure the Key has the passed tenant prefix, regardless of what
+// prior tenant prefix, if any, they had before, and returns the updated Key.
+func RewriteKeyToTenantPrefix(key roachpb.Key, prefix roachpb.Key) (roachpb.Key, error) {
 	// If the new prefix is empty (system key), and this is a tenant key, or if
 	// the new prefix is non-empty but this key does not have it, we need to fix
 	// this key, by removing any prefix it has and then adding the new one.

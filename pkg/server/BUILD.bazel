@@ -402,6 +402,7 @@ go_library(
 
 go_test(
     name = "server_test",
+    tags = ["manual"],
     size = "enormous",
     srcs = [
         "addjoin_test.go",

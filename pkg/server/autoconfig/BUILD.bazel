@@ -38,6 +38,7 @@ go_test(
         "task_markers_test.go",
     ],
     args = ["-test.timeout=295s"],
+    tags = ["manual"],
     deps = [
         ":autoconfig",
         "//pkg/base",

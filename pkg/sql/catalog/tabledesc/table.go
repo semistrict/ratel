@@ -599,8 +599,7 @@ func RenameColumnInTable(
 		}
 	}
 
-	// Rename the column name in the column, the physical row-group metadata, the
-	// indexes...
+	// Rename the column name in the column, the column family, the indexes...
 	tableDesc.RenameColumnDescriptor(col, string(newName))
 
 	// Rename any shard columns which need to be renamed because their name was

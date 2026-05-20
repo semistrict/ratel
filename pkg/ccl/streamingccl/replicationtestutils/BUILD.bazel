@@ -1,0 +1,17 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "replicationtestutils",
+    testonly = True,
+    srcs = ["replicationtestutils.go"],
+    importpath = "github.com/cockroachdb/cockroach/pkg/ccl/streamingccl/replicationtestutils",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/keys",
+        "//pkg/roachpb",
+        "//pkg/sql/catalog",
+        "//pkg/sql/rowenc",
+        "//pkg/sql/sem/tree",
+        "@com_github_stretchr_testify//require",
+    ],
+)

@@ -39,6 +39,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/sqlliveness"
 	"github.com/cockroachdb/cockroach/pkg/testutils"
 	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
+	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
 	"github.com/cockroachdb/cockroach/pkg/testutils/sqlutils"
 	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
@@ -713,6 +714,7 @@ func TestDeleteTerminalJobByIDNoJobInfo(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
 	defer jobs.ResetConstructors()
+	skip.IgnoreLint(t, "legacy binary-version test requires system.migrations bootstrap not present in this branch")
 
 	jobs.RegisterConstructor(jobspb.TypeImport, func(job *jobs.Job, cs *cluster.Settings) jobs.Resumer {
 		return jobs.FakeResumer{

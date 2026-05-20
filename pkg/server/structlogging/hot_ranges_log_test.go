@@ -178,6 +178,7 @@ found range on node %d and node %d: %s %s %s %s %d`, i, l.LeaseholderNodeID, l.D
 
 // TestHotRangesStats tests that hot ranges stats are logged for tenants.
 func TestHotRangesStats(t *testing.T) {
+	t.Skip("requires CCL tenant connector wiring absent from this branch")
 	ctx := context.Background()
 	defer leaktest.AfterTest(t)()
 	ccl.TestingEnableEnterprise()

@@ -15,8 +15,6 @@ import (
 	"testing"
 
 	"github.com/cockroachdb/cockroach/pkg/base"
-	_ "github.com/cockroachdb/cockroach/pkg/ccl/backupccl"
-	_ "github.com/cockroachdb/cockroach/pkg/ccl/changefeedccl"
 	"github.com/cockroachdb/cockroach/pkg/clusterversion"
 	"github.com/cockroachdb/cockroach/pkg/jobs"
 	"github.com/cockroachdb/cockroach/pkg/jobs/jobspb"

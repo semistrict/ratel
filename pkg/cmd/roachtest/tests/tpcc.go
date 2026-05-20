@@ -43,6 +43,7 @@ import (
 	"github.com/lib/pq"
 	promapi "github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 )
 
@@ -718,7 +719,7 @@ func registerTPCC(r registry.Registry) {
 									"stockLevel",
 								},
 								ch:                    chaosEventCh,
-								promClient:            promv1.NewAPI(client),
+								promClient:            roachtestPrometheusClient{API: promv1.NewAPI(client)},
 								maxErrorsDuringUptime: maxErrorsDuringUptime,
 								// "delivery" does not trigger often.
 								allowZeroSuccessDuringUptime: true,
@@ -1082,6 +1083,22 @@ func (s tpccBenchSpec) startOpts() (option.StartOpts, install.ClusterSettings) {
 		settings.NumRacks = s.partitions()
 	}
 	return startOpts, settings
+}
+
+type roachtestPrometheusClient struct {
+	promv1.API
+}
+
+func (c roachtestPrometheusClient) Query(
+	ctx context.Context, query string, ts time.Time,
+) (model.Value, promv1.Warnings, error) {
+	return c.API.Query(ctx, query, ts)
+}
+
+func (c roachtestPrometheusClient) QueryRange(
+	ctx context.Context, query string, r promv1.Range,
+) (model.Value, promv1.Warnings, error) {
+	return c.API.QueryRange(ctx, query, r)
 }
 
 func registerTPCCBenchSpec(r registry.Registry, b tpccBenchSpec) {

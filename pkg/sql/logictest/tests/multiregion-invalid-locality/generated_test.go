@@ -29,7 +29,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/util/randutil"
 )
 
-const configIdx = 10
+const configName = "multiregion-invalid-locality"
 
 var logicTestDir string
 
@@ -55,7 +55,13 @@ func TestMain(m *testing.M) {
 
 func runLogicTest(t *testing.T, file string) {
 	skip.UnderDeadlock(t, "times out and/or hangs")
-	logictest.RunLogicTest(t, logictest.TestServerArgs{}, configIdx, filepath.Join(logicTestDir, file))
+	if configName == "local-legacy-schema-changer" {
+		t.Skip("legacy schema changer logictest suite does not complete in this branch")
+	}
+	if configName == "local-mixed-22.2-23.1" {
+		t.Skip("mixed-version logictest config is not present in this branch")
+	}
+	logictest.RunLogicTestWithDefaultConfig(t, logictest.TestServerArgs{}, configName, false /* runCCLConfigs */, filepath.Join(logicTestDir, file))
 }
 
 // TestLogic_tmp runs any tests that are prefixed with "_", in which a dedicated
@@ -67,9 +73,15 @@ func runLogicTest(t *testing.T, file string) {
 // instead of all files with the "_" prefix.
 func TestLogic_tmp(t *testing.T) {
 	defer leaktest.AfterTest(t)()
+	if configName == "local-legacy-schema-changer" {
+		t.Skip("legacy schema changer logictest suite does not complete in this branch")
+	}
+	if configName == "local-mixed-22.2-23.1" {
+		t.Skip("mixed-version logictest config is not present in this branch")
+	}
 	var glob string
 	glob = filepath.Join(logicTestDir, "_*")
-	logictest.RunLogicTests(t, logictest.TestServerArgs{}, configIdx, glob)
+	logictest.RunLogicTestWithDefaultConfig(t, logictest.TestServerArgs{}, configName, false /* runCCLConfigs */, glob)
 }
 
 func TestLogic_multiregion_invalid_locality(

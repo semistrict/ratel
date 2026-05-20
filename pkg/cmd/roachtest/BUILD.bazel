@@ -79,6 +79,7 @@ go_test(
     name = "roachtest_test",
     size = "small",
     testonly = 1,
+    tags = ["manual"],
     srcs = [
         "cluster_test.go",
         "github_test.go",

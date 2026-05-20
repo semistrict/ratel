@@ -1,16 +1,12 @@
 // Copyright 2019 The Cockroach Authors.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License
+// included in the file licenses/BSL.txt.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// permissions and limitations under the License.
+// As of the Change Date specified in that file, in accordance with
+// the Business Source License, use of this software will be governed
+// by the Apache License, Version 2.0, included in the file
+// licenses/APL.txt.
 
 package sql
 
@@ -18,16 +14,15 @@ import (
 	"bytes"
 	"context"
 
+	"github.com/cockroachdb/cockroach/pkg/kv"
+	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog/fetchpb"
+	"github.com/cockroachdb/cockroach/pkg/sql/row"
+	"github.com/cockroachdb/cockroach/pkg/sql/rowenc"
+	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/errors"
-	"github.com/semistrict/ratel/pkg/keys"
-	"github.com/semistrict/ratel/pkg/kv"
-	"github.com/semistrict/ratel/pkg/roachpb"
-	"github.com/semistrict/ratel/pkg/sql/catalog"
-	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
-	"github.com/semistrict/ratel/pkg/sql/row"
-	"github.com/semistrict/ratel/pkg/sql/rowenc"
-	"github.com/semistrict/ratel/pkg/sql/sem/tree"
-	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 // deleteRangeNode implements DELETE on a primary index satisfying certain
@@ -42,8 +37,6 @@ import (
 type deleteRangeNode struct {
 	// spans are the spans to delete.
 	spans roachpb.Spans
-	// actorName selects the actor keyspace for the deleted rows.
-	actorName string
 	// desc is the table descriptor the delete is operating on.
 	desc catalog.TableDescriptor
 	// fetcher is around to decode the returned keys from the DeleteRange, so that
@@ -94,28 +87,23 @@ func (d *deleteRangeNode) startExec(params runParams) error {
 	if err := params.p.cancelChecker.Check(); err != nil {
 		return err
 	}
-	if err := params.p.ensureActorExists(params.ctx, d.actorName); err != nil {
-		return err
-	}
 
-	// Configure the fetcher, which is only used to decode the returned keys from
-	// the DeleteRange, and is never used to actually fetch kvs.
-	var spec descpb.IndexFetchSpec
-	codec := keys.MakeActorSQLCodec(params.ExecCfg().Codec, d.actorName)
+	// Configure the fetcher, which is only used to decode the returned keys
+	// from the Del and the DelRange operations, and is never used to actually
+	// fetch kvs.
+	var spec fetchpb.IndexFetchSpec
 	if err := rowenc.InitIndexFetchSpec(
-		&spec, codec, d.desc, d.desc.GetPrimaryIndex(), nil, /* columnIDs */
+		&spec, params.ExecCfg().Codec, d.desc, d.desc.GetPrimaryIndex(), nil, /* columnIDs */
 	); err != nil {
 		return err
 	}
 	if err := d.fetcher.Init(
 		params.ctx,
-		false, /* reverse */
-		descpb.ScanLockingStrength_FOR_NONE,
-		descpb.ScanLockingWaitPolicy_BLOCK,
-		0, /* lockTimeout */
-		params.p.alloc,
-		nil, /* memMonitor */
-		&spec,
+		row.FetcherInitArgs{
+			WillUseKVProvider: true,
+			Alloc:             &tree.DatumAlloc{},
+			Spec:              &spec,
+		},
 	); err != nil {
 		return err
 	}
@@ -172,15 +160,23 @@ func (d *deleteRangeNode) startExec(params runParams) error {
 	return nil
 }
 
-// deleteSpans adds each input span to a DelRange command in the given batch.
+// deleteSpans adds each input span to a Del or a DelRange command in the given
+// batch.
 func (d *deleteRangeNode) deleteSpans(params runParams, b *kv.Batch, spans roachpb.Spans) {
 	ctx := params.ctx
 	traceKV := params.p.ExtendedEvalContext().Tracing.KVTracingEnabled()
 	for _, span := range spans {
-		if traceKV {
-			log.VEventf(ctx, 2, "DelRange %s - %s", span.Key, span.EndKey)
+		if span.EndKey == nil {
+			if traceKV {
+				log.VEventf(ctx, 2, "Del %s", span.Key)
+			}
+			b.Del(span.Key)
+		} else {
+			if traceKV {
+				log.VEventf(ctx, 2, "DelRange %s - %s", span.Key, span.EndKey)
+			}
+			b.DelRange(span.Key, span.EndKey, true /* returnKeys */)
 		}
-		b.DelRange(span.Key, span.EndKey, true /* returnKeys */)
 	}
 }
 

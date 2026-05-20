@@ -41,6 +41,7 @@ go_test(
         "sql_stats_test.go",
     ],
     args = ["-test.timeout=295s"],
+    tags = ["manual"],
     deps = [
         ":sslocal",
         "//pkg/base",

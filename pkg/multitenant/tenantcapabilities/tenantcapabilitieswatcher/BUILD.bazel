@@ -43,6 +43,7 @@ go_test(
         "watcher_test.go",
     ],
     args = ["-test.timeout=295s"],
+    tags = ["manual"],
     data = glob(["testdata/**"]),
     deps = [
         ":tenantcapabilitieswatcher",

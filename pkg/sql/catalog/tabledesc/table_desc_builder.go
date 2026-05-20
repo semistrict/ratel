@@ -630,25 +630,42 @@ func maybeUpgradeFormatVersion(desc *descpb.TableDescriptor) (wasUpgraded bool) 
 const FamilyPrimaryName = "primary"
 
 func upgradeToFamilyFormatVersion(desc *descpb.TableDescriptor) {
+	var primaryIndexColumnIDs catalog.TableColSet
+	for _, colID := range desc.PrimaryIndex.KeyColumnIDs {
+		primaryIndexColumnIDs.Add(colID)
+	}
+
 	desc.RowGroups = []descpb.RowGroupDescriptor{
 		{ID: 0, Name: FamilyPrimaryName},
 	}
 	desc.NextRowGroupID = desc.RowGroups[0].ID + 1
-	addCol := func(col *descpb.ColumnDescriptor) {
-		if col.Virtual {
+	addFamilyForCol := func(col *descpb.ColumnDescriptor) {
+		if primaryIndexColumnIDs.Contains(col.ID) {
+			desc.RowGroups[0].ColumnNames = append(desc.RowGroups[0].ColumnNames, col.Name)
+			desc.RowGroups[0].ColumnIDs = append(desc.RowGroups[0].ColumnIDs, col.ID)
 			return
 		}
-		desc.RowGroups[0].ColumnNames = append(desc.RowGroups[0].ColumnNames, col.Name)
-		desc.RowGroups[0].ColumnIDs = append(desc.RowGroups[0].ColumnIDs, col.ID)
+		colNames := []string{col.Name}
+		family := descpb.RowGroupDescriptor{
+			ID:              descpb.RowGroupID(col.ID),
+			Name:            generatedFamilyName(descpb.RowGroupID(col.ID), colNames),
+			ColumnNames:     colNames,
+			ColumnIDs:       []descpb.ColumnID{col.ID},
+			DefaultColumnID: col.ID,
+		}
+		desc.RowGroups = append(desc.RowGroups, family)
+		if family.ID >= desc.NextRowGroupID {
+			desc.NextRowGroupID = family.ID + 1
+		}
 	}
 
 	for i := range desc.Columns {
-		addCol(&desc.Columns[i])
+		addFamilyForCol(&desc.Columns[i])
 	}
 	for i := range desc.Mutations {
 		m := &desc.Mutations[i]
 		if c := m.GetColumn(); c != nil {
-			addCol(c)
+			addFamilyForCol(c)
 		}
 	}
 }

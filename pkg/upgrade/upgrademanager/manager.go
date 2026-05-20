@@ -281,7 +281,7 @@ func (m *Manager) RunPermanentUpgrades(ctx context.Context, upToVersion roachpb.
 		}
 
 		log.Infof(ctx, "running permanent upgrade for version %s", u.Version())
-		if err := m.runMigration(ctx, u, user, u.Version(), !m.knobs.DontUseJobs); err != nil {
+		if err := m.runMigration(ctx, u, user, u.Version(), false /* useJob */); err != nil {
 			return err
 		}
 	}

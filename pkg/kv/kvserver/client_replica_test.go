@@ -4474,6 +4474,7 @@ func TestStrictGCEnforcement(t *testing.T) {
 		assertScanAtOk(t, oldReadAt.Add(-1*time.Second.Nanoseconds(), 0))
 	})
 	t.Run("protected timestamps are respected", func(t *testing.T) {
+		skip.IgnoreLint(t, "requires spanconfig store propagation; disabled by default in this branch")
 		// Block the KVSubscriber rangefeed from progressing.
 		blockKVSubscriberCh := make(chan struct{})
 		var isBlocked syncutil.AtomicBool
@@ -4558,6 +4559,7 @@ func TestProposalOverhead(t *testing.T) {
 		// affect the memory held by the caller because neither `args` nor
 		// `args.Cmd` are pointers.
 		args.Cmd.WriteBatch = nil
+		args.Cmd.LogicalOpLog = nil
 		t.Logf(pretty.Sprint(args.Cmd))
 		return nil
 	}
@@ -4588,14 +4590,12 @@ func TestProposalOverhead(t *testing.T) {
 		expectedUserOverhead uint32 = 42
 	)
 	t.Run("user-key overhead", func(t *testing.T) {
-		userKey := tc.ScratchRange(t)
+		userKey := bootstrap.TestingUserTableDataMin()
+		tc.SplitRangeOrFatal(t, userKey)
 		testutils.SucceedsSoon(t, func() error {
 			repl := tc.GetFirstStoreFromServer(t, 0).LookupReplica(roachpb.RKey(userKey))
 			if repl == nil {
 				return errors.New("scratch range replica not found")
-			}
-			if repl.SpanConfig().RangefeedEnabled {
-				return errors.New("waiting for span configs to apply")
 			}
 			return nil
 		})

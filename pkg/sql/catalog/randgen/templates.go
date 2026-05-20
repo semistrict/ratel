@@ -159,10 +159,10 @@ outer:
 			}
 			t.baseColumnNames = append(t.baseColumnNames, newColDef.Name)
 			t.desc.Columns = append(t.desc.Columns, newColDef)
-			t.desc.Families[0].ColumnIDs = append(
-				t.desc.Families[0].ColumnIDs, colID)
-			t.desc.Families[0].ColumnNames = append(
-				t.desc.Families[0].ColumnNames, newColDef.Name)
+			t.desc.RowGroups[0].ColumnIDs = append(
+				t.desc.RowGroups[0].ColumnIDs, colID)
+			t.desc.RowGroups[0].ColumnNames = append(
+				t.desc.RowGroups[0].ColumnNames, newColDef.Name)
 			// Add to the primary index as either a key or store column.
 			for i, name := range origDesc.PrimaryIndex.KeyColumnNames {
 				if name == origColDef.Name {
@@ -204,10 +204,10 @@ func defaultTemplate() tbTemplate {
 		t.desc.NextColumnID++
 		t.desc.Columns = append(t.desc.Columns,
 			descpb.ColumnDescriptor{ID: colID, Name: colName, Type: types.String})
-		t.desc.Families[0].ColumnIDs = append(
-			t.desc.Families[0].ColumnIDs, colID)
-		t.desc.Families[0].ColumnNames = append(
-			t.desc.Families[0].ColumnNames, colName)
+		t.desc.RowGroups[0].ColumnIDs = append(
+			t.desc.RowGroups[0].ColumnIDs, colID)
+		t.desc.RowGroups[0].ColumnNames = append(
+			t.desc.RowGroups[0].ColumnNames, colName)
 		if colID == 0 {
 			t.desc.PrimaryIndex.KeyColumnIDs = []descpb.ColumnID{colID}
 			t.desc.PrimaryIndex.KeyColumnNames = []string{colName}
@@ -232,7 +232,7 @@ func startDescriptor() descpb.TableDescriptor {
 		Columns: []descpb.ColumnDescriptor{
 			{ID: 1, Name: "rowid", Type: types.Int, DefaultExpr: &uniqueRowIDString, Nullable: false, Hidden: true},
 		},
-		Families: []descpb.ColumnFamilyDescriptor{
+		RowGroups: []descpb.ColumnFamilyDescriptor{
 			{
 				ID:              0,
 				Name:            "primary",
@@ -253,7 +253,7 @@ func startDescriptor() descpb.TableDescriptor {
 		NextColumnID:     2,
 		NextConstraintID: 2,
 		NextIndexID:      2,
-		NextFamilyID:     1,
+		NextRowGroupID:     1,
 		NextMutationID:   1,
 		FormatVersion:    descpb.InterleavedFormatVersion,
 	}

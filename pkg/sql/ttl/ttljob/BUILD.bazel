@@ -66,9 +66,11 @@ go_test(
         "ttljob_test.go",
     ],
     args = ["-test.timeout=895s"],
+    tags = ["manual"],
     deps = [
         ":ttljob",
         "//pkg/base",
+        "//pkg/ccl/streamingccl/replicationtestutils",
         "//pkg/jobs",
         "//pkg/jobs/jobspb",
         "//pkg/jobs/jobstest",

@@ -18,14 +18,14 @@ import (
 	"bytes"
 	"context"
 
+	"github.com/cockroachdb/cockroach/pkg/keys"
+	"github.com/cockroachdb/cockroach/pkg/kv"
+	"github.com/cockroachdb/cockroach/pkg/security/username"
+	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
+	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
+	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/cockroachdb/cockroach/pkg/sql/sessiondata"
 	"github.com/cockroachdb/errors"
-	"github.com/semistrict/ratel/pkg/keys"
-	"github.com/semistrict/ratel/pkg/kv"
-	"github.com/semistrict/ratel/pkg/security"
-	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
-	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
-	"github.com/semistrict/ratel/pkg/sql/sem/tree"
-	"github.com/semistrict/ratel/pkg/sql/sessiondata"
 )
 
 // ensureActorExists makes actor creation a cluster-global, idempotent
@@ -57,7 +57,7 @@ func (p *planner) ensureActorExists(ctx context.Context, actorName string) error
 		"check-actor-exists",
 		nil, // outside any txn — read-only point lookup
 		sessiondata.InternalExecutorOverride{
-			User:     security.RootUserName(),
+			User:     username.RootUserName(),
 			Database: "system",
 		},
 		`SELECT actor_hash FROM system.actors WHERE tenant_id = $1 AND actor_name = $2`,
@@ -82,7 +82,7 @@ func (p *planner) ensureActorExists(ctx context.Context, actorName string) error
 			"ensure-actor-exists",
 			txn,
 			sessiondata.InternalExecutorOverride{
-				User:     security.RootUserName(),
+				User:     username.RootUserName(),
 				Database: "system",
 			},
 			`INSERT INTO system.actors (tenant_id, actor_name, actor_hash)
@@ -108,7 +108,7 @@ func (p *planner) ensureActorExists(ctx context.Context, actorName string) error
 			"load-actor",
 			txn,
 			sessiondata.InternalExecutorOverride{
-				User:     security.RootUserName(),
+				User:     username.RootUserName(),
 				Database: "system",
 			},
 			`SELECT actor_hash FROM system.actors WHERE tenant_id = $1 AND actor_name = $2`,
@@ -135,5 +135,5 @@ func (p *planner) ensureActorExists(ctx context.Context, actorName string) error
 func (p *planner) actorRegistryInternalExecutor(ctx context.Context) *InternalExecutor {
 	sd := p.SessionData().Clone()
 	sd.ActorScope = ""
-	return p.ExecCfg().InternalExecutorFactory(ctx, sd).(*InternalExecutor)
+	return p.ExecCfg().InternalDB.NewInternalExecutor(sd).(*InternalExecutor)
 }

@@ -1,20 +1,16 @@
 // Copyright 2020 The Cockroach Authors.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License
+// included in the file licenses/BSL.txt.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// permissions and limitations under the License.
+// As of the Change Date specified in that file, in accordance with
+// the Business Source License, use of this software will be governed
+// by the Apache License, Version 2.0, included in the file
+// licenses/APL.txt.
 
 syntax = "proto3";
 package cockroach.sql.sessiondatapb;
-option go_package = "sessiondatapb";
+option go_package = "github.com/cockroachdb/cockroach/pkg/sql/sessiondatapb";
 
 import "sql/lex/encode.proto";
 import "util/duration/duration.proto";
@@ -33,7 +29,7 @@ message SessionData {
   // session. This can be used for logging and per-application statistics.
   string application_name = 2;
   // User is the name of the user logged into the session.
-  string user_proto = 3 [(gogoproto.casttype) = "github.com/semistrict/ratel/pkg/security.SQLUsernameProto"];
+  string user_proto = 3 [(gogoproto.casttype) = "github.com/cockroachdb/cockroach/pkg/security/username.SQLUsernameProto"];
   // DataConversion gives access to the data conversion configuration.
   DataConversionConfig data_conversion_config = 4 [(gogoproto.nullable) = false];
   // VectorizeMode indicates which kinds of queries to use vectorized execution
@@ -54,7 +50,7 @@ message SessionData {
   // Note that the current serialization of the time.Location objects as
   // strings has many drawbacks which could lead to unstable computation on the
   // remote nodes. See #36864 and
-  // https://github.com/semistrict/ratel/pull/55377#issuecomment-707794695
+  // https://github.com/cockroachdb/cockroach/pull/55377#issuecomment-707794695
   // for more details.
   string location = 8;
   // SearchPath is a list of namespaces to search builtins in. Used to
@@ -67,12 +63,8 @@ message SessionData {
   // WorkMemLimit determines how much RAM (in bytes) a single operation of a
   // single query can use before it has to spill to disk.
   int64 WorkMemLimit = 12;
-  // IntervalStyleEnabled allows the setting of IntervalStyle to different
-  // values.
-  bool interval_style_enabled = 13;
-  // DateStyleEnabled allows the setting of DateStyle to different
-  // values.
-  bool date_style_enabled = 14;
+  reserved 13;
+  reserved 14;
   // LockTimeout is the maximum amount of time that a query will wait while
   // attempting to acquire a lock on a key or while blocking on an existing
   // lock in order to perform a non-locking read on a key.
@@ -93,12 +85,12 @@ message SessionData {
   // increase the speed of lookup joins when each input row might get multiple
   // looked up rows at the cost of increased memory usage.
   bool parallelize_multi_key_lookup_joins_enabled = 19;
-  // ActorScope selects the actor whose table data is accessed by default for
-  // statements in this session. An empty value means unscoped table access.
-  string actor_scope = 20;
-  // Troubleshooting mode determines whether we refuse to do additional work with
-  // the query (i.e. collect & emit telemetry data). Troubleshooting mode is
-  // disabled by default.
+  // TrigramSimilarityThreshold configures the value that's used to compare
+  // trigram similarities to in order to evaluate the string % string overload.
+  double trigram_similarity_threshold = 20;
+  // Troubleshooting mode determines whether we refuse to do additional work
+  // with the query (i.e. collect & emit telemetry data). Troubleshooting mode
+  // is disabled by default.
   bool troubleshooting_mode = 21;
   // JoinReaderNoOrderingStrategyBatchSize is the size limit on the input rows
   // to the joinReader processor (when ordering is **not** required to be
@@ -108,6 +100,43 @@ message SessionData {
   // to the joinReader processor (when performing index joins) to construct a
   // single lookup KV batch.
   int64 join_reader_index_join_strategy_batch_size = 23;
+  // IndexJoinStreamerBatchSize is the size limit on the input rows to the
+  // ColIndexJoin operator (when it is using the Streamer API) to construct a
+  // single lookup KV batch.
+  int64 index_join_streamer_batch_size = 24;
+  // DirectColumnarScansEnabled indicates whether the COL_BATCH_RESPONSE scan
+  // format should be used for ScanRequests and ReverseScanRequests whenever
+  // possible.
+  bool direct_columnar_scans_enabled = 25;
+  // DefaultTextSearchConfig configures the default text search configuration
+  // that is used for builtins like to_tsvector and to_tsquery if no
+  // text search configuration is explicitly passed in.
+  string default_text_search_config = 26;
+  // StreamerAlwaysMaintainOrdering indicates that the SQL users of the Streamer
+  // should always ask it to maintain the ordering, even when it might not be
+  // strictly necessary for the query.
+  //
+  // This session variable is introduced as a possible workaround in case we
+  // have more bugs like #113013.
+  bool streamer_always_maintain_ordering = 27;
+  // StreamerInOrderEagerMemoryUsageFraction controls the fraction of the
+  // streamer's memory budget that might be used for issuing requests eagerly,
+  // in the InOrder mode.
+  double streamer_in_order_eager_memory_usage_fraction = 28;
+  // StreamerOutOfOrderEagerMemoryUsageFraction controls the fraction of the
+  // streamer's memory budget that might be used for issuing requests eagerly,
+  // in the OutOfOrder mode.
+  double streamer_out_of_order_eager_memory_usage_fraction = 29;
+  // StreamerHeadOfLineOnlyFraction controls the fraction of the available
+  // streamer's memory budget that will be used to set the TargetBytes limit on
+  // head-of-the-line request in case the "eager" memory usage limit has been
+  // exceeded.
+  double streamer_head_of_line_only_fraction = 30;
+  // StreamerEnabled controls whether the Streamer API can be used.
+  bool streamer_enabled = 32;
+  // ActorScope selects the actor whose table data is accessed by default for
+  // statements in this session. An empty value means unscoped table access.
+  string actor_scope = 33;
 }
 
 // DataConversionConfig contains the parameters that influence the output
@@ -135,16 +164,16 @@ enum VectorizeExecMode {
   // VectorizeUnset means the VectorizeExecMode wasn't explicitly set. Having
   // the first enum value as zero is required by proto3. This is mapped to
   // VectorizeOn.
-  VectorizeUnset = 0;
+  unset = 0 [(gogoproto.enumvalue_customname) = "VectorizeUnset"];
   reserved 1;
   // VectorizeOn means that any supported queries will be run using the
   // columnar execution.
-  VectorizeOn = 2;
+  on = 2 [(gogoproto.enumvalue_customname) = "VectorizeOn"];
   // VectorizeExperimentalAlways means that we attempt to vectorize all
   // queries; unsupported queries will fail. Mostly used for testing.
-  VectorizeExperimentalAlways = 3;
+  experimental_always = 3 [(gogoproto.enumvalue_customname) = "VectorizeExperimentalAlways"];
   // VectorizeOff means that columnar execution is disabled.
-  VectorizeOff = 4;
+  off = 4 [(gogoproto.enumvalue_customname) = "VectorizeOff"];
 }
 
 // SequenceState is used to marshall the sessiondata.SequenceState struct.

@@ -31,6 +31,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/inverted"
 	"github.com/cockroachdb/cockroach/pkg/sql/randgen"
 	. "github.com/cockroachdb/cockroach/pkg/sql/rowenc"
+	"github.com/cockroachdb/cockroach/pkg/sql/sem/eval"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/cockroachdb/cockroach/pkg/util/json"
@@ -96,7 +97,7 @@ func decodeIndex(
 	}
 	values := make([]EncDatum, index.NumKeyColumns())
 	colDirs := index.IndexDesc().KeyColumnDirections
-	if _, _, err := DecodeIndexKey(codec, types, values, colDirs, key); err != nil {
+	if _, err := DecodeIndexKey(codec, values, colDirs, key); err != nil {
 		return nil, err
 	}
 
@@ -174,7 +175,7 @@ func TestIndexKey(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		evalCtx := tree.NewTestingEvalContext(cluster.MakeTestingClusterSettings())
+		evalCtx := eval.NewTestingEvalContext(cluster.MakeTestingClusterSettings())
 		defer evalCtx.Stop(context.Background())
 		tableDesc, colMap := makeTableDescForTest(test)
 		// Add the default family metadata expected by the single-family layout.
@@ -410,7 +411,7 @@ func TestEncodeContainingArrayInvertedIndexSpans(t *testing.T) {
 		{`{2, NULL}`, `{NULL}`, false, true},
 	}
 
-	evalCtx := tree.MakeTestingEvalContext(cluster.MakeTestingClusterSettings())
+	evalCtx := eval.MakeTestingEvalContext(cluster.MakeTestingClusterSettings())
 	parseArray := func(s string) tree.Datum {
 		arr, _, err := tree.ParseDArrayFromString(&evalCtx, s, types.Int)
 		if err != nil {
@@ -423,7 +424,7 @@ func TestEncodeContainingArrayInvertedIndexSpans(t *testing.T) {
 		keys, err := EncodeInvertedIndexTableKeys(left, nil, descpb.LatestIndexDescriptorVersion)
 		require.NoError(t, err)
 
-		invertedExpr, err := EncodeContainingInvertedIndexSpans(&evalCtx, right)
+		invertedExpr, err := EncodeContainingInvertedIndexSpans(context.Background(), &evalCtx, right)
 		require.NoError(t, err)
 
 		spanExpr, ok := invertedExpr.(*inverted.SpanExpression)
@@ -545,7 +546,7 @@ func TestEncodeContainedArrayInvertedIndexSpans(t *testing.T) {
 		{`{2, NULL}`, `{1, NULL}`, false, false, false},
 	}
 
-	evalCtx := tree.MakeTestingEvalContext(cluster.MakeTestingClusterSettings())
+	evalCtx := eval.MakeTestingEvalContext(cluster.MakeTestingClusterSettings())
 	parseArray := func(s string) tree.Datum {
 		arr, _, err := tree.ParseDArrayFromString(&evalCtx, s, types.Int)
 		if err != nil {
@@ -558,7 +559,7 @@ func TestEncodeContainedArrayInvertedIndexSpans(t *testing.T) {
 		keys, err := EncodeInvertedIndexTableKeys(indexedValue, nil, descpb.LatestIndexDescriptorVersion)
 		require.NoError(t, err)
 
-		invertedExpr, err := EncodeContainedInvertedIndexSpans(&evalCtx, value)
+		invertedExpr, err := EncodeContainedInvertedIndexSpans(context.Background(), &evalCtx, value)
 		require.NoError(t, err)
 
 		spanExpr, ok := invertedExpr.(*inverted.SpanExpression)
@@ -656,7 +657,7 @@ func ExtractIndexKey(
 		return entry.Key, nil
 	}
 
-	index, err := tableDesc.FindIndexWithID(indexID)
+	index, err := catalog.MustFindIndexByID(tableDesc, indexID)
 	if err != nil {
 		return nil, err
 	}
@@ -668,7 +669,7 @@ func ExtractIndexKey(
 	}
 	values := make([]EncDatum, index.NumKeyColumns())
 	dirs := index.IndexDesc().KeyColumnDirections
-	key, _, err = DecodeKeyVals(indexTypes, values, dirs, key)
+	key, _, err = DecodeKeyVals(values, dirs, key)
 	if err != nil {
 		return nil, err
 	}
@@ -691,7 +692,7 @@ func ExtractIndexKey(
 			return nil, err
 		}
 	}
-	_, _, err = DecodeKeyVals(extraTypes, extraValues, dirs, extraKey)
+	_, _, err = DecodeKeyVals(extraValues, dirs, extraKey)
 	if err != nil {
 		return nil, err
 	}

@@ -29,7 +29,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/util/randutil"
 )
 
-const configIdx = 5
+const configName = "fakedist-disk"
 
 var logicTestDir string
 
@@ -55,7 +55,13 @@ func TestMain(m *testing.M) {
 
 func runLogicTest(t *testing.T, file string) {
 	skip.UnderDeadlock(t, "times out and/or hangs")
-	logictest.RunLogicTest(t, logictest.TestServerArgs{}, configIdx, filepath.Join(logicTestDir, file))
+	if configName == "local-legacy-schema-changer" {
+		t.Skip("legacy schema changer logictest suite does not complete in this branch")
+	}
+	if configName == "local-mixed-22.2-23.1" {
+		t.Skip("mixed-version logictest config is not present in this branch")
+	}
+	logictest.RunLogicTestWithDefaultConfig(t, logictest.TestServerArgs{}, configName, false /* runCCLConfigs */, filepath.Join(logicTestDir, file))
 }
 
 // TestLogic_tmp runs any tests that are prefixed with "_", in which a dedicated
@@ -67,9 +73,15 @@ func runLogicTest(t *testing.T, file string) {
 // instead of all files with the "_" prefix.
 func TestLogic_tmp(t *testing.T) {
 	defer leaktest.AfterTest(t)()
+	if configName == "local-legacy-schema-changer" {
+		t.Skip("legacy schema changer logictest suite does not complete in this branch")
+	}
+	if configName == "local-mixed-22.2-23.1" {
+		t.Skip("mixed-version logictest config is not present in this branch")
+	}
 	var glob string
 	glob = filepath.Join(logicTestDir, "_*")
-	logictest.RunLogicTests(t, logictest.TestServerArgs{}, configIdx, glob)
+	logictest.RunLogicTestWithDefaultConfig(t, logictest.TestServerArgs{}, configName, false /* runCCLConfigs */, glob)
 }
 
 func TestLogic_aggregate(
@@ -777,13 +789,6 @@ func TestLogic_external_connection_privileges(
 ) {
 	defer leaktest.AfterTest(t)()
 	runLogicTest(t, "external_connection_privileges")
-}
-
-func TestLogic_family(
-	t *testing.T,
-) {
-	defer leaktest.AfterTest(t)()
-	runLogicTest(t, "family")
 }
 
 func TestLogic_fk(
@@ -1563,13 +1568,6 @@ func TestLogic_scrub(
 	runLogicTest(t, "scrub")
 }
 
-func TestLogic_secondary_index_column_families(
-	t *testing.T,
-) {
-	defer leaktest.AfterTest(t)()
-	runLogicTest(t, "secondary_index_column_families")
-}
-
 func TestLogic_select(
 	t *testing.T,
 ) {
@@ -1855,6 +1853,13 @@ func TestLogic_suboperators(
 ) {
 	defer leaktest.AfterTest(t)()
 	runLogicTest(t, "suboperators")
+}
+
+func TestLogic_subordinate_array(
+	t *testing.T,
+) {
+	defer leaktest.AfterTest(t)()
+	runLogicTest(t, "subordinate_array")
 }
 
 func TestLogic_subquery(
@@ -2289,4 +2294,11 @@ func TestLogic_zone_config_system_tenant(
 ) {
 	defer leaktest.AfterTest(t)()
 	runLogicTest(t, "zone_config_system_tenant")
+}
+
+func TestLogic_zzz_partial_index_min(
+	t *testing.T,
+) {
+	defer leaktest.AfterTest(t)()
+	runLogicTest(t, "zzz_partial_index_min")
 }

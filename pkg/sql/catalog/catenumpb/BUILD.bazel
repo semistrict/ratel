@@ -29,11 +29,16 @@ go_library(
     name = "catenumpb",
     srcs = [
         "doc.go",
+        "index.go",
         "structured.go",
     ],
     embed = [":catenumpb_go_proto"],
     importpath = "github.com/cockroachdb/cockroach/pkg/sql/catalog/catenumpb",
     visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/util/encoding",
+        "@com_github_cockroachdb_errors//:errors",
+    ],
 )
 
 disallowed_imports_test(

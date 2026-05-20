@@ -41,6 +41,7 @@ go_library(
 
 go_test(
     name = "schematelemetry_test",
+    tags = ["manual"],
     srcs = [
         "main_test.go",
         "schema_telemetry_test.go",

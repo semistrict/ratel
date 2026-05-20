@@ -10,7 +10,10 @@ go_test(
         "//pkg/testutils/docker/docker-fsnotify",
     ],
     gotags = ["docker"],
-    tags = ["integration"],
+    tags = [
+        "integration",
+        "manual",
+    ],
     deps = [
         "//pkg/util/contextutil",
         "//pkg/util/log",

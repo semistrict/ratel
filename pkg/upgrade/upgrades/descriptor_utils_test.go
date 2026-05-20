@@ -47,7 +47,7 @@ func TestCreateSystemTable(t *testing.T) {
 			{Name: "id", ID: 1, Type: types.Uuid, Nullable: false},
 		},
 		NextColumnID: 2,
-		Families: []descpb.ColumnFamilyDescriptor{
+		RowGroups: []descpb.RowGroupDescriptor{
 			{
 				Name:            "primary",
 				ID:              0,
@@ -56,7 +56,7 @@ func TestCreateSystemTable(t *testing.T) {
 				DefaultColumnID: 0,
 			},
 		},
-		NextFamilyID: 1,
+		NextRowGroupID: 1,
 		PrimaryIndex: descpb.IndexDescriptor{
 			Name:           tabledesc.LegacyPrimaryKeyIndexName,
 			ID:             1,

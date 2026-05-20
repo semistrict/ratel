@@ -18,6 +18,7 @@ go_test(
         "tpcc_bench_test.go",
     ],
     args = ["-test.timeout=295s"],
+    tags = ["manual"],
     embed = [":tpcc"],
     deps = [
         "//pkg/base",

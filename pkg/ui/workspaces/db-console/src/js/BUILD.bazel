@@ -44,3 +44,9 @@ alias(
     actual = ":crdb-protobuf-client",
     visibility = ["//visibility:public"],
 )
+
+alias(
+    name = "pkg",
+    actual = ":crdb-protobuf-client",
+    visibility = ["//visibility:public"],
+)

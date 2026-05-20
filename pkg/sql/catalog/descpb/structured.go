@@ -16,26 +16,22 @@ package descpb
 
 import (
 	"github.com/cockroachdb/cockroach/pkg/keys"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catconstants"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catenumpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/protoreflect"
+	"github.com/cockroachdb/cockroach/pkg/sql/sem/catconstants"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/catid"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/util"
-	"github.com/cockroachdb/cockroach/pkg/util/encoding"
-	"github.com/cockroachdb/errors"
+	"github.com/cockroachdb/cockroach/pkg/util/intsets"
 )
 
-// ToEncodingDirection converts a direction from the proto to an encoding.Direction.
-func (dir IndexDescriptor_Direction) ToEncodingDirection() (encoding.Direction, error) {
-	switch dir {
-	case IndexDescriptor_ASC:
-		return encoding.Ascending, nil
-	case IndexDescriptor_DESC:
-		return encoding.Descending, nil
-	default:
-		return encoding.Ascending, errors.Errorf("invalid direction: %s", dir)
-	}
-}
+type IndexDescriptor_Direction = catenumpb.IndexColumn_Direction
+
+const (
+	IndexDescriptor_ASC  = catenumpb.IndexColumn_ASC
+	IndexDescriptor_DESC = catenumpb.IndexColumn_DESC
+)
+
+type PGAttributeNum = catid.PGAttributeNum
 
 // ID, ColumnID, RowGroupID, and IndexID are all uint32, but are each given a
 // type alias to prevent accidental use of one of the types where
@@ -75,6 +71,10 @@ const (
 
 // RowGroupID is a custom type for physical row-group IDs.
 type RowGroupID = catid.RowGroupID
+
+// FamilyID is a compatibility alias for row-group IDs while old call sites are
+// being moved off family terminology.
+type FamilyID = RowGroupID
 
 // IndexID is a custom type for IndexDescriptor IDs.
 type IndexID = catid.IndexID
@@ -130,6 +130,10 @@ type ColumnID = catid.ColumnID
 // ColumnIDs is a slice of ColumnDescriptor IDs.
 type ColumnIDs []ColumnID
 
+// ColumnFamilyDescriptor is a compatibility alias for row-group metadata while
+// old call sites are being moved off family terminology.
+type ColumnFamilyDescriptor = RowGroupDescriptor
+
 func (c ColumnIDs) Len() int           { return len(c) }
 func (c ColumnIDs) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
 func (c ColumnIDs) Less(i, j int) bool { return c[i] < c[j] }
@@ -163,12 +167,12 @@ func (c ColumnIDs) Equals(input ColumnIDs) bool {
 // PermutationOf returns true if this list and the input list contain the same
 // set of column IDs in any order. Duplicate ColumnIDs have no effect.
 func (c ColumnIDs) PermutationOf(input ColumnIDs) bool {
-	ourColsSet := util.MakeFastIntSet()
+	var ourColsSet intsets.Fast
 	for _, col := range c {
 		ourColsSet.Add(int(col))
 	}
 
-	inputColsSet := util.MakeFastIntSet()
+	var inputColsSet intsets.Fast
 	for _, inputCol := range input {
 		inputColsSet.Add(int(inputCol))
 	}
@@ -289,7 +293,7 @@ func IsVirtualTable(id ID) bool {
 
 // IsSystemConfigID returns whether this ID is for a system config object.
 func IsSystemConfigID(id ID) bool {
-	return id > 0 && id <= keys.MaxSystemConfigDescID
+	return id > 0 && id <= keys.DeprecatedMaxSystemConfigDescID
 }
 
 // AnonymousTable is the empty table name, used when a data source
@@ -330,7 +334,7 @@ func (DescriptorMutation_State) SafeValue() {}
 func (DescriptorState) SafeValue() {}
 
 // SafeValue implements the redact.SafeValue interface.
-func (ConstraintType) SafeValue() {}
+func (ConstraintToUpdate_ConstraintType) SafeValue() {}
 
 // UniqueConstraint is an interface for a unique constraint. It allows
 // both UNIQUE indexes and UNIQUE WITHOUT INDEX constraints to serve as

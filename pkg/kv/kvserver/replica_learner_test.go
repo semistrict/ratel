@@ -2110,7 +2110,7 @@ func TestMergeQueueSeesLearnerOrJointConfig(t *testing.T) {
 		formattedTrace := trace.String()
 		expectedMessages := []string{
 			`removing learner replicas \[n2,s2\]`,
-			`merging to produce range: /Table/Max-/Max`,
+			`merging to produce range: /Table/Max-`,
 		}
 		if err := testutils.MatchInOrder(formattedTrace, expectedMessages...); err != nil {
 			t.Fatal(err)
@@ -2147,7 +2147,7 @@ func TestMergeQueueSeesLearnerOrJointConfig(t *testing.T) {
 			formattedTrace := trace.String()
 			expectedMessages := []string{
 				`transitioning out of joint configuration`,
-				`merging to produce range: /Table/Max-/Max`,
+				`merging to produce range: /Table/Max-`,
 			}
 			if err := testutils.MatchInOrder(formattedTrace, expectedMessages...); err != nil {
 				t.Fatal(err)

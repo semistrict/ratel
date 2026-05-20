@@ -50,10 +50,12 @@ go_test(
         "sqlsmith_test.go",
     ],
     args = ["-test.timeout=295s"],
+    tags = ["manual"],
     data = ["//c-deps:libgeos"],
     embed = [":sqlsmith"],
     deps = [
         "//pkg/base",
+        "//pkg/ccl",
         "//pkg/security/securityassets",
         "//pkg/security/securitytest",
         "//pkg/server",

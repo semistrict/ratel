@@ -737,9 +737,14 @@ func newSqllivenessTable(
 ) (tableID catalog.TableDescriptor) {
 	t.Helper()
 	db.Exec(t, fmt.Sprintf(`CREATE DATABASE IF NOT EXISTS "%s"`, t.Name()))
-	db.Exec(t, strings.Replace(systemschema.SqllivenessTableSchema,
+	schema := strings.Replace(systemschema.SqllivenessTableSchema,
 		"CREATE TABLE system.sqlliveness",
 		fmt.Sprintf(`CREATE TABLE "%s".sqlliveness`, t.Name()),
-		1))
+		1)
+	schema = strings.Replace(schema,
+		`,
+    FAMILY "primary" (crdb_region, session_id, expiration)`,
+		``, 1)
+	db.Exec(t, schema)
 	return desctestutils.TestingGetTableDescriptor(s.DB(), s.Codec(), t.Name(), "public", "sqlliveness")
 }

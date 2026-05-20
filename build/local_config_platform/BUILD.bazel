@@ -1,0 +1,6 @@
+load(":constraints.bzl", "HOST_CONSTRAINTS")
+
+platform(
+    name = "host",
+    constraint_values = HOST_CONSTRAINTS,
+)

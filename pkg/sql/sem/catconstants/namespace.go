@@ -14,6 +14,8 @@ const (
 	// NamespaceTableRowGroupID is the physical row-group ID of the namespace table
 	// that is actually written to.
 	NamespaceTableRowGroupID = 4
+	// NamespaceTableFamilyID is a compatibility alias for NamespaceTableRowGroupID.
+	NamespaceTableFamilyID = NamespaceTableRowGroupID
 
 	// NamespaceTablePrimaryIndexID is the id of the primary index of the
 	// namespace table.

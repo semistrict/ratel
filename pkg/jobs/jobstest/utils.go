@@ -12,6 +12,7 @@ package jobstest
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -20,6 +21,8 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
 )
+
+var familyClauseRE = regexp.MustCompile(`(?is),\s*FAMILY\s+(?:"[^"]+"|[A-Za-z_][A-Za-z0-9_]*)?\s*\([^)]*\)`)
 
 // EnvTablesType tells JobSchedulerTestEnv whether to use the system tables,
 // or to use test tables. System tables such as system.jobs may be affected
@@ -125,11 +128,12 @@ func (e *JobSchedulerTestEnv) IsExecutorEnabled(name string) bool {
 
 // GetScheduledJobsTableSchema returns schema for the scheduled jobs table.
 func GetScheduledJobsTableSchema(env scheduledjobs.JobSchedulerEnv) string {
-	if env.ScheduledJobsTableName() == "system.jobs" {
+	if env.ScheduledJobsTableName() == "system.scheduled_jobs" {
 		return systemschema.ScheduledJobsTableSchema
 	}
-	return strings.Replace(systemschema.ScheduledJobsTableSchema,
+	schema := strings.Replace(systemschema.ScheduledJobsTableSchema,
 		"system.scheduled_jobs", env.ScheduledJobsTableName(), 1)
+	return familyClauseRE.ReplaceAllString(schema, "")
 }
 
 // GetJobsTableSchema returns schema for the jobs table.
@@ -137,6 +141,7 @@ func GetJobsTableSchema(env scheduledjobs.JobSchedulerEnv) string {
 	if env.SystemJobsTableName() == "system.jobs" {
 		return systemschema.JobsTableSchema
 	}
-	return strings.Replace(systemschema.JobsTableSchema,
+	schema := strings.Replace(systemschema.JobsTableSchema,
 		"system.jobs", env.SystemJobsTableName(), 1)
+	return familyClauseRE.ReplaceAllString(schema, "")
 }

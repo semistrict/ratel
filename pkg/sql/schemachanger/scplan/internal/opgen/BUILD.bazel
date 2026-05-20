@@ -11,7 +11,6 @@ go_library(
         "opgen_column.go",
         "opgen_column_comment.go",
         "opgen_column_default_expression.go",
-        "opgen_column_family.go",
         "opgen_column_name.go",
         "opgen_column_not_null.go",
         "opgen_column_on_update_expression.go",

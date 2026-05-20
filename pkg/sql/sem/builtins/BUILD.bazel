@@ -154,6 +154,7 @@ go_library(
 
 go_test(
     name = "builtins_test",
+    tags = ["manual"],
     size = "medium",
     srcs = [
         "aggregate_builtins_test.go",

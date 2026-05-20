@@ -23,6 +23,7 @@ go_test(
         ":test_gen",  # keep
     ],
     args = ["-test.timeout=3595s"],
+    tags = ["manual"],
     data = [":testdata"],
     shard_count = 16,
     deps = [

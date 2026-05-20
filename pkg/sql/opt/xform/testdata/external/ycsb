@@ -25,22 +25,22 @@ UPDATE usertable SET field5 = 'field5data' WHERE ycsb_key = 'user123'
 ----
 update usertable
  ├── columns: <none>
- ├── fetch columns: ycsb_key:14 field5:20
+ ├── fetch columns: ycsb_key:14 field0:15 field1:16 field2:17 field3:18 field4:19 field5:20 field6:21 field7:22 field8:23 field9:24
  ├── update-mapping:
  │    └── field5_new:27 => field5:7
  ├── cardinality: [0 - 0]
  ├── volatile, mutations
  └── project
-      ├── columns: field5_new:27!null ycsb_key:14!null field5:20
+      ├── columns: field5_new:27!null ycsb_key:14!null field0:15 field1:16 field2:17 field3:18 field4:19 field5:20 field6:21 field7:22 field8:23 field9:24
       ├── cardinality: [0 - 1]
       ├── key: ()
-      ├── fd: ()-->(14,20,27)
+      ├── fd: ()-->(14-24,27)
       ├── scan usertable
-      │    ├── columns: ycsb_key:14!null field5:20
+      │    ├── columns: ycsb_key:14!null field0:15 field1:16 field2:17 field3:18 field4:19 field5:20 field6:21 field7:22 field8:23 field9:24
       │    ├── constraint: /14: [/'user123' - /'user123']
       │    ├── cardinality: [0 - 1]
       │    ├── key: ()
-      │    └── fd: ()-->(14,20)
+      │    └── fd: ()-->(14-24)
       └── projections
            └── 'field5data' [as=field5_new:27]
 
@@ -169,21 +169,21 @@ UPDATE usertable SET field5 = 'field5data' WHERE ycsb_key = 'user123'
 ----
 update usertable
  ├── columns: <none>
- ├── fetch columns: ycsb_key:14 field5:20
+ ├── fetch columns: ycsb_key:14 field0:15 field1:16 field2:17 field3:18 field4:19 field5:20 field6:21 field7:22 field8:23 field9:24
  ├── update-mapping:
  │    └── field5_new:27 => field5:7
  ├── cardinality: [0 - 0]
  ├── volatile, mutations
  └── project
-      ├── columns: field5_new:27!null ycsb_key:14!null field5:20
+      ├── columns: field5_new:27!null ycsb_key:14!null field0:15 field1:16 field2:17 field3:18 field4:19 field5:20 field6:21 field7:22 field8:23 field9:24
       ├── cardinality: [0 - 1]
       ├── key: ()
-      ├── fd: ()-->(14,20,27)
+      ├── fd: ()-->(14-24,27)
       ├── scan usertable
-      │    ├── columns: ycsb_key:14!null field5:20
+      │    ├── columns: ycsb_key:14!null field0:15 field1:16 field2:17 field3:18 field4:19 field5:20 field6:21 field7:22 field8:23 field9:24
       │    ├── constraint: /14: [/'user123' - /'user123']
       │    ├── cardinality: [0 - 1]
       │    ├── key: ()
-      │    └── fd: ()-->(14,20)
+      │    └── fd: ()-->(14-24)
       └── projections
            └── 'field5data' [as=field5_new:27]

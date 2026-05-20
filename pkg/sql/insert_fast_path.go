@@ -1,16 +1,12 @@
 // Copyright 2019 The Cockroach Authors.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License
+// included in the file licenses/BSL.txt.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// permissions and limitations under the License.
+// As of the Change Date specified in that file, in accordance with
+// the Business Source License, use of this software will be governed
+// by the Apache License, Version 2.0, included in the file
+// licenses/APL.txt.
 
 package sql
 
@@ -18,20 +14,23 @@ import (
 	"context"
 	"sync"
 
+	"github.com/cockroachdb/cockroach/pkg/keys"
+	"github.com/cockroachdb/cockroach/pkg/kv/kvpb"
+	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
+	"github.com/cockroachdb/cockroach/pkg/sql/opt/exec"
+	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
+	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
+	"github.com/cockroachdb/cockroach/pkg/sql/row"
+	"github.com/cockroachdb/cockroach/pkg/sql/rowenc"
+	"github.com/cockroachdb/cockroach/pkg/sql/sem/eval"
+	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/cockroachdb/cockroach/pkg/sql/span"
+	"github.com/cockroachdb/cockroach/pkg/util/intsets"
+	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/errors"
-	"github.com/semistrict/ratel/pkg/keys"
-	"github.com/semistrict/ratel/pkg/roachpb"
-	"github.com/semistrict/ratel/pkg/sql/catalog"
-	"github.com/semistrict/ratel/pkg/sql/catalog/colinfo"
-	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
-	"github.com/semistrict/ratel/pkg/sql/opt/exec"
-	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
-	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
-	"github.com/semistrict/ratel/pkg/sql/row"
-	"github.com/semistrict/ratel/pkg/sql/rowenc"
-	"github.com/semistrict/ratel/pkg/sql/sem/tree"
-	"github.com/semistrict/ratel/pkg/sql/span"
-	"github.com/semistrict/ratel/pkg/util/log"
 )
 
 var insertFastPathNodePool = sync.Pool{
@@ -74,15 +73,13 @@ type insertFastPathRun struct {
 	inputBuf tree.Datums
 
 	// fkBatch accumulates the FK existence checks.
-	fkBatch roachpb.BatchRequest
+	fkBatch kvpb.BatchRequest
 	// fkSpanInfo keeps track of information for each fkBatch.Request entry.
 	fkSpanInfo []insertFastPathFKSpanInfo
 
 	// fkSpanMap is used to de-duplicate FK existence checks. Only used if there
 	// is more than one input row.
 	fkSpanMap map[string]struct{}
-
-	actorEnsured bool
 }
 
 // insertFastPathFKSpanInfo records information about each Request in the
@@ -113,7 +110,7 @@ func (c *insertFastPathFKCheck) init(params runParams, actorName string) error {
 	codec := keys.MakeActorSQLCodec(params.ExecCfg().Codec, actorName)
 	c.keyPrefix = rowenc.MakeIndexKeyPrefix(codec, c.tabDesc.GetID(), c.idx.GetID())
 	c.spanBuilder.Init(params.EvalContext(), codec, c.tabDesc, c.idx)
-	c.spanSplitter = span.NoopSplitter()
+	c.spanSplitter = span.MakeSplitter(c.tabDesc, c.idx, intsets.Fast{} /* neededColOrdinals */)
 
 	if len(c.InsertCols) > idx.numLaxKeyCols {
 		return errors.AssertionFailedf(
@@ -195,9 +192,9 @@ func (r *insertFastPathRun) addFKChecks(
 			log.VEventf(ctx, 2, "FKScan %s", span)
 		}
 		reqIdx := len(r.fkBatch.Requests)
-		r.fkBatch.Requests = append(r.fkBatch.Requests, roachpb.RequestUnion{})
-		r.fkBatch.Requests[reqIdx].MustSetInner(&roachpb.ScanRequest{
-			RequestHeader: roachpb.RequestHeaderFromSpan(span),
+		r.fkBatch.Requests = append(r.fkBatch.Requests, kvpb.RequestUnion{})
+		r.fkBatch.Requests[reqIdx].MustSetInner(&kvpb.ScanRequest{
+			RequestHeader: kvpb.RequestHeaderFromSpan(span),
 		})
 		r.fkSpanInfo = append(r.fkSpanInfo, insertFastPathFKSpanInfo{
 			check:  c,
@@ -216,13 +213,14 @@ func (n *insertFastPathNode) runFKChecks(params runParams) error {
 	defer n.run.fkBatch.Reset()
 
 	// Run the FK checks batch.
-	br, err := params.p.txn.Send(params.ctx, n.run.fkBatch)
+	ba := n.run.fkBatch.ShallowCopy()
+	br, err := params.p.txn.Send(params.ctx, ba)
 	if err != nil {
 		return err.GoError()
 	}
 
 	for i := range br.Responses {
-		resp := br.Responses[i].GetInner().(*roachpb.ScanResponse)
+		resp := br.Responses[i].GetInner().(*kvpb.ScanResponse)
 		if len(resp.Rows) == 0 {
 			// No results for lookup; generate the violation error.
 			info := n.run.fkSpanInfo[i]
@@ -257,7 +255,7 @@ func (n *insertFastPathNode) startExec(params runParams) error {
 			}
 		}
 		maxSpans := len(n.run.fkChecks) * len(n.input)
-		n.run.fkBatch.Requests = make([]roachpb.RequestUnion, 0, maxSpans)
+		n.run.fkBatch.Requests = make([]kvpb.RequestUnion, 0, maxSpans)
 		n.run.fkSpanInfo = make([]insertFastPathFKSpanInfo, 0, maxSpans)
 		if len(n.input) > 1 {
 			n.run.fkSpanMap = make(map[string]struct{}, maxSpans)
@@ -292,7 +290,7 @@ func (n *insertFastPathNode) BatchedNext(params runParams) (bool, error) {
 		inputRow := n.run.inputRow(rowIdx)
 		for col, typedExpr := range tupleRow {
 			var err error
-			inputRow[col], err = typedExpr.Eval(params.EvalContext())
+			inputRow[col], err = eval.Expr(params.ctx, params.EvalContext(), typedExpr)
 			if err != nil {
 				err = interceptAlterColumnTypeParseError(n.run.insertCols, col, err)
 				return false, err

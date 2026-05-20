@@ -27,9 +27,11 @@ go_test(
         "main_test.go",
     ],
     args = ["-test.timeout=295s"],
+    tags = ["manual"],
     deps = [
         ":structlogging",
         "//pkg/base",
+        "//pkg/ccl",
         "//pkg/keys",
         "//pkg/kv/kvserver",
         "//pkg/roachpb",

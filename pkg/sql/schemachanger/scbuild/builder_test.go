@@ -247,10 +247,10 @@ type nodeEntries []nodeEntry
 func (n nodeEntries) Len() int { return len(n) }
 
 func (n nodeEntries) Less(i, j int) bool {
-	less, _ := screl.Schema.CompareOn([]rel.Attr{
-		screl.DescID, screl.ColumnID, screl.IndexID, screl.ConstraintID,
-		screl.ColumnFamilyID, screl.ReferencedDescID,
-	}, &n[i].node, &n[j].node)
+		less, _ := screl.Schema.CompareOn([]rel.Attr{
+			screl.DescID, screl.ColumnID, screl.IndexID, screl.ConstraintID,
+			screl.ReferencedDescID,
+		}, &n[i].node, &n[j].node)
 	return less
 }
 

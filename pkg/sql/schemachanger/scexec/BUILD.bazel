@@ -57,6 +57,7 @@ go_test(
         ":mock_scexec",  # keep
     ],
     args = ["-test.timeout=55s"],
+    tags = ["manual"],
     deps = [
         ":scexec",
         "//pkg/base",

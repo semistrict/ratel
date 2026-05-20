@@ -21,6 +21,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/isql"
 	"github.com/cockroachdb/cockroach/pkg/testutils"
 	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
+	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
 	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/errors"
@@ -73,6 +74,9 @@ func TestProfilerStorePlanDiagram(t *testing.T) {
 		*/
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.typ == jobspb.TypeBackup || tc.typ == jobspb.TypeRestore {
+				skip.IgnoreLint(t, "backup and restore plan diagram tests require CCL")
+			}
 			_, err := sqlDB.Exec(tc.sql)
 			require.NoError(t, err)
 

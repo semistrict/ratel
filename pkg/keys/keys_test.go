@@ -96,8 +96,8 @@ func TestActorKeyLayout(t *testing.T) {
 	if bytes.Compare(actorPrefix, ActorDataMax) >= 0 {
 		t.Fatalf("expected actor prefix %x to sort before actor data max %x", actorPrefix, ActorDataMax)
 	}
-	if bytes.Compare(ActorDataMax, ScratchRangeMin) != 0 {
-		t.Fatalf("expected scratch range min %x to follow actor data max %x", ScratchRangeMin, ActorDataMax)
+	if bytes.Compare(ScratchRangeMin, ActorDataMin) >= 0 {
+		t.Fatalf("expected scratch range min %x to sort before actor data min %x", ScratchRangeMin, ActorDataMin)
 	}
 }
 

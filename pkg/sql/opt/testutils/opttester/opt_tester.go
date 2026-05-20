@@ -1138,6 +1138,16 @@ func (f *Flags) Set(arg datadriven.CmdArg) error {
 	case "skip-race":
 		f.SkipRace = true
 
+	case "use-multi-col-stats":
+		if len(arg.Vals) != 1 {
+			return fmt.Errorf("use-multi-col-stats requires one argument")
+		}
+		useMultiColStats, err := strconv.ParseBool(arg.Vals[0])
+		if err != nil {
+			return err
+		}
+		f.evalCtx.SessionData().OptimizerUseMultiColStats = useMultiColStats
+
 	default:
 		return fmt.Errorf("unknown argument: %s", arg.Key)
 	}

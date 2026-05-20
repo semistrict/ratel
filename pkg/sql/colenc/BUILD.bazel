@@ -49,10 +49,12 @@ go_test(
         "main_test.go",
     ],
     args = ["-test.timeout=295s"],
+    tags = ["manual"],
     data = ["//c-deps:libgeos"],
     deps = [
         ":colenc",
         "//pkg/base",
+        "//pkg/ccl",
         "//pkg/cli/clisqlclient",
         "//pkg/col/coldata",
         "//pkg/col/coldataext",

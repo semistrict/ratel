@@ -108,7 +108,7 @@ parse
 SELECT~~+~++~bd(*)
 ----
 SELECT ~(~(~(~bd(*)))) -- normalized!
-SELECT (~((~((~((~((bd)((*)))))))))) -- fully parenthesized
+SELECT (~((~((~((~(bd((*)))))))))) -- fully parenthesized
 SELECT ~(~(~(~bd(*)))) -- literals removed
 SELECT ~(~(~(~bd(*)))) -- identifiers removed
 
@@ -196,7 +196,7 @@ parse
 SELECT FAMILY (x)
 ----
 SELECT family(x) -- normalized!
-SELECT ((family)((x))) -- fully parenthesized
+SELECT (family((x))) -- fully parenthesized
 SELECT family(x) -- literals removed
 SELECT family(_) -- identifiers removed
 
@@ -549,7 +549,7 @@ SELECT _ ?& _ -- identifiers removed
 
 ## The following JSON expressions
 ## do not anonymize properly, see
-## issue https://github.com/semistrict/ratel/issues/60673
+## issue https://github.com/cockroachdb/cockroach/issues/60673
 
 parse
 SELECT a->'x'

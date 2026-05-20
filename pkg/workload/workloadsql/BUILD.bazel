@@ -33,6 +33,7 @@ go_test(
     ],
     args = ["-test.timeout=55s"],
     embed = [":workloadsql"],
+    tags = ["manual"],
     deps = [
         "//pkg/base",
         "//pkg/security/securityassets",

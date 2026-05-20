@@ -605,7 +605,7 @@ func NewColIndexJoin(
 	}
 
 	spanAssembler := colexecspan.NewColSpanAssembler(
-		flowCtx.TableDataCodecForActor(spec.ActorName), allocator, &spec.FetchSpec, inputTypes,
+		flowCtx.Codec(), allocator, &spec.FetchSpec, spec.SplitFamilyIDs, inputTypes,
 	)
 
 	op := &ColIndexJoin{

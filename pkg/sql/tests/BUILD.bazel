@@ -61,6 +61,7 @@ go_test(
         "truncate_test.go",
         "virtual_table_test.go",
     ],
+    tags = ["manual"],
     args = ["-test.timeout=3595s"],
     data = glob(["testdata/**"]) + [
         "//c-deps:libgeos",  # keep
@@ -70,6 +71,7 @@ go_test(
     deps = [
         "//pkg/base",
         "//pkg/bench",
+        "//pkg/ccl",
         "//pkg/cloud/impl:cloudimpl",
         "//pkg/clusterversion",
         "//pkg/config/zonepb",

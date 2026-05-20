@@ -94,7 +94,6 @@ var ycsbMeta = workload.Meta{
 	Name:         `ycsb`,
 	Description:  `YCSB is the Yahoo! Cloud Serving Benchmark`,
 	Version:      `1.0.0`,
-	PublicFacing: true,
 	New: func() workload.Generator {
 		g := &ycsb{}
 		g.flags.FlagSet = pflag.NewFlagSet(`ycsb`, pflag.ContinueOnError)

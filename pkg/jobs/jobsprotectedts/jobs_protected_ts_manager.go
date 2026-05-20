@@ -14,6 +14,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/cockroachdb/cockroach/pkg/clusterversion"
 	"github.com/cockroachdb/cockroach/pkg/config"
 	"github.com/cockroachdb/cockroach/pkg/jobs"
 	"github.com/cockroachdb/cockroach/pkg/jobs/jobspb"
@@ -121,8 +122,9 @@ func (p *Manager) TryToProtectBeforeGC(
 		// Determine what the GC interval is on the table, which will help us
 		// figure out when to apply a protected timestamp, as a percentage of this
 		// time.
-		zoneCfg, err := systemConfig.GetZoneConfigForObject(p.codec,
-			config.ObjectID(tableDesc.GetID()))
+		zoneCfg, err := systemConfig.GetZoneConfigForObject(
+			p.codec, clusterversion.ClusterVersion{}, config.ObjectID(tableDesc.GetID()),
+		)
 		if err != nil {
 			return err
 		}

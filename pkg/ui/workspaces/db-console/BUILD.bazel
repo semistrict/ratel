@@ -162,10 +162,8 @@ stylint_bin.stylint_test(
         "styl",
     ],
     chdir = package_name(),
-    copy_data_to_bin = False,
     data = [
         ".stylintrc",
-        "fonts",
         ":node_modules",
     ] + glob([
         "fonts/**",
@@ -186,7 +184,6 @@ eslint_bin.eslint_test(
         "ccl",
     ],
     chdir = package_name(),
-    copy_data_to_bin = False,
     data = [
         ".eslintrc.json",
         ".prettierignore",
@@ -235,7 +232,6 @@ jest_test(
     ],
     chdir = package_name(),
     config = ":jest.config.js",
-    copy_data_to_bin = False,
     data = [
         ".eslintrc.json",
         "babel.config.js",

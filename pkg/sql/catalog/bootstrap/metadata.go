@@ -24,19 +24,20 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/cockroachdb/cockroach/pkg/config"
+	"github.com/cockroachdb/cockroach/pkg/config/zonepb"
+	"github.com/cockroachdb/cockroach/pkg/keys"
+	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catalogkeys"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog/systemschema"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog/tabledesc"
+	"github.com/cockroachdb/cockroach/pkg/sql/sem/catconstants"
+	"github.com/cockroachdb/cockroach/pkg/util/iterutil"
+	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
 	"github.com/cockroachdb/errors"
-	"github.com/semistrict/ratel/pkg/config/zonepb"
-	"github.com/semistrict/ratel/pkg/keys"
-	"github.com/semistrict/ratel/pkg/roachpb"
-	"github.com/semistrict/ratel/pkg/sql/catalog"
-	"github.com/semistrict/ratel/pkg/sql/catalog/catalogkeys"
-	"github.com/semistrict/ratel/pkg/sql/catalog/descpb"
-	"github.com/semistrict/ratel/pkg/sql/catalog/systemschema"
-	"github.com/semistrict/ratel/pkg/sql/catalog/tabledesc"
-	"github.com/semistrict/ratel/pkg/sql/sem/tree"
-	"github.com/semistrict/ratel/pkg/util/iterutil"
-	"github.com/semistrict/ratel/pkg/util/log"
-	"github.com/semistrict/ratel/pkg/util/protoutil"
 )
 
 // MetadataSchema is used to construct the initial sql schema for a new
@@ -79,6 +80,10 @@ func MakeMetadataSchema(
 // would be okay, but the number of tests that'd need to be rewritten per new
 // system table would go up a bunch.
 const firstNonSystemDescriptorID = 100
+
+// NumSystemTablesForSystemTenant is the number of system tables present in a
+// freshly bootstrapped system tenant.
+const NumSystemTablesForSystemTenant = 51
 
 // AddDescriptor adds a new non-config descriptor to the system schema.
 func (ms *MetadataSchema) AddDescriptor(desc catalog.Descriptor) {
@@ -123,10 +128,7 @@ func (ms *MetadataSchema) AddDescriptorForNonSystemTenant(desc catalog.Descripto
 func (ms MetadataSchema) ForEachCatalogDescriptor(fn func(desc catalog.Descriptor) error) error {
 	for _, desc := range ms.descs {
 		if err := fn(desc); err != nil {
-			if iterutil.Done(err) {
-				return nil
-			}
-			return err
+			return iterutil.Map(err)
 		}
 	}
 	return nil
@@ -163,7 +165,18 @@ func (ms MetadataSchema) GetInitialValues() ([]roachpb.KeyValue, []roachpb.RKey)
 	{
 		value := roachpb.Value{}
 		value.SetInt(int64(ms.FirstNonSystemDescriptorID()))
-		add(ms.codec.DescIDSequenceKey(), value)
+		add(ms.codec.SequenceKey(keys.DescIDSequenceID), value)
+		if ms.codec.ForSystemTenant() {
+			legacyValue := roachpb.Value{}
+			legacyValue.SetInt(int64(ms.FirstNonSystemDescriptorID()))
+			add(keys.LegacyDescIDGenerator, legacyValue)
+		}
+	}
+	{
+		publicSchemaValue := roachpb.Value{}
+		publicSchemaValue.SetInt(int64(keys.SystemPublicSchemaID))
+		nameInfo := descpb.NameInfo{ParentID: keys.SystemDatabaseID, Name: catconstants.PublicSchemaName}
+		add(catalogkeys.EncodeNameKey(ms.codec, &nameInfo), publicSchemaValue)
 	}
 
 	// Generate initial values for system databases and tables, which have
@@ -172,16 +185,7 @@ func (ms MetadataSchema) GetInitialValues() ([]roachpb.KeyValue, []roachpb.RKey)
 		// Create name metadata key.
 		nameValue := roachpb.Value{}
 		nameValue.SetInt(int64(desc.GetID()))
-		if desc.GetParentID() != keys.RootNamespaceID {
-			add(catalogkeys.MakePublicObjectNameKey(ms.codec, desc.GetParentID(), desc.GetName()), nameValue)
-		} else {
-			// Initializing a database. Databases must be initialized with
-			// the public schema, as all tables are scoped under the public schema.
-			add(catalogkeys.MakeDatabaseNameKey(ms.codec, desc.GetName()), nameValue)
-			publicSchemaValue := roachpb.Value{}
-			publicSchemaValue.SetInt(int64(keys.SystemPublicSchemaID))
-			add(catalogkeys.MakeSchemaNameKey(ms.codec, desc.GetID(), tree.PublicSchema), publicSchemaValue)
-		}
+		add(catalogkeys.EncodeNameKey(ms.codec, desc), nameValue)
 
 		// Create descriptor metadata key.
 		descValue := roachpb.Value{}
@@ -189,7 +193,7 @@ func (ms MetadataSchema) GetInitialValues() ([]roachpb.KeyValue, []roachpb.RKey)
 			log.Fatalf(context.TODO(), "could not marshal %v", desc)
 		}
 		add(catalogkeys.MakeDescMetadataKey(ms.codec, desc.GetID()), descValue)
-		if desc.GetID() > keys.MaxSystemConfigDescID {
+		if desc.GetID() > keys.DeprecatedMaxSystemConfigDescID {
 			splits = append(splits, roachpb.RKey(ms.codec.TablePrefix(uint32(desc.GetID()))))
 		}
 	}
@@ -363,10 +367,11 @@ func addSystemDescriptorsToSchema(target *MetadataSchema) {
 	// Only add the descriptor ID sequence if this is a non-system tenant.
 	// System tenants use the global descIDGenerator key. See #48513.
 	target.AddDescriptorForNonSystemTenant(systemschema.DescIDSequence)
+	target.AddDescriptorForSystemTenant(systemschema.TenantIDSequence)
 	target.AddDescriptorForSystemTenant(systemschema.TenantsTable)
 
 	// Add all the other system tables.
-	target.AddDescriptor(systemschema.LeaseTable)
+	target.AddDescriptor(systemschema.LeaseTable())
 	target.AddDescriptor(systemschema.EventLogTable)
 	target.AddDescriptor(systemschema.RangeEventTable)
 	target.AddDescriptor(systemschema.UITable)
@@ -398,7 +403,7 @@ func addSystemDescriptorsToSchema(target *MetadataSchema) {
 	// Tables introduced in 20.2.
 
 	target.AddDescriptor(systemschema.ScheduledJobsTable)
-	target.AddDescriptor(systemschema.SqllivenessTable)
+	target.AddDescriptor(systemschema.SqllivenessTable())
 	target.AddDescriptor(systemschema.MigrationsTable)
 
 	// Tables introduced in 21.1.
@@ -411,15 +416,15 @@ func addSystemDescriptorsToSchema(target *MetadataSchema) {
 	target.AddDescriptor(systemschema.TransactionStatisticsTable)
 	target.AddDescriptor(systemschema.DatabaseRoleSettingsTable)
 	target.AddDescriptorForSystemTenant(systemschema.TenantUsageTable)
-	target.AddDescriptor(systemschema.SQLInstancesTable)
+	target.AddDescriptor(systemschema.SQLInstancesTable())
 	target.AddDescriptorForSystemTenant(systemschema.SpanConfigurationsTable)
 
 	// Tables introduced in 22.1.
 
 	target.AddDescriptorForSystemTenant(systemschema.TenantSettingsTable)
 	target.AddDescriptorForNonSystemTenant(systemschema.SpanCountTable)
-	target.AddDescriptor(systemschema.WasmFunctionsTable)
 	target.AddDescriptor(systemschema.ActorsTable)
+	target.AddDescriptor(systemschema.SystemJobInfoTable)
 
 	// Adding a new system table? It should be added here to the metadata schema,
 	// and also created as a migration for older clusters.
@@ -441,7 +446,7 @@ func createZoneConfigKV(
 		panic(errors.NewAssertionErrorWithWrappedErrf(err, "could not marshal ZoneConfig for ID: %d", keyID))
 	}
 	return roachpb.KeyValue{
-		Key:   codec.ZoneKey(uint32(keyID)),
+		Key:   config.MakeZoneKey(codec, descpb.ID(keyID)),
 		Value: value,
 	}
 }

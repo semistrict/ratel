@@ -758,15 +758,15 @@ type Pebble struct {
 
 	db *pebble.DB
 
-	closed       bool
-	readOnly     bool
-	path         string
-	auxDir       string
-	ballastPath  string
-	ballastSize  int64
-	maxSize      base.StoreSize
-	attrs        roachpb.Attributes
-	properties   roachpb.StoreProperties
+	closed          bool
+	readOnly        bool
+	path            string
+	auxDir          string
+	ballastPath     string
+	ballastSize     int64
+	maxSize         base.StoreSize
+	attrs           roachpb.Attributes
+	properties      roachpb.StoreProperties
 	settings        *cluster.Settings
 	encryption      *EncryptionEnv
 	fileLock        *pebble.Lock
@@ -964,7 +964,7 @@ func NewPebble(ctx context.Context, cfg PebbleConfig) (p *Pebble, err error) {
 	var filesystemCloser io.Closer
 	opts.FS, filesystemCloser = wrapFilesystemMiddleware(opts)
 	defer func() {
-		if err != nil {
+		if err != nil && filesystemCloser != nil {
 			filesystemCloser.Close()
 		}
 	}()

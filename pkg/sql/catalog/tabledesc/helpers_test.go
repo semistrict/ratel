@@ -72,6 +72,8 @@ func GetPostDeserializationChanges(
 	return imm.GetPostDeserializationChanges(), nil
 }
 
+var FitColumnToFamily = fitColumnToFamily
+
 func TestingMakeColumn(
 	direction descpb.DescriptorMutation_Direction, desc *descpb.ColumnDescriptor,
 ) catalog.Column {

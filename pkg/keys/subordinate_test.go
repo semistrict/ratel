@@ -174,7 +174,9 @@ func TestSubordinateKeyTenantPrefix(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 
 	// Verify subordinate keys work correctly with tenant prefixes.
-	tenantCodec := MakeSQLCodec(roachpb.MakeTenantID(5))
+	tenantID, err := roachpb.MakeTenantID(5)
+	require.NoError(t, err)
+	tenantCodec := MakeSQLCodec(tenantID)
 	pkPrefix := encoding.EncodeUvarintAscending(tenantCodec.IndexPrefix(42, 1), 7)
 	rowKey := MakeFamilyKey(pkPrefix, 0)
 

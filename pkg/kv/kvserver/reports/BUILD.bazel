@@ -43,6 +43,7 @@ go_library(
 go_test(
     name = "reports_test",
     size = "medium",
+    tags = ["manual"],
     srcs = [
         "constraint_stats_report_test.go",
         "critical_localities_report_test.go",

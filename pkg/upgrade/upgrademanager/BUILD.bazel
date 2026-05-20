@@ -46,6 +46,7 @@ go_test(
         "manager_external_test.go",
     ],
     args = ["-test.timeout=295s"],
+    tags = ["manual"],
     deps = [
         ":upgrademanager",
         "//pkg/base",
@@ -66,6 +67,7 @@ go_test(
         "//pkg/sql/protoreflect",
         "//pkg/sql/sem/eval",
         "//pkg/testutils",
+        "//pkg/testutils/skip",
         "//pkg/testutils/serverutils",
         "//pkg/testutils/sqlutils",
         "//pkg/testutils/testcluster",

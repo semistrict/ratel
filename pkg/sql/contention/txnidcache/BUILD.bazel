@@ -28,6 +28,7 @@ go_library(
 
 go_test(
     name = "txnidcache_test",
+    tags = ["manual"],
     srcs = [
         "fifo_cache_test.go",
         "main_test.go",

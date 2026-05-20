@@ -561,7 +561,8 @@ CREATE TABLE pq (
   p INT,
   q INT,
   other INT,
-  UNIQUE(p,q)
+  UNIQUE(p,q),
+  FAMILY (k), FAMILY (p), FAMILY (q), FAMILY (other)
 )
 ----
 
@@ -571,6 +572,7 @@ CREATE TABLE cpq (
   p INT DEFAULT 4,
   q INT DEFAULT 8,
   other INT,
+  FAMILY (c), FAMILY (p), FAMILY (q), FAMILY (other),
   CONSTRAINT fk FOREIGN KEY (p,q) REFERENCES pq(p,q) MATCH SIMPLE
 )
 ----

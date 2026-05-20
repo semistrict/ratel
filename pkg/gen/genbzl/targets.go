@@ -78,7 +78,6 @@ in $og - filter(".*:.*(-gen|gen-).*", $og)`,
 		target: "schemachanger",
 		query: `
 kind("generated file", //pkg/sql/schemachanger/...:*)
-  + kind("generated file", //pkg/ccl/schemachangerccl:*)
   - labels("out", kind("_gomock_prog_gen rule", //pkg/sql/schemachanger/...:*))
 `,
 	},

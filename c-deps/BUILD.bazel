@@ -121,18 +121,21 @@ cmake(
     name = "libgeos_foreign",
     cache_entries = select({
         "@io_bazel_rules_go//go/platform:windows": {
+            "BUILD_GEOSOP": "OFF",
             "CMAKE_BUILD_TYPE": "Release",
             "CMAKE_C_FLAGS": "-fPIC",
             "CMAKE_CXX_FLAGS": "-fPIC",
             "CMAKE_SYSTEM_NAME": "Windows",
         },
         "@io_bazel_rules_go//go/platform:darwin": {
+            "BUILD_GEOSOP": "OFF",
             "CMAKE_BUILD_TYPE": "Release",
             "CMAKE_C_FLAGS": "-fPIC",
             "CMAKE_CXX_FLAGS": "-fPIC",
             "CMAKE_SYSTEM_NAME": "Darwin",
         },
         "//conditions:default": {
+            "BUILD_GEOSOP": "OFF",
             "CMAKE_BUILD_TYPE": "Release",
             "CMAKE_C_FLAGS": "-fPIC",
             "CMAKE_CXX_FLAGS": "-fPIC",
@@ -184,21 +187,21 @@ cmake(
     }),
     postfix_script = "mkdir -p libgeos/lib\n" + select({
         "//build/toolchains:is_cross_macos": (
-            "cp -L lib/libgeos.3.8.1.dylib $INSTALLDIR/lib/libgeos.dylib\n" +
-            "PREFIX=$($OTOOL -D $INSTALLDIR/lib/libgeos_c.dylib | tail -n1 | rev | cut -d/ -f2- | rev)\n" +
-            "$CMAKE_INSTALL_NAME_TOOL -id @rpath/libgeos.3.8.1.dylib $INSTALLDIR/lib/libgeos.dylib\n" +
-            "$CMAKE_INSTALL_NAME_TOOL -id @rpath/libgeos_c.1.dylib $INSTALLDIR/lib/libgeos_c.dylib\n" +
-            "$CMAKE_INSTALL_NAME_TOOL -change $PREFIX/libgeos.3.8.1.dylib @rpath/libgeos.3.8.1.dylib $INSTALLDIR/lib/libgeos_c.dylib\n"
+            "cp -L lib/libgeos.3.14.1.dylib $$INSTALLDIR/lib/libgeos.dylib\n" +
+            "PREFIX=$$($$OTOOL -D $$INSTALLDIR/lib/libgeos_c.dylib | tail -n1 | rev | cut -d/ -f2- | rev)\n" +
+            "$$CMAKE_INSTALL_NAME_TOOL -id @rpath/libgeos.3.14.1.dylib $$INSTALLDIR/lib/libgeos.dylib\n" +
+            "$$CMAKE_INSTALL_NAME_TOOL -id @rpath/libgeos_c.1.dylib $$INSTALLDIR/lib/libgeos_c.dylib\n" +
+            "$$CMAKE_INSTALL_NAME_TOOL -change $$PREFIX/libgeos.3.14.1.dylib @rpath/libgeos.3.14.1.dylib $$INSTALLDIR/lib/libgeos_c.dylib\n"
         ),
-        "@io_bazel_rules_go//go/platform:darwin": "cp -L lib/libgeos.3.8.1.dylib $INSTALLDIR/lib/libgeos.dylib",
+        "@io_bazel_rules_go//go/platform:darwin": "cp -L lib/libgeos.3.14.1.dylib $$INSTALLDIR/lib/libgeos.dylib",
         "@io_bazel_rules_go//go/platform:windows": "",
         "//build/toolchains:is_cross_linux": (
-            "cp -L lib/libgeos.so.3.8.1 $INSTALLDIR/lib/libgeos.so\n" +
-            "patchelf --set-rpath /usr/local/lib/cockroach/ $INSTALLDIR/lib/libgeos_c.so\n" +
-            "patchelf --set-soname libgeos.so $INSTALLDIR/lib/libgeos.so\n" +
-            "patchelf --replace-needed libgeos.so.3.8.1 libgeos.so $INSTALLDIR/lib/libgeos_c.so\n"
+            "cp -L lib/libgeos.so.3.14.1 $$INSTALLDIR/lib/libgeos.so\n" +
+            "patchelf --set-rpath /usr/local/lib/cockroach/ $$INSTALLDIR/lib/libgeos_c.so\n" +
+            "patchelf --set-soname libgeos.so $$INSTALLDIR/lib/libgeos.so\n" +
+            "patchelf --replace-needed libgeos.so.3.14.1 libgeos.so $$INSTALLDIR/lib/libgeos_c.so\n"
         ),
-        "//conditions:default": "cp -L lib/libgeos.so.3.8.1 $INSTALLDIR/lib/libgeos.so",
+        "//conditions:default": "cp -L lib/libgeos.so.3.14.1 $$INSTALLDIR/lib/libgeos.so",
     }),
     targets = ["geos_c"],
     visibility = ["//visibility:public"],
@@ -208,11 +211,8 @@ cdep_alias("libgeos")
 
 configure_make(
     name = "libkrb5_foreign",
-    autoreconf = True,
-    autoreconf_directory = "src",
-    autoreconf_options = [
-        "-Wno-obsolete",
-    ],
+    autogen = True,
+    autogen_command = "autogen.sh",
     configure_command = "src/configure",
     configure_in_place = True,
     configure_options = [
@@ -244,6 +244,7 @@ configure_make(
             "ac_cv_printf_positional": "yes",
         },
         "//conditions:default": {
+            "AR": "",
             "AUTOM4TE": "$(execpath :autom4te)",
         },
     }),

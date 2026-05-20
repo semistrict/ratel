@@ -18,6 +18,7 @@ go_library(
         "//pkg/sql/catalog/fetchpb",
         "//pkg/sql/inverted",
         "//pkg/sql/opt/constraint",
+        "//pkg/sql/opt/exec",
         "//pkg/sql/rowenc",
         "//pkg/sql/rowenc/keyside",
         "//pkg/sql/sem/eval",
@@ -40,6 +41,7 @@ go_test(
     deps = [
         ":span",
         "//pkg/keys",
+        "//pkg/roachpb",
         "//pkg/security/securityassets",
         "//pkg/security/securitytest",
         "//pkg/server",

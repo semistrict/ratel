@@ -56,6 +56,9 @@ func (i InfoStorage) checkClaimSession(ctx context.Context) error {
 		return errors.Errorf(
 			"expected session %q for job ID %d but found none", i.j.Session().ID(), i.j.ID())
 	}
+	if row[0] == tree.DNull {
+		return nil
+	}
 
 	storedSession := []byte(*row[0].(*tree.DBytes))
 	if !bytes.Equal(storedSession, i.j.Session().ID().UnsafeBytes()) {

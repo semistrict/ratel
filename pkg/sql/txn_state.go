@@ -1,16 +1,12 @@
 // Copyright 2017 The Cockroach Authors.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License
+// included in the file licenses/BSL.txt.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// permissions and limitations under the License.
+// As of the Change Date specified in that file, in accordance with
+// the Business Source License, use of this software will be governed
+// by the Apache License, Version 2.0, included in the file
+// licenses/APL.txt.
 
 package sql
 
@@ -19,7 +15,6 @@ import (
 	"time"
 
 	"github.com/cockroachdb/cockroach/pkg/kv"
-	"github.com/cockroachdb/cockroach/pkg/multitenant"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
@@ -27,15 +22,16 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/sessiondatapb"
 	"github.com/cockroachdb/cockroach/pkg/storage/enginepb"
-	"github.com/cockroachdb/cockroach/pkg/util/admission"
 	"github.com/cockroachdb/cockroach/pkg/util/hlc"
 	"github.com/cockroachdb/cockroach/pkg/util/metric"
 	"github.com/cockroachdb/cockroach/pkg/util/mon"
 	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
 	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
 	"github.com/cockroachdb/cockroach/pkg/util/tracing"
+	"github.com/cockroachdb/cockroach/pkg/util/tracing/tracingpb"
 	"github.com/cockroachdb/cockroach/pkg/util/uuid"
 	"github.com/cockroachdb/errors"
+	"github.com/cockroachdb/redact"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -65,6 +61,16 @@ type txnState struct {
 		// stmtCount keeps track of the number of statements that the transaction
 		// has executed.
 		stmtCount int
+
+		// autoRetryReason records the error causing an auto-retryable error event if
+		// the current transaction is being automatically retried. This is used in
+		// statement traces to give more information in statement diagnostic bundles.
+		autoRetryReason error
+
+		// autoRetryCounter keeps track of the which iteration of a transaction
+		// auto-retry we're currently in. It's 0 whenever the transaction state is not
+		// stateOpen.
+		autoRetryCounter int32
 	}
 
 	// connCtx is the connection's context. This is the parent of Ctx.
@@ -137,20 +143,6 @@ const (
 	upgradedExplicitTxn
 )
 
-func newSQLTxnWithSteppingEnabled(
-	ctx context.Context, db *kv.DB, gatewayNodeID roachpb.NodeID, qualityOfService sessiondatapb.QoSLevel,
-) *kv.Txn {
-	source := roachpb.AdmissionHeader_FROM_SQL
-	if multitenant.HasTenantCostControlExemption(ctx) {
-		source = roachpb.AdmissionHeader_OTHER
-	}
-	txn := kv.NewTxnWithAdmissionControl(
-		ctx, db, gatewayNodeID, source, admission.WorkPriority(qualityOfService),
-	)
-	_ = txn.ConfigureStepping(ctx, kv.SteppingEnabled)
-	return txn
-}
-
 // resetForNewSQLTxn (re)initializes the txnState for a new transaction.
 // It creates a new client.Txn and initializes it using the session defaults
 // and returns the ID of the new transaction.
@@ -206,7 +198,7 @@ func (ts *txnState) resetForNewSQLTxn(
 	duration := traceTxnThreshold.Get(&tranCtx.settings.SV)
 	if alreadyRecording || duration > 0 {
 		ts.Ctx, sp = tracing.EnsureChildSpan(connCtx, tranCtx.tracer, opName,
-			tracing.WithRecording(tracing.RecordingVerbose))
+			tracing.WithRecording(tracingpb.RecordingVerbose))
 	} else if ts.testingForceRealTracingSpans {
 		ts.Ctx, sp = tracing.EnsureChildSpan(connCtx, tranCtx.tracer, opName, tracing.WithForceRealSpan())
 	} else {
@@ -221,25 +213,32 @@ func (ts *txnState) resetForNewSQLTxn(
 		ts.recordingStart = timeutil.Now()
 	}
 
-	ts.mon.Start(ts.Ctx, tranCtx.connMon, mon.BoundAccount{} /* reserved */)
-	ts.mu.Lock()
-	ts.mu.stmtCount = 0
-	if txn == nil {
-		ts.mu.txn = newSQLTxnWithSteppingEnabled(ts.Ctx, tranCtx.db, tranCtx.nodeIDOrZero, qualityOfService)
-		ts.mu.txn.SetDebugName(opName)
-		if err := ts.setPriorityLocked(priority); err != nil {
-			panic(err)
+	ts.mon.StartNoReserved(ts.Ctx, tranCtx.connMon)
+	txnID = func() (txnID uuid.UUID) {
+		ts.mu.Lock()
+		defer ts.mu.Unlock()
+
+		ts.mu.stmtCount = 0
+		if txn == nil {
+			ts.mu.txn = kv.NewTxnWithSteppingEnabled(ts.Ctx, tranCtx.db, tranCtx.nodeIDOrZero, qualityOfService)
+			ts.mu.txn.SetDebugName(opName)
+			if err := ts.setPriorityLocked(priority); err != nil {
+				panic(err)
+			}
+		} else {
+			if priority != roachpb.UnspecifiedUserPriority {
+				panic(errors.AssertionFailedf("unexpected priority when using an existing txn: %s", priority))
+			}
+			ts.mu.txn = txn
 		}
-	} else {
-		if priority != roachpb.UnspecifiedUserPriority {
-			panic(errors.AssertionFailedf("unexpected priority when using an existing txn: %s", priority))
-		}
-		ts.mu.txn = txn
-	}
-	txnID = ts.mu.txn.ID()
-	sp.SetTag("txn", attribute.StringValue(ts.mu.txn.ID().String()))
-	ts.mu.txnStart = timeutil.Now()
-	ts.mu.Unlock()
+
+		txnID = ts.mu.txn.ID()
+		sp.SetTag("txn", attribute.StringValue(txnID.String()))
+		ts.mu.txnStart = timeutil.Now()
+		ts.mu.autoRetryCounter = 0
+		ts.mu.autoRetryReason = nil
+		return txnID
+	}()
 	if historicalTimestamp != nil {
 		if err := ts.setHistoricalTimestamp(ts.Ctx, *historicalTimestamp); err != nil {
 			panic(err)
@@ -256,7 +255,7 @@ func (ts *txnState) resetForNewSQLTxn(
 // the current SQL txn. This needs to be called before resetForNewSQLTxn() is
 // called for starting another SQL txn. The ID of the finalized transaction is
 // returned.
-func (ts *txnState) finishSQLTxn() (txnID uuid.UUID) {
+func (ts *txnState) finishSQLTxn() (txnID uuid.UUID, commitTimestamp hlc.Timestamp) {
 	ts.mon.Stop(ts.Ctx)
 	sp := tracing.SpanFromContext(ts.Ctx)
 	if sp == nil {
@@ -264,18 +263,31 @@ func (ts *txnState) finishSQLTxn() (txnID uuid.UUID) {
 	}
 
 	if ts.recordingThreshold > 0 {
-		logTraceAboveThreshold(ts.Ctx, sp.GetRecording(sp.RecordingType()), "SQL txn", ts.recordingThreshold, timeutil.Since(ts.recordingStart))
+		if elapsed := timeutil.Since(ts.recordingStart); elapsed >= ts.recordingThreshold {
+			logTraceAboveThreshold(ts.Ctx,
+				sp.GetRecording(sp.RecordingType()), /* recording */
+				"SQL txn",                           /* opName */
+				redact.Sprint(redact.Safe(txnID)),   /* detail */
+				ts.recordingThreshold,               /* threshold */
+				elapsed,                             /* elapsed */
+			)
+		}
 	}
 
 	sp.Finish()
 	ts.Ctx = nil
-	ts.mu.Lock()
-	txnID = ts.mu.txn.ID()
-	ts.mu.txn = nil
-	ts.mu.txnStart = time.Time{}
-	ts.mu.Unlock()
 	ts.recordingThreshold = 0
-	return txnID
+	return func() (txnID uuid.UUID, timestamp hlc.Timestamp) {
+		ts.mu.Lock()
+		defer ts.mu.Unlock()
+		txnID = ts.mu.txn.ID()
+		if ts.mu.txn.IsCommitted() {
+			timestamp = ts.mu.txn.CommitTimestamp()
+		}
+		ts.mu.txn = nil
+		ts.mu.txnStart = time.Time{}
+		return txnID, timestamp
+	}()
 }
 
 // finishExternalTxn is a stripped-down version of finishSQLTxn used by
@@ -296,8 +308,8 @@ func (ts *txnState) finishExternalTxn() {
 	}
 	ts.Ctx = nil
 	ts.mu.Lock()
+	defer ts.mu.Unlock()
 	ts.mu.txn = nil
-	ts.mu.Unlock()
 }
 
 func (ts *txnState) setHistoricalTimestamp(
@@ -389,6 +401,11 @@ type txnEvent struct {
 	// When a transaction commits or aborts, txnID is set to the ID of the
 	// transaction that just finished execution.
 	txnID uuid.UUID
+
+	// commitTimestamp is populated with the timestamp of the recently finished
+	// transaction corresponding to txnID. It will only be populated if that
+	// transaction committed.
+	commitTimestamp hlc.Timestamp
 }
 
 //go:generate stringer -type=txnEventType

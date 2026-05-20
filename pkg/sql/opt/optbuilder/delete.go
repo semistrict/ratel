@@ -1,24 +1,20 @@
 // Copyright 2018 The Cockroach Authors.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License
+// included in the file licenses/BSL.txt.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// permissions and limitations under the License.
+// As of the Change Date specified in that file, in accordance with
+// the Business Source License, use of this software will be governed
+// by the Apache License, Version 2.0, included in the file
+// licenses/APL.txt.
 
 package optbuilder
 
 import (
-	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
-	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
-	"github.com/semistrict/ratel/pkg/sql/privilege"
-	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
+	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
+	"github.com/cockroachdb/cockroach/pkg/sql/privilege"
+	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 )
 
 // buildDelete builds a memo group for a DeleteOp expression, which deletes all
@@ -45,8 +41,13 @@ func (b *Builder) buildDelete(del *tree.Delete, inScope *scope) (outScope *scope
 	// Find which table we're working on, check the permissions.
 	tab, depName, alias, refColumns := b.resolveTableForMutation(del.Table, privilege.DELETE)
 
-	// Extract actor from the table reference (actor('name').table syntax).
 	inScope = b.applyActorFromTableRef(del.Table, inScope)
+
+	if tab.IsVirtualTable() {
+		panic(pgerror.Newf(pgcode.ObjectNotInPrerequisiteState,
+			"cannot delete from view \"%s\"", tab.Name(),
+		))
+	}
 
 	if refColumns != nil {
 		panic(pgerror.Newf(pgcode.Syntax,
@@ -69,11 +70,11 @@ func (b *Builder) buildDelete(del *tree.Delete, inScope *scope) (outScope *scope
 	//   ORDER BY <order-by> LIMIT <limit>
 	//
 	// All columns from the delete table will be projected.
-	mb.buildInputForDelete(inScope, del.Table, del.Where, del.Limit, del.OrderBy)
+	mb.buildInputForDelete(inScope, del.Table, del.Where, del.Using, del.Limit, del.OrderBy)
 
 	// Build the final delete statement, including any returned expressions.
 	if resultsNeeded(del.Returning) {
-		mb.buildDelete(*del.Returning.(*tree.ReturningExprs))
+		mb.buildDelete(del.Returning.(*tree.ReturningExprs))
 	} else {
 		mb.buildDelete(nil /* returning */)
 	}
@@ -83,13 +84,18 @@ func (b *Builder) buildDelete(del *tree.Delete, inScope *scope) (outScope *scope
 
 // buildDelete constructs a Delete operator, possibly wrapped by a Project
 // operator that corresponds to the given RETURNING clause.
-func (mb *mutationBuilder) buildDelete(returning tree.ReturningExprs) {
+func (mb *mutationBuilder) buildDelete(returning *tree.ReturningExprs) {
 	mb.buildFKChecksAndCascadesForDelete()
 
 	// Project partial index DEL boolean columns.
 	mb.projectPartialIndexDelCols()
 
 	private := mb.makeMutationPrivate(returning != nil)
+	for _, col := range mb.extraAccessibleCols {
+		if col.id != 0 {
+			private.PassthroughCols = append(private.PassthroughCols, col.id)
+		}
+	}
 	mb.outScope.expr = mb.b.factory.ConstructDelete(
 		mb.outScope.expr, mb.uniqueChecks, mb.fkChecks, private,
 	)

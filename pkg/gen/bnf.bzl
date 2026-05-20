@@ -135,7 +135,6 @@ BNF_SRCS = [
     "//docs/generated/sql/bnf:explain_stmt.bnf",
     "//docs/generated/sql/bnf:explainable_stmt.bnf",
     "//docs/generated/sql/bnf:export_stmt.bnf",
-    "//docs/generated/sql/bnf:family_def.bnf",
     "//docs/generated/sql/bnf:fetch_cursor_stmt.bnf",
     "//docs/generated/sql/bnf:for_locking.bnf",
     "//docs/generated/sql/bnf:foreign_key_column_level.bnf",

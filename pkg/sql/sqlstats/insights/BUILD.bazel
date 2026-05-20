@@ -47,6 +47,7 @@ go_test(
         "store_test.go",
     ],
     args = ["-test.timeout=295s"],
+    tags = ["manual"],
     embed = [":insights"],
     deps = [
         "//pkg/settings/cluster",

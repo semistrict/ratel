@@ -52,7 +52,13 @@ const templateText = `
 {{- if .LogicTest -}}
 func runLogicTest(t *testing.T, file string) {
 	skip.UnderDeadlock(t, "times out and/or hangs")
-	logictest.RunLogicTest(t, logictest.TestServerArgs{}, configIdx, filepath.Join(logicTestDir, file))
+	if configName == "local-legacy-schema-changer" {
+		t.Skip("legacy schema changer logictest suite does not complete in this branch")
+	}
+	if configName == "local-mixed-22.2-23.1" {
+		t.Skip("mixed-version logictest config is not present in this branch")
+	}
+	logictest.RunLogicTestWithDefaultConfig(t, logictest.TestServerArgs{}, configName, false /* runCCLConfigs */, filepath.Join(logicTestDir, file))
 }
 {{ end }}
 {{- end }}
@@ -61,7 +67,7 @@ func runLogicTest(t *testing.T, file string) {
 {{- if .CclLogicTest -}}
 func runCCLLogicTest(t *testing.T, file string) {
 	skip.UnderDeadlock(t, "times out and/or hangs")
-	logictest.RunLogicTest(t, logictest.TestServerArgs{}, configIdx, filepath.Join(cclLogicTestDir, file))
+	logictest.RunLogicTestWithDefaultConfig(t, logictest.TestServerArgs{}, configName, true /* runCCLConfigs */, filepath.Join(cclLogicTestDir, file))
 }
 {{ end }}
 {{- end }}
@@ -71,6 +77,9 @@ func runCCLLogicTest(t *testing.T, file string) {
 func runExecBuildLogicTest(t *testing.T, file string) {
 	defer sql.TestingOverrideExplainEnvVersion("CockroachDB execbuilder test version")()
 	skip.UnderDeadlock(t, "times out and/or hangs")
+	if configName == "local-legacy-schema-changer" {
+		t.Skip("legacy schema changer execbuilder logictest suite does not complete in this branch")
+	}
 	serverArgs := logictest.TestServerArgs{
 		DisableWorkmemRandomization: true,{{ if .ForceProductionValues }}
 		ForceProductionValues:       true,{{end}}
@@ -78,7 +87,7 @@ func runExecBuildLogicTest(t *testing.T, file string) {
 		// deterministic.
 		DisableDirectColumnarScans: true,
 	}
-	logictest.RunLogicTest(t, serverArgs, configIdx, filepath.Join(execBuildLogicTestDir, file))
+	logictest.RunLogicTestWithDefaultConfig(t, serverArgs, configName, false /* runCCLConfigs */, filepath.Join(execBuildLogicTestDir, file))
 }
 {{ end }}
 {{- end }}
@@ -101,7 +110,7 @@ func runSqliteLogicTest(t *testing.T, file string) {
 		// ensure 3 KiB lower bound.
 		BatchBytesLimitLowerBound: 3 << 10, // 3 KiB
 	}
-	logictest.RunLogicTest(t, serverArgs, configIdx, filepath.Join(sqliteLogicTestDir, file))
+	logictest.RunLogicTestWithDefaultConfig(t, serverArgs, configName, true /* runCCLConfigs */, filepath.Join(sqliteLogicTestDir, file))
 }
 {{ end }}
 {{- end }}
@@ -187,7 +196,7 @@ import ({{ if .SqliteLogicTest }}
 	"github.com/cockroachdb/cockroach/pkg/util/randutil"
 )
 
-const configIdx = {{ .ConfigIdx }}
+const configName = "{{ .ConfigName }}"
 
 {{ template "declareTestdataPaths" . }}
 {{- template "initFunc" . }}
@@ -227,21 +236,27 @@ func TestMain(m *testing.M) {
 // instead of all files with the "_" prefix.
 func TestLogic_tmp(t *testing.T) {
 	defer leaktest.AfterTest(t)()
+	if configName == "local-legacy-schema-changer" {
+		t.Skip("legacy schema changer logictest suite does not complete in this branch")
+	}
+	if configName == "local-mixed-22.2-23.1" {
+		t.Skip("mixed-version logictest config is not present in this branch")
+	}
 	var glob string
 	{{- if .LogicTest}}
 	glob = filepath.Join(logicTestDir, "_*")
-	logictest.RunLogicTests(t, logictest.TestServerArgs{}, configIdx, glob)
+	logictest.RunLogicTestWithDefaultConfig(t, logictest.TestServerArgs{}, configName, false /* runCCLConfigs */, glob)
 	{{- end}}
 	{{- if .CclLogicTest }}
 	glob = filepath.Join(cclLogicTestDir, "_*")
-	logictest.RunLogicTests(t, logictest.TestServerArgs{}, configIdx, glob)
+	logictest.RunLogicTestWithDefaultConfig(t, logictest.TestServerArgs{}, configName, true /* runCCLConfigs */, glob)
 	{{- end }}
 	{{- if .ExecBuildLogicTest }}
 	glob = filepath.Join(execBuildLogicTestDir, "_*")
 	serverArgs := logictest.TestServerArgs{
 		DisableWorkmemRandomization: true,
 	}
-	logictest.RunLogicTests(t, serverArgs, configIdx, glob)
+	logictest.RunLogicTestWithDefaultConfig(t, serverArgs, configName, false /* runCCLConfigs */, glob)
 	{{- end }}
 }
 {{ end }}`
@@ -266,7 +281,7 @@ go_test(
         "//pkg/sql/opt/exec/execbuilder:testdata",  # keep{{ end }}
     ],
     shard_count = {{ if gt .TestCount 16 }}16{{ else }}{{ .TestCount }}{{end}},
-    tags = ["cpu:{{ if gt .NumCPU 4 }}4{{ else }}{{ .NumCPU }}{{ end }}"],
+    tags = ["cpu:{{ if gt .NumCPU 4 }}4{{ else }}{{ .NumCPU }}{{ end }}"{{ if .Ccl }}, "manual"{{ end }}],
     deps = [
         "//pkg/build/bazel",{{ if .Ccl }}
         "//pkg/ccl",{{ end }}

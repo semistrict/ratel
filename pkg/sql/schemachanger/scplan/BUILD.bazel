@@ -42,6 +42,7 @@ go_test(
     ],
     args = ["-test.timeout=295s"],
     data = glob(["testdata/**"]),
+    tags = ["manual"],
     deps = [
         ":scplan",
         "//pkg/base",

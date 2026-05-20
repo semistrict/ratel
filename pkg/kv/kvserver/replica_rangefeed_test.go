@@ -522,14 +522,17 @@ func TestReplicaRangefeedErrors(t *testing.T) {
 	setup := func(t *testing.T, knobs base.TestingKnobs) (*testcluster.TestCluster, roachpb.RangeID) {
 		t.Helper()
 
-		tc := testcluster.StartTestCluster(t, 3,
-			base.TestClusterArgs{
-				ReplicationMode: base.ReplicationManual,
-				ServerArgs:      base.TestServerArgs{Knobs: knobs},
-			},
-		)
+			tc := testcluster.StartTestCluster(t, 3,
+				base.TestClusterArgs{
+					ReplicationMode: base.ReplicationManual,
+					ServerArgs:      base.TestServerArgs{Knobs: knobs},
+				},
+			)
+			for _, srv := range tc.Servers {
+				kvserver.RangefeedEnabled.Override(ctx, &srv.ClusterSettings().SV, true)
+			}
 
-		ts := tc.Servers[0]
+			ts := tc.Servers[0]
 		store, pErr := ts.Stores().GetStore(ts.GetFirstStoreID())
 		if pErr != nil {
 			t.Fatal(pErr)

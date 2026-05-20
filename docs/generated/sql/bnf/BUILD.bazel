@@ -135,7 +135,6 @@ FILES = [
     "explain_stmt",
     "explainable_stmt",
     "export_stmt",
-    "family_def",
     "fetch_cursor_stmt",
     "for_locking",
     "foreign_key_column_level",
@@ -282,6 +281,7 @@ genrule(
     name = "bnf",
     srcs = ["//pkg/sql/parser:sql.y"],
     outs = [file + ".bnf" for file in FILES],
+    tags = ["manual"],
     cmd = """
     $(location //pkg/cmd/docgen) grammar bnf $(RULEDIR) --quiet --addr $(location //pkg/sql/parser:sql.y)
     for FILE in $$(ls $(RULEDIR))
@@ -307,6 +307,7 @@ genrule(
         ":bnf",
     ],
     outs = [file.replace("_stmt", "") + ".html" for file in FILES if "_stmt" not in file or file.replace("_stmt", "") not in FILES],
+    tags = ["manual"],
     cmd = """
     bnf_locs=$$(echo $(locations :bnf) | cut -d' ' -f1 | xargs dirname)
     COCKROACH_REQUIRE_RAILROAD=1 $(location //pkg/cmd/docgen) grammar svg $$bnf_locs $(RULEDIR) --addr $(location //pkg/sql/parser:sql.y) --railroad $(location @railroadjar//:rr.war)

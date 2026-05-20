@@ -29,6 +29,7 @@ go_test(
         "resolver_test.go",
     ],
     args = ["-test.timeout=295s"],
+    tags = ["manual"],
     deps = [
         ":resolver",
         "//pkg/base",

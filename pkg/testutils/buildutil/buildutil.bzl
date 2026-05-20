@@ -1,4 +1,5 @@
 load("@io_bazel_rules_go//go:def.bzl", "GoLibrary")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
 # This file contains a single macro disallowed_imports_test which internally
 # generates a sh_test which ensures that the label provided as the first arg
@@ -147,7 +148,7 @@ def disallowed_imports_test(
         disallowed_prefixes = disallowed_prefixes,
         disallow_cdeps = disallow_cdeps,
     )
-    native.sh_test(
+    sh_test(
         name = src.strip(":") + "_disallowed_imports_test",
         size = "small",
         srcs = [":" + script],

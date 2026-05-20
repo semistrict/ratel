@@ -134,7 +134,10 @@ func ExternalStorageConfFromURI(
 ) (cloudpb.ExternalStorage, error) {
 	uri, err := url.Parse(path)
 	if err != nil {
-		return cloudpb.ExternalStorage{}, err
+		uri, err = parseLenientExternalStorageURI(path)
+		if err != nil {
+			return cloudpb.ExternalStorage{}, err
+		}
 	}
 	if fn, ok := confParsers[uri.Scheme]; ok {
 		return fn(ExternalStorageURIContext{CurrentUser: user}, uri)
@@ -142,6 +145,28 @@ func ExternalStorageConfFromURI(
 	// TODO(adityamaru): Link dedicated ExternalStorage scheme docs once ready.
 	return cloudpb.ExternalStorage{}, errors.Errorf("unsupported storage scheme: %q - refer to docs to find supported"+
 		" storage schemes", uri.Scheme)
+}
+
+func parseLenientExternalStorageURI(path string) (*url.URL, error) {
+	scheme, rest, ok := strings.Cut(path, "://")
+	if !ok {
+		_, err := url.Parse(path)
+		return nil, err
+	}
+	if _, ok := confParsers[scheme]; !ok {
+		_, err := url.Parse(path)
+		return nil, err
+	}
+	host, suffix, _ := strings.Cut(rest, "/")
+	if !strings.Contains(host, ",") {
+		_, err := url.Parse(path)
+		return nil, err
+	}
+	uri := &url.URL{Scheme: scheme, Host: host}
+	if suffix != "" {
+		uri.Path = "/" + suffix
+	}
+	return uri, nil
 }
 
 // ExternalStorageFromURI returns an ExternalStorage for the given URI.

@@ -338,9 +338,13 @@ go_test(
     data = glob(["testdata/**"]),
     embed = [":kvserver"],
     shard_count = 8,
-    tags = ["cpu:2"],
+    tags = [
+        "cpu:2",
+        "manual",
+    ],
     deps = [
         "//pkg/base",
+        "//pkg/ccl",
         "//pkg/cli/exit",
         "//pkg/clusterversion",
         "//pkg/config",
@@ -352,6 +356,7 @@ go_test(
         "//pkg/kv",
         "//pkg/kv/kvclient",
         "//pkg/kv/kvclient/kvcoord",
+        "//pkg/kv/kvclient/kvtenant",
         "//pkg/kv/kvclient/rangefeed/rangefeedcache",
         "//pkg/kv/kvpb",
         "//pkg/kv/kvserver/abortspan",

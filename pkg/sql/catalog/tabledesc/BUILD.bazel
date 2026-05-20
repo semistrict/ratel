@@ -84,6 +84,7 @@ go_test(
     ],
     args = ["-test.timeout=55s"],
     embed = [":tabledesc"],
+    tags = ["manual"],
     deps = [
         "//pkg/base",
         "//pkg/clusterversion",

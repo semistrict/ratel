@@ -44,6 +44,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverbase"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/security/password"
+	"github.com/cockroachdb/cockroach/pkg/security/username"
 	"github.com/cockroachdb/cockroach/pkg/server/telemetry"
 	"github.com/cockroachdb/cockroach/pkg/settings"
 	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
@@ -4621,54 +4622,53 @@ value if you rely on the HLC for accuracy.`,
 	),
 
 	"crdb_internal.delete_actor": makeBuiltin(
-		tree.FunctionProperties{Category: categorySystemInfo},
+		tree.FunctionProperties{Category: builtinconstants.CategorySystemInfo},
 		tree.Overload{
-			Types:      tree.ArgTypes{{"actor_name", types.String}},
+			Types:      tree.ParamTypes{{Name: "actor_name", Typ: types.String}},
 			ReturnType: tree.FixedReturnType(types.Bool),
-			Fn: func(evalCtx *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
+			Fn: func(ctx context.Context, evalCtx *eval.Context, args tree.Datums) (tree.Datum, error) {
 				actorName := string(tree.MustBeDString(args[0]))
-				ctx := evalCtx.Ctx()
 				codec := evalCtx.Codec
 				tenantID := codec.TenantID()
+				if evalCtx.Txn == nil {
+					return nil, pgerror.New(pgcode.Internal, "delete_actor requires an active transaction")
+				}
 				actorPrefix := keys.MakeActorPrefix(codec.TenantPrefix(), actorName)
-
-				// Delete all actor-scoped KV data.
-				if _, err := evalCtx.DB.DelRange(ctx, actorPrefix, actorPrefix.PrefixEnd(), false /* returnKeys */); err != nil {
+				if _, err := evalCtx.Txn.DelRange(ctx, actorPrefix, actorPrefix.PrefixEnd(), false /* returnKeys */); err != nil {
 					return nil, err
 				}
-
 				// Remove the registry entry.
-				if _, err := evalCtx.Planner.QueryRowEx(
+				row, err := evalCtx.Planner.QueryRowEx(
 					ctx, "delete-actor-registry",
-					evalCtx.Txn,
 					sessiondata.InternalExecutorOverride{
-						User:     security.RootUserName(),
+						User:     username.RootUserName(),
 						Database: "system",
 					},
 					`DELETE FROM system.actors WHERE tenant_id = $1 AND actor_name = $2 RETURNING actor_name`,
 					tenantID.ToUint64(),
 					actorName,
-				); err != nil {
+				)
+				if err != nil {
 					return nil, err
 				}
-				return tree.DBoolTrue, nil
+				return tree.MakeDBool(tree.DBool(row != nil)), nil
 			},
 			Info:       "Deletes the named actor, removing all its data and registry entry.",
-			Volatility: tree.VolatilityVolatile,
+			Volatility: volatility.Volatile,
 		},
 	),
 
 	"actor_id": makeBuiltin(
-		tree.FunctionProperties{Category: categorySystemInfo},
+		tree.FunctionProperties{Category: builtinconstants.CategorySystemInfo},
 		tree.Overload{
-			Types:      tree.ArgTypes{{"actor_name", types.String}},
+			Types:      tree.ParamTypes{{Name: "actor_name", Typ: types.String}},
 			ReturnType: tree.FixedReturnType(types.Bytes),
-			Fn: func(_ *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
+			Fn: func(_ context.Context, _ *eval.Context, args tree.Datums) (tree.Datum, error) {
 				hash := keys.ActorHash(string(tree.MustBeDString(args[0])))
 				return tree.NewDBytes(tree.DBytes(hash[:])), nil
 			},
 			Info:       "Returns the deterministic 16-byte actor identifier for the given actor name.",
-			Volatility: tree.VolatilityImmutable,
+			Volatility: volatility.Immutable,
 		},
 	),
 

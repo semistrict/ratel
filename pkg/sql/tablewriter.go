@@ -16,6 +16,7 @@ import (
 
 	"github.com/cockroachdb/cockroach/pkg/kv"
 	"github.com/cockroachdb/cockroach/pkg/multitenant"
+	"github.com/cockroachdb/cockroach/pkg/kv/kvpb"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/settings"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
@@ -245,7 +246,7 @@ func (tb *tableWriterBase) tryDoResponseAdmission(ctx context.Context) error {
 	responseAdmissionQ := tb.txn.DB().SQLKVResponseAdmissionQ
 	requestAdmissionHeader := tb.txn.AdmissionHeader()
 	if responseAdmissionQ != nil &&
-		requestAdmissionHeader.Source == roachpb.AdmissionHeader_FROM_SQL &&
+		requestAdmissionHeader.Source == kvpb.AdmissionHeader_FROM_SQL &&
 		!multitenant.HasTenantCostControlExemption(ctx) {
 		responseAdmission := admission.WorkInfo{
 			TenantID:   roachpb.SystemTenantID,

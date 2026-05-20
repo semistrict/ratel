@@ -1,16 +1,12 @@
 // Copyright 2019 The Cockroach Authors.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License
+// included in the file licenses/BSL.txt.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// permissions and limitations under the License.
+// As of the Change Date specified in that file, in accordance with
+// the Business Source License, use of this software will be governed
+// by the Apache License, Version 2.0, included in the file
+// licenses/APL.txt.
 
 package row
 
@@ -26,7 +22,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/rowenc"
-	"github.com/cockroachdb/cockroach/pkg/sql/rowenc/valueside"
+	"github.com/cockroachdb/cockroach/pkg/sql/rowinfra"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/cockroach/pkg/util/unique"
@@ -35,8 +31,8 @@ import (
 
 // Updater abstracts the key/value operations for updating table rows.
 type Updater struct {
-	Helper       rowHelper
-	DeleteHelper *rowHelper
+	Helper       RowHelper
+	DeleteHelper *RowHelper
 	FetchCols    []catalog.Column
 	// FetchColIDtoRowIndex must be kept in sync with FetchCols.
 	FetchColIDtoRowIndex  catalog.TableColMap
@@ -51,7 +47,6 @@ type Updater struct {
 	ri Inserter
 
 	// For allocation avoidance.
-	marshaled       []roachpb.Value
 	newValues       []tree.Datum
 	key             roachpb.Key
 	valueBuf        []byte
@@ -91,7 +86,7 @@ func MakeUpdater(
 	alloc *tree.DatumAlloc,
 	sv *settings.Values,
 	internal bool,
-	metrics *Metrics,
+	metrics *rowinfra.Metrics,
 ) (Updater, error) {
 	if requestedCols == nil {
 		return Updater{}, errors.AssertionFailedf("requestedCols is nil in MakeUpdater")
@@ -164,21 +159,20 @@ func MakeUpdater(
 		}
 	}
 
-	var deleteOnlyHelper *rowHelper
+	var deleteOnlyHelper *RowHelper
 	if len(deleteOnlyIndexes) > 0 {
-		rh := newRowHelper(codec, tableDesc, deleteOnlyIndexes, sv, internal, metrics)
+		rh := NewRowHelper(codec, tableDesc, deleteOnlyIndexes, sv, internal, metrics)
 		deleteOnlyHelper = &rh
 	}
 
 	ru := Updater{
-		Helper:                newRowHelper(codec, tableDesc, includeIndexes, sv, internal, metrics),
+		Helper:                NewRowHelper(codec, tableDesc, includeIndexes, sv, internal, metrics),
 		DeleteHelper:          deleteOnlyHelper,
 		FetchCols:             requestedCols,
 		FetchColIDtoRowIndex:  ColIDtoRowIndexFromCols(requestedCols),
 		UpdateCols:            updateCols,
 		UpdateColIDtoRowIndex: updateColIDtoRowIndex,
 		primaryKeyColChange:   primaryKeyColChange,
-		marshaled:             make([]roachpb.Value, len(updateCols)),
 		oldIndexEntries:       make([][]rowenc.IndexEntry, len(includeIndexes)),
 		newIndexEntries:       make([][]rowenc.IndexEntry, len(includeIndexes)),
 	}
@@ -245,18 +239,6 @@ func (ru *Updater) UpdateRow(
 		}
 	}
 
-	// Check that the new value types match the column types. This needs to
-	// happen before index encoding because certain datum types (i.e. tuple)
-	// cannot be used as index values.
-	//
-	// TODO(radu): the legacy marshaling is used only in rare cases; this is
-	// wasteful.
-	for i, val := range updateValues {
-		if ru.marshaled[i], err = valueside.MarshalLegacy(ru.UpdateCols[i].GetType(), val); err != nil {
-			return nil, err
-		}
-	}
-
 	// Update the row values.
 	copy(ru.newValues, oldValues)
 	for i, updateCol := range ru.UpdateCols {
@@ -280,9 +262,18 @@ func (ru *Updater) UpdateRow(
 
 	for i, index := range ru.Helper.Indexes {
 		// We don't want to insert any empty k/v's, so set includeEmpty to false.
-		// Consider an index entry with a stored column whose value is NULL. We
-		// don't want to emit empty value KVs while generating the old and new
-		// index entries, so includeEmpty stays false.
+		// Consider the following case:
+		// TABLE t (
+		//   x INT PRIMARY KEY, y INT, z INT, w INT,
+		//   INDEX (y) STORING (z, w),
+		//   FAMILY (x), FAMILY (y), FAMILY (z), FAMILY (w)
+		//)
+		// If we are to perform an update on row (1, 2, 3, NULL), the k/v pair
+		// for index i that encodes column w would have an empty value because w
+		// is null and the sole resident of that family. We want to ensure that
+		// we don't insert empty k/v pairs during the process of the update, so
+		// set includeEmpty to false while generating the old and new index
+		// entries.
 		//
 		// Also, we don't build entries for old and new values if the index
 		// exists in ignoreIndexesForDel and ignoreIndexesForPut, respectively.
@@ -358,12 +349,13 @@ func (ru *Updater) UpdateRow(
 		}
 	}
 
+	putter := &KVBatchAdapter{Batch: batch}
 	if rowPrimaryKeyChanged {
 		if err := ru.rd.DeleteRow(ctx, batch, oldValues, pm, traceKV); err != nil {
 			return nil, err
 		}
 		if err := ru.ri.InsertRow(
-			ctx, batch, ru.newValues, pm, false /* ignoreConflicts */, traceKV,
+			ctx, putter, ru.newValues, pm, false /* ignoreConflicts */, traceKV,
 		); err != nil {
 			return nil, err
 		}
@@ -371,64 +363,14 @@ func (ru *Updater) UpdateRow(
 		return ru.newValues, nil
 	}
 
-	newSubEntries, err := ru.Helper.encodeSubordinateKeys(
-		primaryIndexKey, ru.FetchColIDtoRowIndex, ru.newValues,
-	)
-	if err != nil {
-		return nil, err
-	}
-
 	// Add the new values.
-	ru.valueBuf, err = prepareInsertOrUpdateBatch(ctx, batch,
+	ru.valueBuf, err = prepareInsertOrUpdateBatch(ctx, putter,
 		&ru.Helper, primaryIndexKey, ru.FetchCols,
 		ru.newValues, ru.FetchColIDtoRowIndex,
-		ru.marshaled, ru.UpdateColIDtoRowIndex,
-		newSubEntries,
+		ru.UpdateColIDtoRowIndex,
 		&ru.key, &ru.value, ru.valueBuf, insertPutFn, true /* overwrite */, traceKV)
 	if err != nil {
 		return nil, err
-	}
-
-	// Update subordinate keys for array columns. Put all new entries
-	// (overwrites any existing values at the same indices), then delete
-	// entries for indices that no longer exist (array shrunk).
-	for i := range newSubEntries {
-		e := &newSubEntries[i]
-		insertPutFn(ctx, batch, &e.Key, &e.Value, traceKV)
-	}
-	// Delete stale subordinate keys from old array values that are longer
-	// than the new ones.
-	for _, col := range ru.Helper.TableDesc.PublicColumns() {
-		if !ru.Helper.isArrayColumn(col.GetID()) {
-			continue
-		}
-		oldIdx, ok := ru.FetchColIDtoRowIndex.Get(col.GetID())
-		if !ok {
-			continue
-		}
-		oldArr, _ := oldValues[oldIdx].(*tree.DArray)
-		oldLen := 0
-		if oldArr != nil {
-			oldLen = oldArr.Len()
-		}
-		newIdx, ok := ru.FetchColIDtoRowIndex.Get(col.GetID())
-		if !ok {
-			continue
-		}
-		newArr, _ := ru.newValues[newIdx].(*tree.DArray)
-		newLen := 0
-		if newArr != nil {
-			newLen = newArr.Len()
-		}
-		if oldLen > newLen {
-			staleKeys := rowenc.SubordinateKeysForColumn(primaryIndexKey, col.GetID(), oldLen)
-			for i := newLen; i < oldLen; i++ {
-				if traceKV {
-					log.VEventf(ctx, 2, "Del %s", staleKeys[i])
-				}
-				batch.Del(staleKeys[i])
-			}
-		}
 	}
 
 	// Update secondary indexes.
@@ -452,10 +394,10 @@ func (ru *Updater) UpdateRow(
 			// insert that new k/v.
 			for oldIdx < len(oldEntries) && newIdx < len(newEntries) {
 				oldEntry, newEntry := &oldEntries[oldIdx], &newEntries[newIdx]
-				if oldEntry.RowGroup == newEntry.RowGroup {
+				if oldEntry.Family == newEntry.Family {
 					// If the families are equal, then check if the keys have changed. If so, delete the old key.
 					// Then, issue a CPut for the new value of the key if the value has changed.
-					// Because the indexes will always have a K/V for row-group 0, it suffices to only
+					// Because the indexes will always have a k/v for family 0, it suffices to only
 					// add foreign key checks in this case, because we are guaranteed to enter here.
 					oldIdx++
 					newIdx++
@@ -479,23 +421,23 @@ func (ru *Updater) UpdateRow(
 
 					if index.ForcePut() {
 						// See the comment on (catalog.Index).ForcePut() for more details.
-						insertPutFn(ctx, batch, &newEntry.Key, &newEntry.Value, traceKV)
+						insertPutFn(ctx, putter, &newEntry.Key, &newEntry.Value, traceKV)
 					} else {
 						if traceKV {
 							k := keys.PrettyPrint(ru.Helper.secIndexValDirs[i], newEntry.Key)
 							v := newEntry.Value.PrettyPrint()
 							if expValue != nil {
-								log.VEventf(ctx, 2, "CPut %s -> %v (replacing %v, if exists)", k, v, expValue)
+								log.VEventf(ctx, 2, "CPut %s -> %v (replacing %v, if exists)", k, v, oldEntry.Value.PrettyPrint())
 							} else {
 								log.VEventf(ctx, 2, "CPut %s -> %v (expecting does not exist)", k, v)
 							}
 						}
 						batch.CPutAllowingIfNotExists(newEntry.Key, &newEntry.Value, expValue)
 					}
-				} else if oldEntry.RowGroup < newEntry.RowGroup {
-					if oldEntry.RowGroup == descpb.RowGroupID(0) {
+				} else if oldEntry.Family < newEntry.Family {
+					if oldEntry.Family == descpb.FamilyID(0) {
 						return nil, errors.AssertionFailedf(
-							"index entry for row-group 0 for table %s, index %s was not generated",
+							"index entry for family 0 for table %s, index %s was not generated",
 							ru.Helper.TableDesc.GetName(), index.GetName(),
 						)
 					}
@@ -506,16 +448,16 @@ func (ru *Updater) UpdateRow(
 					}
 					oldIdx++
 				} else {
-					if newEntry.RowGroup == descpb.RowGroupID(0) {
+					if newEntry.Family == descpb.FamilyID(0) {
 						return nil, errors.AssertionFailedf(
-							"index entry for row-group 0 for table %s, index %s was not generated",
+							"index entry for family 0 for table %s, index %s was not generated",
 							ru.Helper.TableDesc.GetName(), index.GetName(),
 						)
 					}
 
 					if index.ForcePut() {
 						// See the comment on (catalog.Index).ForcePut() for more details.
-						insertPutFn(ctx, batch, &newEntry.Key, &newEntry.Value, traceKV)
+						insertPutFn(ctx, putter, &newEntry.Key, &newEntry.Value, traceKV)
 					} else {
 						// In this case, the index now has a k/v that did not exist in the
 						// old row, so we should expect to not see a value for the new key,
@@ -551,7 +493,7 @@ func (ru *Updater) UpdateRow(
 				newEntry := &newEntries[newIdx]
 				if index.ForcePut() {
 					// See the comment on (catalog.Index).ForcePut() for more details.
-					insertPutFn(ctx, batch, &newEntry.Key, &newEntry.Value, traceKV)
+					insertPutFn(ctx, putter, &newEntry.Key, &newEntry.Value, traceKV)
 				} else {
 					if traceKV {
 						k := keys.PrettyPrint(ru.Helper.secIndexValDirs[i], newEntry.Key)
@@ -573,9 +515,9 @@ func (ru *Updater) UpdateRow(
 			for j := range ru.newIndexEntries[i] {
 				if index.ForcePut() {
 					// See the comment on (catalog.Index).ForcePut() for more details.
-					insertPutFn(ctx, batch, &ru.newIndexEntries[i][j].Key, &ru.newIndexEntries[i][j].Value, traceKV)
+					insertPutFn(ctx, putter, &ru.newIndexEntries[i][j].Key, &ru.newIndexEntries[i][j].Value, traceKV)
 				} else {
-					insertInvertedPutFn(ctx, batch, &ru.newIndexEntries[i][j].Key, &ru.newIndexEntries[i][j].Value, traceKV)
+					insertInvertedPutFn(ctx, putter, &ru.newIndexEntries[i][j].Key, &ru.newIndexEntries[i][j].Value, traceKV)
 				}
 			}
 		}

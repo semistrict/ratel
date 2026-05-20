@@ -3719,6 +3719,7 @@ func TestLBSplitUnsafeKeys(t *testing.T) {
 	skip.UnderRace(t)
 	skip.UnderStressRace(t)
 	skip.UnderDeadlock(t)
+	skip.IgnoreLint(t, "requires user-defined column family DDL unsupported by this branch parser")
 
 	makeTestKey := func(tableID uint32, suffix []byte) roachpb.Key {
 		tableKey := keys.MakeTableIDIndexID(nil, tableID, indexID)

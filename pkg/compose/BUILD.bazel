@@ -18,7 +18,10 @@ go_test(
     ],
     embed = [":compose"],
     gotags = ["compose"],
-    tags = ["integration"],
+    tags = [
+        "integration",
+        "manual",
+    ],
     deps = [
         "//pkg/build/bazel",
         "//pkg/util/envutil",

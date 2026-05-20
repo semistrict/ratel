@@ -20,6 +20,7 @@ go_library(
 
 go_test(
     name = "ingest_test",
+    tags = ["manual"],
     srcs = [
         "ingest_test.go",
         "main_test.go",

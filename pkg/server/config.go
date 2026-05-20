@@ -839,6 +839,9 @@ func (cfg *Config) CreateEngines(ctx context.Context) (Engines, error) {
 				}
 				addCfgOpt(storage.RemoteStorage(factory, metaStore))
 			}
+			if spec.RecoveryStoreID > 0 {
+				addCfgOpt(storage.RecoveryStoreID(spec.RecoveryStoreID))
+			}
 			// If the spec contains Pebble options, set those too.
 			if spec.PebbleOptions != "" {
 				addCfgOpt(storage.PebbleOptions(spec.PebbleOptions, &pebble.ParseHooks{

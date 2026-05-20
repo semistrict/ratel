@@ -169,6 +169,7 @@ go_test(
     deps = [
         "//pkg/base",
         "//pkg/blobs",
+        "//pkg/ccl",
         "//pkg/cloud",
         "//pkg/cloud/cloudpb",
         "//pkg/cloud/impl:cloudimpl",

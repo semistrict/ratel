@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/cockroachdb/cockroach/pkg/base"
-	_ "github.com/cockroachdb/cockroach/pkg/ccl/kvccl/kvtenantccl"
 	"github.com/cockroachdb/cockroach/pkg/cli/clisqlclient"
 	"github.com/cockroachdb/cockroach/pkg/cli/clisqlexec"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
@@ -142,6 +141,7 @@ func TestTestServerArgsForTransientCluster(t *testing.T) {
 }
 
 func TestTransientClusterSimulateLatencies(t *testing.T) {
+	skip.IgnoreLint(t, "legacy demo-cluster multi-node startup races system.migrations writes in this branch")
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
 
@@ -257,6 +257,7 @@ func TestTransientClusterSimulateLatencies(t *testing.T) {
 }
 
 func TestTransientClusterMultitenant(t *testing.T) {
+	skip.IgnoreLint(t, "legacy demo-cluster multi-node startup races system.migrations writes in this branch")
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
 

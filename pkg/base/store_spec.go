@@ -284,6 +284,9 @@ type StoreSpec struct {
 	// RemoteMetadataStorage, if set, is used directly instead of parsing
 	// RemoteStoragePath. This allows tests to inject in-memory storage.
 	RemoteMetadataStorage remote.Storage
+	// RecoveryStoreID, if non-zero, is the store ID to use when recovering an
+	// empty local directory from remote storage metadata.
+	RecoveryStoreID int32
 }
 
 // String returns a fully parsable version of the store spec.

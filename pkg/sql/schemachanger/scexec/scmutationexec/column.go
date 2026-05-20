@@ -1,21 +1,18 @@
 // Copyright 2022 The Cockroach Authors.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License
+// included in the file licenses/BSL.txt.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// permissions and limitations under the License.
+// As of the Change Date specified in that file, in accordance with
+// the Business Source License, use of this software will be governed
+// by the Apache License, Version 2.0, included in the file
+// licenses/APL.txt.
 
 package scmutationexec
 
 import (
 	"context"
+	"sort"
 
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
@@ -27,8 +24,8 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-func (m *visitor) MakeAddedColumnDeleteOnly(
-	ctx context.Context, op scop.MakeAddedColumnDeleteOnly,
+func (i *immediateVisitor) MakeAbsentColumnDeleteOnly(
+	ctx context.Context, op scop.MakeAbsentColumnDeleteOnly,
 ) error {
 	col := &descpb.ColumnDescriptor{
 		ID:                      op.Column.ColumnID,
@@ -41,18 +38,21 @@ func (m *visitor) MakeAddedColumnDeleteOnly(
 	if o := op.Column.GeneratedAsIdentitySequenceOption; o != "" {
 		col.GeneratedAsIdentitySequenceOption = &o
 	}
-	tbl, err := m.checkOutTable(ctx, op.Column.TableID)
+	tbl, err := i.checkOutTable(ctx, op.Column.TableID)
 	if err != nil {
 		return err
 	}
 	if col.ID >= tbl.NextColumnID {
 		tbl.NextColumnID = col.ID + 1
 	}
-	return enqueueAddColumnMutation(tbl, col)
+	enqueueNonIndexMutation(tbl, tbl.AddColumnMutation, col, descpb.DescriptorMutation_ADD)
+	return nil
 }
 
-func (m *visitor) SetAddedColumnType(ctx context.Context, op scop.SetAddedColumnType) error {
-	tbl, err := m.checkOutTable(ctx, op.ColumnType.TableID)
+func (i *immediateVisitor) SetAddedColumnType(
+	ctx context.Context, op scop.SetAddedColumnType,
+) error {
+	tbl, err := i.checkOutTable(ctx, op.ColumnType.TableID)
 	if err != nil {
 		return err
 	}
@@ -62,28 +62,26 @@ func (m *visitor) SetAddedColumnType(ctx context.Context, op scop.SetAddedColumn
 	}
 	col := mut.AsColumn().ColumnDesc()
 	col.Type = op.ColumnType.Type
-	col.Nullable = op.ColumnType.IsNullable
+	if op.ColumnType.ElementCreationMetadata.In_23_1OrLater {
+		col.Nullable = true
+	} else {
+		col.Nullable = op.ColumnType.IsNullable
+	}
 	col.Virtual = op.ColumnType.IsVirtual
 	if ce := op.ColumnType.ComputeExpr; ce != nil {
 		expr := string(ce.Expr)
 		col.ComputeExpr = &expr
 		col.UsesSequenceIds = ce.UsesSequenceIDs
 	}
-	if col.ComputeExpr == nil || !col.Virtual {
-		if len(tbl.RowGroups) == 0 {
-			return errors.AssertionFailedf("table %d has no primary row group", tbl.ID)
-		}
-		rowGroup := &tbl.RowGroups[0]
-		rowGroup.ColumnIDs = append(rowGroup.ColumnIDs, col.ID)
-		rowGroup.ColumnNames = append(rowGroup.ColumnNames, col.Name)
-	}
-	return nil
+	// Empty names are allowed for families, in which case AllocateIDs will assign
+	// one.
+	return tbl.AllocateIDsWithoutValidation(ctx)
 }
 
-func (m *visitor) MakeAddedColumnDeleteAndWriteOnly(
-	ctx context.Context, op scop.MakeAddedColumnDeleteAndWriteOnly,
+func (i *immediateVisitor) MakeDeleteOnlyColumnWriteOnly(
+	ctx context.Context, op scop.MakeDeleteOnlyColumnWriteOnly,
 ) error {
-	tbl, err := m.checkOutTable(ctx, op.TableID)
+	tbl, err := i.checkOutTable(ctx, op.TableID)
 	if err != nil {
 		return err
 	}
@@ -91,19 +89,22 @@ func (m *visitor) MakeAddedColumnDeleteAndWriteOnly(
 		tbl,
 		MakeColumnIDMutationSelector(op.ColumnID),
 		descpb.DescriptorMutation_DELETE_ONLY,
-		descpb.DescriptorMutation_DELETE_AND_WRITE_ONLY,
+		descpb.DescriptorMutation_WRITE_ONLY,
+		descpb.DescriptorMutation_ADD,
 	)
 }
 
-func (m *visitor) MakeColumnPublic(ctx context.Context, op scop.MakeColumnPublic) error {
-	tbl, err := m.checkOutTable(ctx, op.TableID)
+func (i *immediateVisitor) MakeWriteOnlyColumnPublic(
+	ctx context.Context, op scop.MakeWriteOnlyColumnPublic,
+) error {
+	tbl, err := i.checkOutTable(ctx, op.TableID)
 	if err != nil {
 		return err
 	}
-	mut, err := removeMutation(
+	mut, err := RemoveMutation(
 		tbl,
 		MakeColumnIDMutationSelector(op.ColumnID),
-		descpb.DescriptorMutation_DELETE_AND_WRITE_ONLY,
+		descpb.DescriptorMutation_WRITE_ONLY,
 	)
 	if err != nil {
 		return err
@@ -113,71 +114,89 @@ func (m *visitor) MakeColumnPublic(ctx context.Context, op scop.MakeColumnPublic
 	// that okay?
 	tbl.Columns = append(tbl.Columns,
 		*(protoutil.Clone(mut.GetColumn())).(*descpb.ColumnDescriptor))
+
+	// Ensure that the column is added in the right location. This is important
+	// when rolling back dropped columns.
+	getID := func(col *descpb.ColumnDescriptor) int {
+		if col.PGAttributeNum != 0 {
+			return int(col.PGAttributeNum)
+		}
+		return int(col.ID)
+	}
+	sort.Slice(tbl.Columns, func(i, j int) bool {
+		return getID(&tbl.Columns[i]) < getID(&tbl.Columns[j])
+	})
 	return nil
 }
 
-func (m *visitor) MakeDroppedColumnDeleteAndWriteOnly(
-	ctx context.Context, op scop.MakeDroppedColumnDeleteAndWriteOnly,
+func (i *immediateVisitor) MakePublicColumnWriteOnly(
+	ctx context.Context, op scop.MakePublicColumnWriteOnly,
 ) error {
-	tbl, err := m.checkOutTable(ctx, op.TableID)
-	if err != nil {
+	tbl, err := i.checkOutTable(ctx, op.TableID)
+	if err != nil || tbl.Dropped() {
 		return err
 	}
 	for i, col := range tbl.PublicColumns() {
 		if col.GetID() == op.ColumnID {
 			desc := col.ColumnDescDeepCopy()
 			tbl.Columns = append(tbl.Columns[:i], tbl.Columns[i+1:]...)
-			return enqueueDropColumnMutation(tbl, &desc)
+			enqueueNonIndexMutation(tbl, tbl.AddColumnMutation, &desc, descpb.DescriptorMutation_DROP)
+			return nil
 		}
 	}
 	return errors.AssertionFailedf("failed to find column %d in table %q (%d)",
 		op.ColumnID, tbl.GetName(), tbl.GetID())
 }
 
-func (m *visitor) MakeDroppedColumnDeleteOnly(
-	ctx context.Context, op scop.MakeDroppedColumnDeleteOnly,
+func (i *immediateVisitor) MakeWriteOnlyColumnDeleteOnly(
+	ctx context.Context, op scop.MakeWriteOnlyColumnDeleteOnly,
 ) error {
-	tbl, err := m.checkOutTable(ctx, op.TableID)
-	if err != nil {
+	tbl, err := i.checkOutTable(ctx, op.TableID)
+	if err != nil || tbl.Dropped() {
 		return err
 	}
 	return mutationStateChange(
 		tbl,
 		MakeColumnIDMutationSelector(op.ColumnID),
-		descpb.DescriptorMutation_DELETE_AND_WRITE_ONLY,
+		descpb.DescriptorMutation_WRITE_ONLY,
 		descpb.DescriptorMutation_DELETE_ONLY,
+		descpb.DescriptorMutation_DROP,
 	)
 }
 
-func (m *visitor) RemoveDroppedColumnType(
+func (i *immediateVisitor) RemoveDroppedColumnType(
 	ctx context.Context, op scop.RemoveDroppedColumnType,
 ) error {
-	if desc, err := m.s.GetDescriptor(ctx, op.TableID); err != nil || desc.Dropped() {
-		return err
-	}
-	tbl, err := m.checkOutTable(ctx, op.TableID)
-	if err != nil {
+	tbl, err := i.checkOutTable(ctx, op.TableID)
+	if err != nil || tbl.Dropped() {
 		return err
 	}
 	mut, err := FindMutation(tbl, MakeColumnIDMutationSelector(op.ColumnID))
-	if err != nil {
+	if err != nil || mut.AsColumn().IsSystemColumn() {
 		return err
 	}
 	col := mut.AsColumn().ColumnDesc()
-	col.ComputeExpr = nil
 	col.Type = types.Any
+	if col.IsComputed() {
+		// This operation needs to zero the computed column expression to remove
+		// any references to sequences and whatnot but it can't simply remove the
+		// expression entirely, otherwise in the case of virtual computed columns
+		// the column descriptor will then be interpreted as a virtual non-computed
+		// column, which doesn't make any sense.
+		null := tree.Serialize(tree.DNull)
+		col.ComputeExpr = &null
+	}
 	return nil
 }
 
-func (m *visitor) MakeColumnAbsent(ctx context.Context, op scop.MakeColumnAbsent) error {
-	if desc, err := m.s.GetDescriptor(ctx, op.TableID); err != nil || desc.Dropped() {
+func (i *immediateVisitor) MakeDeleteOnlyColumnAbsent(
+	ctx context.Context, op scop.MakeDeleteOnlyColumnAbsent,
+) error {
+	tbl, err := i.checkOutTable(ctx, op.TableID)
+	if err != nil || tbl.Dropped() {
 		return err
 	}
-	tbl, err := m.checkOutTable(ctx, op.TableID)
-	if err != nil {
-		return err
-	}
-	mut, err := removeMutation(
+	mut, err := RemoveMutation(
 		tbl,
 		MakeColumnIDMutationSelector(op.ColumnID),
 		descpb.DescriptorMutation_DELETE_ONLY,
@@ -190,26 +209,40 @@ func (m *visitor) MakeColumnAbsent(ctx context.Context, op scop.MakeColumnAbsent
 	return nil
 }
 
-func (m *visitor) SetColumnName(ctx context.Context, op scop.SetColumnName) error {
-	tbl, err := m.checkOutTable(ctx, op.TableID)
-	if err != nil {
+func (i *immediateVisitor) AddColumnFamily(ctx context.Context, op scop.AddColumnFamily) error {
+	return nil
+}
+
+func (i *immediateVisitor) AssertColumnFamilyIsRemoved(
+	ctx context.Context, op scop.AssertColumnFamilyIsRemoved,
+) error {
+	tbl, err := i.checkOutTable(ctx, op.TableID)
+	if err != nil || tbl.Dropped() {
 		return err
 	}
-	col, err := tbl.FindColumnWithID(op.ColumnID)
+	return nil
+}
+
+func (i *immediateVisitor) SetColumnName(ctx context.Context, op scop.SetColumnName) error {
+	tbl, err := i.checkOutTable(ctx, op.TableID)
+	if err != nil || tbl.Dropped() {
+		return err
+	}
+	col, err := catalog.MustFindColumnByID(tbl, op.ColumnID)
 	if err != nil {
 		return errors.AssertionFailedf("column %d not found in table %q (%d)", op.ColumnID, tbl.GetName(), tbl.GetID())
 	}
 	return tabledesc.RenameColumnInTable(tbl, col, tree.Name(op.Name), nil /* isShardColumnRenameable */)
 }
 
-func (m *visitor) AddColumnDefaultExpression(
+func (i *immediateVisitor) AddColumnDefaultExpression(
 	ctx context.Context, op scop.AddColumnDefaultExpression,
 ) error {
-	tbl, err := m.checkOutTable(ctx, op.Default.TableID)
+	tbl, err := i.checkOutTable(ctx, op.Default.TableID)
 	if err != nil {
 		return err
 	}
-	col, err := tbl.FindColumnWithID(op.Default.ColumnID)
+	col, err := catalog.MustFindColumnByID(tbl, op.Default.ColumnID)
 	if err != nil {
 		return err
 	}
@@ -227,33 +260,33 @@ func (m *visitor) AddColumnDefaultExpression(
 	return nil
 }
 
-func (m *visitor) RemoveColumnDefaultExpression(
+func (i *immediateVisitor) RemoveColumnDefaultExpression(
 	ctx context.Context, op scop.RemoveColumnDefaultExpression,
 ) error {
-	if desc, err := m.s.GetDescriptor(ctx, op.TableID); err != nil || desc.Dropped() {
+	tbl, err := i.checkOutTable(ctx, op.TableID)
+	if err != nil || tbl.Dropped() {
 		return err
 	}
-	tbl, err := m.checkOutTable(ctx, op.TableID)
-	if err != nil {
-		return err
-	}
-	col, err := tbl.FindColumnWithID(op.ColumnID)
+	col, err := catalog.MustFindColumnByID(tbl, op.ColumnID)
 	if err != nil {
 		return err
 	}
 	d := col.ColumnDesc()
 	d.DefaultExpr = nil
-	return updateColumnExprSequenceUsage(d)
+	if err := updateColumnExprSequenceUsage(d); err != nil {
+		return err
+	}
+	return updateColumnExprFunctionsUsage(d)
 }
 
-func (m *visitor) AddColumnOnUpdateExpression(
+func (i *immediateVisitor) AddColumnOnUpdateExpression(
 	ctx context.Context, op scop.AddColumnOnUpdateExpression,
 ) error {
-	tbl, err := m.checkOutTable(ctx, op.OnUpdate.TableID)
+	tbl, err := i.checkOutTable(ctx, op.OnUpdate.TableID)
 	if err != nil {
 		return err
 	}
-	col, err := tbl.FindColumnWithID(op.OnUpdate.ColumnID)
+	col, err := catalog.MustFindColumnByID(tbl, op.OnUpdate.ColumnID)
 	if err != nil {
 		return err
 	}
@@ -271,17 +304,14 @@ func (m *visitor) AddColumnOnUpdateExpression(
 	return nil
 }
 
-func (m *visitor) RemoveColumnOnUpdateExpression(
+func (i *immediateVisitor) RemoveColumnOnUpdateExpression(
 	ctx context.Context, op scop.RemoveColumnOnUpdateExpression,
 ) error {
-	if desc, err := m.s.GetDescriptor(ctx, op.TableID); err != nil || desc.Dropped() {
+	tbl, err := i.checkOutTable(ctx, op.TableID)
+	if err != nil || tbl.Dropped() {
 		return err
 	}
-	tbl, err := m.checkOutTable(ctx, op.TableID)
-	if err != nil {
-		return err
-	}
-	col, err := tbl.FindColumnWithID(op.ColumnID)
+	col, err := catalog.MustFindColumnByID(tbl, op.ColumnID)
 	if err != nil {
 		return err
 	}

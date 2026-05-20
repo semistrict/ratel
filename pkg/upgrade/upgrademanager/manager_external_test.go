@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/cockroachdb/cockroach/pkg/base"
-	_ "github.com/cockroachdb/cockroach/pkg/ccl/kvccl/kvtenantccl"
 	"github.com/cockroachdb/cockroach/pkg/clusterversion"
 	"github.com/cockroachdb/cockroach/pkg/jobs"
 	"github.com/cockroachdb/cockroach/pkg/jobs/jobspb"
@@ -37,6 +36,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/protoreflect"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/eval"
 	"github.com/cockroachdb/cockroach/pkg/testutils"
+	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
 	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
 	"github.com/cockroachdb/cockroach/pkg/testutils/sqlutils"
 	"github.com/cockroachdb/cockroach/pkg/testutils/testcluster"
@@ -64,6 +64,7 @@ import (
 func TestAlreadyRunningJobsAreHandledProperly(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
+	skip.IgnoreLint(t, "legacy upgrade-manager tests require system.migrations bootstrap not present in this branch")
 
 	// clusterversion.V23_1StopWritingPayloadAndProgressToSystemJobs was chosen
 	// specifically so that all the migrations that introduce and backfill the new
@@ -246,6 +247,7 @@ RETURNING id;`, firstID).Scan(&secondID))
 func TestPostJobInfoTableQueryDuplicateJobInfo(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
+	skip.IgnoreLint(t, "legacy upgrade-manager tests require system.migrations bootstrap not present in this branch")
 
 	ctx := context.Background()
 	targetCV := clusterversion.V23_1StopWritingPayloadAndProgressToSystemJobs + 1
@@ -366,6 +368,7 @@ FROM system.job_info WHERE job_id = $1 AND info_key = 'legacy_payload')`, jobID)
 func TestMigrateUpdatesReplicaVersion(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
+	skip.IgnoreLint(t, "legacy upgrade-manager tests require system.migrations bootstrap not present in this branch")
 
 	// We're going to be migrating from startCV to endCV.
 	startCVKey := clusterversion.V22_2
@@ -465,6 +468,7 @@ func TestMigrateUpdatesReplicaVersion(t *testing.T) {
 func TestConcurrentMigrationAttempts(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
+	skip.IgnoreLint(t, "legacy upgrade-manager tests require system.migrations bootstrap not present in this branch")
 
 	// We're going to be migrating from the BinaryMinSupportedVersion to imaginary future versions.
 	current := clusterversion.TestingBinaryMinSupportedVersion
@@ -556,6 +560,7 @@ func TestConcurrentMigrationAttempts(t *testing.T) {
 func TestPauseMigration(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
+	skip.IgnoreLint(t, "legacy upgrade-manager tests require system.migrations bootstrap not present in this branch")
 
 	// clusterversion.V23_1StopWritingPayloadAndProgressToSystemJobs was chosen
 	// specifically so that all the migrations that introduce and backfill the new
@@ -667,6 +672,7 @@ SELECT id
 func TestPrecondition(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
+	skip.IgnoreLint(t, "legacy upgrade-manager tests require system.migrations bootstrap not present in this branch")
 
 	// Start by running v0. We want the precondition of v1 to prevent
 	// us from reaching v1 (or v2). We want the precondition to not be
@@ -811,6 +817,7 @@ func TestPrecondition(t *testing.T) {
 func TestMigrationFailure(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
+	skip.IgnoreLint(t, "legacy upgrade-manager tests require system.migrations bootstrap not present in this branch")
 
 	ctx := context.Background()
 

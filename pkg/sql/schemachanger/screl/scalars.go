@@ -107,7 +107,7 @@ func ContainsDescID(haystack scpb.Element, needle catid.DescID) (contains bool) 
 func MinElementVersion(el scpb.Element) clusterversion.Key {
 	switch el.(type) {
 	case *scpb.Database, *scpb.Schema, *scpb.View, *scpb.Sequence, *scpb.Table,
-		*scpb.AliasType, *scpb.ColumnFamily, *scpb.Column, *scpb.PrimaryIndex,
+		*scpb.AliasType, *scpb.Column, *scpb.PrimaryIndex,
 		*scpb.SecondaryIndex, *scpb.TemporaryIndex, *scpb.EnumType,
 		*scpb.UniqueWithoutIndexConstraint, *scpb.CheckConstraint,
 		*scpb.ForeignKeyConstraint, *scpb.TableComment, *scpb.RowLevelTTL,

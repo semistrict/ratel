@@ -1263,7 +1263,7 @@ Join Tree #3
 --------------------------------------------------------------------------------
   inner-join (cross)
    ├── values
-   │    └── (x)
+   │    └── (x,)
    ├── inner-join (hash)
    │    ├── inner-join (hash)
    │    │    ├── scan cy
@@ -1277,7 +1277,7 @@ Join Tree #3
 Vertexes
   D:
     values
-     └── (x)
+     └── (x,)
   A:
     scan cy
   B:
@@ -1325,7 +1325,7 @@ inner-join-apply
  │    │    └── filters
  │    │         └── y = z
  │    ├── values
- │    │    └── (x)
+ │    │    └── (x,)
  │    └── filters (true)
  └── filters
       └── x = y

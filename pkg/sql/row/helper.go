@@ -1,16 +1,12 @@
 // Copyright 2018 The Cockroach Authors.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License
+// included in the file licenses/BSL.txt.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// permissions and limitations under the License.
+// As of the Change Date specified in that file, in accordance with
+// the Business Source License, use of this software will be governed
+// by the Apache License, Version 2.0, included in the file
+// licenses/APL.txt.
 
 package row
 
@@ -20,7 +16,7 @@ import (
 
 	"github.com/cockroachdb/cockroach/pkg/keys"
 	"github.com/cockroachdb/cockroach/pkg/kv"
-	"github.com/cockroachdb/cockroach/pkg/kv/kvserver"
+	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverbase"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/settings"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
@@ -30,12 +26,13 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
 	"github.com/cockroachdb/cockroach/pkg/sql/rowenc"
 	"github.com/cockroachdb/cockroach/pkg/sql/rowenc/rowencpb"
+	"github.com/cockroachdb/cockroach/pkg/sql/rowinfra"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/types"
-	"github.com/cockroachdb/cockroach/pkg/util"
 	"github.com/cockroachdb/cockroach/pkg/util/encoding"
+	"github.com/cockroachdb/cockroach/pkg/util/intsets"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/cockroach/pkg/util/log/eventpb"
+	"github.com/cockroachdb/cockroach/pkg/util/log/logpb"
 	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
 	"github.com/cockroachdb/errors"
 )
@@ -50,10 +47,10 @@ const (
 var maxRowSizeLog = settings.RegisterByteSizeSetting(
 	settings.TenantWritable,
 	"sql.guardrails.max_row_size_log",
-	"maximum size of row data that SQL can "+
+	"maximum size of row (or column family if multiple column families are in use) that SQL can "+
 		"write to the database, above which an event is logged to SQL_PERF (or SQL_INTERNAL_PERF "+
 		"if the mutating statement was internal); use 0 to disable",
-	kvserver.MaxCommandSizeDefault,
+	kvserverbase.MaxCommandSizeDefault,
 	func(size int64) error {
 		if size != 0 && size < maxRowSizeFloor {
 			return errors.Newf(
@@ -73,7 +70,7 @@ var maxRowSizeLog = settings.RegisterByteSizeSetting(
 var maxRowSizeErr = settings.RegisterByteSizeSetting(
 	settings.TenantWritable,
 	"sql.guardrails.max_row_size_err",
-	"maximum size of row data that SQL can "+
+	"maximum size of row (or column family if multiple column families are in use) that SQL can "+
 		"write to the database, above which an error is returned; use 0 to disable",
 	512<<20, /* 512 MiB */
 	func(size int64) error {
@@ -92,8 +89,8 @@ var maxRowSizeErr = settings.RegisterByteSizeSetting(
 	},
 ).WithPublic()
 
-// rowHelper has the common methods for table row manipulations.
-type rowHelper struct {
+// RowHelper has the common methods for table row manipulations.
+type RowHelper struct {
 	Codec keys.SQLCodec
 
 	TableDesc catalog.TableDescriptor
@@ -106,30 +103,26 @@ type rowHelper struct {
 	secIndexValDirs  [][]encoding.Direction
 
 	// Computed and cached.
-	primaryIndexKeyPrefix       []byte
-	primaryIndexKeyCols         catalog.TableColSet
-	primaryIndexValueCols       catalog.TableColSet
-	sortedPrimaryRowGroupColIDs []descpb.ColumnID
-
-	// arrayColIDs is the set of column IDs with array types. Computed lazily.
-	arrayColIDs     catalog.TableColSet
-	arrayColIDsInit bool
+	PrimaryIndexKeyPrefix []byte
+	primaryIndexKeyCols   catalog.TableColSet
+	primaryIndexValueCols catalog.TableColSet
+	sortedColumnFamilies  map[descpb.FamilyID][]descpb.ColumnID
 
 	// Used to check row size.
 	maxRowSizeLog, maxRowSizeErr uint32
 	internal                     bool
-	metrics                      *Metrics
+	metrics                      *rowinfra.Metrics
 }
 
-func newRowHelper(
+func NewRowHelper(
 	codec keys.SQLCodec,
 	desc catalog.TableDescriptor,
 	indexes []catalog.Index,
 	sv *settings.Values,
 	internal bool,
-	metrics *Metrics,
-) rowHelper {
-	rh := rowHelper{
+	metrics *rowinfra.Metrics,
+) RowHelper {
+	rh := RowHelper{
 		Codec:     codec,
 		TableDesc: desc,
 		Indexes:   indexes,
@@ -156,10 +149,10 @@ func newRowHelper(
 // secondaryIndexEntries are only valid until the next call to encodeIndexes or
 // encodeSecondaryIndexes. includeEmpty details whether the results should
 // include empty secondary index k/v pairs.
-func (rh *rowHelper) encodeIndexes(
+func (rh *RowHelper) encodeIndexes(
 	colIDtoRowIndex catalog.TableColMap,
 	values []tree.Datum,
-	ignoreIndexes util.FastIntSet,
+	ignoreIndexes intsets.Fast,
 	includeEmpty bool,
 ) (
 	primaryIndexKey []byte,
@@ -177,18 +170,22 @@ func (rh *rowHelper) encodeIndexes(
 	return primaryIndexKey, secondaryIndexEntries, nil
 }
 
+func (rh *RowHelper) Init() {
+	rh.PrimaryIndexKeyPrefix = rowenc.MakeIndexKeyPrefix(
+		rh.Codec, rh.TableDesc.GetID(), rh.TableDesc.GetPrimaryIndexID(),
+	)
+}
+
 // encodePrimaryIndex encodes the primary index key.
-func (rh *rowHelper) encodePrimaryIndex(
+func (rh *RowHelper) encodePrimaryIndex(
 	colIDtoRowIndex catalog.TableColMap, values []tree.Datum,
 ) (primaryIndexKey []byte, err error) {
-	if rh.primaryIndexKeyPrefix == nil {
-		rh.primaryIndexKeyPrefix = rowenc.MakeIndexKeyPrefix(
-			rh.Codec, rh.TableDesc.GetID(), rh.TableDesc.GetPrimaryIndexID(),
-		)
+	if rh.PrimaryIndexKeyPrefix == nil {
+		rh.Init()
 	}
 	idx := rh.TableDesc.GetPrimaryIndex()
 	primaryIndexKey, containsNull, err := rowenc.EncodeIndexKey(
-		rh.TableDesc, idx, colIDtoRowIndex, values, rh.primaryIndexKeyPrefix,
+		rh.TableDesc, idx, colIDtoRowIndex, values, rh.PrimaryIndexKeyPrefix,
 	)
 	if containsNull {
 		return nil, rowenc.MakeNullPKError(rh.TableDesc, idx, colIDtoRowIndex, values)
@@ -207,10 +204,10 @@ func (rh *rowHelper) encodePrimaryIndex(
 //
 // includeEmpty details whether the results should include empty secondary index
 // k/v pairs.
-func (rh *rowHelper) encodeSecondaryIndexes(
+func (rh *RowHelper) encodeSecondaryIndexes(
 	colIDtoRowIndex catalog.TableColMap,
 	values []tree.Datum,
-	ignoreIndexes util.FastIntSet,
+	ignoreIndexes intsets.Fast,
 	includeEmpty bool,
 ) (secondaryIndexEntries map[catalog.Index][]rowenc.IndexEntry, err error) {
 
@@ -236,83 +233,51 @@ func (rh *rowHelper) encodeSecondaryIndexes(
 	return rh.indexEntries, nil
 }
 
-// skipColumnNotInPrimaryIndexValue returns true if the value at column colID
+// SkipColumnNotInPrimaryIndexValue returns true if the value at column colID
 // does not need to be encoded, either because it is already part of the primary
 // key, or because it is not part of the primary index altogether. Composite
 // datums are considered too, so a composite datum in a PK will return false.
-func (rh *rowHelper) skipColumnNotInPrimaryIndexValue(
+func (rh *RowHelper) SkipColumnNotInPrimaryIndexValue(
 	colID descpb.ColumnID, value tree.Datum,
-) (bool, error) {
+) bool {
 	if rh.primaryIndexKeyCols.Empty() {
 		rh.primaryIndexKeyCols = rh.TableDesc.GetPrimaryIndex().CollectKeyColumnIDs()
 		rh.primaryIndexValueCols = rh.TableDesc.GetPrimaryIndex().CollectPrimaryStoredColumnIDs()
 	}
 	if !rh.primaryIndexKeyCols.Contains(colID) {
-		return !rh.primaryIndexValueCols.Contains(colID), nil
+		return !rh.primaryIndexValueCols.Contains(colID)
 	}
 	if cdatum, ok := value.(tree.CompositeDatum); ok {
 		// Composite columns are encoded in both the key and the value.
-		return !cdatum.IsComposite(), nil
+		return !cdatum.IsComposite()
 	}
-	// Skip primary key columns as their values are encoded in the row key.
-	return true, nil
+	// Skip primary key columns as their values are encoded in the key of
+	// each family. Family 0 is guaranteed to exist and acts as a
+	// sentinel.
+	return true
 }
 
-func (rh *rowHelper) sortedPrimaryRowGroup() []descpb.ColumnID {
-	if rh.sortedPrimaryRowGroupColIDs == nil {
-		colIDs := append([]descpb.ColumnID{}, rh.TableDesc.GetRowGroups()[0].ColumnIDs...)
-		sort.Sort(descpb.ColumnIDs(colIDs))
-		rh.sortedPrimaryRowGroupColIDs = colIDs
+func (rh *RowHelper) SortedColumnFamily(famID descpb.FamilyID) ([]descpb.ColumnID, bool) {
+	if rh.sortedColumnFamilies == nil {
+		rh.sortedColumnFamilies = make(map[descpb.FamilyID][]descpb.ColumnID, rh.TableDesc.NumFamilies())
+
+		_ = rh.TableDesc.ForeachFamily(func(family *descpb.ColumnFamilyDescriptor) error {
+			colIDs := append([]descpb.ColumnID{}, family.ColumnIDs...)
+			sort.Sort(descpb.ColumnIDs(colIDs))
+			rh.sortedColumnFamilies[family.ID] = colIDs
+			return nil
+		})
 	}
-	return rh.sortedPrimaryRowGroupColIDs
+	colIDs, ok := rh.sortedColumnFamilies[famID]
+	return colIDs, ok
 }
 
-// isArrayColumn returns true if the given column ID is an array column.
-// The set of array columns is computed lazily on first call.
-func (rh *rowHelper) isArrayColumn(colID descpb.ColumnID) bool {
-	if !rh.arrayColIDsInit {
-		for _, col := range rh.TableDesc.PublicColumns() {
-			if col.GetType().Family() == types.ArrayFamily {
-				rh.arrayColIDs.Add(col.GetID())
-			}
-		}
-		rh.arrayColIDsInit = true
-	}
-	return rh.arrayColIDs.Contains(colID)
-}
-
-// encodeSubordinateKeys returns subordinate key entries for all array columns
-// in the given row values. The primaryIndexKey is the PK prefix before row-group
-// encoding.
-func (rh *rowHelper) encodeSubordinateKeys(
-	primaryIndexKey []byte,
-	colIDtoRowIndex catalog.TableColMap,
-	values []tree.Datum,
-) ([]rowenc.IndexEntry, error) {
-	return rowenc.EncodeSubordinateKeys(rh.TableDesc, primaryIndexKey, colIDtoRowIndex, values)
-}
-
-// checkRowSize compares the size of a row KV against the max_row_size limits.
-func (rh *rowHelper) checkRowSize(
-	ctx context.Context, key *roachpb.Key, value *roachpb.Value, rowGroup descpb.RowGroupID,
+// CheckRowSize compares the size of a primary key column family against the
+// max_row_size limits.
+func (rh *RowHelper) CheckRowSize(
+	ctx context.Context, key *roachpb.Key, valueBytes []byte, family descpb.FamilyID,
 ) error {
-	return rh.checkRowSizeWithSubordinates(ctx, key, value, rowGroup, nil /* subordinateEntries */)
-}
-
-// checkRowSizeWithSubordinates compares the size of a logical row against the
-// max_row_size limits. subordinateEntries, when present, are included in the
-// total to account for array elements stored in subordinate KVs.
-func (rh *rowHelper) checkRowSizeWithSubordinates(
-	ctx context.Context,
-	key *roachpb.Key,
-	value *roachpb.Value,
-	rowGroup descpb.RowGroupID,
-	subordinateEntries []rowenc.IndexEntry,
-) error {
-	size := uint32(len(*key)) + uint32(len(value.RawBytes))
-	for i := range subordinateEntries {
-		size += uint32(len(subordinateEntries[i].Key)) + uint32(len(subordinateEntries[i].Value.RawBytes))
-	}
+	size := uint32(len(*key)) + uint32(len(valueBytes))
 	shouldLog := rh.maxRowSizeLog != 0 && size > rh.maxRowSizeLog
 	shouldErr := rh.maxRowSizeErr != 0 && size > rh.maxRowSizeErr
 	if !shouldLog && !shouldErr {
@@ -321,7 +286,7 @@ func (rh *rowHelper) checkRowSizeWithSubordinates(
 	details := eventpb.CommonLargeRowDetails{
 		RowSize:    size,
 		TableID:    uint32(rh.TableDesc.GetID()),
-		RowGroupID: uint32(rowGroup),
+		RowGroupID: uint32(family),
 		PrimaryKey: keys.PrettyPrint(rh.primIndexValDirs, *key),
 	}
 	if rh.internal && shouldErr {
@@ -333,7 +298,7 @@ func (rh *rowHelper) checkRowSizeWithSubordinates(
 		if rh.metrics != nil {
 			rh.metrics.MaxRowSizeLogCount.Inc(1)
 		}
-		var event eventpb.EventPayload
+		var event logpb.EventPayload
 		if rh.internal {
 			event = &eventpb.LargeRowInternal{CommonLargeRowDetails: details}
 		} else {
@@ -355,7 +320,7 @@ var deleteEncoding protoutil.Message = &rowencpb.IndexValueWrapper{
 	Deleted: true,
 }
 
-func (rh *rowHelper) deleteIndexEntry(
+func (rh *RowHelper) deleteIndexEntry(
 	ctx context.Context,
 	batch *kv.Batch,
 	index catalog.Index,

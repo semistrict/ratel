@@ -1,16 +1,12 @@
 // Copyright 2015 The Cockroach Authors.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License
+// included in the file licenses/BSL.txt.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// permissions and limitations under the License.
+// As of the Change Date specified in that file, in accordance with
+// the Business Source License, use of this software will be governed
+// by the Apache License, Version 2.0, included in the file
+// licenses/APL.txt.
 
 package sql
 
@@ -18,10 +14,10 @@ import (
 	"context"
 	"sync"
 
-	"github.com/semistrict/ratel/pkg/sql/catalog/colinfo"
-	"github.com/semistrict/ratel/pkg/sql/row"
-	"github.com/semistrict/ratel/pkg/sql/rowcontainer"
-	"github.com/semistrict/ratel/pkg/sql/sem/tree"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo"
+	"github.com/cockroachdb/cockroach/pkg/sql/row"
+	"github.com/cockroachdb/cockroach/pkg/sql/rowcontainer"
+	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 )
 
 var deleteNodePool = sync.Pool{
@@ -45,7 +41,6 @@ type deleteNode struct {
 type deleteRun struct {
 	td         tableDeleter
 	rowsNeeded bool
-	actorName  string
 
 	// done informs a new call to BatchedNext() that the previous call
 	// to BatchedNext() has completed the work already.
@@ -55,8 +50,8 @@ type deleteRun struct {
 	traceKV bool
 
 	// partialIndexDelValsOffset is the offset of partial index delete
-	// indicators in the source values. It is equal to the number of fetched
-	// columns.
+	// indicators in the source values. It is equal to the sum of the number
+	// of fetched columns and the number of passthrough columns.
 	partialIndexDelValsOffset int
 
 	// rowIdxToRetIdx is the mapping from the columns returned by the deleter
@@ -66,7 +61,10 @@ type deleteRun struct {
 	// index of the resultRowBuffer where the i-th column is to be returned.
 	rowIdxToRetIdx []int
 
-	actorEnsured bool
+	// numPassthrough is the number of columns in addition to the set of columns
+	// of the target table being returned, that must be passed through from the
+	// input node.
+	numPassthrough int
 }
 
 var _ mutationPlanNode = &deleteNode{}
@@ -77,7 +75,7 @@ func (d *deleteNode) startExec(params runParams) error {
 
 	if d.run.rowsNeeded {
 		d.run.td.rows = rowcontainer.NewRowContainer(
-			params.EvalContext().Mon.MakeBoundAccount(),
+			params.p.Mon().MakeBoundAccount(),
 			colinfo.ColTypeInfoFromResCols(d.columns))
 	}
 	return d.run.td.init(params.ctx, params.p.txn, params.EvalContext(), &params.EvalContext().Settings.SV)
@@ -158,12 +156,6 @@ func (d *deleteNode) BatchedNext(params runParams) (bool, error) {
 // processSourceRow processes one row from the source for deletion and, if
 // result rows are needed, saves it in the result row container
 func (d *deleteNode) processSourceRow(params runParams, sourceVals tree.Datums) error {
-	if !d.run.actorEnsured {
-		if err := params.p.ensureActorExists(params.ctx, d.run.actorName); err != nil {
-			return err
-		}
-		d.run.actorEnsured = true
-	}
 	// Create a set of partial index IDs to not delete from. Indexes should not
 	// be deleted from when they are partial indexes and the row does not
 	// satisfy the predicate and therefore do not exist in the partial index.
@@ -173,7 +165,7 @@ func (d *deleteNode) processSourceRow(params runParams, sourceVals tree.Datums) 
 		offset := d.run.partialIndexDelValsOffset
 		partialIndexDelVals := sourceVals[offset : offset+n]
 
-		err := pm.Init(tree.Datums{}, partialIndexDelVals, d.run.td.tableDesc())
+		err := pm.Init(nil /*partialIndexPutVals */, partialIndexDelVals, d.run.td.tableDesc())
 		if err != nil {
 			return err
 		}
@@ -197,10 +189,30 @@ func (d *deleteNode) processSourceRow(params runParams, sourceVals tree.Datums) 
 		// d.run.rows.NumCols() is guaranteed to only contain the requested
 		// public columns.
 		resultValues := make(tree.Datums, d.run.td.rows.NumCols())
-		for i, retIdx := range d.run.rowIdxToRetIdx {
+		largestRetIdx := -1
+		for i := range d.run.rowIdxToRetIdx {
+			retIdx := d.run.rowIdxToRetIdx[i]
 			if retIdx >= 0 {
+				if retIdx >= largestRetIdx {
+					largestRetIdx = retIdx
+				}
 				resultValues[retIdx] = sourceVals[i]
 			}
+		}
+
+		// At this point we've extracted all the RETURNING values that are part
+		// of the target table. We must now extract the columns in the RETURNING
+		// clause that refer to other tables (from the USING clause of the delete).
+		if d.run.numPassthrough > 0 {
+			passthroughBegin := len(d.run.td.rd.FetchCols)
+			passthroughEnd := passthroughBegin + d.run.numPassthrough
+			passthroughValues := sourceVals[passthroughBegin:passthroughEnd]
+
+			for i := 0; i < d.run.numPassthrough; i++ {
+				largestRetIdx++
+				resultValues[largestRetIdx] = passthroughValues[i]
+			}
+
 		}
 
 		if _, err := d.run.td.rows.AddRow(params.ctx, resultValues); err != nil {

@@ -124,14 +124,14 @@ func getV2StmtDiagReqsDescriptor() *descpb.TableDescriptor {
 			{Name: "expires_at", ID: 7, Type: types.TimestampTZ, Nullable: true},
 		},
 		NextColumnID: 8,
-		Families: []descpb.ColumnFamilyDescriptor{
+		RowGroups: []descpb.RowGroupDescriptor{
 			{
 				Name:        "primary",
 				ColumnNames: []string{"id", "completed", "statement_fingerprint", "statement_diagnostics_id", "requested_at", "min_execution_latency", "expires_at"},
 				ColumnIDs:   []descpb.ColumnID{1, 2, 3, 4, 5, 6, 7},
 			},
 		},
-		NextFamilyID: 1,
+		NextRowGroupID: 1,
 		PrimaryIndex: descpb.IndexDescriptor{
 			Name:                tabledesc.PrimaryKeyIndexName("statement_diagnostics_requests"),
 			ID:                  1,

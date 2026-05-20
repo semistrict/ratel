@@ -5,6 +5,8 @@ cluster_size: 3
 
 range_split_size: 67108864
 
+skip_reason: create stats parallel cluster test hits legacy job session claim semantics in this port
+
 run:
    # First run setup
    - - file: setup

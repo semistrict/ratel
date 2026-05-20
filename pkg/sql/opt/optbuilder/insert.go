@@ -1,16 +1,12 @@
 // Copyright 2018 The Cockroach Authors.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License
+// included in the file licenses/BSL.txt.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// permissions and limitations under the License.
+// As of the Change Date specified in that file, in accordance with
+// the Business Source License, use of this software will be governed
+// by the Apache License, Version 2.0, included in the file
+// licenses/APL.txt.
 
 package optbuilder
 
@@ -18,19 +14,19 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/cockroachdb/cockroach/pkg/sql/opt"
+	"github.com/cockroachdb/cockroach/pkg/sql/opt/cat"
+	"github.com/cockroachdb/cockroach/pkg/sql/opt/memo"
+	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
+	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
+	"github.com/cockroachdb/cockroach/pkg/sql/privilege"
+	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree/treecmp"
+	"github.com/cockroachdb/cockroach/pkg/sql/sqlerrors"
+	"github.com/cockroachdb/cockroach/pkg/sql/types"
+	"github.com/cockroachdb/cockroach/pkg/util/errorutil/unimplemented"
+	"github.com/cockroachdb/cockroach/pkg/util/intsets"
 	"github.com/cockroachdb/errors"
-	"github.com/semistrict/ratel/pkg/sql/opt"
-	"github.com/semistrict/ratel/pkg/sql/opt/cat"
-	"github.com/semistrict/ratel/pkg/sql/opt/memo"
-	"github.com/semistrict/ratel/pkg/sql/pgwire/pgcode"
-	"github.com/semistrict/ratel/pkg/sql/pgwire/pgerror"
-	"github.com/semistrict/ratel/pkg/sql/privilege"
-	"github.com/semistrict/ratel/pkg/sql/sem/tree"
-	"github.com/semistrict/ratel/pkg/sql/sem/tree/treecmp"
-	"github.com/semistrict/ratel/pkg/sql/sqlerrors"
-	"github.com/semistrict/ratel/pkg/sql/types"
-	"github.com/semistrict/ratel/pkg/util"
-	"github.com/semistrict/ratel/pkg/util/errorutil/unimplemented"
 )
 
 // duplicateUpsertErrText is error text used when a row is modified twice by
@@ -188,8 +184,13 @@ func (b *Builder) buildInsert(ins *tree.Insert, inScope *scope) (outScope *scope
 	// Find which table we're working on, check the permissions.
 	tab, depName, alias, refColumns := b.resolveTableForMutation(ins.Table, privilege.INSERT)
 
-	// Extract actor from the table reference (actor('name').table syntax).
 	inScope = b.applyActorFromTableRef(ins.Table, inScope)
+
+	if tab.IsVirtualTable() {
+		panic(pgerror.Newf(pgcode.ObjectNotInPrerequisiteState,
+			"cannot insert into view \"%s\"", tab.Name(),
+		))
+	}
 
 	// It is possible to insert into specific columns using table reference
 	// syntax:
@@ -249,7 +250,7 @@ func (b *Builder) buildInsert(ins *tree.Insert, inScope *scope) (outScope *scope
 		mb.addTargetNamedColsForInsert(ins.Columns)
 	} else {
 		values := mb.extractValuesInput(ins.Rows)
-		if values != nil {
+		if values != nil && len(values.Rows) > 0 {
 			// Target columns are implicitly targeted by VALUES expression in the
 			// same order they appear in the target table schema.
 			mb.addTargetTableColsForInsert(len(values.Rows[0]))
@@ -288,9 +289,9 @@ func (b *Builder) buildInsert(ins *tree.Insert, inScope *scope) (outScope *scope
 	// See mutationBuilder.buildCheckInputScan.
 	mb.insertExpr = mb.outScope.expr
 
-	var returning tree.ReturningExprs
+	var returning *tree.ReturningExprs
 	if resultsNeeded(ins.Returning) {
-		returning = *ins.Returning.(*tree.ReturningExprs)
+		returning = ins.Returning.(*tree.ReturningExprs)
 	}
 
 	switch {
@@ -304,7 +305,7 @@ func (b *Builder) buildInsert(ins *tree.Insert, inScope *scope) (outScope *scope
 		// Wrap the input in one ANTI JOIN per UNIQUE index, and filter out rows
 		// that have conflicts. See the buildInputForDoNothing comment for more
 		// details.
-		mb.buildInputForDoNothing(inScope, ins.OnConflict)
+		mb.buildInputForDoNothing(inScope, ins.Table, ins.OnConflict)
 
 		// Since buildInputForDoNothing filters out rows with conflicts, always
 		// insert rows that are not filtered.
@@ -321,7 +322,7 @@ func (b *Builder) buildInsert(ins *tree.Insert, inScope *scope) (outScope *scope
 		if mb.needExistingRows() {
 			// Left-join each input row to the target table, using conflict columns
 			// derived from the primary index as the join condition.
-			mb.buildInputForUpsert(inScope, nil /* onConflict */, nil /* whereClause */)
+			mb.buildInputForUpsert(inScope, ins.Table, nil /* onConflict */, nil /* whereClause */)
 
 			// Add additional columns for computed expressions that may depend on any
 			// updated columns, as well as mutation columns with default values.
@@ -335,7 +336,7 @@ func (b *Builder) buildInsert(ins *tree.Insert, inScope *scope) (outScope *scope
 	default:
 		// Left-join each input row to the target table, using the conflict columns
 		// as the join condition.
-		mb.buildInputForUpsert(inScope, ins.OnConflict, ins.OnConflict.Where)
+		mb.buildInputForUpsert(inScope, ins.Table, ins.OnConflict, ins.OnConflict.Where)
 
 		// Derive the columns that will be updated from the SET expressions.
 		mb.addTargetColsForUpdate(ins.OnConflict.Exprs)
@@ -633,7 +634,7 @@ func (mb *mutationBuilder) buildInputForInsert(inScope *scope, inputRows *tree.S
 		// TODO(janexing): Implement the OVERRIDING SYSTEM VALUE syntax for
 		// INSERT which allows a GENERATED ALWAYS AS IDENTITY column to be
 		// overwritten.
-		// See https://github.com/semistrict/ratel/issues/68201.
+		// See https://github.com/cockroachdb/cockroach/issues/68201.
 		if col := mb.tab.Column(ord); col.IsGeneratedAlwaysAsIdentity() {
 			colName := string(col.ColName())
 			panic(sqlerrors.NewGeneratedAlwaysAsIdentityColumnOverrideError(colName))
@@ -678,7 +679,7 @@ func (mb *mutationBuilder) addSynthesizedColsForInsert() {
 
 // buildInsert constructs an Insert operator, possibly wrapped by a Project
 // operator that corresponds to the given RETURNING clause.
-func (mb *mutationBuilder) buildInsert(returning tree.ReturningExprs) {
+func (mb *mutationBuilder) buildInsert(returning *tree.ReturningExprs) {
 	// Disambiguate names so that references in any expressions, such as a
 	// check constraint, refer to the correct columns.
 	mb.disambiguateColumns()
@@ -704,7 +705,9 @@ func (mb *mutationBuilder) buildInsert(returning tree.ReturningExprs) {
 // buildInputForDoNothing wraps the input expression in ANTI JOIN expressions,
 // one for each arbiter on the target table. See the comment header for
 // Builder.buildInsert for an example.
-func (mb *mutationBuilder) buildInputForDoNothing(inScope *scope, onConflict *tree.OnConflict) {
+func (mb *mutationBuilder) buildInputForDoNothing(
+	inScope *scope, texpr tree.TableExpr, onConflict *tree.OnConflict,
+) {
 	// Determine the set of arbiter indexes and constraints to use to check for
 	// conflicts.
 	mb.arbiters = mb.findArbiters(onConflict)
@@ -716,14 +719,14 @@ func (mb *mutationBuilder) buildInputForDoNothing(inScope *scope, onConflict *tr
 	mb.outScope.ordering = nil
 
 	// Create an anti-join for each arbiter.
-	mb.arbiters.ForEach(func(name string, conflictOrds util.FastIntSet, pred tree.Expr, canaryOrd int) {
-		mb.buildAntiJoinForDoNothingArbiter(inScope, conflictOrds, pred)
+	mb.arbiters.ForEach(func(name string, conflictOrds intsets.Fast, pred tree.Expr, canaryOrd int) {
+		mb.buildAntiJoinForDoNothingArbiter(inScope, texpr, conflictOrds, pred)
 	})
 
 	// Create an UpsertDistinctOn for each arbiter. This must happen after all
 	// conflicting rows are removed with the anti-joins created above, to avoid
 	// removing valid rows (see #59125).
-	mb.arbiters.ForEach(func(name string, conflictOrds util.FastIntSet, pred tree.Expr, canaryOrd int) {
+	mb.arbiters.ForEach(func(name string, conflictOrds intsets.Fast, pred tree.Expr, canaryOrd int) {
 		// If the arbiter has a partial predicate, project a new column that
 		// allows the UpsertDistinctOn to only de-duplicate insert rows that
 		// satisfy the predicate. See projectPartialArbiterDistinctColumn for
@@ -749,7 +752,7 @@ func (mb *mutationBuilder) buildInputForDoNothing(inScope *scope, onConflict *tr
 // given insert row conflicts with an existing row in the table. If it is null,
 // then there is no conflict.
 func (mb *mutationBuilder) buildInputForUpsert(
-	inScope *scope, onConflict *tree.OnConflict, whereClause *tree.Where,
+	inScope *scope, texpr tree.TableExpr, onConflict *tree.OnConflict, whereClause *tree.Where,
 ) {
 	// Determine the set of arbiter indexes and constraints to use to check for
 	// conflicts.
@@ -769,7 +772,7 @@ func (mb *mutationBuilder) buildInputForUpsert(
 
 	// Create an UpsertDistinctOn and a left-join for the single arbiter.
 	var canaryCol *scopeColumn
-	mb.arbiters.ForEach(func(name string, conflictOrds util.FastIntSet, pred tree.Expr, canaryOrd int) {
+	mb.arbiters.ForEach(func(name string, conflictOrds intsets.Fast, pred tree.Expr, canaryOrd int) {
 		// If the arbiter has a partial predicate, project a new column that
 		// allows the UpsertDistinctOn to only de-duplicate insert rows that
 		// satisfy the predicate. See projectPartialArbiterDistinctColumn for
@@ -799,7 +802,7 @@ func (mb *mutationBuilder) buildInputForUpsert(
 
 		// Create a left-join for the arbiter.
 		mb.buildLeftJoinForUpsertArbiter(
-			inScope, conflictOrds, pred,
+			inScope, texpr, conflictOrds, pred,
 		)
 
 		// Record a not-null "canary" column. After the left-join, this will be
@@ -883,7 +886,7 @@ func (mb *mutationBuilder) setUpsertCols(insertCols tree.NameList) {
 
 // buildUpsert constructs an Upsert operator, possibly wrapped by a Project
 // operator that corresponds to the given RETURNING clause.
-func (mb *mutationBuilder) buildUpsert(returning tree.ReturningExprs) {
+func (mb *mutationBuilder) buildUpsert(returning *tree.ReturningExprs) {
 	// Merge input insert and update columns using CASE expressions.
 	mb.projectUpsertColumns()
 

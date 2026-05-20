@@ -39,6 +39,7 @@ go_library(
 
 go_test(
     name = "spanconfigkvsubscriber_test",
+    tags = ["manual"],
     srcs = [
         "datadriven_test.go",
         "kvsubscriber_client_test.go",

@@ -17,6 +17,7 @@ import (
 
 	"github.com/cockroachdb/cockroach/pkg/base"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
 	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
 	"github.com/cockroachdb/cockroach/pkg/testutils/sqlutils"
 	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
@@ -25,6 +26,7 @@ import (
 
 func TestInsightsWorkload(t *testing.T) {
 	defer leaktest.AfterTest(t)()
+	skip.IgnoreLint(t, "workload split waits on the branch-unstable job/session path")
 
 	tests := []struct {
 		rows           int

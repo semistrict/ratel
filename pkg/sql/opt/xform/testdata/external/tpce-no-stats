@@ -754,7 +754,7 @@ with &1 (update_last_trade)
                      │    ├── fd: ()-->(138)
                      │    ├── update trade
                      │    │    ├── columns: t_id:87!null
-                     │    │    ├── fetch columns: t_id:104 t_dts:105 trade.t_st_id:106 t_tt_id:107 t_is_cash:108 t_s_symb:109 t_qty:110 t_bid_price:111 t_ca_id:112 t_exec_name:113 t_trade_price:114 t_chrg:115 t_comm:116 t_lifo:118
+                     │    │    ├── fetch columns: t_id:104 t_dts:105 trade.t_st_id:106 t_tt_id:107 t_is_cash:108 t_s_symb:109 t_qty:110 t_bid_price:111 t_ca_id:112 t_exec_name:113 t_trade_price:114 t_chrg:115 t_comm:116 t_tax:117 t_lifo:118
                      │    │    ├── update-mapping:
                      │    │    │    ├── t_dts_new:126 => t_dts:88
                      │    │    │    └── t_st_id_cast:127 => trade.t_st_id:89
@@ -764,19 +764,19 @@ with &1 (update_last_trade)
                      │    │    ├── volatile, mutations
                      │    │    ├── key: (87)
                      │    │    ├── project
-                     │    │    │    ├── columns: t_st_id_cast:127!null t_dts_new:126!null t_id:104!null t_dts:105!null trade.t_st_id:106!null t_tt_id:107!null t_is_cash:108!null t_s_symb:109!null t_qty:110!null t_bid_price:111!null t_ca_id:112!null t_exec_name:113!null t_trade_price:114 t_chrg:115!null t_comm:116!null t_lifo:118!null
+                     │    │    │    ├── columns: t_st_id_cast:127!null t_dts_new:126!null t_id:104!null t_dts:105!null trade.t_st_id:106!null t_tt_id:107!null t_is_cash:108!null t_s_symb:109!null t_qty:110!null t_bid_price:111!null t_ca_id:112!null t_exec_name:113!null t_trade_price:114 t_chrg:115!null t_comm:116!null t_tax:117!null t_lifo:118!null
                      │    │    │    ├── key: (104)
-                     │    │    │    ├── fd: ()-->(126,127), (104)-->(105-116,118)
+                     │    │    │    ├── fd: ()-->(126,127), (104)-->(105-118)
                      │    │    │    ├── project
-                     │    │    │    │    ├── columns: t_id:104!null t_dts:105!null trade.t_st_id:106!null t_tt_id:107!null t_is_cash:108!null t_s_symb:109!null t_qty:110!null t_bid_price:111!null t_ca_id:112!null t_exec_name:113!null t_trade_price:114 t_chrg:115!null t_comm:116!null t_lifo:118!null
+                     │    │    │    │    ├── columns: t_id:104!null t_dts:105!null trade.t_st_id:106!null t_tt_id:107!null t_is_cash:108!null t_s_symb:109!null t_qty:110!null t_bid_price:111!null t_ca_id:112!null t_exec_name:113!null t_trade_price:114 t_chrg:115!null t_comm:116!null t_tax:117!null t_lifo:118!null
                      │    │    │    │    ├── key: (104)
-                     │    │    │    │    ├── fd: (104)-->(105-116,118)
+                     │    │    │    │    ├── fd: (104)-->(105-118)
                      │    │    │    │    └── inner-join (lookup trade)
-                     │    │    │    │         ├── columns: t_id:104!null t_dts:105!null trade.t_st_id:106!null t_tt_id:107!null t_is_cash:108!null t_s_symb:109!null t_qty:110!null t_bid_price:111!null t_ca_id:112!null t_exec_name:113!null t_trade_price:114 t_chrg:115!null t_comm:116!null t_lifo:118!null tr_t_id:121!null
+                     │    │    │    │         ├── columns: t_id:104!null t_dts:105!null trade.t_st_id:106!null t_tt_id:107!null t_is_cash:108!null t_s_symb:109!null t_qty:110!null t_bid_price:111!null t_ca_id:112!null t_exec_name:113!null t_trade_price:114 t_chrg:115!null t_comm:116!null t_tax:117!null t_lifo:118!null tr_t_id:121!null
                      │    │    │    │         ├── key columns: [121] = [104]
                      │    │    │    │         ├── lookup columns are key
                      │    │    │    │         ├── key: (121)
-                     │    │    │    │         ├── fd: (104)-->(105-116,118), (104)==(121), (121)==(104)
+                     │    │    │    │         ├── fd: (104)-->(105-118), (104)==(121), (121)==(104)
                      │    │    │    │         ├── with-scan &2 (request_list)
                      │    │    │    │         │    ├── columns: tr_t_id:121!null
                      │    │    │    │         │    ├── mapping:
@@ -3994,7 +3994,7 @@ project
  ├── fd: ()-->(52)
  ├── update trade
  │    ├── columns: t_id:1!null trade.t_tax:14!null
- │    ├── fetch columns: t_id:18 trade.t_tax:31
+ │    ├── fetch columns: t_id:18 t_dts:19 t_st_id:20 t_tt_id:21 t_is_cash:22 t_s_symb:23 t_qty:24 t_bid_price:25 t_ca_id:26 t_exec_name:27 t_trade_price:28 t_chrg:29 t_comm:30 trade.t_tax:31 t_lifo:32
  │    ├── update-mapping:
  │    │    └── t_tax_cast:46 => trade.t_tax:14
  │    ├── return-mapping:
@@ -4006,23 +4006,23 @@ project
  │    ├── key: ()
  │    ├── fd: ()-->(1,14)
  │    └── project
- │         ├── columns: check5:51 t_id:18!null trade.t_tax:31!null t_tax_cast:46
+ │         ├── columns: check5:51 t_id:18!null t_dts:19!null t_st_id:20!null t_tt_id:21!null t_is_cash:22!null t_s_symb:23!null t_qty:24!null t_bid_price:25!null t_ca_id:26!null t_exec_name:27!null t_trade_price:28 t_chrg:29!null t_comm:30!null trade.t_tax:31!null t_lifo:32!null t_tax_cast:46
  │         ├── cardinality: [0 - 1]
  │         ├── immutable
  │         ├── key: ()
- │         ├── fd: ()-->(18,31,46,51)
+ │         ├── fd: ()-->(18-32,46,51)
  │         ├── project
- │         │    ├── columns: t_tax_cast:46 t_id:18!null trade.t_tax:31!null
+ │         │    ├── columns: t_tax_cast:46 t_id:18!null t_dts:19!null t_st_id:20!null t_tt_id:21!null t_is_cash:22!null t_s_symb:23!null t_qty:24!null t_bid_price:25!null t_ca_id:26!null t_exec_name:27!null t_trade_price:28 t_chrg:29!null t_comm:30!null trade.t_tax:31!null t_lifo:32!null
  │         │    ├── cardinality: [0 - 1]
  │         │    ├── immutable
  │         │    ├── key: ()
- │         │    ├── fd: ()-->(18,31,46)
+ │         │    ├── fd: ()-->(18-32,46)
  │         │    ├── scan trade
- │         │    │    ├── columns: t_id:18!null trade.t_tax:31!null
+ │         │    │    ├── columns: t_id:18!null t_dts:19!null t_st_id:20!null t_tt_id:21!null t_is_cash:22!null t_s_symb:23!null t_qty:24!null t_bid_price:25!null t_ca_id:26!null t_exec_name:27!null t_trade_price:28 t_chrg:29!null t_comm:30!null trade.t_tax:31!null t_lifo:32!null
  │         │    │    ├── constraint: /18: [/0 - /0]
  │         │    │    ├── cardinality: [0 - 1]
  │         │    │    ├── key: ()
- │         │    │    └── fd: ()-->(18,31)
+ │         │    │    └── fd: ()-->(18-32)
  │         │    └── projections
  │         │         └── assignment-cast: DECIMAL(10,2) [as=t_tax_cast:46, immutable, subquery]
  │         │              └── mult
@@ -4225,7 +4225,7 @@ with &2 (update_trade_commission)
  │    ├── fd: ()-->(52)
  │    ├── update trade
  │    │    ├── columns: t_id:1!null
- │    │    ├── fetch columns: t_id:18 t_dts:19 trade.t_st_id:20 t_tt_id:21 t_is_cash:22 t_s_symb:23 t_qty:24 t_bid_price:25 t_ca_id:26 t_exec_name:27 t_trade_price:28 t_chrg:29 t_comm:30 t_lifo:32
+ │    │    ├── fetch columns: t_id:18 t_dts:19 trade.t_st_id:20 t_tt_id:21 t_is_cash:22 t_s_symb:23 t_qty:24 t_bid_price:25 t_ca_id:26 t_exec_name:27 t_trade_price:28 t_chrg:29 t_comm:30 t_tax:31 t_lifo:32
  │    │    ├── update-mapping:
  │    │    │    ├── t_dts_new:36 => t_dts:2
  │    │    │    ├── t_st_id_cast:39 => trade.t_st_id:3
@@ -4240,16 +4240,16 @@ with &2 (update_trade_commission)
  │    │    ├── key: ()
  │    │    ├── fd: ()-->(1)
  │    │    ├── project
- │    │    │    ├── columns: check4:45!null t_comm_cast:41!null t_st_id_cast:39!null t_trade_price_cast:40!null t_dts_new:36!null t_id:18!null t_dts:19!null trade.t_st_id:20!null t_tt_id:21!null t_is_cash:22!null t_s_symb:23!null t_qty:24!null t_bid_price:25!null t_ca_id:26!null t_exec_name:27!null t_trade_price:28 t_chrg:29!null t_comm:30!null t_lifo:32!null
+ │    │    │    ├── columns: check4:45!null t_comm_cast:41!null t_st_id_cast:39!null t_trade_price_cast:40!null t_dts_new:36!null t_id:18!null t_dts:19!null trade.t_st_id:20!null t_tt_id:21!null t_is_cash:22!null t_s_symb:23!null t_qty:24!null t_bid_price:25!null t_ca_id:26!null t_exec_name:27!null t_trade_price:28 t_chrg:29!null t_comm:30!null t_tax:31!null t_lifo:32!null
  │    │    │    ├── cardinality: [0 - 1]
  │    │    │    ├── key: ()
- │    │    │    ├── fd: ()-->(18-30,32,36,39-41,45)
+ │    │    │    ├── fd: ()-->(18-32,36,39-41,45)
  │    │    │    ├── scan trade
- │    │    │    │    ├── columns: t_id:18!null t_dts:19!null trade.t_st_id:20!null t_tt_id:21!null t_is_cash:22!null t_s_symb:23!null t_qty:24!null t_bid_price:25!null t_ca_id:26!null t_exec_name:27!null t_trade_price:28 t_chrg:29!null t_comm:30!null t_lifo:32!null
+ │    │    │    │    ├── columns: t_id:18!null t_dts:19!null trade.t_st_id:20!null t_tt_id:21!null t_is_cash:22!null t_s_symb:23!null t_qty:24!null t_bid_price:25!null t_ca_id:26!null t_exec_name:27!null t_trade_price:28 t_chrg:29!null t_comm:30!null t_tax:31!null t_lifo:32!null
  │    │    │    │    ├── constraint: /18: [/0 - /0]
  │    │    │    │    ├── cardinality: [0 - 1]
  │    │    │    │    ├── key: ()
- │    │    │    │    └── fd: ()-->(18-30,32)
+ │    │    │    │    └── fd: ()-->(18-32)
  │    │    │    └── projections
  │    │    │         ├── true [as=check4:45]
  │    │    │         ├── 50.00 [as=t_comm_cast:41]
@@ -4289,7 +4289,7 @@ with &2 (update_trade_commission)
       │    ├── fd: ()-->(70)
       │    ├── update broker
       │    │    ├── columns: b_id:53!null
-      │    │    ├── fetch columns: b_id:60 b_num_trades:63 b_comm_total:64
+      │    │    ├── fetch columns: b_id:60 b_st_id:61 b_name:62 b_num_trades:63 b_comm_total:64
       │    │    ├── update-mapping:
       │    │    │    ├── b_num_trades_new:68 => b_num_trades:56
       │    │    │    └── b_comm_total_cast:69 => b_comm_total:57
@@ -4300,17 +4300,17 @@ with &2 (update_trade_commission)
       │    │    ├── key: ()
       │    │    ├── fd: ()-->(53)
       │    │    └── project
-      │    │         ├── columns: b_comm_total_cast:69!null b_num_trades_new:68!null b_id:60!null b_num_trades:63!null b_comm_total:64!null
+      │    │         ├── columns: b_comm_total_cast:69!null b_num_trades_new:68!null b_id:60!null b_st_id:61!null b_name:62!null b_num_trades:63!null b_comm_total:64!null
       │    │         ├── cardinality: [0 - 1]
       │    │         ├── immutable
       │    │         ├── key: ()
-      │    │         ├── fd: ()-->(60,63,64,68,69)
+      │    │         ├── fd: ()-->(60-64,68,69)
       │    │         ├── scan broker
-      │    │         │    ├── columns: b_id:60!null b_num_trades:63!null b_comm_total:64!null
+      │    │         │    ├── columns: b_id:60!null b_st_id:61!null b_name:62!null b_num_trades:63!null b_comm_total:64!null
       │    │         │    ├── constraint: /60: [/0 - /0]
       │    │         │    ├── cardinality: [0 - 1]
       │    │         │    ├── key: ()
-      │    │         │    └── fd: ()-->(60,63,64)
+      │    │         │    └── fd: ()-->(60-64)
       │    │         └── projections
       │    │              ├── assignment-cast: DECIMAL(12,2) [as=b_comm_total_cast:69, outer=(64), immutable]
       │    │              │    └── b_comm_total:64 + 5E+1
@@ -5110,23 +5110,23 @@ UPDATE trade
 ----
 update trade
  ├── columns: <none>
- ├── fetch columns: t_id:18 t_dts:19 t_st_id:20 t_tt_id:21 t_is_cash:22 t_s_symb:23 t_qty:24 t_bid_price:25 t_ca_id:26 t_exec_name:27 t_trade_price:28 t_chrg:29 t_comm:30 t_lifo:32
+ ├── fetch columns: t_id:18 t_dts:19 t_st_id:20 t_tt_id:21 t_is_cash:22 t_s_symb:23 t_qty:24 t_bid_price:25 t_ca_id:26 t_exec_name:27 t_trade_price:28 t_chrg:29 t_comm:30 t_tax:31 t_lifo:32
  ├── update-mapping:
  │    └── t_exec_name_cast:36 => t_exec_name:10
  ├── cardinality: [0 - 0]
  ├── volatile, mutations
  └── project
-      ├── columns: t_exec_name_cast:36 t_id:18!null t_dts:19!null t_st_id:20!null t_tt_id:21!null t_is_cash:22!null t_s_symb:23!null t_qty:24!null t_bid_price:25!null t_ca_id:26!null t_exec_name:27!null t_trade_price:28 t_chrg:29!null t_comm:30!null t_lifo:32!null
+      ├── columns: t_exec_name_cast:36 t_id:18!null t_dts:19!null t_st_id:20!null t_tt_id:21!null t_is_cash:22!null t_s_symb:23!null t_qty:24!null t_bid_price:25!null t_ca_id:26!null t_exec_name:27!null t_trade_price:28 t_chrg:29!null t_comm:30!null t_tax:31!null t_lifo:32!null
       ├── cardinality: [0 - 4]
       ├── immutable
       ├── key: (18)
-      ├── fd: (18)-->(19-30,32), (27)-->(36)
+      ├── fd: (18)-->(19-32), (27)-->(36)
       ├── scan trade
-      │    ├── columns: t_id:18!null t_dts:19!null t_st_id:20!null t_tt_id:21!null t_is_cash:22!null t_s_symb:23!null t_qty:24!null t_bid_price:25!null t_ca_id:26!null t_exec_name:27!null t_trade_price:28 t_chrg:29!null t_comm:30!null t_lifo:32!null
+      │    ├── columns: t_id:18!null t_dts:19!null t_st_id:20!null t_tt_id:21!null t_is_cash:22!null t_s_symb:23!null t_qty:24!null t_bid_price:25!null t_ca_id:26!null t_exec_name:27!null t_trade_price:28 t_chrg:29!null t_comm:30!null t_tax:31!null t_lifo:32!null
       │    ├── constraint: /18: [/0 - /3]
       │    ├── cardinality: [0 - 4]
       │    ├── key: (18)
-      │    └── fd: (18)-->(19-30,32)
+      │    └── fd: (18)-->(19-32)
       └── projections
            └── assignment-cast: VARCHAR(49) [as=t_exec_name_cast:36, outer=(27), immutable]
                 └── CASE t_exec_name:27 LIKE '% X %' WHEN true THEN replace(t_exec_name:27, ' X ', ' ') ELSE replace(t_exec_name:27, ' ', ' X ') END
@@ -5946,30 +5946,30 @@ UPDATE news_item
 ----
 update news_item
  ├── columns: <none>
- ├── fetch columns: ni_id:10 ni_headline:11 ni_summary:12 ni_dts:14 ni_source:15 ni_author:16
+ ├── fetch columns: ni_id:10 ni_headline:11 ni_summary:12 ni_item:13 ni_dts:14 ni_source:15 ni_author:16
  ├── update-mapping:
  │    └── ni_dts_new:23 => ni_dts:5
  ├── cardinality: [0 - 0]
  ├── volatile, mutations
  └── project
-      ├── columns: ni_dts_new:23!null ni_id:10!null ni_headline:11!null ni_summary:12!null ni_dts:14!null ni_source:15!null ni_author:16
+      ├── columns: ni_dts_new:23!null ni_id:10!null ni_headline:11!null ni_summary:12!null ni_item:13!null ni_dts:14!null ni_source:15!null ni_author:16
       ├── immutable
       ├── key: (10)
-      ├── fd: (10)-->(11,12,14-16), (14)-->(23)
+      ├── fd: (10)-->(11-16), (14)-->(23)
       ├── project
-      │    ├── columns: ni_id:10!null ni_headline:11!null ni_summary:12!null ni_dts:14!null ni_source:15!null ni_author:16
+      │    ├── columns: ni_id:10!null ni_headline:11!null ni_summary:12!null ni_item:13!null ni_dts:14!null ni_source:15!null ni_author:16
       │    ├── key: (10)
-      │    ├── fd: (10)-->(11,12,14-16)
+      │    ├── fd: (10)-->(11-16)
       │    └── project
-      │         ├── columns: ni_id:10!null ni_headline:11!null ni_summary:12!null ni_dts:14!null ni_source:15!null ni_author:16 nx_ni_id:19!null
+      │         ├── columns: ni_id:10!null ni_headline:11!null ni_summary:12!null ni_item:13!null ni_dts:14!null ni_source:15!null ni_author:16 nx_ni_id:19!null
       │         ├── key: (19)
-      │         ├── fd: (10)-->(11,12,14-16), (10)==(19), (19)==(10)
+      │         ├── fd: (10)-->(11-16), (10)==(19), (19)==(10)
       │         └── inner-join (lookup news_item)
-      │              ├── columns: ni_id:10!null ni_headline:11!null ni_summary:12!null ni_dts:14!null ni_source:15!null ni_author:16 nx_ni_id:19!null nx_co_id:20!null
+      │              ├── columns: ni_id:10!null ni_headline:11!null ni_summary:12!null ni_item:13!null ni_dts:14!null ni_source:15!null ni_author:16 nx_ni_id:19!null nx_co_id:20!null
       │              ├── key columns: [19] = [10]
       │              ├── lookup columns are key
       │              ├── key: (19)
-      │              ├── fd: ()-->(20), (10)-->(11,12,14-16), (10)==(19), (19)==(10)
+      │              ├── fd: ()-->(20), (10)-->(11-16), (10)==(19), (19)==(10)
       │              ├── scan news_xref@news_xref_nx_co_id_idx
       │              │    ├── columns: nx_ni_id:19!null nx_co_id:20!null
       │              │    ├── constraint: /20/19: [/0 - /0]
@@ -6288,7 +6288,7 @@ WHERE t_id IN (1, 2, 3, 4, 5);
 ----
 update trade
  ├── columns: <none>
- ├── fetch columns: t_id:18 t_dts:19 trade.t_st_id:20 t_tt_id:21 t_is_cash:22 t_s_symb:23 t_qty:24 t_bid_price:25 t_ca_id:26 t_exec_name:27 t_trade_price:28 t_chrg:29 t_comm:30 t_lifo:32
+ ├── fetch columns: t_id:18 t_dts:19 trade.t_st_id:20 t_tt_id:21 t_is_cash:22 t_s_symb:23 t_qty:24 t_bid_price:25 t_ca_id:26 t_exec_name:27 t_trade_price:28 t_chrg:29 t_comm:30 t_tax:31 t_lifo:32
  ├── update-mapping:
  │    ├── t_dts_new:36 => t_dts:2
  │    └── t_st_id_cast:37 => trade.t_st_id:3
@@ -6296,16 +6296,16 @@ update trade
  ├── cardinality: [0 - 0]
  ├── volatile, mutations
  ├── project
- │    ├── columns: t_st_id_cast:37!null t_dts_new:36!null t_id:18!null t_dts:19!null trade.t_st_id:20!null t_tt_id:21!null t_is_cash:22!null t_s_symb:23!null t_qty:24!null t_bid_price:25!null t_ca_id:26!null t_exec_name:27!null t_trade_price:28 t_chrg:29!null t_comm:30!null t_lifo:32!null
+ │    ├── columns: t_st_id_cast:37!null t_dts_new:36!null t_id:18!null t_dts:19!null trade.t_st_id:20!null t_tt_id:21!null t_is_cash:22!null t_s_symb:23!null t_qty:24!null t_bid_price:25!null t_ca_id:26!null t_exec_name:27!null t_trade_price:28 t_chrg:29!null t_comm:30!null t_tax:31!null t_lifo:32!null
  │    ├── cardinality: [0 - 5]
  │    ├── key: (18)
- │    ├── fd: ()-->(36,37), (18)-->(19-30,32)
+ │    ├── fd: ()-->(36,37), (18)-->(19-32)
  │    ├── scan trade
- │    │    ├── columns: t_id:18!null t_dts:19!null trade.t_st_id:20!null t_tt_id:21!null t_is_cash:22!null t_s_symb:23!null t_qty:24!null t_bid_price:25!null t_ca_id:26!null t_exec_name:27!null t_trade_price:28 t_chrg:29!null t_comm:30!null t_lifo:32!null
+ │    │    ├── columns: t_id:18!null t_dts:19!null trade.t_st_id:20!null t_tt_id:21!null t_is_cash:22!null t_s_symb:23!null t_qty:24!null t_bid_price:25!null t_ca_id:26!null t_exec_name:27!null t_trade_price:28 t_chrg:29!null t_comm:30!null t_tax:31!null t_lifo:32!null
  │    │    ├── constraint: /18: [/1 - /5]
  │    │    ├── cardinality: [0 - 5]
  │    │    ├── key: (18)
- │    │    └── fd: (18)-->(19-30,32)
+ │    │    └── fd: (18)-->(19-32)
  │    └── projections
  │         ├── 'PNDG' [as=t_st_id_cast:37]
  │         └── '2020-06-15 22:27:42.148484' [as=t_dts_new:36]

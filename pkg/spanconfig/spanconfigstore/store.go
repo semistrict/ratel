@@ -34,7 +34,7 @@ var EnabledSetting = settings.RegisterBoolSetting(
 	settings.SystemOnly,
 	"spanconfig.store.enabled",
 	`use the span config infrastructure in KV instead of the system config span`,
-	true,
+	false,
 )
 
 // FallbackConfigOverride is a hidden cluster setting to override the fallback

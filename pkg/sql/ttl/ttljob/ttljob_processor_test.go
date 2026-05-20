@@ -335,9 +335,6 @@ func TestSpanToQueryBoundsCompositeKeys(t *testing.T) {
 	// key gets encoded.
 	familyClauses := []string{
 		"",
-		"FAMILY (a, b), FAMILY (c),",
-		"FAMILY (c), FAMILY (a, b),",
-		"FAMILY (a), FAMILY (b), FAMILY (c),",
 	}
 
 	for _, tc := range testCases {

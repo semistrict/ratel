@@ -33,6 +33,7 @@ go_test(
     ],
     args = ["-test.timeout=295s"],
     embed = [":userfile"],
+    tags = ["manual"],
     deps = [
         "//pkg/base",
         "//pkg/blobs",

@@ -13,7 +13,10 @@ go_test(
     args = ["-test.timeout=295s"],
     embed = [":compare"],
     gotags = ["compose"],
-    tags = ["integration"],
+    tags = [
+        "integration",
+        "manual",
+    ],
     visibility = ["//pkg/compose:__subpackages__"],
     deps = [
         "//pkg/cmd/cmpconn",

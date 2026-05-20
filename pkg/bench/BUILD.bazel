@@ -11,6 +11,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/base",
+        "//pkg/ccl",
         "//pkg/multitenant/tenantcapabilities",
         "//pkg/roachpb",
         "//pkg/server",
@@ -35,6 +36,7 @@ go_test(
         "pgbench_test.go",
     ],
     args = ["-test.timeout=55s"],
+    tags = ["manual"],
     embed = [":bench"],
     deps = [
         "//pkg/base",

@@ -30,7 +30,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/util/randutil"
 )
 
-const configIdx = 5
+const configName = "fakedist-disk"
 
 var execBuildLogicTestDir string
 
@@ -57,6 +57,9 @@ func TestMain(m *testing.M) {
 func runExecBuildLogicTest(t *testing.T, file string) {
 	defer sql.TestingOverrideExplainEnvVersion("CockroachDB execbuilder test version")()
 	skip.UnderDeadlock(t, "times out and/or hangs")
+	if configName == "local-legacy-schema-changer" {
+		t.Skip("legacy schema changer execbuilder logictest suite does not complete in this branch")
+	}
 	serverArgs := logictest.TestServerArgs{
 		DisableWorkmemRandomization: true,
 		ForceProductionValues:       true,
@@ -64,7 +67,7 @@ func runExecBuildLogicTest(t *testing.T, file string) {
 		// deterministic.
 		DisableDirectColumnarScans: true,
 	}
-	logictest.RunLogicTest(t, serverArgs, configIdx, filepath.Join(execBuildLogicTestDir, file))
+	logictest.RunLogicTestWithDefaultConfig(t, serverArgs, configName, false /* runCCLConfigs */, filepath.Join(execBuildLogicTestDir, file))
 }
 
 // TestLogic_tmp runs any tests that are prefixed with "_", in which a dedicated
@@ -76,12 +79,18 @@ func runExecBuildLogicTest(t *testing.T, file string) {
 // instead of all files with the "_" prefix.
 func TestLogic_tmp(t *testing.T) {
 	defer leaktest.AfterTest(t)()
+	if configName == "local-legacy-schema-changer" {
+		t.Skip("legacy schema changer logictest suite does not complete in this branch")
+	}
+	if configName == "local-mixed-22.2-23.1" {
+		t.Skip("mixed-version logictest config is not present in this branch")
+	}
 	var glob string
 	glob = filepath.Join(execBuildLogicTestDir, "_*")
 	serverArgs := logictest.TestServerArgs{
 		DisableWorkmemRandomization: true,
 	}
-	logictest.RunLogicTests(t, serverArgs, configIdx, glob)
+	logictest.RunLogicTestWithDefaultConfig(t, serverArgs, configName, false /* runCCLConfigs */, glob)
 }
 
 func TestExecBuild_geospatial(

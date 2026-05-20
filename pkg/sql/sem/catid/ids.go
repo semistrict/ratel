@@ -66,6 +66,10 @@ type RowGroupID uint32
 // SafeValue implements the redact.SafeValue interface.
 func (RowGroupID) SafeValue() {}
 
+// FamilyID is a compatibility alias for row-group IDs while old fetch and
+// descriptor call sites are moved off family terminology.
+type FamilyID = RowGroupID
+
 // IndexID is a custom type for IndexDescriptor IDs.
 type IndexID uint32
 

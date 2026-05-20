@@ -1,16 +1,12 @@
 // Copyright 2019 The Cockroach Authors.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License
+// included in the file licenses/BSL.txt.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// permissions and limitations under the License.
+// As of the Change Date specified in that file, in accordance with
+// the Business Source License, use of this software will be governed
+// by the Apache License, Version 2.0, included in the file
+// licenses/APL.txt.
 
 package row
 
@@ -23,7 +19,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/settings"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
-	"github.com/cockroachdb/cockroach/pkg/sql/rowenc/valueside"
+	"github.com/cockroachdb/cockroach/pkg/sql/rowinfra"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/errors"
@@ -31,15 +27,14 @@ import (
 
 // Inserter abstracts the key/value operations for inserting table rows.
 type Inserter struct {
-	Helper                rowHelper
+	Helper                RowHelper
 	InsertCols            []catalog.Column
 	InsertColIDtoRowIndex catalog.TableColMap
 
 	// For allocation avoidance.
-	marshaled []roachpb.Value
-	key       roachpb.Key
-	valueBuf  []byte
-	value     roachpb.Value
+	key      roachpb.Key
+	valueBuf []byte
+	value    roachpb.Value
 }
 
 // MakeInserter creates a Inserter for the given table.
@@ -55,32 +50,38 @@ func MakeInserter(
 	alloc *tree.DatumAlloc,
 	sv *settings.Values,
 	internal bool,
-	metrics *Metrics,
+	metrics *rowinfra.Metrics,
 ) (Inserter, error) {
 	ri := Inserter{
-		Helper: newRowHelper(
+		Helper: NewRowHelper(
 			codec, tableDesc, tableDesc.WritableNonPrimaryIndexes(), sv, internal, metrics,
 		),
 
 		InsertCols:            insertCols,
 		InsertColIDtoRowIndex: ColIDtoRowIndexFromCols(insertCols),
-		marshaled:             make([]roachpb.Value, len(insertCols)),
 	}
 
-	for i := 0; i < tableDesc.GetPrimaryIndex().NumKeyColumns(); i++ {
-		colID := tableDesc.GetPrimaryIndex().GetKeyColumnID(i)
-		if _, ok := ri.InsertColIDtoRowIndex.Get(colID); !ok {
-			return Inserter{}, fmt.Errorf("missing %q primary key column", tableDesc.GetPrimaryIndex().GetKeyColumnName(i))
-		}
+	if err := CheckPrimaryKeyColumns(tableDesc, ri.InsertColIDtoRowIndex); err != nil {
+		return Inserter{}, err
 	}
 
 	return ri, nil
 }
 
+func CheckPrimaryKeyColumns(tableDesc catalog.TableDescriptor, colMap catalog.TableColMap) error {
+	for i := 0; i < tableDesc.GetPrimaryIndex().NumKeyColumns(); i++ {
+		colID := tableDesc.GetPrimaryIndex().GetKeyColumnID(i)
+		if _, ok := colMap.Get(colID); !ok {
+			return fmt.Errorf("missing %q primary key column", tableDesc.GetPrimaryIndex().GetKeyColumnName(i))
+		}
+	}
+	return nil
+}
+
 // insertCPutFn is used by insertRow when conflicts (i.e. the key already exists)
 // should generate errors.
 func insertCPutFn(
-	ctx context.Context, b putter, key *roachpb.Key, value *roachpb.Value, traceKV bool,
+	ctx context.Context, b Putter, key *roachpb.Key, value *roachpb.Value, traceKV bool,
 ) {
 	// TODO(dan): We want do this V(2) log everywhere in sql. Consider making a
 	// client.Batch wrapper instead of inlining it everywhere.
@@ -92,7 +93,7 @@ func insertCPutFn(
 
 // insertPutFn is used by insertRow when conflicts should be ignored.
 func insertPutFn(
-	ctx context.Context, b putter, key *roachpb.Key, value *roachpb.Value, traceKV bool,
+	ctx context.Context, b Putter, key *roachpb.Key, value *roachpb.Value, traceKV bool,
 ) {
 	if traceKV {
 		log.VEventfDepth(ctx, 1, 2, "Put %s -> %s", *key, value.PrettyPrint())
@@ -101,16 +102,16 @@ func insertPutFn(
 }
 
 // insertDelFn is used by insertRow to delete existing rows.
-func insertDelFn(ctx context.Context, b putter, key *roachpb.Key, traceKV bool) {
+func insertDelFn(ctx context.Context, b Putter, key *roachpb.Key, traceKV bool) {
 	if traceKV {
 		log.VEventfDepth(ctx, 1, 2, "Del %s", *key)
 	}
 	b.Del(key)
 }
 
-// insertPutFn is used by insertRow when conflicts should be ignored.
+// insertInvertedPutFn is used by insertRow when conflicts should be ignored.
 func insertInvertedPutFn(
-	ctx context.Context, b putter, key *roachpb.Key, value *roachpb.Value, traceKV bool,
+	ctx context.Context, b Putter, key *roachpb.Key, value *roachpb.Value, traceKV bool,
 ) {
 	if traceKV {
 		log.VEventfDepth(ctx, 1, 2, "InitPut %s -> %s", *key, value.PrettyPrint())
@@ -118,18 +119,11 @@ func insertInvertedPutFn(
 	b.InitPut(key, value, false)
 }
 
-type putter interface {
-	CPut(key, value interface{}, expValue []byte)
-	Put(key, value interface{})
-	InitPut(key, value interface{}, failOnTombstones bool)
-	Del(key ...interface{})
-}
-
 // InsertRow adds to the batch the kv operations necessary to insert a table row
 // with the given values.
 func (ri *Inserter) InsertRow(
 	ctx context.Context,
-	b putter,
+	b Putter,
 	values []tree.Datum,
 	pm PartialIndexUpdateHelper,
 	overwrite bool,
@@ -144,32 +138,20 @@ func (ri *Inserter) InsertRow(
 		putFn = insertPutFn
 	}
 
-	// Encode the values to the expected column type. This needs to
-	// happen before index encoding because certain datum types (i.e. tuple)
-	// cannot be used as index values.
-	//
-	// TODO(radu): the legacy marshaling is used only in rare cases; this is
-	// wasteful.
-	for i, val := range values {
-		// Make sure the value can be written to the column before proceeding.
-		var err error
-		if ri.marshaled[i], err = valueside.MarshalLegacy(ri.InsertCols[i].GetType(), val); err != nil {
-			return err
-		}
-	}
-
 	// We don't want to insert any empty k/v's, so set includeEmpty to false.
-	// Consider an index entry with a stored column whose value is NULL. We don't
-	// want to emit an empty value KV for that entry, so includeEmpty stays false.
+	// Consider the following case:
+	// TABLE t (
+	//   x INT PRIMARY KEY, y INT, z INT, w INT,
+	//   INDEX (y) STORING (z, w),
+	//   FAMILY (x), FAMILY (y), FAMILY (z), FAMILY (w)
+	//)
+	// If we are to insert row (1, 2, 3, NULL), the k/v pair for
+	// index i that encodes column w would have an empty value,
+	// because w is null, and the sole resident of that family.
+	// We don't want to insert empty k/v's like this, so we
+	// set includeEmpty to false.
 	primaryIndexKey, secondaryIndexEntries, err := ri.Helper.encodeIndexes(
 		ri.InsertColIDtoRowIndex, values, pm.IgnoreForPut, false /* includeEmpty */)
-	if err != nil {
-		return err
-	}
-
-	subEntries, err := ri.Helper.encodeSubordinateKeys(
-		primaryIndexKey, ri.InsertColIDtoRowIndex, values,
-	)
 	if err != nil {
 		return err
 	}
@@ -178,17 +160,10 @@ func (ri *Inserter) InsertRow(
 	ri.valueBuf, err = prepareInsertOrUpdateBatch(ctx, b,
 		&ri.Helper, primaryIndexKey, ri.InsertCols,
 		values, ri.InsertColIDtoRowIndex,
-		ri.marshaled, ri.InsertColIDtoRowIndex,
-		subEntries,
+		ri.InsertColIDtoRowIndex,
 		&ri.key, &ri.value, ri.valueBuf, putFn, overwrite, traceKV)
 	if err != nil {
 		return err
-	}
-
-	// Write subordinate keys for array columns.
-	for i := range subEntries {
-		e := &subEntries[i]
-		putFn(ctx, b, &e.Key, &e.Value, traceKV)
 	}
 
 	putFn = insertInvertedPutFn
@@ -202,7 +177,7 @@ func (ri *Inserter) InsertRow(
 				e := &entries[i]
 
 				if ri.Helper.Indexes[idx].ForcePut() {
-					// See the comemnt on (catalog.Index).ForcePut() for more details.
+					// See the comment on (catalog.Index).ForcePut() for more details.
 					insertPutFn(ctx, b, &e.Key, &e.Value, traceKV)
 				} else {
 					putFn(ctx, b, &e.Key, &e.Value, traceKV)

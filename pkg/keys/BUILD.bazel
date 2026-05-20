@@ -10,6 +10,7 @@ go_library(
         "printer.go",
         "spans.go",
         "sql.go",
+        "subordinate.go",
     ],
     importpath = "github.com/cockroachdb/cockroach/pkg/keys",
     visibility = ["//visibility:public"],
@@ -29,6 +30,7 @@ go_test(
     srcs = [
         "keys_test.go",
         "printer_test.go",
+        "subordinate_test.go",
         "sql_test.go",
     ],
     args = ["-test.timeout=55s"],

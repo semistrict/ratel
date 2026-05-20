@@ -75,6 +75,7 @@ go_test(
     ],
     args = ["-test.timeout=895s"],
     embed = [":lease"],
+    tags = ["manual"],
     deps = [
         "//pkg/base",
         "//pkg/jobs",

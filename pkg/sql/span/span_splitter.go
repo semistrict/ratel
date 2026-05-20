@@ -17,7 +17,9 @@ package span
 import (
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
-	"github.com/cockroachdb/cockroach/pkg/util"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
+	"github.com/cockroachdb/cockroach/pkg/sql/opt/exec"
+	"github.com/cockroachdb/cockroach/pkg/util/intsets"
 )
 
 // Splitter is a helper for splitting single-row spans into more specific spans.
@@ -34,12 +36,39 @@ func NoopSplitter() Splitter {
 // MakeSplitter returns a no-op splitter. Column-family-specific span splitting
 // is no longer used.
 func MakeSplitter(
-	table catalog.TableDescriptor, index catalog.Index, neededColOrdinals util.FastIntSet,
+	table catalog.TableDescriptor, index catalog.Index, neededColOrdinals intsets.Fast,
 ) Splitter {
 	_ = table
 	_ = index
 	_ = neededColOrdinals
 	return NoopSplitter()
+}
+
+// MakeSplitterWithFamilyIDs returns a no-op splitter for compatibility with
+// callers that still pass column-family IDs.
+func MakeSplitterWithFamilyIDs(numKeyCols int, familyIDs []descpb.FamilyID) Splitter {
+	_ = numKeyCols
+	_ = familyIDs
+	return NoopSplitter()
+}
+
+// MakeSplitterForDelete returns a no-op splitter for delete-range fast paths.
+func MakeSplitterForDelete(
+	table catalog.TableDescriptor,
+	index catalog.Index,
+	needed exec.TableColumnOrdinalSet,
+	forDelete bool,
+) Splitter {
+	_ = table
+	_ = index
+	_ = needed
+	_ = forDelete
+	return NoopSplitter()
+}
+
+// FamilyIDs returns no family IDs in the single-row-group layout.
+func (s *Splitter) FamilyIDs() []descpb.FamilyID {
+	return nil
 }
 
 // IsNoop returns true if this instance will never split spans.
@@ -59,6 +88,13 @@ func (s *Splitter) AppendSpan(
 	_ = prefixLen
 	_ = containsNull
 	return append(appendTo, span)
+}
+
+// MaybeSplitSpanIntoSeparateFamilies appends the input span unchanged.
+func (s *Splitter) MaybeSplitSpanIntoSeparateFamilies(
+	appendTo roachpb.Spans, span roachpb.Span, prefixLen int, containsNull bool,
+) roachpb.Spans {
+	return s.AppendSpan(appendTo, span, prefixLen, containsNull)
 }
 
 // ExistenceCheckSpan returns the span used to check whether a row exists.

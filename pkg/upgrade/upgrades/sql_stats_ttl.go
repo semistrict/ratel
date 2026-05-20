@@ -16,6 +16,7 @@ import (
 
 	"github.com/cockroachdb/cockroach/pkg/clusterversion"
 	"github.com/cockroachdb/cockroach/pkg/security/username"
+	"github.com/cockroachdb/cockroach/pkg/sql/sqlerrors"
 	"github.com/cockroachdb/cockroach/pkg/sql/sessiondata"
 	"github.com/cockroachdb/cockroach/pkg/upgrade"
 )
@@ -47,6 +48,9 @@ func sqlStatsTTLChange(
 				fmt.Sprintf("ALTER TABLE %s CONFIGURE ZONE USING gc.ttlseconds = $1", table),
 				3600, /* one hour */
 			); err != nil {
+				if sqlerrors.IsUndefinedRelationError(err) {
+					continue
+				}
 				return err
 			}
 		}

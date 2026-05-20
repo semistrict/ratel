@@ -33,6 +33,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/util/hlc"
 	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
 	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
+	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -181,30 +182,20 @@ func injectRangelogTable(
 	// version, name, parents, and mod times.
 	clone.Version++
 	clone.Name = tn.Object()
-	var modTimeStr string
 	tdb.QueryRow(t, `
-  WITH db_id AS (
-                SELECT id
-                  FROM system.namespace
-                 WHERE "parentID" = 0 AND name = $1
-             ),
-       schema_id AS (
-                    SELECT id
-                      FROM system.namespace
-                     WHERE "parentID" = (SELECT id FROM db_id)
-                       AND "parentSchemaID" = 0
-                       AND name = $2
-                 )
-SELECT "parentID", "parentSchemaID", id, crdb_internal_mvcc_timestamp
-  FROM system.namespace
- WHERE name = $3
-   AND "parentID" = (SELECT id FROM db_id)
-   AND "parentSchemaID" = (SELECT id FROM schema_id)`,
-		tn.Catalog(), tn.Schema(), tn.Object()).
-		Scan(&clone.ParentID, &clone.UnexposedParentSchemaID, &clone.ID,
-			&modTimeStr)
-	modTime, err := hlc.ParseHLC(modTimeStr)
-	require.NoError(t, err)
+  WITH table_info AS (
+        SELECT parent_id, table_id
+          FROM crdb_internal.tables
+         WHERE database_name = $1
+           AND schema_name = $2
+           AND name = $3
+           AND drop_time IS NULL
+       )
+SELECT parent_id, 0, table_id
+  FROM table_info`,
+	tn.Catalog(), tn.Schema(), tn.Object()).
+		Scan(&clone.ParentID, &clone.UnexposedParentSchemaID, &clone.ID)
+	modTime := hlc.Timestamp{WallTime: timeutil.Now().UnixNano()}
 	clone.ModificationTime = modTime
 	clone.CreateAsOfTime = modTime
 	cloneBuilder := clone.NewBuilder()

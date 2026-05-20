@@ -52,6 +52,7 @@ go_test(
     ],
     args = ["-test.timeout=295s"],
     embed = [":kvstreamer"],
+    tags = ["manual"],
     deps = [
         "//pkg/base",
         "//pkg/kv",

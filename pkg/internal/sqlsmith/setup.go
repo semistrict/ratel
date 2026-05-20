@@ -17,6 +17,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/cockroachdb/cockroach/pkg/sql/parser"
 	"github.com/cockroachdb/cockroach/pkg/sql/randgen"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 )
@@ -69,7 +70,19 @@ func RandSetup(r *rand.Rand) string {
 
 func stringSetup(s string) Setup {
 	return func(*rand.Rand) []string {
-		return []string{s}
+		var stmts []string
+		for {
+			s = strings.TrimSpace(s)
+			if s == "" {
+				return stmts
+			}
+			pos, ok := parser.SplitFirstStatement(s)
+			if !ok {
+				return append(stmts, s)
+			}
+			stmts = append(stmts, strings.TrimSpace(s[:pos]))
+			s = s[pos:]
+		}
 	}
 }
 
@@ -130,53 +143,59 @@ func randTablesN(r *rand.Rand, n int, prefix string) []string {
 const (
 	seedTable = `
 BEGIN; CREATE TYPE greeting AS ENUM ('hello', 'howdy', 'hi', 'good day', 'morning'); COMMIT;
-BEGIN;
-CREATE TABLE IF NOT EXISTS seed AS
-	SELECT
-		g::INT2 AS _int2,
-		g::INT4 AS _int4,
-		g::INT8 AS _int8,
-		g::FLOAT4 AS _float4,
-		g::FLOAT8 AS _float8,
-		'2001-01-01'::DATE + g AS _date,
-		'2001-01-01'::TIMESTAMP + g * '1 day'::INTERVAL AS _timestamp,
-		'2001-01-01'::TIMESTAMPTZ + g * '1 day'::INTERVAL AS _timestamptz,
-		g * '1 day'::INTERVAL AS _interval,
-		g % 2 = 1 AS _bool,
-		g::DECIMAL AS _decimal,
-		g::STRING AS _string,
-		g::STRING::BYTES AS _bytes,
-		substring('00000000-0000-0000-0000-' || g::STRING || '00000000000', 1, 36)::UUID AS _uuid,
-		'0.0.0.0'::INET + g AS _inet,
-		g::STRING::JSONB AS _jsonb,
-		enum_range('hello'::greeting)[g] as _enum
-	FROM
-		generate_series(1, 5) AS g;
-COMMIT;
+CREATE TABLE IF NOT EXISTS seed (
+	_int2 INT2,
+	_int4 INT4,
+	_int8 INT8,
+	_float4 FLOAT4,
+	_float8 FLOAT8,
+	_date DATE,
+	_timestamp TIMESTAMP,
+	_timestamptz TIMESTAMPTZ,
+	_interval INTERVAL,
+	_bool BOOL,
+	_decimal DECIMAL,
+	_string STRING,
+	_bytes BYTES,
+	_uuid UUID,
+	_inet INET,
+	_jsonb JSONB,
+	_enum greeting
+);
+INSERT INTO seed
+VALUES
+	(1, 1, 1, 1.0, 1.0, '2001-01-02', '2001-01-02 00:00:00', '2001-01-02 00:00:00+00', '1 day', true, 1.0, '1', '1'::BYTES, '00000000-0000-0000-0000-100000000000', '0.0.0.1', '1'::JSONB, 'hello'),
+	(2, 2, 2, 2.0, 2.0, '2001-01-03', '2001-01-03 00:00:00', '2001-01-03 00:00:00+00', '2 days', false, 2.0, '2', '2'::BYTES, '00000000-0000-0000-0000-200000000000', '0.0.0.2', '2'::JSONB, 'howdy'),
+	(3, 3, 3, 3.0, 3.0, '2001-01-04', '2001-01-04 00:00:00', '2001-01-04 00:00:00+00', '3 days', true, 3.0, '3', '3'::BYTES, '00000000-0000-0000-0000-300000000000', '0.0.0.3', '3'::JSONB, 'hi'),
+	(4, 4, 4, 4.0, 4.0, '2001-01-05', '2001-01-05 00:00:00', '2001-01-05 00:00:00+00', '4 days', false, 4.0, '4', '4'::BYTES, '00000000-0000-0000-0000-400000000000', '0.0.0.4', '4'::JSONB, 'good day'),
+	(5, 5, 5, 5.0, 5.0, '2001-01-06', '2001-01-06 00:00:00', '2001-01-06 00:00:00+00', '5 days', true, 5.0, '5', '5'::BYTES, '00000000-0000-0000-0000-500000000000', '0.0.0.5', '5'::JSONB, 'morning');
 
 INSERT INTO seed DEFAULT VALUES;
-CREATE INDEX on seed (_int8, _float8, _date);
-CREATE INVERTED INDEX on seed (_jsonb);
 `
 
 	multiregionSeed = `
-CREATE TABLE IF NOT EXISTS seed_mr_table AS
-	SELECT
-		g::INT2 AS _int2,
-		g::INT4 AS _int4,
-		g::INT8 AS _int8,
-		g::FLOAT8 AS _float8,
-		'2001-01-01'::DATE + g AS _date,
-		'2001-01-01'::TIMESTAMP + g * '1 day'::INTERVAL AS _timestamp,
-		'2001-01-01'::TIMESTAMPTZ + g * '1 day'::INTERVAL AS _timestamptz,
-		g * '1 day'::INTERVAL AS _interval,
-		g % 2 = 1 AS _bool,
-		g::DECIMAL AS _decimal,
-		g::STRING AS _string,
-		g::STRING::BYTES AS _bytes,
-		substring('00000000-0000-0000-0000-' || g::STRING || '00000000000', 1, 36)::UUID AS _uuid
-	FROM
-		generate_series(1, 5) AS g;
+CREATE TABLE IF NOT EXISTS seed_mr_table (
+	_int2 INT2,
+	_int4 INT4,
+	_int8 INT8,
+	_float8 FLOAT8,
+	_date DATE,
+	_timestamp TIMESTAMP,
+	_timestamptz TIMESTAMPTZ,
+	_interval INTERVAL,
+	_bool BOOL,
+	_decimal DECIMAL,
+	_string STRING,
+	_bytes BYTES,
+	_uuid UUID
+);
+INSERT INTO seed_mr_table
+VALUES
+	(1, 1, 1, 1.0, '2001-01-02', '2001-01-02 00:00:00', '2001-01-02 00:00:00+00', '1 day', true, 1.0, '1', '1'::BYTES, '00000000-0000-0000-0000-100000000000'),
+	(2, 2, 2, 2.0, '2001-01-03', '2001-01-03 00:00:00', '2001-01-03 00:00:00+00', '2 days', false, 2.0, '2', '2'::BYTES, '00000000-0000-0000-0000-200000000000'),
+	(3, 3, 3, 3.0, '2001-01-04', '2001-01-04 00:00:00', '2001-01-04 00:00:00+00', '3 days', true, 3.0, '3', '3'::BYTES, '00000000-0000-0000-0000-300000000000'),
+	(4, 4, 4, 4.0, '2001-01-05', '2001-01-05 00:00:00', '2001-01-05 00:00:00+00', '4 days', false, 4.0, '4', '4'::BYTES, '00000000-0000-0000-0000-400000000000'),
+	(5, 5, 5, 5.0, '2001-01-06', '2001-01-06 00:00:00', '2001-01-06 00:00:00+00', '5 days', true, 5.0, '5', '5'::BYTES, '00000000-0000-0000-0000-500000000000');
 `
 )
 

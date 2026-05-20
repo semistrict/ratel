@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"time"
 
 	"github.com/cockroachdb/cockroach/pkg/cmd/roachtest/cluster"
 	"github.com/cockroachdb/cockroach/pkg/roachprod/logger"
@@ -24,6 +25,7 @@ import (
 	"github.com/cockroachdb/errors"
 	promapi "github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/common/model"
 )
 
 // SetupCollectorPromClient instantiates a prometheus client for the given
@@ -44,7 +46,23 @@ func SetupCollectorPromClient(
 		return nil, err
 	}
 
-	return promv1.NewAPI(client), nil
+	return prometheusClient{API: promv1.NewAPI(client)}, nil
+}
+
+type prometheusClient struct {
+	promv1.API
+}
+
+func (c prometheusClient) Query(
+	ctx context.Context, query string, ts time.Time,
+) (model.Value, promv1.Warnings, error) {
+	return c.API.Query(ctx, query, ts)
+}
+
+func (c prometheusClient) QueryRange(
+	ctx context.Context, query string, r promv1.Range,
+) (model.Value, promv1.Warnings, error) {
+	return c.API.QueryRange(ctx, query, r)
 }
 
 func (i Interval) valid() bool {

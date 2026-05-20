@@ -314,8 +314,9 @@ func TestStoreMetrics(t *testing.T) {
 	if _, err := tc.GetFirstStoreFromServer(t, 0).DB().Inc(ctx, key, 10); err != nil {
 		t.Fatal(err)
 	}
-	// Verify range count is as expected
-	checkGauge(t, "store 0", tc.GetFirstStoreFromServer(t, 0).Metrics().ReplicaCount, initialCount+1)
+	// ScratchRange splits both the SQL scratch span and the actor data span out
+	// of the original right-hand range.
+	checkGauge(t, "store 0", tc.GetFirstStoreFromServer(t, 0).Metrics().ReplicaCount, initialCount+2)
 
 	// Replicate the "right" range to the other stores.
 	desc := tc.AddVotersOrFatal(t, key, tc.Targets(1, 2)...)
@@ -355,7 +356,7 @@ func TestStoreMetrics(t *testing.T) {
 
 	// Verify stats after addition.
 	verifyStats(t, tc, 1, 2)
-	checkGauge(t, "store 0", tc.GetFirstStoreFromServer(t, 0).Metrics().ReplicaCount, initialCount+1)
+	checkGauge(t, "store 0", tc.GetFirstStoreFromServer(t, 0).Metrics().ReplicaCount, initialCount+2)
 	tc.RemoveLeaseHolderOrFatal(t, desc, tc.Target(0), tc.Target(1))
 	testutils.SucceedsSoon(t, func() error {
 		_, err := tc.GetFirstStoreFromServer(t, 0).GetReplica(desc.RangeID)
@@ -369,7 +370,7 @@ func TestStoreMetrics(t *testing.T) {
 	tc.WaitForValues(t, dataKey, []int64{0, 5, 5})
 
 	// Verify range count is as expected.
-	checkGauge(t, "store 0", tc.GetFirstStoreFromServer(t, 0).Metrics().ReplicaCount, initialCount)
+	checkGauge(t, "store 0", tc.GetFirstStoreFromServer(t, 0).Metrics().ReplicaCount, initialCount+1)
 	checkGauge(t, "store 1", tc.GetFirstStoreFromServer(t, 1).Metrics().ReplicaCount, 1)
 
 	// Verify all stats on all stores after range is removed.

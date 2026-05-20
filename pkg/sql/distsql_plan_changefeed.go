@@ -354,14 +354,8 @@ var _ cat.Catalog = (*cdcOptCatalog)(nil)
 
 // extractFamilyID extracts family ID hint from CDCExpression.
 func extractFamilyID(stmt CDCExpression) (catid.FamilyID, error) {
-	sc, ok := stmt.Select.(*tree.SelectClause)
-	if !ok {
+	if _, ok := stmt.Select.(*tree.SelectClause); !ok {
 		return 0, errors.AssertionFailedf("unexpected expression type %T", stmt.Select)
-	}
-	if t, ok := sc.From.Tables[0].(*tree.AliasedTableExpr); ok {
-		if t.IndexFlags != nil && t.IndexFlags.FamilyID != nil {
-			return *t.IndexFlags.FamilyID, nil
-		}
 	}
 	return 0, nil
 }

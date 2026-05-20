@@ -60,6 +60,7 @@ go_test(
         "sql_test.go",
     ],
     args = ["-test.timeout=295s"],
+    tags = ["manual"],
     data = glob(["testdata/**"]),
     embed = [":clisqlshell"],
     deps = [

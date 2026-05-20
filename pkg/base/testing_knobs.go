@@ -40,6 +40,7 @@ type TestingKnobs struct {
 	SchemaTelemetry                ModuleTestingKnobs
 	Streaming                      ModuleTestingKnobs
 	UpgradeManager                 ModuleTestingKnobs
+	StartupMigrationManager        ModuleTestingKnobs
 	IndexUsageStatsKnobs           ModuleTestingKnobs
 	SQLStatsKnobs                  ModuleTestingKnobs
 	SpanConfig                     ModuleTestingKnobs

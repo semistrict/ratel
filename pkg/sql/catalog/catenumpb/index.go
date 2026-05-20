@@ -1,4 +1,4 @@
-// Copyright 2026 The Ratel Authors
+// Copyright 2026 The Cockroach Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,21 @@
 // implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-package kvserver
+package catenumpb
 
 import (
-	"github.com/semistrict/ratel/pkg/keys"
-	"github.com/semistrict/ratel/pkg/roachpb"
+	"github.com/cockroachdb/cockroach/pkg/util/encoding"
+	"github.com/cockroachdb/errors"
 )
 
-func actorSpanForRange(desc *roachpb.RangeDescriptor) (roachpb.Span, bool, error) {
-	span, ok, err := keys.ActorSpanFromKey(desc.StartKey.AsRawKey())
-	if err != nil || !ok {
-		return roachpb.Span{}, ok, err
+// ToEncodingDirection converts an index column direction to an encoding direction.
+func (dir IndexColumn_Direction) ToEncodingDirection() (encoding.Direction, error) {
+	switch dir {
+	case IndexColumn_ASC:
+		return encoding.Ascending, nil
+	case IndexColumn_DESC:
+		return encoding.Descending, nil
+	default:
+		return encoding.Ascending, errors.Errorf("invalid direction: %s", dir)
 	}
-	if !desc.EndKey.AsRawKey().Equal(span.EndKey) {
-		return roachpb.Span{}, false, nil
-	}
-	return span, true, nil
 }

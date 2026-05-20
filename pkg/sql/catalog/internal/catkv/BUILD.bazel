@@ -52,6 +52,7 @@ go_test(
     ],
     args = ["-test.timeout=55s"],
     data = glob(["testdata/**"]),
+    tags = ["manual"],
     deps = [
         ":catkv",
         "//pkg/base",

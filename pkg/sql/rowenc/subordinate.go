@@ -56,14 +56,30 @@ func EncodeSubordinateKeys(
 	colMap catalog.TableColMap,
 	values []tree.Datum,
 ) ([]IndexEntry, error) {
+	columns := tableDesc.PublicColumns()
+	columnDescs := make([]descpb.ColumnDescriptor, len(columns))
+	for i, col := range columns {
+		columnDescs[i] = *col.ColumnDesc()
+	}
+	return EncodeSubordinateKeysForColumns(columnDescs, primaryIndexKey, colMap, values)
+}
+
+// EncodeSubordinateKeysForColumns is the descriptor-only form used by narrow
+// unit tests and by EncodeSubordinateKeys after extracting public columns.
+func EncodeSubordinateKeysForColumns(
+	columns []descpb.ColumnDescriptor,
+	primaryIndexKey []byte,
+	colMap catalog.TableColMap,
+	values []tree.Datum,
+) ([]IndexEntry, error) {
 	sentinelKey := keys.MakeFamilyKey(primaryIndexKey, 0)
 	var entries []IndexEntry
 
-	for _, col := range tableDesc.PublicColumns() {
-		if col.GetType().Family() != types.ArrayFamily {
+	for _, col := range columns {
+		if col.Type.Family() != types.ArrayFamily {
 			continue
 		}
-		idx, ok := colMap.Get(col.GetID())
+		idx, ok := colMap.Get(col.ID)
 		if !ok {
 			continue
 		}
@@ -72,9 +88,9 @@ func EncodeSubordinateKeys(
 		if !ok || dArr == nil || dArr.Len() == 0 {
 			continue
 		}
-		elemType := col.GetType().ArrayContents()
+		elemType := col.Type.ArrayContents()
 		for i, elem := range dArr.Array {
-			subKey := keys.MakeSubordinateKey(sentinelKey, uint32(col.GetID()), uint32(i))
+			subKey := keys.MakeSubordinateKey(sentinelKey, uint32(col.ID), uint32(i))
 			var val roachpb.Value
 			if elem == tree.DNull {
 				// NULL elements use a TUPLE-tagged value with no data
@@ -88,7 +104,7 @@ func EncodeSubordinateKeys(
 					return nil, err
 				}
 			}
-			entries = append(entries, IndexEntry{Key: subKey, Value: val, RowGroup: 0})
+			entries = append(entries, IndexEntry{Key: subKey, Value: val, Family: 0})
 		}
 	}
 

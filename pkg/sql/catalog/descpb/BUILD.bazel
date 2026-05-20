@@ -8,6 +8,7 @@ go_library(
     name = "descpb",
     srcs = [
         "column.go",
+        "constraint.go",
         "descriptor.go",
         "index.go",
         "join_type.go",

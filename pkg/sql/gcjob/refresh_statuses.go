@@ -108,7 +108,9 @@ func updateStatusForGCElements(
 		if err != nil {
 			return err
 		}
-		zoneCfg, err := cfg.GetZoneConfigForObject(execCfg.Codec, config.ObjectID(tableID))
+		zoneCfg, err := cfg.GetZoneConfigForObject(
+			execCfg.Codec, execCfg.Settings.Version.ActiveVersion(ctx), config.ObjectID(tableID),
+		)
 		if err != nil {
 			log.Errorf(ctx, "zone config for desc: %d, err = %+v", tableID, err)
 			return nil
@@ -464,7 +466,9 @@ func refreshTenant(
 	// Read the tenant's GC TTL to check if the tenant's data has expired.
 	cfg := execCfg.SystemConfig.GetSystemConfig()
 	tenantTTLSeconds := execCfg.DefaultZoneConfig.GC.TTLSeconds
-	zoneCfg, err := cfg.GetZoneConfigForObject(keys.SystemSQLCodec, keys.TenantsRangesID)
+	zoneCfg, err := cfg.GetZoneConfigForObject(
+		keys.SystemSQLCodec, execCfg.Settings.Version.ActiveVersion(ctx), keys.TenantsRangesID,
+	)
 	if err == nil {
 		tenantTTLSeconds = zoneCfg.GC.TTLSeconds
 	} else {

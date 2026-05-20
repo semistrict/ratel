@@ -25,10 +25,6 @@ fromHasPublicStatusIfFromIsTableAndToIsRowLevelTTL($fromTarget, $fromEl, $toEl):
         - $n[Type] = '*screl.Node'
         - $n[Target] = $fromTarget
         - nodeHasNoPublicStatus($n)
-joinOnColumnFamilyID($a, $b, $desc-id, $family-id):
-    - joinOnDescID($a, $b, $desc-id)
-    - $a[ColumnFamilyID] = $family-id
-    - $b[ColumnFamilyID] = $family-id
 joinOnColumnID($a, $b, $desc-id, $col-id):
     - joinOnDescID($a, $b, $desc-id)
     - $a[ColumnID] = $col-id
@@ -163,7 +159,7 @@ oprules
   from: dep-Node
   query:
     - $desc[Type] IN ['*scpb.AliasType', '*scpb.Database', '*scpb.EnumType', '*scpb.Schema', '*scpb.Sequence', '*scpb.Table', '*scpb.View']
-    - $dep[Type] IN ['*scpb.ColumnFamily', '*scpb.Owner', '*scpb.UserPrivileges', '*scpb.EnumTypeValue']
+    - $dep[Type] IN ['*scpb.Owner', '*scpb.UserPrivileges', '*scpb.EnumTypeValue']
     - joinOnDescID($desc, $dep, $desc-id)
     - joinTarget($desc, $desc-Target)
     - $desc-Target[TargetStatus] = ABSENT

@@ -78,7 +78,10 @@ func MakeHTTPStorage(
 	}
 	uri, err := url.Parse(base)
 	if err != nil {
-		return nil, err
+		uri, err = parseHTTPBaseURI(base)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &httpStorage{
 		base:     uri,
@@ -87,6 +90,24 @@ func MakeHTTPStorage(
 		settings: args.Settings,
 		ioConf:   args.IOConf,
 	}, nil
+}
+
+func parseHTTPBaseURI(base string) (*url.URL, error) {
+	scheme, rest, ok := strings.Cut(base, "://")
+	if !ok || (scheme != "http" && scheme != "https") {
+		_, err := url.Parse(base)
+		return nil, err
+	}
+	host, suffix, _ := strings.Cut(rest, "/")
+	if !strings.Contains(host, ",") {
+		_, err := url.Parse(base)
+		return nil, err
+	}
+	uri := &url.URL{Scheme: scheme, Host: host}
+	if suffix != "" {
+		uri.Path = "/" + suffix
+	}
+	return uri, nil
 }
 
 func (h *httpStorage) Conf() cloudpb.ExternalStorage {

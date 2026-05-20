@@ -123,7 +123,7 @@ func (s *SQLTranslator) Translate(
 	}
 	records = append(records, pseudoTableRecords...)
 
-	scratchRangeRecord, err := s.maybeGenerateScratchRangeRecord(ctx, ids)
+	scratchRangeRecord, err := s.maybeGenerateScratchRangeRecord(ctx, append(ids, leafIDs...))
 	if err != nil {
 		return nil, err
 	}
@@ -584,6 +584,9 @@ func (s *SQLTranslator) findDescendantLeafIDsForNamedZone(
 	// RANGE DEFAULT.
 	// NB: Only the system tenant has named zones other than RANGE DEFAULT.
 	if s.codec.ForSystemTenant() {
+		if s.knobs.ConfigureScratchRange {
+			descendantIDs = append(descendantIDs, keys.RootNamespaceID)
+		}
 		for _, namedZone := range zonepb.NamedZonesList {
 			// Add an entry for all named zones bar RANGE DEFAULT.
 			if namedZone == zonepb.DefaultZoneName {
@@ -669,8 +672,8 @@ func (s *SQLTranslator) maybeGenerateScratchRangeRecord(
 			continue // nothing to do
 		}
 
-		zone, err := sql.GetHydratedZoneConfigForDatabase(
-			ctx, s.txn.KV(), s.txn.Descriptors(), keys.RootNamespaceID,
+		zone, err := sql.GetHydratedZoneConfigForNamedZone(
+			ctx, s.txn.KV(), s.txn.Descriptors(), zonepb.DefaultZoneName,
 		)
 		if err != nil {
 			return spanconfig.Record{}, err

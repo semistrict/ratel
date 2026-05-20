@@ -106,8 +106,9 @@ func ReadNamespaceFromDB(t *testing.T, tdb *sqlutils.SQLRunner) nstree.MutableCa
 	// Fetch namespace state.
 	var cb nstree.MutableCatalog
 	nsRows := tdb.QueryStr(t, `
-SELECT "parentID", "parentSchemaID", name, id
+SELECT COALESCE("parentID", 0), COALESCE("parentSchemaID", 0), name, id
 FROM system.namespace
+WHERE id IS NOT NULL
 ORDER BY id`)
 	for _, nsRow := range nsRows {
 		parentID, err := strconv.Atoi(nsRow[0])

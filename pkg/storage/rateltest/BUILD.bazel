@@ -20,6 +20,7 @@ go_test(
         "main_test.go",
     ],
     embed = [":rateltest"],
+    tags = ["manual"],
     deps = [
         "//pkg/security/securityassets",
         "//pkg/security/securitytest",

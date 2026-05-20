@@ -16,7 +16,6 @@ import (
 	"math/rand"
 	"testing"
 
-	_ "github.com/cockroachdb/cockroach/pkg/ccl/changefeedccl"
 	"github.com/cockroachdb/cockroach/pkg/jobs/jobsauth"
 	"github.com/cockroachdb/cockroach/pkg/jobs/jobspb"
 	"github.com/cockroachdb/cockroach/pkg/security/username"
@@ -26,6 +25,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
 	"github.com/cockroachdb/cockroach/pkg/sql/privilege"
 	"github.com/cockroachdb/cockroach/pkg/sql/roleoption"
+	"github.com/cockroachdb/cockroach/pkg/sql/sqlerrors"
 	"github.com/cockroachdb/cockroach/pkg/sql/syntheticprivilege"
 	"github.com/cockroachdb/cockroach/pkg/util/randutil"
 	"github.com/stretchr/testify/assert"
@@ -39,6 +39,23 @@ type userPrivilege struct {
 var viewJobGlobalPrivilege = userPrivilege{privilege.VIEWJOB, privilege.Global}
 
 var controlJobGlobalPrivilege = userPrivilege{privilege.CONTROLJOB, privilege.Global}
+
+func init() {
+	jobsauth.RegisterAuthorizer(jobspb.TypeChangefeed, func(
+		ctx context.Context, a jobsauth.AuthorizationAccessor, _ jobspb.JobID, payload *jobspb.Payload,
+	) error {
+		details := payload.UnwrapDetails().(jobspb.ChangefeedDetails)
+		for _, target := range details.TargetSpecifications {
+			if err := a.CheckPrivilegeForTableID(ctx, target.TableID, privilege.CHANGEFEED); err != nil {
+				if catalog.HasInactiveDescriptorError(err) || sqlerrors.IsUndefinedRelationError(err) {
+					continue
+				}
+				return err
+			}
+		}
+		return nil
+	})
+}
 
 type testAuthAccessor struct {
 	user username.SQLUsername

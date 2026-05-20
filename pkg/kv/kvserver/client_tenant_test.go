@@ -20,6 +20,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -319,12 +320,14 @@ func TestTenantRateLimiter(t *testing.T) {
 func TestTenantCtx(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
-	const magicKey = "424242"
 	tenantID := serverutils.TestTenantID()
 
 	testutils.RunTrueAndFalse(t, "shared-process tenant", func(t *testing.T, sharedProcess bool) {
-		getErr := make(chan error)
-		pushErr := make(chan error)
+		getErr := make(chan error, 1)
+		pushErr := make(chan error, 1)
+		var observeRequests atomic.Bool
+		var observedRead atomic.Bool
+		var observedPush atomic.Bool
 		s, _, _ := serverutils.StartServer(t, base.TestServerArgs{
 			Knobs: base.TestingKnobs{
 				Store: &kvserver.StoreTestingKnobs{
@@ -333,30 +336,41 @@ func TestTenantCtx(t *testing.T) {
 						// context looks as expected, and signal their channels.
 
 						tenID, isTenantRequest := roachpb.ClientTenantFromContext(ctx)
-						keyRecognized := strings.Contains(ba.Requests[0].GetInner().Header().Key.String(), magicKey)
-						if !keyRecognized {
+						if !observeRequests.Load() {
+							return nil
+						}
+						if _, reqTenantID, err := keys.DecodeTenantPrefix(ba.Requests[0].GetInner().Header().Key); err != nil || reqTenantID != tenantID {
 							return nil
 						}
 
-						var getReq *kvpb.GetRequest
+						var readReq kvpb.Request
 						var pushReq *kvpb.PushTxnRequest
-						if isSingleGet := ba.IsSingleRequest() && ba.Requests[0].GetInner().Method() == kvpb.Get; isSingleGet {
-							getReq = ba.Requests[0].GetInner().(*kvpb.GetRequest)
+						if ba.IsSingleRequest() {
+							switch ba.Requests[0].GetInner().Method() {
+							case kvpb.Get, kvpb.Scan:
+								readReq = ba.Requests[0].GetInner()
+							}
 						}
 						if isSinglePushTxn := ba.IsSingleRequest() && ba.Requests[0].GetInner().Method() == kvpb.PushTxn; isSinglePushTxn {
 							pushReq = ba.Requests[0].GetInner().(*kvpb.PushTxnRequest)
 						}
 
 						switch {
-						case getReq != nil:
+						case readReq != nil:
+							if !observedRead.CompareAndSwap(false, true) {
+								return nil
+							}
 							var err error
 							if !isTenantRequest || tenID != tenantID {
-								err = errors.Newf("expected Get to run as the expected tenant (%d), but it isn't. tenant request: %t, tenantID: %d",
+								err = errors.Newf("expected read to run as the expected tenant (%d), but it isn't. tenant request: %t, tenantID: %d",
 									tenantID, isTenantRequest, tenID)
 							}
 							getErr <- err
 							return nil
 						case pushReq != nil:
+							if !observedPush.CompareAndSwap(false, true) {
+								return nil
+							}
 							// Check that the Push request no longer has the txn request; RPCs
 							// done by KV do not identify the tenant.
 							var err error
@@ -392,20 +406,21 @@ func TestTenantCtx(t *testing.T) {
 			defer tsql.Close()
 		}
 
-		_, err := tsql.Exec("create table t (x int primary key)")
+		_, err := tsql.Exec("create table t (x string primary key)")
 		require.NoError(t, err)
 		tx1, err := tsql.BeginTx(ctx, nil /* opts */)
 		require.NoError(t, err)
-		_, err = tx1.Exec("insert into t(x) values ($1)", magicKey)
+		_, err = tx1.Exec("insert into t(x) values ($1)", "424242")
 		require.NoError(t, err)
 
 		var tx2 *gosql.Tx
 		var tx2C = make(chan struct{})
+		observeRequests.Store(true)
 		go func() {
 			var err error
 			tx2, err = tsql.BeginTx(ctx, nil /* opts */)
 			assert.NoError(t, err)
-			_, err = tx2.Exec("select * from t where x = $1", magicKey)
+			_, err = tx2.Exec("select * from t where x = $1", "424242")
 			assert.NoError(t, err)
 			close(tx2C)
 		}()
@@ -416,7 +431,7 @@ func TestTenantCtx(t *testing.T) {
 		case err := <-getErr:
 			require.NoError(t, err)
 		case <-time.After(3 * time.Second):
-			t.Fatal("timed out waiting for Get")
+			t.Fatal("timed out waiting for read")
 		}
 		select {
 		case err := <-pushErr:

@@ -495,6 +495,9 @@ func TestReplicaCircuitBreaker_RangeFeed(t *testing.T) {
 	tc := setupCircuitBreakerTest(t)
 	ctx := context.Background()
 	defer tc.Stopper().Stop(ctx)
+	for _, srv := range tc.Servers {
+		kvserver.RangefeedEnabled.Override(ctx, &srv.ClusterSettings().SV, true)
+	}
 
 	require.NoError(t, tc.Write(n1))
 	desc := tc.LookupRangeOrFatal(t, tc.ScratchRange(t))

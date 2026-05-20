@@ -25,6 +25,7 @@ go_library(
 
 go_test(
     name = "spanconfigmanager_test",
+    tags = ["manual"],
     srcs = [
         "main_test.go",
         "manager_test.go",

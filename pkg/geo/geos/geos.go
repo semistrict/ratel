@@ -138,10 +138,25 @@ func findLibraryDirectories(flagLibraryDirectoryValue string, crdbBinaryLoc stri
 			path.Join("external", "archived_cdep_libgeos_macos", "lib"),
 			path.Join("external", "archived_cdep_libgeos_macosarm", "lib"),
 			path.Join("external", "archived_cdep_libgeos_windows", "bin"),
+			path.Join("+http_archive+archived_cdep_libgeos_linux", "lib"),
+			path.Join("+http_archive+archived_cdep_libgeos_linuxarm", "lib"),
+			path.Join("+http_archive+archived_cdep_libgeos_macos", "lib"),
+			path.Join("+http_archive+archived_cdep_libgeos_macosarm", "lib"),
+			path.Join("+http_archive+archived_cdep_libgeos_windows", "bin"),
 		}
-		for _, path := range pathsToCheck {
-			if p, err := bazel.Runfile(path); err == nil {
+		for _, runfilePath := range pathsToCheck {
+			if p, err := bazel.Runfile(runfilePath); err == nil {
 				locs = append(locs, p)
+			}
+		}
+		if runfilesPath, err := bazel.RunfilesPath(); err == nil {
+			for _, runfilesRoot := range []string{runfilesPath, filepath.Dir(runfilesPath)} {
+				for _, runfilePath := range pathsToCheck {
+					p := filepath.Join(runfilesRoot, runfilePath)
+					if _, err := os.Stat(filepath.Join(p, getLibraryExt(libgeoscFileName))); err == nil {
+						locs = append(locs, p)
+					}
+				}
 			}
 		}
 	}

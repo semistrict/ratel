@@ -280,7 +280,7 @@ CREATE INDEX idx2 ON p (s) WHERE i > 0
 memo expect=GeneratePartialIndexScans
 SELECT * FROM p WHERE i > 0 AND s = 'foo'
 ----
-memo (optimized, ~17KB, required=[presentation: k:1,i:2,f:3,s:4,b:5])
+memo (optimized, ~18KB, required=[presentation: k:1,i:2,f:3,s:4,b:5])
  ├── G1: (select G2 G3) (index-join G4 p,cols=(1-5)) (index-join G5 p,cols=(1-5)) (index-join G6 p,cols=(1-5)) (index-join G7 p,cols=(1-5))
  │    └── [presentation: k:1,i:2,f:3,s:4,b:5]
  │         ├── best: (index-join G4 p,cols=(1-5))
@@ -600,7 +600,7 @@ project
 memo
 SELECT k FROM a WHERE v > 1
 ----
-memo (optimized, ~7KB, required=[presentation: k:1])
+memo (optimized, ~8KB, required=[presentation: k:1])
  ├── G1: (project G2 G3 k)
  │    └── [presentation: k:1]
  │         ├── best: (project G2 G3 k)
@@ -735,7 +735,7 @@ project
 memo
 SELECT k FROM a WHERE u = 1 AND v = 5
 ----
-memo (optimized, ~10KB, required=[presentation: k:1])
+memo (optimized, ~11KB, required=[presentation: k:1])
  ├── G1: (project G2 G3 k)
  │    └── [presentation: k:1]
  │         ├── best: (project G2 G3 k)
@@ -1119,7 +1119,7 @@ select
 memo
 SELECT * FROM b WHERE (u, k, v) > (1, 2, 3) AND (u, k, v) < (8, 9, 10)
 ----
-memo (optimized, ~8KB, required=[presentation: k:1,u:2,v:3,j:4])
+memo (optimized, ~9KB, required=[presentation: k:1,u:2,v:3,j:4])
  ├── G1: (select G2 G3) (select G4 G3)
  │    └── [presentation: k:1,u:2,v:3,j:4]
  │         ├── best: (select G4 G3)
@@ -1173,7 +1173,6 @@ SELECT * FROM b WHERE v >= 1 AND v <= 10 FOR UPDATE
 ----
 index-join b
  ├── columns: k:1!null u:2 v:3!null j:4
- ├── locking: for-update
  ├── cardinality: [0 - 10]
  ├── volatile
  ├── key: (1)
@@ -1198,7 +1197,6 @@ select
  ├── fd: (1)-->(2-4), (3)-->(1,2,4)
  ├── index-join b
  │    ├── columns: k:1!null u:2 v:3 j:4
- │    ├── locking: for-update
  │    ├── cardinality: [0 - 10]
  │    ├── volatile
  │    ├── key: (1)

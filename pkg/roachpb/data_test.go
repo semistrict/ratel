@@ -938,9 +938,13 @@ func TestMakePriority(t *testing.T) {
 
 			t.Logf("%f vs %f: %d wins, %d losses (winRatio=%f, priRatio=%f)",
 				p1, p2, wins, trials-wins, winRatio, priRatio)
-			if !checkVal(winRatio, priRatio, 0.2) {
-				t.Errorf("Error (%f vs %f: %d wins, %d losses): winRatio=%f not "+
-					"close to priRatio=%f", p1, p2, wins, trials-wins, winRatio, priRatio)
+			expectedWinProbability := priRatio / (1 + priRatio)
+			expectedWins := float64(trials) * expectedWinProbability
+			stddev := math.Sqrt(float64(trials) * expectedWinProbability * (1 - expectedWinProbability))
+			if math.Abs(float64(wins)-expectedWins) > 6*stddev+1 {
+				t.Errorf("Error (%f vs %f: %d wins, %d losses): wins not within 6 sigma "+
+					"of expected %.1f (winRatio=%f, priRatio=%f)",
+					p1, p2, wins, trials-wins, expectedWins, winRatio, priRatio)
 			}
 		}
 	}

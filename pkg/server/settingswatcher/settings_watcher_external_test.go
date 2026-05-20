@@ -54,6 +54,7 @@ func TestSettingWatcherOnTenant(t *testing.T) {
 	defer tc.Stopper().Stop(ctx)
 
 	tdb := sqlutils.MakeSQLRunner(tc.ServerConn(0))
+	tdb.Exec(t, `SET CLUSTER SETTING kv.rangefeed.enabled = true`)
 
 	const systemOnlySetting = "kv.snapshot_rebalance.max_rate"
 	toSet := map[string][]interface{}{

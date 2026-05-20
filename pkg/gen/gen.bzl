@@ -74,7 +74,7 @@ def _go_proto_srcs_impl(ctx):
     generated_files = {}
     for s in ctx.attr._srcs:
         srcs = s[GoSource]
-        pkg = srcs.library.label.package
+        pkg = srcs.label.package
         if pkg in generated_files:
             generated_files[pkg] = [f for f in srcs.srcs] + generated_files[pkg]
         else:

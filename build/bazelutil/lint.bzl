@@ -1,4 +1,5 @@
 load("@bazel_skylib//lib:shell.bzl", "shell")
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 
 # lint_binary works as follows:
 # 1. For each test, we generate a script, which uses lint.sh.in as a
@@ -42,7 +43,7 @@ def lint_binary(name, test):
         test = test,
         testonly = 1,
     )
-    native.sh_binary(
+    sh_binary(
         name = name,
         srcs = [script_name],
         data = [

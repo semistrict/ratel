@@ -20,12 +20,13 @@ import (
 
 	"github.com/cockroachdb/cockroach/pkg/keys"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/desctestutils"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/systemschema"
 	"github.com/cockroachdb/cockroach/pkg/sql/span"
 	"github.com/cockroachdb/cockroach/pkg/sql/tests"
 	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
-	"github.com/cockroachdb/cockroach/pkg/util"
+	"github.com/cockroachdb/cockroach/pkg/util/intsets"
 	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
 )
@@ -64,11 +65,11 @@ CREATE TABLE t.u (
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			idx, err := desc.FindIndexWithName(tc.indexName)
+			idx, err := catalog.MustFindIndexByName(desc, tc.indexName)
 			if err != nil {
 				t.Fatal(err)
 			}
-			splitter := span.MakeSplitter(desc, idx, util.MakeFastIntSet(0, 1, 2))
+			splitter := span.MakeSplitter(desc, idx, intsets.MakeFast(0, 1, 2))
 			if !splitter.IsNoop() {
 				t.Fatal("expected no-op splitter")
 			}
@@ -82,7 +83,7 @@ CREATE TABLE t.u (
 	systemSplitter := span.MakeSplitter(
 		systemschema.DescriptorTable,
 		systemschema.DescriptorTable.GetPrimaryIndex(),
-		util.MakeFastIntSet(0),
+		intsets.MakeFast(0),
 	)
 	if !systemSplitter.IsNoop() {
 		t.Fatal("expected system-table splitter to be a no-op")

@@ -110,7 +110,7 @@ func TestAllocateIDs(t *testing.T) {
 				ID: 0, Name: "primary",
 				ColumnNames:     []string{"a", "b", "c"},
 				ColumnIDs:       []descpb.ColumnID{1, 2, 3},
-				DefaultColumnID: 0,
+				DefaultColumnID: 3,
 			},
 		},
 		PrimaryIndex: descpb.IndexDescriptor{
@@ -209,6 +209,88 @@ func TestColumnTypeSQLString(t *testing.T) {
 	}
 }
 
+func TestFitColumnToFamily(t *testing.T) {
+	intEncodedSize := 10 // 1 byte tag + 9 bytes max varint encoded size
+
+	makeTestTableDescriptor := func(familyTypes [][]*types.T) *Mutable {
+		nextColumnID := descpb.ColumnID(8)
+		var desc descpb.TableDescriptor
+		for _, fTypes := range familyTypes {
+			var family descpb.RowGroupDescriptor
+			for _, t := range fTypes {
+				desc.Columns = append(desc.Columns, descpb.ColumnDescriptor{
+					ID:   nextColumnID,
+					Type: t,
+				})
+				family.ColumnIDs = append(family.ColumnIDs, nextColumnID)
+				nextColumnID++
+			}
+			desc.RowGroups = append(desc.RowGroups, family)
+		}
+		return NewBuilder(&desc).BuildCreatedMutableTable()
+	}
+
+	emptyFamily := []*types.T{}
+	partiallyFullFamily := []*types.T{
+		types.Int,
+		types.Bytes,
+	}
+	fullFamily := []*types.T{
+		types.Bytes,
+	}
+	maxIntsInOneFamily := make([]*types.T, FamilyHeuristicTargetBytes/intEncodedSize)
+	for i := range maxIntsInOneFamily {
+		maxIntsInOneFamily[i] = types.Int
+	}
+
+	tests := []struct {
+		newCol           *types.T
+		existingFamilies [][]*types.T
+		colFits          bool
+		idx              int // not applicable if colFits is false
+	}{
+		// Bounded size column.
+		{colFits: true, idx: 0, newCol: types.Bool,
+			existingFamilies: nil,
+		},
+		{colFits: true, idx: 0, newCol: types.Bool,
+			existingFamilies: [][]*types.T{emptyFamily},
+		},
+		{colFits: true, idx: 0, newCol: types.Bool,
+			existingFamilies: [][]*types.T{partiallyFullFamily},
+		},
+		{colFits: true, idx: 0, newCol: types.Bool,
+			existingFamilies: [][]*types.T{fullFamily},
+		},
+		{colFits: true, idx: 0, newCol: types.Bool,
+			existingFamilies: [][]*types.T{fullFamily, emptyFamily},
+		},
+
+		// Unbounded size column.
+		{colFits: true, idx: 0, newCol: types.Decimal,
+			existingFamilies: [][]*types.T{emptyFamily},
+		},
+		{colFits: true, idx: 0, newCol: types.Decimal,
+			existingFamilies: [][]*types.T{partiallyFullFamily},
+		},
+	}
+	for i, test := range tests {
+		desc := makeTestTableDescriptor(test.existingFamilies)
+		idx, colFits := FitColumnToFamily(desc, descpb.ColumnDescriptor{Type: test.newCol})
+		if colFits != test.colFits {
+			if colFits {
+				t.Errorf("%d: expected no fit for the column but got one", i)
+			} else {
+				t.Errorf("%d: expected fit for the column but didn't get one", i)
+			}
+			continue
+		}
+		if colFits && idx != test.idx {
+			t.Errorf("%d: got a fit in family offset %d but expected offset %d", i, idx, test.idx)
+		}
+	}
+}
+
 func TestMaybeUpgradeFormatVersion(t *testing.T) {
 	tests := []struct {
 		desc       descpb.TableDescriptor
@@ -225,7 +307,7 @@ func TestMaybeUpgradeFormatVersion(t *testing.T) {
 			},
 			expUpgrade: true,
 			verify: func(i int, desc catalog.TableDescriptor) {
-				if len(desc.GetRowGroups()) == 0 {
+				if len(desc.GetFamilies()) == 0 {
 					t.Errorf("%d: expected families to be set, but it was empty", i)
 				}
 			},
@@ -608,7 +690,7 @@ func TestMaybeFixSecondaryIndexEncodingType(t *testing.T) {
 					{ID: 1, Name: "bar"},
 					{ID: 2, Name: "baz"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1, 2}, ColumnNames: []string{"bar", "baz"}},
 				},
 				Privileges: catpb.NewBasePrivilegeDescriptor(username.RootUserName()),
@@ -629,7 +711,7 @@ func TestMaybeFixSecondaryIndexEncodingType(t *testing.T) {
 					EncodingType:        catenumpb.PrimaryIndexEncoding,
 				}},
 				NextColumnID:     3,
-				NextFamilyID:     1,
+				NextRowGroupID:   1,
 				NextIndexID:      3,
 				NextConstraintID: 2,
 			},
@@ -648,7 +730,7 @@ func TestMaybeFixSecondaryIndexEncodingType(t *testing.T) {
 					{ID: 1, Name: "bar"},
 					{ID: 2, Name: "baz"},
 				},
-				Families: []descpb.ColumnFamilyDescriptor{
+				RowGroups: []descpb.RowGroupDescriptor{
 					{ID: 0, Name: "primary", ColumnIDs: []descpb.ColumnID{1, 2}, ColumnNames: []string{"bar", "baz"}},
 				},
 				Privileges: catpb.NewBasePrivilegeDescriptor(username.RootUserName()),
@@ -672,7 +754,7 @@ func TestMaybeFixSecondaryIndexEncodingType(t *testing.T) {
 					JobID: catpb.JobID(1),
 				},
 				NextColumnID:     3,
-				NextFamilyID:     1,
+				NextRowGroupID:   1,
 				NextIndexID:      3,
 				NextConstraintID: 2,
 			},
@@ -723,6 +805,39 @@ func TestKeysPerRow(t *testing.T) {
 			"(a INT PRIMARY KEY, b INT, INDEX (b))",
 			2, // 'b' index
 			1,
+		},
+		{
+			"(a INT PRIMARY KEY, b INT, FAMILY (a), FAMILY (b), INDEX (b))",
+			1, // Primary index
+			2,
+		},
+		{
+			"(a INT PRIMARY KEY, b INT, FAMILY (a), FAMILY (b), INDEX (b))",
+			2, // 'b' index
+			1,
+		},
+		{
+			"(a INT PRIMARY KEY, b INT, FAMILY (a), FAMILY (b), INDEX (a) STORING (b))",
+			2, // 'a' index
+			2,
+		},
+		{
+			"(a INT, b INT, c INT, d INT, e INT, FAMILY f0 (a, b), " +
+				"FAMILY f1 (c), FAMILY f2(d, e), INDEX (d) STORING (b))",
+			2, // 'd' index
+			1, // Only f0 is needed.
+		},
+		{
+			"(a INT, b INT, c INT, d INT, e INT, FAMILY f0 (a, b), " +
+				"FAMILY f1 (c), FAMILY f2(d, e), INDEX (d) STORING (c, e))",
+			2, // 'd' index
+			3, // f1 and f2 are needed, but f0 is always present.
+		},
+		{
+			"(a INT, b INT, c INT, d INT, e INT, FAMILY f0 (a, b), " +
+				"FAMILY f1 (c), FAMILY f2(d, e), INDEX (a, c) STORING (d))",
+			2, // 'a, c' index
+			2, // Only f2 is needed, but f0 is always present.
 		},
 	}
 

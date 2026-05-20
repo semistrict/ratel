@@ -1,16 +1,12 @@
 // Copyright 2021 The Cockroach Authors.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License
+// included in the file licenses/BSL.txt.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// permissions and limitations under the License.
+// As of the Change Date specified in that file, in accordance with
+// the Business Source License, use of this software will be governed
+// by the Apache License, Version 2.0, included in the file
+// licenses/APL.txt.
 
 package tabledesc
 
@@ -18,9 +14,12 @@ import (
 	"strings"
 
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catenumpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog/fetchpb"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog/schemaexpr"
 	"github.com/cockroachdb/cockroach/pkg/sql/parser"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/types"
@@ -183,6 +182,17 @@ func (w column) GetUsesSequenceID(usesSequenceOrdinal int) descpb.ID {
 	return w.desc.UsesSequenceIds[usesSequenceOrdinal]
 }
 
+// NumUsesFunctions returns the number of functions used by this column.
+func (w column) NumUsesFunctions() int {
+	return len(w.desc.UsesFunctionIds)
+}
+
+// GetUsesFunctionID returns the ID of a function used by this column at the
+// given ordinal.
+func (w column) GetUsesFunctionID(ordinal int) descpb.ID {
+	return w.desc.UsesSequenceIds[ordinal]
+}
+
 // NumOwnsSequences returns the number of sequences owned by this column.
 func (w column) NumOwnsSequences() int {
 	return len(w.desc.OwnsSequenceIds)
@@ -213,7 +223,7 @@ func (w column) CheckCanBeOutboundFKRef() error {
 // GetPGAttributeNum returns the PGAttributeNum of the column descriptor
 // if the PGAttributeNum is set (non-zero). Returns the ID of the
 // column descriptor if the PGAttributeNum is not set.
-func (w column) GetPGAttributeNum() uint32 {
+func (w column) GetPGAttributeNum() descpb.PGAttributeNum {
 	return w.desc.GetPGAttributeNum()
 }
 
@@ -251,13 +261,32 @@ func (w column) GetGeneratedAsIdentityType() catpb.GeneratedAsIdentityType {
 	return w.desc.GeneratedAsIdentityType
 }
 
-// GetGeneratedAsIdentitySequenceOption returns the column's `GENERATED AS
-// IDENTITY` sequence option if it exists, empty string otherwise.
-func (w column) GetGeneratedAsIdentitySequenceOption() string {
+// GetGeneratedAsIdentitySequenceOptionStr returns the string representation
+// of the column's `GENERATED AS IDENTITY` sequence option if it exists, empty
+// string otherwise.
+func (w column) GetGeneratedAsIdentitySequenceOptionStr() string {
 	if !w.HasGeneratedAsIdentitySequenceOption() {
 		return ""
 	}
 	return strings.TrimSpace(*w.desc.GeneratedAsIdentitySequenceOption)
+}
+
+// GetGeneratedAsIdentitySequenceOption returns the column's `GENERATED AS
+// IDENTITY` sequence option if it exists, and possible error.
+// If the column is not an identity column, return nil for both sequence option
+// and the error.
+// Note it doesn't return the sequence owner info.
+func (w column) GetGeneratedAsIdentitySequenceOption(
+	defaultIntSize int32,
+) (*descpb.TableDescriptor_SequenceOpts, error) {
+	if !w.HasGeneratedAsIdentitySequenceOption() {
+		return nil, nil
+	}
+	seqOpts, err := schemaexpr.ParseSequenceOpts(*w.desc.GeneratedAsIdentitySequenceOption, defaultIntSize)
+	if err != nil {
+		return nil, err
+	}
+	return seqOpts, nil
 }
 
 // HasGeneratedAsIdentitySequenceOption returns true if there is a
@@ -279,20 +308,20 @@ type columnCache struct {
 	readable             []catalog.Column
 	withUDTs             []catalog.Column
 	system               []catalog.Column
-	defaultColumnID descpb.ColumnID
+	familyDefaultColumns []fetchpb.IndexFetchSpec_FamilyDefaultColumn
 	index                []indexColumnCache
 }
 
 type indexColumnCache struct {
 	all          []catalog.Column
-	allDirs      []descpb.IndexDescriptor_Direction
+	allDirs      []catenumpb.IndexColumn_Direction
 	key          []catalog.Column
-	keyDirs      []descpb.IndexDescriptor_Direction
+	keyDirs      []catenumpb.IndexColumn_Direction
 	stored       []catalog.Column
 	keySuffix    []catalog.Column
 	full         []catalog.Column
-	fullDirs     []descpb.IndexDescriptor_Direction
-	keyAndSuffix []descpb.IndexFetchSpec_KeyColumn
+	fullDirs     []catenumpb.IndexColumn_Direction
+	keyAndSuffix []fetchpb.IndexFetchSpec_KeyColumn
 }
 
 // newColumnCache returns a fresh fully-populated columnCache struct for the
@@ -357,8 +386,17 @@ func newColumnCache(desc *descpb.TableDescriptor, mutations *mutationCache) *col
 		}
 	}
 
-	if len(desc.RowGroups) > 0 {
-		c.defaultColumnID = desc.RowGroups[0].DefaultColumnID
+	// Populate familyDefaultColumns.
+	for i := range desc.RowGroups {
+		if f := &desc.RowGroups[i]; f.DefaultColumnID != 0 {
+			if c.familyDefaultColumns == nil {
+				c.familyDefaultColumns = make([]fetchpb.IndexFetchSpec_FamilyDefaultColumn, 0, len(desc.RowGroups)-i)
+			}
+			c.familyDefaultColumns = append(c.familyDefaultColumns, fetchpb.IndexFetchSpec_FamilyDefaultColumn{
+				FamilyID:        f.ID,
+				DefaultColumnID: f.DefaultColumnID,
+			})
+		}
 	}
 
 	// Populate the per-index column cache
@@ -380,7 +418,7 @@ func makeIndexColumnCache(idx *descpb.IndexDescriptor, all []catalog.Column) (ic
 	nKeySuffix := len(idx.KeySuffixColumnIDs)
 	nStored := len(idx.StoreColumnIDs)
 	nAll := nKey + nKeySuffix + nStored
-	ic.allDirs = make([]descpb.IndexDescriptor_Direction, nAll)
+	ic.allDirs = make([]catenumpb.IndexColumn_Direction, nAll)
 	// Only copy key column directions, others will remain at ASC (default value).
 	copy(ic.allDirs, idx.KeyColumnDirections)
 	ic.all = make([]catalog.Column, 0, nAll)
@@ -410,7 +448,7 @@ func makeIndexColumnCache(idx *descpb.IndexDescriptor, all []catalog.Column) (ic
 	for _, colID := range idx.CompositeColumnIDs {
 		compositeIDs.Add(colID)
 	}
-	ic.keyAndSuffix = make([]descpb.IndexFetchSpec_KeyColumn, nKey+nKeySuffix)
+	ic.keyAndSuffix = make([]fetchpb.IndexFetchSpec_KeyColumn, nKey+nKeySuffix)
 	for i := range ic.keyAndSuffix {
 		col := ic.all[i]
 		if col == nil {
@@ -422,8 +460,8 @@ func makeIndexColumnCache(idx *descpb.IndexDescriptor, all []catalog.Column) (ic
 		if colID != 0 && colID == invertedColumnID {
 			typ = idx.InvertedColumnKeyType()
 		}
-		ic.keyAndSuffix[i] = descpb.IndexFetchSpec_KeyColumn{
-			IndexFetchSpec_Column: descpb.IndexFetchSpec_Column{
+		ic.keyAndSuffix[i] = fetchpb.IndexFetchSpec_KeyColumn{
+			IndexFetchSpec_Column: fetchpb.IndexFetchSpec_Column{
 				Name:          col.GetName(),
 				ColumnID:      colID,
 				Type:          typ,

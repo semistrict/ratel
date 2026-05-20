@@ -23,17 +23,17 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/semistrict/ratel/pkg/base"
-	"github.com/semistrict/ratel/pkg/keys"
-	"github.com/semistrict/ratel/pkg/kv"
-	"github.com/semistrict/ratel/pkg/kv/kvserver/kvserverbase"
-	"github.com/semistrict/ratel/pkg/roachpb"
-	"github.com/semistrict/ratel/pkg/testutils/serverutils"
-	"github.com/semistrict/ratel/pkg/testutils/sqlutils"
-	"github.com/semistrict/ratel/pkg/testutils/testcluster"
-	"github.com/semistrict/ratel/pkg/util/hlc"
-	"github.com/semistrict/ratel/pkg/util/leaktest"
-	"github.com/semistrict/ratel/pkg/util/log"
+	"github.com/cockroachdb/cockroach/pkg/base"
+	"github.com/cockroachdb/cockroach/pkg/keys"
+	"github.com/cockroachdb/cockroach/pkg/kv"
+	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/kvserverbase"
+	"github.com/cockroachdb/cockroach/pkg/roachpb"
+	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
+	"github.com/cockroachdb/cockroach/pkg/testutils/sqlutils"
+	"github.com/cockroachdb/cockroach/pkg/testutils/testcluster"
+	"github.com/cockroachdb/cockroach/pkg/util/hlc"
+	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/cockroachdb/cockroach/pkg/util/log"
 )
 
 func TestActorScopeSimpleIsolation(t *testing.T) {
@@ -50,9 +50,9 @@ func TestActorScopeSimpleIsolation(t *testing.T) {
 	sqlDB.Exec(t, `INSERT INTO t VALUES (1, 'base')`)
 	sqlDB.CheckQueryResults(t, `SELECT * FROM t`, [][]string{{"1", "base"}})
 
-	sqlDB.Exec(t, `SET actor_scope = 'alpha'`)
+	sqlDB.Exec(t, `SET actor = 'alpha'`)
 	sqlDB.Exec(t, `INSERT INTO t VALUES (1, 'actor-alpha')`)
-	sqlDB.CheckQueryResults(t, `SHOW actor_scope`, [][]string{{"alpha"}})
+	sqlDB.CheckQueryResults(t, `SHOW actor`, [][]string{{"alpha"}})
 	sqlDB.CheckQueryResults(t, `SELECT * FROM t`, [][]string{{"1", "actor-alpha"}})
 
 	sqlDB.Exec(t, `SET actor_scope = 'beta'`)
@@ -132,7 +132,7 @@ func TestActorDeletion(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
 
-	s, db, _ := serverutils.StartServer(t, base.TestServerArgs{})
+	s, db, kvDB := serverutils.StartServer(t, base.TestServerArgs{})
 	defer s.Stopper().Stop(context.Background())
 	defer db.Close()
 
@@ -153,6 +153,14 @@ func TestActorDeletion(t *testing.T) {
 	// Verify data is gone.
 	sqlDB.CheckQueryResults(t, `SELECT count(*) FROM actor('doomed').t`, [][]string{{"0"}})
 	sqlDB.CheckQueryResults(t, `SELECT count(*) FROM system.actors WHERE actor_name = 'doomed'`, [][]string{{"0"}})
+	actorPrefix := keys.MakeActorPrefix(keys.SystemSQLCodec.TenantPrefix(), "doomed")
+	kvs, err := kvDB.Scan(context.Background(), actorPrefix, actorPrefix.PrefixEnd(), 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(kvs) != 0 {
+		t.Fatalf("expected actor KV prefix %s to be empty, found %d KV(s)", actorPrefix, len(kvs))
+	}
 }
 
 func TestActorExplainShowsActorIdentity(t *testing.T) {
@@ -418,4 +426,3 @@ func assertActorIndexHasKVs(t *testing.T, kvDB *kv.DB, tableID int, indexID int,
 		t.Fatalf("expected actor index prefix %s to contain KVs", prefix)
 	}
 }
-

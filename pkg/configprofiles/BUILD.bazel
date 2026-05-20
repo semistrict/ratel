@@ -29,11 +29,13 @@ go_test(
         "profiles_test.go",
     ],
     args = ["-test.timeout=295s"],
+    tags = ["manual"],
     data = glob(["testdata/**"]) + ["//c-deps:libgeos"],
     embed = [":configprofiles"],
     deps = [
         "//pkg/base",
         "//pkg/build",
+        "//pkg/ccl",
         "//pkg/security/securityassets",
         "//pkg/security/securitytest",
         "//pkg/server",

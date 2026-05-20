@@ -58,6 +58,7 @@ go_test(
         "//pkg/sql/opt/testutils/opttester:testfixtures",
     ],
     embed = [":explain"],
+    tags = ["manual"],
     deps = [
         "//pkg/base",
         "//pkg/security/securityassets",

@@ -136,9 +136,9 @@ SET
 	}
 
 	expected = `
-  parentID | parentSchemaID |    name    | id
------------+----------------+------------+-----
-         1 |             29 | descriptor |  3
+  parentID | parentSchemaID |    name    |  id
+-----------+----------------+------------+-------
+         1 |             29 | descriptor | NULL
 (1 row)
 `
 	if a, e := b.String(), expected[1:]; a != e {

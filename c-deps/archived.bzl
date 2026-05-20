@@ -1,5 +1,7 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
+load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_cc//cc:find_cc_toolchain.bzl", "find_cc_toolchain")
 
 # NB: URL_TMPL and LOC are used by generate-distdir. Don't change the format or
@@ -81,8 +83,8 @@ def _archived_cdep_impl(ctx):
 _archived_cdep = rule(
     implementation = _archived_cdep_impl,
     attrs = {
-        "headers": attr.label(providers = ["files"]),
-        "libs": attr.label(providers = ["files"]),
+        "headers": attr.label(),
+        "libs": attr.label(),
     },
     fragments = ["cpp"],
     host_fragments = ["cpp"],

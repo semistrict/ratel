@@ -17,26 +17,29 @@ EXPERIMENTAL CHANGEFEED FOR TABLE foo FAMILY bar
 parse
 EXPLAIN CREATE CHANGEFEED FOR TABLE foo INTO 'sink'
 ----
-EXPLAIN CREATE CHANGEFEED FOR TABLE foo INTO 'sink'
-EXPLAIN CREATE CHANGEFEED FOR TABLE (foo) INTO ('sink') -- fully parenthesized
+EXPLAIN CREATE CHANGEFEED FOR TABLE foo INTO '*****' -- normalized!
+EXPLAIN CREATE CHANGEFEED FOR TABLE (foo) INTO ('*****') -- fully parenthesized
 EXPLAIN CREATE CHANGEFEED FOR TABLE foo INTO '_' -- literals removed
-EXPLAIN CREATE CHANGEFEED FOR TABLE _ INTO 'sink' -- identifiers removed
+EXPLAIN CREATE CHANGEFEED FOR TABLE _ INTO '*****' -- identifiers removed
+EXPLAIN CREATE CHANGEFEED FOR TABLE foo INTO 'sink' -- passwords exposed
 
 parse
 CREATE CHANGEFEED FOR foo INTO 'sink'
 ----
-CREATE CHANGEFEED FOR TABLE foo INTO 'sink' -- normalized!
-CREATE CHANGEFEED FOR TABLE (foo) INTO ('sink') -- fully parenthesized
+CREATE CHANGEFEED FOR TABLE foo INTO '*****' -- normalized!
+CREATE CHANGEFEED FOR TABLE (foo) INTO ('*****') -- fully parenthesized
 CREATE CHANGEFEED FOR TABLE foo INTO '_' -- literals removed
-CREATE CHANGEFEED FOR TABLE _ INTO 'sink' -- identifiers removed
+CREATE CHANGEFEED FOR TABLE _ INTO '*****' -- identifiers removed
+CREATE CHANGEFEED FOR TABLE foo INTO 'sink' -- passwords exposed
 
 parse
 CREATE CHANGEFEED FOR TABLE foo INTO sink
 ----
-CREATE CHANGEFEED FOR TABLE foo INTO 'sink' -- normalized!
-CREATE CHANGEFEED FOR TABLE (foo) INTO ('sink') -- fully parenthesized
+CREATE CHANGEFEED FOR TABLE foo INTO '*****' -- normalized!
+CREATE CHANGEFEED FOR TABLE (foo) INTO ('*****') -- fully parenthesized
 CREATE CHANGEFEED FOR TABLE foo INTO '_' -- literals removed
-CREATE CHANGEFEED FOR TABLE _ INTO 'sink' -- identifiers removed
+CREATE CHANGEFEED FOR TABLE _ INTO '*****' -- identifiers removed
+CREATE CHANGEFEED FOR TABLE foo INTO 'sink' -- passwords exposed
 
 error
 CREATE CHANGEFEED FOR TABLE foo, db.bar, foo FAMILY bar, schema.db.foo INTO 'sink'
@@ -49,10 +52,11 @@ CREATE CHANGEFEED FOR TABLE foo, db.bar, foo FAMILY bar, schema.db.foo INTO 'sin
 parse
 CREATE CHANGEFEED FOR TABLE foo INTO 'sink'
 ----
-CREATE CHANGEFEED FOR TABLE foo INTO 'sink'
-CREATE CHANGEFEED FOR TABLE (foo) INTO ('sink') -- fully parenthesized
+CREATE CHANGEFEED FOR TABLE foo INTO '*****' -- normalized!
+CREATE CHANGEFEED FOR TABLE (foo) INTO ('*****') -- fully parenthesized
 CREATE CHANGEFEED FOR TABLE foo INTO '_' -- literals removed
-CREATE CHANGEFEED FOR TABLE _ INTO 'sink' -- identifiers removed
+CREATE CHANGEFEED FOR TABLE _ INTO '*****' -- identifiers removed
+CREATE CHANGEFEED FOR TABLE foo INTO 'sink' -- passwords exposed
 
 ## TODO(dan): Implement:
 ## CREATE CHANGEFEED FOR TABLE foo VALUES FROM (1) TO (2) INTO 'sink'
@@ -62,7 +66,8 @@ CREATE CHANGEFEED FOR TABLE _ INTO 'sink' -- identifiers removed
 parse
 CREATE CHANGEFEED FOR TABLE foo INTO 'sink' WITH bar = 'baz'
 ----
-CREATE CHANGEFEED FOR TABLE foo INTO 'sink' WITH bar = 'baz'
-CREATE CHANGEFEED FOR TABLE (foo) INTO ('sink') WITH bar = ('baz') -- fully parenthesized
-CREATE CHANGEFEED FOR TABLE foo INTO '_' WITH bar = '_' -- literals removed
-CREATE CHANGEFEED FOR TABLE _ INTO 'sink' WITH _ = 'baz' -- identifiers removed
+CREATE CHANGEFEED FOR TABLE foo INTO '*****' WITH OPTIONS (bar = 'baz') -- normalized!
+CREATE CHANGEFEED FOR TABLE (foo) INTO ('*****') WITH OPTIONS (bar = ('baz')) -- fully parenthesized
+CREATE CHANGEFEED FOR TABLE foo INTO '_' WITH OPTIONS (bar = '_') -- literals removed
+CREATE CHANGEFEED FOR TABLE _ INTO '*****' WITH OPTIONS (_ = 'baz') -- identifiers removed
+CREATE CHANGEFEED FOR TABLE foo INTO 'sink' WITH OPTIONS (bar = 'baz') -- passwords exposed

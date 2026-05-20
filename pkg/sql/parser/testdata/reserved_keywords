@@ -31,22 +31,6 @@ CREATE TABLE index (index INT8) -- literals removed
 CREATE TABLE _ (_ INT8) -- identifiers removed
 
 parse
-CREATE TABLE index (a INT CONSTRAINT index NOT NULL FAMILY index, index INT)
-----
-CREATE TABLE index (a INT8 CONSTRAINT index NOT NULL FAMILY index, index INT8) -- normalized!
-CREATE TABLE index (a INT8 CONSTRAINT index NOT NULL FAMILY index, index INT8) -- fully parenthesized
-CREATE TABLE index (a INT8 CONSTRAINT index NOT NULL FAMILY index, index INT8) -- literals removed
-CREATE TABLE _ (_ INT8 CONSTRAINT _ NOT NULL FAMILY _, _ INT8) -- identifiers removed
-
-parse
-CREATE TABLE index (FAMILY index(index), INDEX (index), INDEX index(index))
-----
-CREATE TABLE index (FAMILY index (index), INDEX (index), INDEX index (index)) -- normalized!
-CREATE TABLE index (FAMILY index (index), INDEX (index), INDEX index (index)) -- fully parenthesized
-CREATE TABLE index (FAMILY index (index), INDEX (index), INDEX index (index)) -- literals removed
-CREATE TABLE _ (FAMILY _ (_), INDEX (_), INDEX _ (_)) -- identifiers removed
-
-parse
 CREATE TYPE index AS ENUM ('a')
 ----
 CREATE TYPE index AS ENUM ('a')

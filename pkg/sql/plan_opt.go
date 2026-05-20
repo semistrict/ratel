@@ -385,8 +385,7 @@ func (opc *optPlanningCtx) reset(ctx context.Context) {
 		}
 		if p.SessionData().ActorScope != "" {
 			// Actor scope affects row-key routing for ordinary table scans and
-			// mutations, but the plan cache is keyed only by SQL text. Disable memo
-			// reuse and the query cache until actor scope participates in cache keys.
+			// mutations, but the plan cache is keyed only by SQL text.
 			opc.allowMemoReuse = false
 			opc.useCache = false
 		}

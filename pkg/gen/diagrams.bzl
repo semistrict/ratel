@@ -135,7 +135,6 @@ DIAGRAMS_SRCS = [
     "//docs/generated/sql/bnf:explain_analyze.html",
     "//docs/generated/sql/bnf:explainable.html",
     "//docs/generated/sql/bnf:export.html",
-    "//docs/generated/sql/bnf:family_def.html",
     "//docs/generated/sql/bnf:fetch_cursor.html",
     "//docs/generated/sql/bnf:for_locking.html",
     "//docs/generated/sql/bnf:foreign_key_column_level.html",

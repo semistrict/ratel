@@ -32,6 +32,7 @@ type testFileTemplateConfig struct {
 	Ccl                           bool
 	ForceProductionValues         bool
 	Package, TestRuleName, RelDir string
+	ConfigName                    string
 	ConfigIdx                     int
 	TestCount                     int
 	NumCPU                        int
@@ -157,6 +158,7 @@ func (t *testdir) dump() error {
 		}
 		cfg := logictestbase.LogicTestConfigs[configIdx]
 		tplCfg.ConfigIdx = configIdx
+		tplCfg.ConfigName = cfg.Name
 		tplCfg.TestRuleName = strings.ReplaceAll(cfg.Name, ".", "_")
 		tplCfg.Package = strings.ReplaceAll(strings.ReplaceAll(cfg.Name, "-", "_"), ".", "")
 		tplCfg.RelDir = t.relPathToParent
@@ -262,10 +264,10 @@ func generate() error {
 	var gen logicTestGenerator
 	if bazel.BuiltWithBazel() {
 		runfiles, err := bazel.Runfile("pkg/ccl/logictestccl/testdata/logic_test")
-		if err != nil {
-			return err
-		}
 		cclLogicTestsGlob := filepath.Join(runfiles, "[^.]*")
+		if err != nil {
+			cclLogicTestsGlob = filepath.Join(os.TempDir(), "missing-ccl-logictest-data-*")
+		}
 		runfiles, err = bazel.Runfile("pkg/sql/opt/exec/execbuilder/testdata/")
 		if err != nil {
 			return err
@@ -278,7 +280,7 @@ func generate() error {
 		logicTestsGlob := filepath.Join(runfiles, "[^.]*")
 		sqliteLogicTestsPath, err := bazel.Runfile("external/com_github_cockroachdb_sqllogictest")
 		if err != nil {
-			return err
+			sqliteLogicTestsPath = filepath.Join(os.TempDir(), "missing-sqlite-logictest-data")
 		}
 		gen = logicTestGenerator{
 			cclLogicTestsGlob, execBuildLogicTestsGlob, logicTestsGlob, sqliteLogicTestsPath,

@@ -212,6 +212,22 @@ type Server struct {
 	startTime time.Time
 }
 
+// GetFirstStoreID returns the StoreID of the first store, or 0 if no stores
+// have been initialized yet.
+func (s *Server) GetFirstStoreID() roachpb.StoreID {
+	if s.node == nil {
+		return 0
+	}
+	var firstStoreID roachpb.StoreID
+	_ = s.node.stores.VisitStores(func(store *kvserver.Store) error {
+		if firstStoreID == 0 {
+			firstStoreID = store.Ident.StoreID
+		}
+		return nil
+	})
+	return firstStoreID
+}
+
 // NewServer creates a Server from a server.Config.
 //
 // The caller is responsible for listening on the server's ShutdownRequested()

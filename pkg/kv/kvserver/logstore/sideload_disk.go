@@ -325,6 +325,10 @@ func (ss *DiskSideloadStorage) String() string {
 // TODO(pavelkalinnikov): have a type-safe canonical path type which can be
 // iterated without thinking about . and .. placeholders.
 func mkdirAllAndSyncParents(fs fs.FS, path string) error {
+	cleanPath := filepath.Clean(path)
+	if cleanPath == "." || cleanPath == ".." {
+		return errors.Newf("topmost dir does not exist: %s", filepath.Clean(path))
+	}
 	// Find the lowest existing directory in the hierarchy.
 	var exists string
 	for dir, parent := path, ""; ; dir = parent {

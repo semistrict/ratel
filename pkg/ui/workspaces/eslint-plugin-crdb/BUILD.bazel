@@ -38,3 +38,9 @@ npm_package(
     package = "@cockroachlabs/eslint-plugin-crdb",
     visibility = ["//visibility:public"],
 )
+
+alias(
+    name = "pkg",
+    actual = ":eslint-plugin-crdb",
+    visibility = ["//visibility:public"],
+)

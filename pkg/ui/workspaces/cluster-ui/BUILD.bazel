@@ -29,7 +29,7 @@ ts_project(
     emit_declaration_only = True,
     out_dir = "dist/types",
     root_dir = "src",
-    supports_workers = False,
+    supports_workers = 0,
     tsconfig = "tsconfig.json",
     validate = False,
     deps = [":node_modules"],
@@ -78,6 +78,8 @@ eslint_bin.eslint_test(
         "--ext .ts",
         "--ext .js",
         "--ext .tsx",
+        "--ignore-pattern",
+        "**/*.d.ts",
         "--ignore-path",
         ".eslintignore",
         "-c",
@@ -151,5 +153,11 @@ npm_package(
         ":cluster-ui-lib",
     ],
     package = "@cockroachlabs/cluster-ui",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "pkg",
+    actual = ":cluster-ui",
     visibility = ["//visibility:public"],
 )

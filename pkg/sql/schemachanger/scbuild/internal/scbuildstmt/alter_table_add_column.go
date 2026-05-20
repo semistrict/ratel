@@ -15,6 +15,8 @@
 package scbuildstmt
 
 import (
+	"fmt"
+
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/catpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/schemaexpr"
@@ -60,7 +62,9 @@ func alterTableAddColumn(
 	if d.Unique.IsUnique {
 		panic(scerrors.NotImplementedErrorf(d, "contains unique constraint"))
 	}
-	cdd, err := tabledesc.MakeColumnDefDescs(b, d, b.SemaCtx(), b.EvalCtx())
+	cdd, err := tabledesc.MakeColumnDefDescs(
+		b, d, b.SemaCtx(), b.EvalCtx(), tree.ColumnDefaultExprInAddColumn,
+	)
 	if err != nil {
 		panic(err)
 	}
@@ -91,9 +95,9 @@ func alterTableAddColumn(
 		IsVirtual:  desc.Virtual,
 	}
 	if desc.IsComputed() {
-		expr, typ := b.ComputedColumnExpression(tbl, d)
-		spec.colType.ComputeExpr = b.WrapExpression(expr)
-		spec.colType.TypeT = typ
+		expr := b.ComputedColumnExpression(tbl, d)
+		spec.colType.ComputeExpr = b.WrapExpression(tbl.TableID, expr)
+		spec.colType.TypeT = scpb.TypeT{Type: desc.Type}
 	} else {
 		spec.colType.TypeT = b.ResolveTypeRef(d.Type)
 	}
@@ -101,14 +105,14 @@ func alterTableAddColumn(
 		spec.def = &scpb.ColumnDefaultExpression{
 			TableID:    tbl.TableID,
 			ColumnID:   spec.col.ColumnID,
-			Expression: *b.WrapExpression(cdd.DefaultExpr),
+			Expression: *b.WrapExpression(tbl.TableID, cdd.DefaultExpr),
 		}
 	}
 	if desc.HasOnUpdate() {
 		spec.onUpdate = &scpb.ColumnOnUpdateExpression{
 			TableID:    tbl.TableID,
 			ColumnID:   spec.col.ColumnID,
-			Expression: *b.WrapExpression(cdd.OnUpdateExpr),
+			Expression: *b.WrapExpression(tbl.TableID, cdd.OnUpdateExpr),
 		}
 	}
 	// Add secondary indexes for this column.
@@ -128,11 +132,12 @@ type addColumnSpec struct {
 	def      *scpb.ColumnDefaultExpression
 	onUpdate *scpb.ColumnOnUpdateExpression
 	comment  *scpb.ColumnComment
+	notNull  bool
 }
 
 // addColumn is a helper function which adds column element targets and ensures
 // that the new column is backed by a primary index, which it returns.
-func addColumn(b BuildCtx, spec addColumnSpec) (backing *scpb.PrimaryIndex) {
+func addColumn(b BuildCtx, spec addColumnSpec, _ ...tree.NodeFormatter) (backing *scpb.PrimaryIndex) {
 	b.Add(spec.col)
 	b.Add(spec.name)
 	b.Add(spec.colType)
@@ -168,7 +173,6 @@ func addColumn(b BuildCtx, spec addColumnSpec) (backing *scpb.PrimaryIndex) {
 		// Exceptionally, we can edit the element directly here, by virtue of it
 		// currently being in the ABSENT state we know that it was introduced as a
 		// PUBLIC target by the current statement.
-		freshlyAdded.StoringColumnIDs = append(freshlyAdded.StoringColumnIDs, spec.col.ColumnID)
 		return freshlyAdded
 	}
 	// Otherwise, create a new primary index target and swap it with the existing
@@ -201,7 +205,6 @@ func addColumn(b BuildCtx, spec addColumnSpec) (backing *scpb.PrimaryIndex) {
 	replacement := protoutil.Clone(existing).(*scpb.PrimaryIndex)
 	replacement.IndexID = b.NextTableIndexID(spec.tbl)
 	replacement.SourceIndexID = existing.IndexID
-	replacement.StoringColumnIDs = append(replacement.StoringColumnIDs, spec.col.ColumnID)
 	b.Add(replacement)
 	if existingName != nil {
 		updatedName := protoutil.Clone(existingName).(*scpb.IndexName)
@@ -216,25 +219,21 @@ func addColumn(b BuildCtx, spec addColumnSpec) (backing *scpb.PrimaryIndex) {
 	return replacement
 }
 
+func getImplicitSecondaryIndexName(
+	b BuildCtx, descID descpb.ID, indexID descpb.IndexID, numImplicitColumns int,
+) string {
+	return fmt.Sprintf("idx_%d", indexID)
+}
+
 func addSecondaryIndexTargetsForAddColumn(
 	b BuildCtx, tbl *scpb.Table, desc *descpb.IndexDescriptor, sourceID catid.IndexID,
 ) {
 	index := scpb.Index{
-		TableID:             tbl.TableID,
-		IndexID:             desc.ID,
-		KeyColumnIDs:        desc.KeyColumnIDs,
-		KeyColumnDirections: make([]scpb.Index_Direction, len(desc.KeyColumnIDs)),
-		KeySuffixColumnIDs:  desc.KeySuffixColumnIDs,
-		StoringColumnIDs:    desc.StoreColumnIDs,
-		CompositeColumnIDs:  desc.CompositeColumnIDs,
-		IsUnique:            desc.Unique,
-		IsInverted:          desc.Type == descpb.IndexDescriptor_INVERTED,
-		SourceIndexID:       sourceID,
-	}
-	for i, dir := range desc.KeyColumnDirections {
-		if dir == descpb.IndexDescriptor_DESC {
-			index.KeyColumnDirections[i] = scpb.Index_DESC
-		}
+		TableID:       tbl.TableID,
+		IndexID:       desc.ID,
+		IsUnique:      desc.Unique,
+		IsInverted:    desc.Type == descpb.IndexDescriptor_INVERTED,
+		SourceIndexID: sourceID,
 	}
 	if desc.Sharded.IsSharded {
 		index.Sharding = &desc.Sharded

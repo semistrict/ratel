@@ -107,7 +107,7 @@ func sqlLivenessMigration(codec keys.SQLCodec) rbrMigration {
 			{Name: "expiration", ID: 2, Type: types.Decimal, Nullable: false},
 			{Name: "crdb_region", ID: 3, Type: types.Bytes, Nullable: false},
 		},
-		Families: []descpb.ColumnFamilyDescriptor{
+		RowGroups: []descpb.RowGroupDescriptor{
 			{
 				Name:            "primary",
 				ID:              0,
@@ -146,7 +146,7 @@ func sqlLivenessMigration(codec keys.SQLCodec) rbrMigration {
 		Indexes:                 []descpb.IndexDescriptor{},
 		NextColumnID:            4,
 		NextConstraintID:        2,
-		NextFamilyID:            1,
+		NextRowGroupID:            1,
 		NextIndexID:             3,
 		NextMutationID:          1,
 		UnexposedParentSchemaID: keys.SystemPublicSchemaID,
@@ -173,7 +173,7 @@ func sqlInstanceMigration(codec keys.SQLCodec) rbrMigration {
 			{Name: "crdb_region", ID: 6, Type: types.Bytes, Nullable: false},
 			{Name: "binary_version", ID: 7, Type: types.String, Nullable: true},
 		},
-		Families: []descpb.ColumnFamilyDescriptor{
+		RowGroups: []descpb.RowGroupDescriptor{
 			{
 				Name:            "primary",
 				ID:              0,
@@ -212,7 +212,7 @@ func sqlInstanceMigration(codec keys.SQLCodec) rbrMigration {
 		Indexes:                 []descpb.IndexDescriptor{},
 		NextColumnID:            8,
 		NextConstraintID:        2,
-		NextFamilyID:            1,
+		NextRowGroupID:            1,
 		NextIndexID:             3,
 		NextMutationID:          1,
 		UnexposedParentSchemaID: keys.SystemPublicSchemaID,
@@ -237,7 +237,7 @@ func leaseMigration(codec keys.SQLCodec) rbrMigration {
 			{Name: "expiration", ID: 4, Type: types.Timestamp},
 			{Name: "crdb_region", ID: 5, Type: types.Bytes},
 		},
-		Families: []descpb.ColumnFamilyDescriptor{
+		RowGroups: []descpb.RowGroupDescriptor{
 			{
 				Name:        "primary",
 				ID:          0,
@@ -276,7 +276,7 @@ func leaseMigration(codec keys.SQLCodec) rbrMigration {
 		Indexes:                 []descpb.IndexDescriptor{},
 		NextColumnID:            6,
 		NextConstraintID:        2,
-		NextFamilyID:            1,
+		NextRowGroupID:            1,
 		NextIndexID:             3,
 		NextMutationID:          1,
 		UnexposedParentSchemaID: keys.SystemPublicSchemaID,

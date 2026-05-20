@@ -166,7 +166,7 @@ func patchDescriptor(desc catalog.TableDescriptor) catalog.TableDescriptor {
 	table.NextConstraintID += 1
 
 	// Add crdb_region to the column family
-	family := &table.Families[0]
+	family := &table.RowGroups[0]
 	family.ColumnNames = append(family.ColumnNames, crdbRegionColumn.Name)
 	family.ColumnIDs = append(family.ColumnIDs, crdbRegionColumn.ID)
 

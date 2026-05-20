@@ -84,7 +84,10 @@ go_test(
     ],
     args = ["-test.timeout=295s"],
     embed = [":colflow"],
-    tags = ["no-remote"],
+    tags = [
+        "manual",
+        "no-remote",
+    ],
     deps = [
         "//pkg/base",
         "//pkg/col/coldata",

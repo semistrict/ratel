@@ -188,16 +188,41 @@ var varGen = map[string]sessionVar{
 		},
 	},
 
+	`actor`: {
+		Set: func(_ context.Context, m sessionDataMutator, s string) error {
+			m.SetActorScope(s)
+			return nil
+		},
+		Get: func(evalCtx *extendedEvalContext, _ *kv.Txn) (string, error) {
+			return evalCtx.SessionData().ActorScope, nil
+		},
+		GetFromSessionData: func(sd *sessiondata.SessionData) string {
+			return sd.ActorScope
+		},
+		GlobalDefault: func(_ *settings.Values) string {
+			return ""
+		},
+		Equal: func(a, b *sessiondata.SessionData) bool {
+			return a.ActorScope == b.ActorScope
+		},
+	},
+
 	`actor_scope`: {
 		Set: func(_ context.Context, m sessionDataMutator, s string) error {
 			m.SetActorScope(s)
 			return nil
 		},
-		Get: func(evalCtx *extendedEvalContext) (string, error) {
+		Get: func(evalCtx *extendedEvalContext, _ *kv.Txn) (string, error) {
 			return evalCtx.SessionData().ActorScope, nil
+		},
+		GetFromSessionData: func(sd *sessiondata.SessionData) string {
+			return sd.ActorScope
 		},
 		GlobalDefault: func(_ *settings.Values) string {
 			return ""
+		},
+		Equal: func(a, b *sessiondata.SessionData) bool {
+			return a.ActorScope == b.ActorScope
 		},
 	},
 

@@ -1781,7 +1781,15 @@ func (ts *TestServer) ScratchRange() (roachpb.Key, error) {
 // (it doesn't overlap system spans or SQL tables).
 func (ts *TestServer) ScratchRangeEx() (roachpb.RangeDescriptor, roachpb.RangeDescriptor, error) {
 	scratchKey := keys.ScratchRangeMin
-	return ts.SplitRange(scratchKey)
+	lhs, _, err := ts.SplitRange(scratchKey)
+	if err != nil {
+		return roachpb.RangeDescriptor{}, roachpb.RangeDescriptor{}, err
+	}
+	scratchDesc, _, err := ts.SplitRange(keys.ActorDataMin)
+	if err != nil {
+		return roachpb.RangeDescriptor{}, roachpb.RangeDescriptor{}, err
+	}
+	return lhs, scratchDesc, nil
 }
 
 // ScratchRangeWithExpirationLease is like ScratchRangeWithExpirationLeaseEx but

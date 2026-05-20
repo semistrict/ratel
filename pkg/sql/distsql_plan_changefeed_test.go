@@ -61,8 +61,6 @@ func TestChangefeedLogicalPlan(t *testing.T) {
 	s, db, kvDB := serverutils.StartServer(t, params)
 	defer s.Stopper().Stop(context.Background())
 
-	defer tree.TestingEnableFamilyIndexHint()()
-
 	sqlDB := sqlutils.MakeSQLRunner(db)
 	sqlDB.Exec(t, `
 CREATE TABLE foo (

@@ -482,7 +482,7 @@ INSERT INTO t.test VALUES (10, 2);
 	}
 
 	// Add the family suffix to the key.
-	family := tableDesc.GetRowGroups()[0]
+	family := tableDesc.GetFamilies()[0]
 	primaryIndexKey = keys.MakeFamilyKey(primaryIndexKey, uint32(family.ID))
 
 	// Generate a k/v that has a different value that violates the

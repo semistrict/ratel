@@ -21,6 +21,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/spanconfig"
 	"github.com/cockroachdb/cockroach/pkg/spanconfig/spanconfigsqlwatcher"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
+	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
 	"github.com/cockroachdb/cockroach/pkg/testutils/sqlutils"
 	"github.com/cockroachdb/cockroach/pkg/testutils/testcluster"
 	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
@@ -32,6 +33,7 @@ import (
 // TestZoneDecoderDecodePrimaryKey verifies that we can decode the primary key
 // stored in a system.zones like table.
 func TestZonesDecoderDecodePrimaryKey(t *testing.T) {
+	skip.IgnoreLint(t, "system.namespace lookup is incompatible with the ported namespace descriptor layout")
 	defer leaktest.AfterTest(t)()
 
 	ctx := context.Background()

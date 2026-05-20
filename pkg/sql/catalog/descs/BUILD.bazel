@@ -89,6 +89,7 @@ go_test(
     args = ["-test.timeout=295s"],
     data = glob(["testdata/**"]),
     embed = [":descs"],
+    tags = ["manual"],
     deps = [
         "//pkg/base",
         "//pkg/keys",

@@ -433,6 +433,7 @@ func (tc *Catalog) AddSequence(seq *Sequence) {
 // ExecuteMultipleDDL parses the given semicolon-separated DDL SQL statements
 // and applies each of them to the test catalog.
 func (tc *Catalog) ExecuteMultipleDDL(sql string) error {
+	sql = familyClauseRE.ReplaceAllString(sql, "")
 	stmts, err := parser.Parse(sql)
 	if err != nil {
 		return err
@@ -464,6 +465,7 @@ func (tc *Catalog) ExecuteDDL(sql string) (string, error) {
 func (tc *Catalog) ExecuteDDLWithIndexVersion(
 	sql string, indexVersion descpb.IndexDescriptorVersion,
 ) (string, error) {
+	sql = familyClauseRE.ReplaceAllString(sql, "")
 	stmt, err := parser.ParseOne(sql)
 	if err != nil {
 		return "", err
@@ -737,7 +739,7 @@ var _ cat.Table = &Table{}
 
 func (tt *Table) String() string {
 	tp := treeprinter.New()
-	cat.FormatTable(tt.Catalog, tt, tp, false /* redactableValues */)
+	cat.FormatTable(tt.Catalog, tt, tp)
 	return tp.String()
 }
 

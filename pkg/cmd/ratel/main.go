@@ -18,8 +18,8 @@
 package main
 
 import (
-	"github.com/semistrict/ratel/pkg/cli"
-	_ "github.com/semistrict/ratel/pkg/ui/distoss" // web UI init hooks
+	"github.com/cockroachdb/cockroach/pkg/cli"
+	_ "github.com/cockroachdb/cockroach/pkg/ui/distoss" // web UI init hooks
 )
 
 func main() {

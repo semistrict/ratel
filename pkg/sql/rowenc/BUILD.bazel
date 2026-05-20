@@ -8,6 +8,7 @@ go_library(
         "index_fetch.go",
         "partition.go",
         "roundtrip_format.go",
+        "subordinate.go",
     ],
     importpath = "github.com/cockroachdb/cockroach/pkg/sql/rowenc",
     visibility = ["//visibility:public"],
@@ -43,6 +44,23 @@ go_library(
         "//pkg/util/unique",
         "@com_github_cockroachdb_errors//:errors",
         "@com_github_cockroachdb_redact//:redact",
+    ],
+)
+
+go_test(
+    name = "subordinate_test",
+    size = "small",
+    srcs = ["subordinate_test.go"],
+    args = ["-test.timeout=55s"],
+    deps = [
+        ":rowenc",
+        "//pkg/keys",
+        "//pkg/roachpb",
+        "//pkg/sql/catalog",
+        "//pkg/sql/catalog/descpb",
+        "//pkg/sql/sem/tree",
+        "//pkg/sql/types",
+        "@com_github_stretchr_testify//require",
     ],
 )
 

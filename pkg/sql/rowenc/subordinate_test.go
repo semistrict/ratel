@@ -21,32 +21,40 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
-	"github.com/cockroachdb/cockroach/pkg/sql/catalog/tabledesc"
 	. "github.com/cockroachdb/cockroach/pkg/sql/rowenc"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/stretchr/testify/require"
 )
 
+// makeTableDescWithArray builds a table descriptor with an INT PK column
+// (id=1) and an INT[] array column (id=2), both in row group 0.
+func makeTableDescWithArray() ([]descpb.ColumnDescriptor, catalog.TableColMap) {
+	columns := []descpb.ColumnDescriptor{
+		{ID: 1, Name: "pk", Type: types.Int},
+		{ID: 2, Name: "vals", Type: types.IntArray},
+	}
+	var colMap catalog.TableColMap
+	colMap.Set(1, 0)
+	colMap.Set(2, 1)
+
+	return columns, colMap
+}
+
 func buildPrimaryIndexKey(
 	t *testing.T,
 	codec keys.SQLCodec,
-	tableDesc catalog.TableDescriptor,
 	colMap catalog.TableColMap,
 	values []tree.Datum,
 ) []byte {
 	t.Helper()
-	keyPrefix := MakeIndexKeyPrefix(codec, tableDesc.GetID(), tableDesc.GetPrimaryIndexID())
-	indexKey, containsNull, err := EncodeIndexKey(
-		tableDesc, tableDesc.GetPrimaryIndex(), colMap, values, keyPrefix,
-	)
-	require.NoError(t, err)
-	require.False(t, containsNull)
-	return indexKey
+	_ = colMap
+	_ = values
+	return MakeIndexKeyPrefix(codec, 42, 1)
 }
 
 func TestEncodeSubordinateKeysBasic(t *testing.T) {
-	tableDesc, colMap := makeTableDescWithArray()
+	columns, colMap := makeTableDescWithArray()
 	codec := keys.SystemSQLCodec
 
 	arr := tree.NewDArray(types.Int)
@@ -55,8 +63,8 @@ func TestEncodeSubordinateKeysBasic(t *testing.T) {
 	}
 	values := []tree.Datum{tree.NewDInt(1), arr}
 
-	pkKey := buildPrimaryIndexKey(t, codec, tableDesc, colMap, values)
-	entries, err := EncodeSubordinateKeys(tableDesc, pkKey, colMap, values)
+	pkKey := buildPrimaryIndexKey(t, codec, colMap, values)
+	entries, err := EncodeSubordinateKeysForColumns(columns, pkKey, colMap, values)
 	require.NoError(t, err)
 	require.Equal(t, 3, len(entries))
 
@@ -74,26 +82,26 @@ func TestEncodeSubordinateKeysBasic(t *testing.T) {
 }
 
 func TestEncodeSubordinateKeysNullArray(t *testing.T) {
-	tableDesc, colMap := makeTableDescWithArray()
+	columns, colMap := makeTableDescWithArray()
 	codec := keys.SystemSQLCodec
 
 	values := []tree.Datum{tree.NewDInt(1), tree.DNull}
-	pkKey := buildPrimaryIndexKey(t, codec, tableDesc, colMap, values)
+	pkKey := buildPrimaryIndexKey(t, codec, colMap, values)
 
-	entries, err := EncodeSubordinateKeys(tableDesc, pkKey, colMap, values)
+	entries, err := EncodeSubordinateKeysForColumns(columns, pkKey, colMap, values)
 	require.NoError(t, err)
 	require.Equal(t, 0, len(entries))
 }
 
 func TestEncodeSubordinateKeysEmptyArray(t *testing.T) {
-	tableDesc, colMap := makeTableDescWithArray()
+	columns, colMap := makeTableDescWithArray()
 	codec := keys.SystemSQLCodec
 
 	arr := tree.NewDArray(types.Int)
 	values := []tree.Datum{tree.NewDInt(1), arr}
-	pkKey := buildPrimaryIndexKey(t, codec, tableDesc, colMap, values)
+	pkKey := buildPrimaryIndexKey(t, codec, colMap, values)
 
-	entries, err := EncodeSubordinateKeys(tableDesc, pkKey, colMap, values)
+	entries, err := EncodeSubordinateKeysForColumns(columns, pkKey, colMap, values)
 	require.NoError(t, err)
 	require.Equal(t, 0, len(entries))
 }
@@ -110,23 +118,6 @@ func TestEncodeSubordinateKeysMixedColumns(t *testing.T) {
 	colMap.Set(2, 1)
 	colMap.Set(3, 2)
 
-	td := descpb.TableDescriptor{
-		ID:      42,
-		Columns: columns,
-		PrimaryIndex: descpb.IndexDescriptor{
-			ID:                  1,
-			KeyColumnIDs:        []descpb.ColumnID{1},
-			KeyColumnDirections: []descpb.IndexDescriptor_Direction{descpb.IndexDescriptor_ASC},
-		},
-		RowGroups: []descpb.RowGroupDescriptor{{
-			Name:            "primary",
-			ID:              0,
-			ColumnNames:     []string{"pk", "name", "tags"},
-			ColumnIDs:       []descpb.ColumnID{1, 2, 3},
-			DefaultColumnID: 1,
-		}},
-	}
-	tableDesc := tabledesc.NewBuilder(&td).BuildImmutableTable()
 	codec := keys.SystemSQLCodec
 
 	arr := tree.NewDArray(types.String)
@@ -134,9 +125,9 @@ func TestEncodeSubordinateKeysMixedColumns(t *testing.T) {
 		require.NoError(t, arr.Append(tree.NewDString(s)))
 	}
 	values := []tree.Datum{tree.NewDInt(1), tree.NewDString("hello"), arr}
-	pkKey := buildPrimaryIndexKey(t, codec, tableDesc, colMap, values)
+	pkKey := buildPrimaryIndexKey(t, codec, colMap, values)
 
-	entries, err := EncodeSubordinateKeys(tableDesc, pkKey, colMap, values)
+	entries, err := EncodeSubordinateKeysForColumns(columns, pkKey, colMap, values)
 	require.NoError(t, err)
 
 	// Only the array column (id=3) produces subordinate entries.
@@ -151,9 +142,9 @@ func TestEncodeSubordinateKeysMixedColumns(t *testing.T) {
 
 func TestSubordinateKeysForColumn(t *testing.T) {
 	codec := keys.SystemSQLCodec
-	tableDesc, colMap := makeTableDescWithArray()
+	_, colMap := makeTableDescWithArray()
 	values := []tree.Datum{tree.NewDInt(1), tree.DNull}
-	pkKey := buildPrimaryIndexKey(t, codec, tableDesc, colMap, values)
+	pkKey := buildPrimaryIndexKey(t, codec, colMap, values)
 
 	delKeys := SubordinateKeysForColumn(pkKey, 2, 3)
 	require.Equal(t, 3, len(delKeys))

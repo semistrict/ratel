@@ -25,24 +25,24 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cockroachdb/cockroach/pkg/base"
+	"github.com/cockroachdb/cockroach/pkg/cli/clicfg"
+	"github.com/cockroachdb/cockroach/pkg/cli/clierror"
+	"github.com/cockroachdb/cockroach/pkg/cli/cliflags"
+	"github.com/cockroachdb/cockroach/pkg/cli/clisqlcfg"
+	"github.com/cockroachdb/cockroach/pkg/cli/clisqlclient"
+	"github.com/cockroachdb/cockroach/pkg/cli/clisqlexec"
+	"github.com/cockroachdb/cockroach/pkg/cli/clisqlshell"
+	"github.com/cockroachdb/cockroach/pkg/cli/exit"
+	"github.com/cockroachdb/cockroach/pkg/server"
+	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
+	"github.com/cockroachdb/cockroach/pkg/storage"
+	"github.com/cockroachdb/cockroach/pkg/storage/enginepb"
+	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/cockroachdb/cockroach/pkg/util/log/logcrash"
+	"github.com/cockroachdb/cockroach/pkg/util/stop"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble/objstorage/remote"
-	"github.com/semistrict/ratel/pkg/base"
-	"github.com/semistrict/ratel/pkg/cli/clicfg"
-	"github.com/semistrict/ratel/pkg/cli/clierror"
-	"github.com/semistrict/ratel/pkg/cli/cliflags"
-	"github.com/semistrict/ratel/pkg/cli/clisqlcfg"
-	"github.com/semistrict/ratel/pkg/cli/clisqlclient"
-	"github.com/semistrict/ratel/pkg/cli/clisqlexec"
-	"github.com/semistrict/ratel/pkg/cli/clisqlshell"
-	"github.com/semistrict/ratel/pkg/cli/exit"
-	"github.com/semistrict/ratel/pkg/server"
-	"github.com/semistrict/ratel/pkg/settings/cluster"
-	"github.com/semistrict/ratel/pkg/storage"
-	"github.com/semistrict/ratel/pkg/storage/enginepb"
-	"github.com/semistrict/ratel/pkg/util/log"
-	"github.com/semistrict/ratel/pkg/util/log/logcrash"
-	"github.com/semistrict/ratel/pkg/util/stop"
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
@@ -223,11 +223,11 @@ func runRatelStartLocal(cmd *cobra.Command, args []string) error {
 		clusterURL:     "file://" + storeDir,
 		listenAddr:     ratelListenAddr,
 		httpAddr:       ratelHTTPAddr,
-		certsDir:       "",   // insecure
+		certsDir:       "", // insecure
 		storeDir:       storeDir,
-		joinList:       nil,  // single-node
+		joinList:       nil, // single-node
 		autoInitialize: true,
-		nodesStore:     nil,  // no S3 node registry
+		nodesStore:     nil, // no S3 node registry
 		ratelNodeID:    "local",
 	})
 }
@@ -274,18 +274,14 @@ func runRatelInit(cmd *cobra.Command, args []string) error {
 		}
 		if !exists {
 			fmt.Fprintln(os.Stderr, "Generating CA and client certificates...")
-			if err := storage.GenerateAndUploadCACerts(ctx, cs.Certs, passphrase); err != nil {
+			if err := storage.GenerateAndUploadCerts(ctx, cs.Certs, passphrase); err != nil {
 				return err
 			}
 		}
 
-		// Download CA + client certs, then generate this node's cert locally.
+		// Download the shared CA, node, and client cert set.
 		certsDir = filepath.Join(ld, "certs")
-		if err := storage.DownloadCACerts(ctx, cs.Certs, certsDir, passphrase); err != nil {
-			return err
-		}
-		hostname := ratelAdvertiseHost()
-		if err := storage.GenerateNodeCert(certsDir, []string{hostname, "localhost"}); err != nil {
+		if err := storage.DownloadCerts(ctx, cs.Certs, certsDir, passphrase); err != nil {
 			return err
 		}
 	}
@@ -346,12 +342,8 @@ func runRatelJoin(cmd *cobra.Command, args []string) error {
 		}
 
 		certsDir = filepath.Join(ld, "certs")
-		if err := storage.DownloadCACerts(ctx, cs.Certs, certsDir, passphrase); err != nil {
+		if err := storage.DownloadCerts(ctx, cs.Certs, certsDir, passphrase); err != nil {
 			return errors.Wrap(err, "downloading certs (is the cluster initialized?)")
-		}
-		hostname := ratelAdvertiseHost()
-		if err := storage.GenerateNodeCert(certsDir, []string{hostname, "localhost"}); err != nil {
-			return err
 		}
 	}
 
@@ -486,7 +478,10 @@ func ratelStartServer(ctx context.Context, opts ratelServerOpts) error {
 			}
 
 			if cfg.AutoInitializeCluster {
-				if err := runInitialSQL(ctx, s, true, "", ""); err != nil {
+				if err := s.AcceptInternalClients(ctx); err != nil {
+					return err
+				}
+				if err := s.RunInitialSQL(ctx, true, "", ""); err != nil {
 					return err
 				}
 			}
@@ -593,8 +588,12 @@ func runRatelSQL(cmd *cobra.Command, args []string) error {
 		}
 		if ratelTLS {
 			ld := ratelLocalDir(arg)
+			passphrase, err := ratelPassphrase(false /* confirm */)
+			if err != nil {
+				return err
+			}
 			certsDir = filepath.Join(ld, "certs")
-			if err := storage.DownloadClientCerts(ctx, cs.Certs, certsDir); err != nil {
+			if err := storage.DownloadClientCerts(ctx, cs.Certs, certsDir, passphrase); err != nil {
 				return err
 			}
 		}
@@ -658,5 +657,5 @@ func runRatelSQL(cmd *cobra.Command, args []string) error {
 	}
 	defer func() { _ = conn.Close() }()
 
-	return sqlCfg.Run(conn)
+	return sqlCfg.Run(context.Background(), conn)
 }

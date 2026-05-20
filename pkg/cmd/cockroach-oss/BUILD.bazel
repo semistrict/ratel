@@ -19,10 +19,15 @@ go_binary(
 )
 
 disallowed_imports_test(
-    "cockroach-oss",
+    "cockroach-oss_lib",
     disallowed_list = [],
     disallowed_prefixes = [
         "pkg/ccl",
         "pkg/ui/distccl",
     ],
+)
+
+test_suite(
+    name = "cockroach-oss_disallowed_imports_test",
+    tests = [":cockroach-oss_lib_disallowed_imports_test"],
 )

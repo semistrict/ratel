@@ -23,17 +23,19 @@ columns:
 ----
 {
   "version": 1,
-  "table_id": 106,
+  "table_id": 110,
   "table_name": "t",
   "index_id": 1,
   "index_name": "t_pkey",
   "is_secondary_index": false,
   "is_unique_index": true,
+  "geo_config": {},
   "encoding_type": 1,
   "num_key_suffix_columns": 0,
   "max_keys_per_row": 1,
-  "key_prefix_length": 2,
-  "default_column_id": 0,
+  "key_prefix_length": 3,
+  "max_family_id": 0,
+  "family_default_columns": null,
   "key_and_suffix_columns": [
     {
       "column": {
@@ -78,17 +80,19 @@ columns:
 ----
 {
   "version": 1,
-  "table_id": 106,
+  "table_id": 110,
   "table_name": "t",
   "index_id": 1,
   "index_name": "t_pkey",
   "is_secondary_index": false,
   "is_unique_index": true,
+  "geo_config": {},
   "encoding_type": 1,
   "num_key_suffix_columns": 0,
   "max_keys_per_row": 1,
-  "key_prefix_length": 2,
-  "default_column_id": 0,
+  "key_prefix_length": 3,
+  "max_family_id": 0,
+  "family_default_columns": null,
   "key_and_suffix_columns": [
     {
       "column": {
@@ -121,17 +125,19 @@ columns:
 ----
 {
   "version": 1,
-  "table_id": 106,
+  "table_id": 110,
   "table_name": "t",
   "index_id": 2,
   "index_name": "b1",
   "is_secondary_index": true,
   "is_unique_index": false,
+  "geo_config": {},
   "encoding_type": 0,
   "num_key_suffix_columns": 1,
   "max_keys_per_row": 1,
-  "key_prefix_length": 2,
-  "default_column_id": 0,
+  "key_prefix_length": 3,
+  "max_family_id": 0,
+  "family_default_columns": null,
   "key_and_suffix_columns": [
     {
       "column": {
@@ -181,17 +187,19 @@ columns:
 ----
 {
   "version": 1,
-  "table_id": 106,
+  "table_id": 110,
   "table_name": "t",
   "index_id": 3,
   "index_name": "b2",
   "is_secondary_index": true,
   "is_unique_index": false,
+  "geo_config": {},
   "encoding_type": 0,
   "num_key_suffix_columns": 1,
   "max_keys_per_row": 1,
-  "key_prefix_length": 2,
-  "default_column_id": 0,
+  "key_prefix_length": 3,
+  "max_family_id": 0,
+  "family_default_columns": null,
   "key_and_suffix_columns": [
     {
       "column": {
@@ -243,17 +251,19 @@ columns:
 ----
 {
   "version": 1,
-  "table_id": 106,
+  "table_id": 110,
   "table_name": "t",
   "index_id": 4,
   "index_name": "cb1",
   "is_secondary_index": true,
   "is_unique_index": true,
+  "geo_config": {},
   "encoding_type": 0,
   "num_key_suffix_columns": 1,
   "max_keys_per_row": 1,
-  "key_prefix_length": 2,
-  "default_column_id": 0,
+  "key_prefix_length": 3,
+  "max_family_id": 0,
+  "family_default_columns": null,
   "key_and_suffix_columns": [
     {
       "column": {
@@ -315,17 +325,19 @@ columns:
 ----
 {
   "version": 1,
-  "table_id": 106,
+  "table_id": 110,
   "table_name": "t",
   "index_id": 5,
   "index_name": "cb2",
   "is_secondary_index": true,
   "is_unique_index": true,
+  "geo_config": {},
   "encoding_type": 0,
   "num_key_suffix_columns": 1,
   "max_keys_per_row": 1,
-  "key_prefix_length": 2,
-  "default_column_id": 0,
+  "key_prefix_length": 3,
+  "max_family_id": 0,
+  "family_default_columns": null,
   "key_and_suffix_columns": [
     {
       "column": {
@@ -403,23 +415,25 @@ columns:
 ----
 {
   "version": 1,
-  "table_id": 107,
+  "table_id": 111,
   "table_name": "inv",
   "index_id": 2,
   "index_name": "inv",
   "is_secondary_index": true,
   "is_unique_index": false,
+  "geo_config": {},
   "encoding_type": 0,
   "num_key_suffix_columns": 1,
   "max_keys_per_row": 1,
-  "key_prefix_length": 2,
-  "default_column_id": 0,
+  "key_prefix_length": 3,
+  "max_family_id": 0,
+  "family_default_columns": null,
   "key_and_suffix_columns": [
     {
       "column": {
         "column_id": 3,
         "name": "j",
-        "type": "family: BytesFamily\nwidth: 0\nprecision: 0\nlocale: \"\"\nvisible_type: 0\noid: 17\ntime_precision_is_set: false\n",
+        "type": "family: EncodedKeyFamily\nwidth: 0\nprecision: 0\nlocale: \"\"\nvisible_type: 0\noid: 705\ntime_precision_is_set: false\n",
         "is_non_nullable": false
       },
       "direction": 0,
@@ -442,7 +456,7 @@ columns:
     {
       "column_id": 3,
       "name": "j",
-      "type": "family: BytesFamily\nwidth: 0\nprecision: 0\nlocale: \"\"\nvisible_type: 0\noid: 17\ntime_precision_is_set: false\n",
+      "type": "family: EncodedKeyFamily\nwidth: 0\nprecision: 0\nlocale: \"\"\nvisible_type: 0\noid: 705\ntime_precision_is_set: false\n",
       "is_non_nullable": false
     },
     {
@@ -464,17 +478,19 @@ columns:
 ----
 {
   "version": 1,
-  "table_id": 107,
+  "table_id": 111,
   "table_name": "inv",
   "index_id": 3,
   "index_name": "inv2",
   "is_secondary_index": true,
   "is_unique_index": false,
+  "geo_config": {},
   "encoding_type": 0,
   "num_key_suffix_columns": 1,
   "max_keys_per_row": 1,
-  "key_prefix_length": 2,
-  "default_column_id": 0,
+  "key_prefix_length": 3,
+  "max_family_id": 0,
+  "family_default_columns": null,
   "key_and_suffix_columns": [
     {
       "column": {
@@ -491,7 +507,7 @@ columns:
       "column": {
         "column_id": 3,
         "name": "j",
-        "type": "family: BytesFamily\nwidth: 0\nprecision: 0\nlocale: \"\"\nvisible_type: 0\noid: 17\ntime_precision_is_set: false\n",
+        "type": "family: EncodedKeyFamily\nwidth: 0\nprecision: 0\nlocale: \"\"\nvisible_type: 0\noid: 705\ntime_precision_is_set: false\n",
         "is_non_nullable": false
       },
       "direction": 0,
@@ -514,7 +530,7 @@ columns:
     {
       "column_id": 3,
       "name": "j",
-      "type": "family: BytesFamily\nwidth: 0\nprecision: 0\nlocale: \"\"\nvisible_type: 0\noid: 17\ntime_precision_is_set: false\n",
+      "type": "family: EncodedKeyFamily\nwidth: 0\nprecision: 0\nlocale: \"\"\nvisible_type: 0\noid: 705\ntime_precision_is_set: false\n",
       "is_non_nullable": false
     },
     {

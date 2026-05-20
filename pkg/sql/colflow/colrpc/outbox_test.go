@@ -27,6 +27,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/cockroachdb/cockroach/pkg/testutils"
 	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
+	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,17 +37,19 @@ func TestOutboxCatchesPanics(t *testing.T) {
 	ctx := context.Background()
 
 	var (
-		input    = colexecop.NewBatchBuffer()
+		inputErr = errors.AssertionFailedf("injected vectorized panic")
+		input    = &colexecop.CallbackOperator{
+			NextCb: func() coldata.Batch {
+				colexecerror.InternalError(inputErr)
+				return coldata.ZeroBatch
+			},
+		}
 		typs     = []*types.T{types.Int}
 		rpcLayer = makeMockFlowStreamRPCLayer()
 	)
 	input.Init(ctx)
 	outbox, err := NewOutbox(&execinfra.FlowCtx{Gateway: false}, 0 /* processorID */, testAllocator, testMemAcc, colexecargs.OpWithMetaInfo{Root: input}, typs, nil /* getStats */)
 	require.NoError(t, err)
-
-	// This test relies on the fact that BatchBuffer panics when there are no
-	// batches to return. Verify this assumption.
-	require.Panics(t, func() { input.Next() })
 
 	// The actual test verifies that the Outbox handles input execution tree
 	// panics by not panicking and returning.
@@ -76,7 +79,7 @@ func TestOutboxCatchesPanics(t *testing.T) {
 	meta := inbox.DrainMeta()
 	require.True(t, len(meta) == 0)
 
-	require.True(t, testutils.IsError(err, "runtime error: index out of range"), err)
+	require.True(t, testutils.IsError(err, "injected vectorized panic"), err)
 
 	require.NoError(t, <-streamHandlerErrCh)
 	wg.Wait()
@@ -94,7 +97,7 @@ func TestOutboxDrainsMetadataSources(t *testing.T) {
 
 	// Define common function that returns both an Outbox and a pointer to a
 	// uint32 that is set atomically when the outbox drains a metadata source.
-	newOutboxWithMetaSources := func() (*Outbox, *uint32, error) {
+	newOutboxWithMetaSources := func(root colexecop.Operator) (*Outbox, *uint32, error) {
 		var sourceDrained uint32
 		outbox, err := NewOutbox(
 			&execinfra.FlowCtx{Gateway: false},
@@ -102,7 +105,7 @@ func TestOutboxDrainsMetadataSources(t *testing.T) {
 			testAllocator,
 			testMemAcc,
 			colexecargs.OpWithMetaInfo{
-				Root: input,
+				Root: root,
 				MetadataSources: []colexecop.MetadataSource{
 					colexectestutils.CallbackMetadataSource{
 						DrainMetaCb: func() []execinfrapb.ProducerMetadata {
@@ -125,7 +128,7 @@ func TestOutboxDrainsMetadataSources(t *testing.T) {
 		rpcLayer := makeMockFlowStreamRPCLayer()
 		outboxMemAccount := testMemMonitor.MakeBoundAccount()
 		defer outboxMemAccount.Close(ctx)
-		outbox, sourceDrained, err := newOutboxWithMetaSources()
+		outbox, sourceDrained, err := newOutboxWithMetaSources(input)
 		require.NoError(t, err)
 
 		b := testAllocator.NewMemBatchWithMaxCapacity(typs)
@@ -142,12 +145,14 @@ func TestOutboxDrainsMetadataSources(t *testing.T) {
 	// This is similar to TestOutboxCatchesPanics, but focuses on verifying that
 	// the Outbox drains its metadata sources even after an error.
 	t.Run("AfterOutboxError", func(t *testing.T) {
-		// This test, similar to TestOutboxCatchesPanics, relies on the fact that
-		// a BatchBuffer panics when there are no batches to return.
-		require.Panics(t, func() { input.Next() })
-
 		rpcLayer := makeMockFlowStreamRPCLayer()
-		outbox, sourceDrained, err := newOutboxWithMetaSources()
+		failingInput := &colexecop.CallbackOperator{
+			NextCb: func() coldata.Batch {
+				colexecerror.InternalError(errors.AssertionFailedf("injected vectorized panic"))
+				return coldata.ZeroBatch
+			},
+		}
+		outbox, sourceDrained, err := newOutboxWithMetaSources(failingInput)
 		require.NoError(t, err)
 
 		close(rpcLayer.client.csChan)

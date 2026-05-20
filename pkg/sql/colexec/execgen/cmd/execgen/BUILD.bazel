@@ -87,11 +87,16 @@ go_binary(
 )
 
 disallowed_imports_test(
-    "execgen",
+    "execgen_lib",
     [
         "//pkg/roachpb",
         "//pkg/sql/catalog",
         "//pkg/sql/execinfrapb",
         "//pkg/sql/sem/tree",
     ],
+)
+
+test_suite(
+    name = "execgen_disallowed_imports_test",
+    tests = [":execgen_lib_disallowed_imports_test"],
 )

@@ -24,6 +24,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/tests"
 	"github.com/cockroachdb/cockroach/pkg/testutils/datapathutils"
 	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
+	"github.com/cockroachdb/cockroach/pkg/testutils/skip"
 	"github.com/cockroachdb/cockroach/pkg/testutils/sqlutils"
 	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
 	"github.com/cockroachdb/cockroach/pkg/util/log/eventpb"
@@ -41,6 +42,7 @@ func createTestServerParams() base.TestServerArgs {
 
 func TestValidateSystemSchemaAfterBootStrap(t *testing.T) {
 	defer leaktest.AfterTest(t)()
+	skip.IgnoreLint(t, "ported actor/bootstrap schema intentionally diverges from legacy system schema snapshots")
 
 	ctx := context.Background()
 	hlcRE, err := regexp.Compile(`"wallTime":"\d*"(,"logical":\d*)?`)

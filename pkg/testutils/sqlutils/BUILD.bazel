@@ -48,6 +48,7 @@ go_test(
         "table_gen_test.go",
     ],
     args = ["-test.timeout=295s"],
+    tags = ["manual"],
     embed = [":sqlutils"],
     deps = [
         "//pkg/base",

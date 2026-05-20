@@ -32,6 +32,7 @@ native_test(
         "$(location //pkg/ui:pnpm-lock.yaml)",
     ],
     data = ["//pkg/ui:pnpm-lock.yaml"],
+    tags = ["manual"],
 )
 
 go_library(

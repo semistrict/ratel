@@ -129,6 +129,7 @@ go_test(
         "transaction_test.go",
     ],
     args = ["-test.timeout=295s"],
+    tags = ["manual"],
     embed = [":batcheval"],
     deps = [
         "//pkg/base",

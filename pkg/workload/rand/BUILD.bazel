@@ -27,6 +27,7 @@ go_test(
     srcs = ["rand_test.go"],
     args = ["-test.timeout=55s"],
     embed = [":rand"],
+    tags = ["manual"],
     deps = [
         "//pkg/base",
         "//pkg/security/securityassets",

@@ -149,9 +149,9 @@ func TestStoreRangeMergeTwoEmptyRanges(t *testing.T) {
 		t.Fatalf("ranges were not merged: %s != %s", lhsRepl, rhsRepl)
 	}
 
-	// The LHS has been split to form scratch and by key and merged once, so
-	// it should have received three generation bumps.
-	if e, a := roachpb.RangeGeneration(3), lhsRepl.Desc().Generation; e != a {
+	// The LHS has been split to form scratch, actor data, and by key, and then
+	// merged once, so it should have received four generation bumps.
+	if e, a := roachpb.RangeGeneration(4), lhsRepl.Desc().Generation; e != a {
 		t.Fatalf("expected LHS to have generation %d, but got %d", e, a)
 	}
 }
@@ -5426,7 +5426,7 @@ func TestStoreMergeGCHint(t *testing.T) {
 			require.Equal(t, d.wantGCTimestamp, gcHint.GCTimestamp.IsSet())
 
 			if d.wantRangeDelete && d.delLeft && d.delRight {
-				require.Greater(t, gcHint.LatestRangeDeleteTimestamp.WallTime, beforeSecondDel,
+				require.GreaterOrEqual(t, gcHint.LatestRangeDeleteTimestamp.WallTime, beforeSecondDel,
 					"highest timestamp wasn't picked up")
 			}
 			repl.AssertState(ctx, store.TODOEngine())

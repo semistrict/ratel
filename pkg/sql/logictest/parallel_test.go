@@ -33,7 +33,6 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/keys"
 	"github.com/cockroachdb/cockroach/pkg/security/username"
 	"github.com/cockroachdb/cockroach/pkg/sql"
-	logictest "github.com/cockroachdb/cockroach/pkg/sql/logictest/logictestbase"
 	"github.com/cockroachdb/cockroach/pkg/sql/sessiondatapb"
 	"github.com/cockroachdb/cockroach/pkg/sql/stats"
 	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
@@ -82,7 +81,7 @@ func (t *parallelTest) processTestFile(path string, nodeIdx int, db *gosql.DB, c
 		verbose: testing.Verbose() || log.V(1),
 		rng:     rng,
 	}
-	if err := l.processTestFile(path, logictest.TestClusterConfig{}); err != nil {
+	if err := l.processTestFile(path, testClusterConfig{}); err != nil {
 		log.Errorf(context.Background(), "error processing %s: %s", path, err)
 		t.Error(err)
 	}

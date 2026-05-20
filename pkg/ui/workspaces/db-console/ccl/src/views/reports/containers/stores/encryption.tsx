@@ -18,6 +18,8 @@ import { util } from "@cockroachlabs/cluster-ui";
 import { FixLong } from "src/util/fixLong";
 
 const dateFormat = "Y-MM-DD HH:mm:ss";
+const enginepbccl = (protosccl as any).cockroach?.ccl?.storageccl?.engineccl
+  ?.enginepbccl;
 
 export default class EncryptionStatus {
   props: EncryptionStatusProps;
@@ -52,14 +54,9 @@ export default class EncryptionStatus {
     );
   }
 
-  renderStoreKey(
-    key: protosccl.cockroach.ccl.storageccl.engineccl.enginepbccl.IKeyInfo,
-  ) {
+  renderStoreKey(key: any) {
     // Get the enum name from its value (eg: "AES128_CTR" for 1).
-    const encryptionType =
-      protosccl.cockroach.ccl.storageccl.engineccl.enginepbccl.EncryptionType[
-        key.encryption_type
-      ];
+    const encryptionType = enginepbccl.EncryptionType[key.encryption_type];
     const createdAt = moment
       .unix(FixLong(key.creation_time).toNumber())
       .utc()
@@ -74,14 +71,9 @@ export default class EncryptionStatus {
     ];
   }
 
-  renderDataKey(
-    key: protosccl.cockroach.ccl.storageccl.engineccl.enginepbccl.IKeyInfo,
-  ) {
+  renderDataKey(key: any) {
     // Get the enum name from its value (eg: "AES128_CTR" for 1).
-    const encryptionType =
-      protosccl.cockroach.ccl.storageccl.engineccl.enginepbccl.EncryptionType[
-        key.encryption_type
-      ];
+    const encryptionType = enginepbccl.EncryptionType[key.encryption_type];
     const createdAt = moment
       .unix(key.creation_time.toNumber())
       .utc()
@@ -147,10 +139,7 @@ export default class EncryptionStatus {
 
     // Attempt to decode protobuf.
     try {
-      decodedStatus =
-        protosccl.cockroach.ccl.storageccl.engineccl.enginepbccl.EncryptionStatus.decode(
-          rawStatus,
-        );
+      decodedStatus = enginepbccl.EncryptionStatus.decode(rawStatus);
     } catch (e) {
       return [
         this.renderSimpleRow(

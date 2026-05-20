@@ -1,16 +1,12 @@
 // Copyright 2015 The Cockroach Authors.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Use of this software is governed by the Business Source License
+// included in the file licenses/BSL.txt.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// permissions and limitations under the License.
+// As of the Change Date specified in that file, in accordance with
+// the Business Source License, use of this software will be governed
+// by the Apache License, Version 2.0, included in the file
+// licenses/APL.txt.
 
 package sql
 
@@ -18,14 +14,15 @@ import (
 	"context"
 	"sync"
 
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog/schemaexpr"
+	"github.com/cockroachdb/cockroach/pkg/sql/row"
+	"github.com/cockroachdb/cockroach/pkg/sql/rowcontainer"
+	"github.com/cockroachdb/cockroach/pkg/sql/sem/eval"
+	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/cockroachdb/cockroach/pkg/sql/sqlerrors"
 	"github.com/cockroachdb/errors"
-	"github.com/semistrict/ratel/pkg/sql/catalog"
-	"github.com/semistrict/ratel/pkg/sql/catalog/colinfo"
-	"github.com/semistrict/ratel/pkg/sql/catalog/schemaexpr"
-	"github.com/semistrict/ratel/pkg/sql/row"
-	"github.com/semistrict/ratel/pkg/sql/rowcontainer"
-	"github.com/semistrict/ratel/pkg/sql/sem/tree"
-	"github.com/semistrict/ratel/pkg/sql/sqlerrors"
 )
 
 var updateNodePool = sync.Pool{
@@ -51,7 +48,6 @@ var _ mutationPlanNode = &updateNode{}
 type updateRun struct {
 	tu         tableUpdater
 	rowsNeeded bool
-	actorName  string
 
 	checkOrds checkSet
 
@@ -124,7 +120,9 @@ type updateRun struct {
 	// from the input node.
 	numPassthrough int
 
-	actorEnsured bool
+	// regionLocalInfo handles erroring out the UPDATE when the
+	// enforce_home_region setting is on.
+	regionLocalInfo regionLocalInfoType
 }
 
 func (u *updateNode) startExec(params runParams) error {
@@ -133,7 +131,7 @@ func (u *updateNode) startExec(params runParams) error {
 
 	if u.run.rowsNeeded {
 		u.run.tu.rows = rowcontainer.NewRowContainer(
-			params.EvalContext().Mon.MakeBoundAccount(),
+			params.p.Mon().MakeBoundAccount(),
 			colinfo.ColTypeInfoFromResCols(u.columns),
 		)
 	}
@@ -216,12 +214,6 @@ func (u *updateNode) BatchedNext(params runParams) (bool, error) {
 // processSourceRow processes one row from the source for update and, if
 // result rows are needed, saves it in the result row container.
 func (u *updateNode) processSourceRow(params runParams, sourceVals tree.Datums) error {
-	if !u.run.actorEnsured {
-		if err := params.p.ensureActorExists(params.ctx, u.run.actorName); err != nil {
-			return err
-		}
-		u.run.actorEnsured = true
-	}
 	// sourceVals contains values for the columns from the table, in the order of the
 	// table descriptor. (One per column in u.tw.ru.FetchCols)
 	//
@@ -276,7 +268,7 @@ func (u *updateNode) processSourceRow(params runParams, sourceVals tree.Datums) 
 		// prevent computed columns from depending on other computed columns.
 		params.EvalContext().PushIVarContainer(&u.run.iVarContainerForComputedCols)
 		for i := range u.run.computedCols {
-			d, err := u.run.computeExprs[i].Eval(params.EvalContext())
+			d, err := eval.Expr(params.ctx, params.EvalContext(), u.run.computeExprs[i])
 			if err != nil {
 				params.EvalContext().IVarContainer = nil
 				name := u.run.computedCols[i].GetName()
@@ -320,6 +312,12 @@ func (u *updateNode) processSourceRow(params runParams, sourceVals tree.Datums) 
 		if err != nil {
 			return err
 		}
+	}
+
+	// Error out the update if the enforce_home_region session setting is on and
+	// the row's locality doesn't match the gateway region.
+	if err := u.run.regionLocalInfo.checkHomeRegion(u.run.updateValues); err != nil {
+		return err
 	}
 
 	// Queue the insert in the KV batch.

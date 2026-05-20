@@ -27,6 +27,7 @@ go_test(
     args = ["-test.timeout=295s"],
     deps = [
         "//pkg/base",
+        "//pkg/ccl",
         "//pkg/jobs",
         "//pkg/jobs/jobspb",
         "//pkg/security/securityassets",
@@ -36,6 +37,7 @@ go_test(
         "//pkg/sql/isql",
         "//pkg/testutils",
         "//pkg/testutils/serverutils",
+        "//pkg/testutils/skip",
         "//pkg/testutils/testcluster",
         "//pkg/util/leaktest",
         "//pkg/util/log",

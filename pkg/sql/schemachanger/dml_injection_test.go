@@ -488,17 +488,14 @@ func TestAlterTableDMLInjection(t *testing.T) {
 									}
 								}
 								// Sort expectedResults to match order returned by SELECT.
-								slices.SortFunc(expectedResults, func(a, b []string) bool {
-									require.Equal(t, len(a), len(b), errorMessage)
-									for i := 0; i < len(a); i++ {
-										switch strings.Compare(a[i], b[i]) {
-										case -1:
-											return true
-										case 1:
-											return false
+									slices.SortFunc(expectedResults, func(a, b []string) int {
+										require.Equal(t, len(a), len(b), errorMessage)
+										for i := 0; i < len(a); i++ {
+											if cmp := strings.Compare(a[i], b[i]); cmp != 0 {
+												return cmp
+											}
 										}
-									}
-									panic(fmt.Sprintf("slice contains duplicate elements a=%s b=%s %s", a, b, errorMessage))
+										panic(fmt.Sprintf("slice contains duplicate elements a=%s b=%s %s", a, b, errorMessage))
 								})
 								actualResults := sqlDB.QueryStr(t, `SELECT 	insert_phase_ordinal, operation_phase_ordinal, operation, val FROM tbl`)
 								// Transaction retry errors can occur, so don't repeat the same

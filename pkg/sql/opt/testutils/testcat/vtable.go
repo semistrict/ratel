@@ -11,6 +11,8 @@
 package testcat
 
 import (
+	"regexp"
+
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/systemschema"
 	"github.com/cockroachdb/cockroach/pkg/sql/parser"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
@@ -23,6 +25,8 @@ var pgCatalogMap = map[string]*tree.CreateTable{}
 var pgCatalogViewsMap = map[string]*tree.CreateView{}
 var crdbInternalMap = map[string]*tree.CreateTable{}
 var systemMap = map[string]*tree.CreateTable{}
+
+var familyClauseRE = regexp.MustCompile(`(?is),\s*FAMILY\s+(?:"[^"]+"|[A-Za-z_][A-Za-z0-9_]*)?\s*\([^)]*\)`)
 
 var informationSchemaTables = []string{
 	vtable.InformationSchemaColumns,
@@ -142,9 +146,10 @@ func init() {
 	// to their CREATE TABLE AST.
 	buildMap := func(catalogName, schemaName string, tableList []string, tableMap map[string]*tree.CreateTable) {
 		for _, table := range tableList {
+			table = familyClauseRE.ReplaceAllString(table, "")
 			parsed, err := parser.ParseOne(table)
 			if err != nil {
-				panic(errors.Wrap(err, "error initializing virtual table map"))
+				panic(errors.Wrapf(err, "error initializing virtual table map for %s.%s: %s", catalogName, schemaName, table))
 			}
 
 			ct, ok := parsed.AST.(*tree.CreateTable)

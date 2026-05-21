@@ -5488,62 +5488,6 @@ def go_deps():
         version = "v0.0.0-20180911144301-b446539ab1e7",
     )
     go_repository(
-        name = "com_github_opentracing_basictracer_go",
-        build_file_proto_mode = "disable_global",
-        importpath = "github.com/opentracing/basictracer-go",
-        # TODO: mirror this repo (to fix, run `./dev generate bazel --mirror`)
-        sum = "h1:YyUAhaEfjoWXclZVJ9sGoNct7j4TVk7lZWlQw5UXuoo=",
-        version = "v1.0.0",
-    )
-    go_repository(
-        name = "com_github_opentracing_contrib_go_grpc",
-        build_file_proto_mode = "disable_global",
-        importpath = "github.com/opentracing-contrib/go-grpc",
-        # TODO: mirror this repo (to fix, run `./dev generate bazel --mirror`)
-        sum = "h1:0R5mDLI66Qw13qN80TRz85zthQ2nf2+uDyiV23w6c3Q=",
-        version = "v0.0.0-20180928155321-4b5a12d3ff02",
-    )
-    go_repository(
-        name = "com_github_opentracing_contrib_go_observer",
-        build_file_proto_mode = "disable_global",
-        importpath = "github.com/opentracing-contrib/go-observer",
-        # TODO: mirror this repo (to fix, run `./dev generate bazel --mirror`)
-        sum = "h1:lM6RxxfUMrYL/f8bWEUqdXrANWtrL7Nndbm9iFN0DlU=",
-        version = "v0.0.0-20170622124052-a52f23424492",
-    )
-    go_repository(
-        name = "com_github_opentracing_contrib_go_stdlib",
-        build_file_proto_mode = "disable_global",
-        importpath = "github.com/opentracing-contrib/go-stdlib",
-        # TODO: mirror this repo (to fix, run `./dev generate bazel --mirror`)
-        sum = "h1:TBS7YuVotp8myLon4Pv7BtCBzOTo1DeZCld0Z63mW2w=",
-        version = "v1.0.0",
-    )
-    go_repository(
-        name = "com_github_opentracing_opentracing_go",
-        build_file_proto_mode = "disable_global",
-        importpath = "github.com/opentracing/opentracing-go",
-        # TODO: mirror this repo (to fix, run `./dev generate bazel --mirror`)
-        sum = "h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=",
-        version = "v1.2.0",
-    )
-    go_repository(
-        name = "com_github_openzipkin_contrib_zipkin_go_opentracing",
-        build_file_proto_mode = "disable_global",
-        importpath = "github.com/openzipkin-contrib/zipkin-go-opentracing",
-        # TODO: mirror this repo (to fix, run `./dev generate bazel --mirror`)
-        sum = "h1:ZCnq+JUrvXcDVhX/xRolRBZifmabN1HcS1wrPSvxhrU=",
-        version = "v0.4.5",
-    )
-    go_repository(
-        name = "com_github_openzipkin_zipkin_go",
-        build_file_proto_mode = "disable_global",
-        importpath = "github.com/openzipkin/zipkin-go",
-        # TODO: mirror this repo (to fix, run `./dev generate bazel --mirror`)
-        sum = "h1:nY8Hti+WKaP0cRsSeQ026wU03QsM762XBeCXBb9NAWI=",
-        version = "v0.2.2",
-    )
-    go_repository(
         name = "com_github_ory_dockertest_v3",
         build_file_proto_mode = "disable_global",
         importpath = "github.com/ory/dockertest/v3",
@@ -6633,22 +6577,6 @@ def go_deps():
         # TODO: mirror this repo (to fix, run `./dev generate bazel --mirror`)
         sum = "h1:9hLSgNBP28CjIaDmAuRTq9qV+UZY+9PcvAkXO4nNMwg=",
         version = "v3.3.15+incompatible",
-    )
-    go_repository(
-        name = "com_github_uber_jaeger_client_go",
-        build_file_proto_mode = "disable_global",
-        importpath = "github.com/uber/jaeger-client-go",
-        # TODO: mirror this repo (to fix, run `./dev generate bazel --mirror`)
-        sum = "h1:R9ec3zO3sGpzs0abd43Y+fBZRJ9uiH6lXyR/+u6brW4=",
-        version = "v2.29.1+incompatible",
-    )
-    go_repository(
-        name = "com_github_uber_jaeger_lib",
-        build_file_proto_mode = "disable_global",
-        importpath = "github.com/uber/jaeger-lib",
-        # TODO: mirror this repo (to fix, run `./dev generate bazel --mirror`)
-        sum = "h1:td4jdvLcExb4cBISKIpHuGoVXh+dVKhn2Um6rjCsSsg=",
-        version = "v2.4.1+incompatible",
     )
     go_repository(
         name = "com_github_ugorji_go",

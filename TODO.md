@@ -124,17 +124,19 @@ Expected missing paths/features:
 
 ## Tracing Dependency Cleanup
 
-Status: missing.
+Status: ported in this branch.
 
-Jaeger/Zipkin dependencies and code references are still present in this branch.
+Jaeger/Zipkin/OpenTracing exporter dependencies have been removed from dependency
+metadata. The local Jaeger JSON trace export used by explain/debug bundles remains
+intentionally present.
 
 Refs:
 - `f9053da` Remove Jaeger/Zipkin tracing dependencies
 
-Expected affected areas:
+Ported areas:
 - `DEPS.bzl`
-- tracing/export code and tests
-- SQL/CLI references to Jaeger output where removed upstream
+- `go.sum`
+- `build/bazelutil/distdir_files.bzl`
 
 ## Lower Priority / Mostly Non-Functional Follow-Ups
 

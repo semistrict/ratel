@@ -36,25 +36,6 @@ Remaining:
 - Add the `c-deps/workerd` submodule and real `pkg/server/workerd_bin/workerd.zst` artifact if this branch should ship an embedded workerd binary instead of relying on `PATH` / `RATEL_WORKERD_BIN`.
 - The broad `//pkg/server:server_test` suite still has unrelated bootstrap/range-accounting failures after the system-table changes; the focused worker tests pass.
 
-## JavaScript UDF Runtime
-
-Status: missing.
-
-This branch has older SQL UDF support, but not the JS/V8 runtime work from `origin/main`.
-
-Refs:
-- `4abab6a` Add JS/WASM UDFs
-- `b8d1bb5` Cache TxnContext
-- `38d0f8c` Remove WASM UDF, JS-only
-
-Expected paths/features:
-- `pkg/sql/udfruntime/*`
-- `pkg/sql/udf_resolver.go`
-- JS UDF integration in function creation/execution
-- `pkg/sql/colexec/udf_bench_test.go`
-- JS/plv8 UDF logictests
-- inproc distributed UDF tests and benches
-
 ## Inproc Synctest / Jepsen Coverage
 
 Status: mostly ported.
@@ -85,7 +66,6 @@ Refs:
 - `1a761af` Final inproc/synctest cleanup
 
 Expected missing paths/features:
-- distributed UDF tests and UDF benches
 - full `TestSyncRatelChaos` stress run in the default target; narrower chaos cases are enabled, but the full churn stress is too slow without further server-background-loop cleanup
 
 ## SQL Query UI Page

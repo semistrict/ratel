@@ -101,6 +101,30 @@ func TestActorKeyLayout(t *testing.T) {
 	}
 }
 
+func TestActorClassHashCoLocation(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	// Different classes with the same name share the first 12 bytes.
+	orderHash := ActorClassHash("OrderActor", "alice")
+	chatHash := ActorClassHash("ChatActor", "alice")
+	require.Equal(t, orderHash[:12], chatHash[:12], "same name should share placement prefix")
+	require.NotEqual(t, orderHash[12:], chatHash[12:], "different classes should differ in suffix")
+	require.NotEqual(t, orderHash, chatHash, "full hashes must differ")
+
+	// Same class, different names produce different placement prefixes.
+	aliceHash := ActorClassHash("OrderActor", "alice")
+	bobHash := ActorClassHash("OrderActor", "bob")
+	require.NotEqual(t, aliceHash[:12], bobHash[:12], "different names should have different placement")
+
+	// Class hash is deterministic.
+	require.Equal(t, orderHash, ActorClassHash("OrderActor", "alice"))
+
+	// Class hash differs from plain ActorHash (which uses all 16 bytes from name).
+	plainHash := ActorHash("alice")
+	require.Equal(t, plainHash[:12], orderHash[:12], "placement prefix matches plain hash")
+	require.NotEqual(t, plainHash, orderHash, "class hash differs from plain hash")
+}
+
 func TestActorRowPrefixLength(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 
@@ -121,6 +145,46 @@ func TestActorRowPrefixLength(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, uint32(42), tableID)
 	require.Equal(t, uint32(1), indexID)
+}
+
+func TestDOKVKeyLayout(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+
+	hash := ActorClassHash("Counter", "alice")
+
+	// MakeActorPrefixFromHash must produce the same prefix as manual construction.
+	prefix := MakeActorPrefixFromHash(nil, hash)
+	require.Equal(t, byte(ActorPrefixByte), prefix[0])
+	require.Equal(t, hash[:], []byte(prefix[1:1+ActorHashLen]))
+
+	// MakeDOKVKey builds a key that starts with the actor prefix.
+	userKey := []byte("count")
+	full := MakeDOKVKey(nil, hash, userKey)
+	require.True(t, bytes.HasPrefix(full, prefix), "full key %x should start with actor prefix %x", full, prefix)
+
+	// MakeDOKVPrefix is a strict prefix of MakeDOKVKey.
+	doPrefix := MakeDOKVPrefix(nil, hash)
+	require.True(t, bytes.HasPrefix(full, doPrefix), "full key %x should start with DO prefix %x", full, doPrefix)
+	require.True(t, len(full) > len(doPrefix), "full key should be longer than prefix")
+
+	// Different user keys produce different full keys but share the DO prefix.
+	full2 := MakeDOKVKey(nil, hash, []byte("other"))
+	require.True(t, bytes.HasPrefix(full2, doPrefix))
+	require.NotEqual(t, full, full2)
+
+	// Different actors produce different prefixes.
+	hash2 := ActorClassHash("Counter", "bob")
+	prefix2 := MakeActorPrefixFromHash(nil, hash2)
+	require.NotEqual(t, prefix, prefix2)
+
+	// DO key sorts within actor data range.
+	require.True(t, bytes.Compare(full, ActorDataMin) >= 0)
+	require.True(t, bytes.Compare(full, ActorDataMax) < 0)
+
+	// With a tenant prefix.
+	tenantPrefix := MakeTenantPrefix(roachpb.MustMakeTenantID(5))
+	tenantKey := MakeDOKVKey(tenantPrefix, hash, userKey)
+	require.True(t, bytes.HasPrefix(tenantKey, tenantPrefix))
 }
 
 func TestAbortSpanEncodeDecode(t *testing.T) {

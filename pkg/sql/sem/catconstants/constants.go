@@ -99,6 +99,7 @@ const (
 	SpanStatsSamples                       SystemTableName = "span_stats_samples"
 	SpanStatsTenantBoundaries              SystemTableName = "span_stats_tenant_boundaries"
 	ActorsTableName                        SystemTableName = "actors"
+	WorkerScriptsTableName                 SystemTableName = "worker_scripts"
 )
 
 // Oid for virtual database and table.

@@ -482,6 +482,8 @@ const (
 	SpanConfigurationsTableID           = 47
 	RoleIDSequenceID                    = 48
 	ActorsTableID                       = 49
+	WorkerScriptsTableID                = 50
+	DOKVTableID                         = 51
 	SystemJobInfoTableID                = 70
 )
 

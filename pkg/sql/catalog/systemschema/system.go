@@ -879,6 +879,18 @@ CREATE TABLE system.actors (
 	FAMILY "primary" (tenant_id, actor_name, actor_hash, created_at)
 );`
 
+	WorkerScriptsTableSchema = `
+CREATE TABLE system.worker_scripts (
+	name         STRING NOT NULL,
+	version      INT8 NOT NULL DEFAULT 1:::INT8,
+	script       BYTES NOT NULL,
+	compat_date  STRING NOT NULL,
+	bindings     JSONB,
+	created_at   TIMESTAMP NOT NULL DEFAULT now(),
+	CONSTRAINT "primary" PRIMARY KEY (name, version),
+	FAMILY "primary" (name, version, script, compat_date, bindings, created_at)
+);`
+
 	SystemPrivilegeTableSchema = `
 CREATE TABLE system.privileges (
 	username STRING NOT NULL,
@@ -1735,6 +1747,7 @@ var (
 		))
 
 	nowString = "now():::TIMESTAMP"
+	oneString = "1:::INT8"
 
 	// JobsTable is the descriptor for the jobs table.
 	JobsTable = makeSystemTable(
@@ -3761,6 +3774,41 @@ var (
 				StoreColumnNames:   []string{"created_at"},
 				StoreColumnIDs:     []descpb.ColumnID{4},
 				Version:            descpb.StrictIndexColumnIDGuaranteesVersion,
+			},
+		),
+	)
+
+	// WorkerScriptsTable is the descriptor for deployed workers.
+	WorkerScriptsTable = makeSystemTable(
+		WorkerScriptsTableSchema,
+		systemTable(
+			catconstants.WorkerScriptsTableName,
+			keys.WorkerScriptsTableID,
+			[]descpb.ColumnDescriptor{
+				{Name: "name", ID: 1, Type: types.String, Nullable: false},
+				{Name: "version", ID: 2, Type: types.Int, Nullable: false, DefaultExpr: &oneString},
+				{Name: "script", ID: 3, Type: types.Bytes, Nullable: false},
+				{Name: "compat_date", ID: 4, Type: types.String, Nullable: false},
+				{Name: "bindings", ID: 5, Type: types.Jsonb, Nullable: true},
+				{Name: "created_at", ID: 6, Type: types.Timestamp, Nullable: false, DefaultExpr: &nowString},
+			},
+			[]descpb.ColumnFamilyDescriptor{{
+				Name:        "primary",
+				ID:          0,
+				ColumnNames: []string{"name", "version", "script", "compat_date", "bindings", "created_at"},
+				ColumnIDs:   []descpb.ColumnID{1, 2, 3, 4, 5, 6},
+			}},
+			descpb.IndexDescriptor{
+				Name:           tabledesc.LegacyPrimaryKeyIndexName,
+				ID:             1,
+				Unique:         true,
+				KeyColumnNames: []string{"name", "version"},
+				KeyColumnDirections: []catenumpb.IndexColumn_Direction{
+					catenumpb.IndexColumn_ASC,
+					catenumpb.IndexColumn_ASC,
+				},
+				KeyColumnIDs: []descpb.ColumnID{1, 2},
+				Version:      descpb.StrictIndexColumnIDGuaranteesVersion,
 			},
 		),
 	)

@@ -18,9 +18,9 @@ Remaining:
 
 ## Workers / Workerd / Durable Objects
 
-Status: missing.
+Status: ported in this branch.
 
-The worker platform files from `origin/main` are absent here, including the workerd dependency, embedded binary packaging, server sidecar/router/proxy/config code, worker API endpoints, actor storage, worker script catalog plumbing, and Durable Object KV key helpers.
+The worker platform is now ported through the sidecar/router/proxy/config code, worker API endpoints, actor storage Cap'n Proto server, worker script catalog plumbing, embedded workerd packaging placeholder, Durable Object KV key helpers, and focused Bazel tests for deploy/list validation plus DO storage behavior that can run without a full external workerd binary.
 
 Refs:
 - `0d70f6f` RFC: workers sidecar
@@ -32,14 +32,9 @@ Refs:
 - `38d0f8c` Remove WASM UDF, JS-only
 - `930e965` Fix CI/workerd submodule SSH URL
 
-Expected paths/features:
-- `c-deps/workerd`
-- `pkg/server/workerd_*`
-- `pkg/server/workerd_bin`
-- `pkg/server/api_v2_workers.go`
-- `pkg/server/actorstorage/*`
-- `system.worker_scripts`
-- Durable Object key helpers such as `MakeDOKVKey` / `MakeDOKVPrefix`
+Remaining:
+- Add the `c-deps/workerd` submodule and real `pkg/server/workerd_bin/workerd.zst` artifact if this branch should ship an embedded workerd binary instead of relying on `PATH` / `RATEL_WORKERD_BIN`.
+- The broad `//pkg/server:server_test` suite still has unrelated bootstrap/range-accounting failures after the system-table changes; the focused worker tests pass.
 
 ## JavaScript UDF Runtime
 

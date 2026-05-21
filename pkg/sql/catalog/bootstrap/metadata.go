@@ -427,6 +427,7 @@ func addSystemDescriptorsToSchema(target *MetadataSchema) {
 	target.AddDescriptorForSystemTenant(systemschema.TenantSettingsTable)
 	target.AddDescriptorForNonSystemTenant(systemschema.SpanCountTable)
 	target.AddDescriptor(systemschema.ActorsTable)
+	target.AddDescriptor(systemschema.WorkerScriptsTable)
 	target.AddDescriptor(systemschema.SystemJobInfoTable)
 	target.AddDescriptor(systemschema.StatementActivityTable)
 	target.AddDescriptor(systemschema.TransactionActivityTable)

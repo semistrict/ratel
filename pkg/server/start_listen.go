@@ -28,6 +28,7 @@ import (
 // startListenRPCAndSQL starts the RPC and SQL listeners. It returns:
 //   - The listener for pgwire connections coming over the network. This will be used
 //     to start the SQL server when initialization has completed.
+//   - The HTTP/1.x listener used by the workers platform proxy.
 //   - The listener for internal sql connections running over our pipes interface.
 //   - A dialer function that can be used to open a connection to the RPC loopback interface.
 //   - A function that starts the RPC server, when the cluster is known to have
@@ -42,6 +43,7 @@ func startListenRPCAndSQL(
 	enableSQLListener bool,
 ) (
 	sqlListener net.Listener,
+	workersListener net.Listener,
 	pgLoopbackListener *netutil.LoopbackListener,
 	rpcLoopbackDial func(context.Context) (net.Conn, error),
 	startRPCServer func(ctx context.Context),
@@ -60,7 +62,7 @@ func startListenRPCAndSQL(
 		var err error
 		ln, err = ListenAndUpdateAddrs(ctx, &cfg.Addr, &cfg.AdvertiseAddr, rpcChanName)
 		if err != nil {
-			return nil, nil, nil, nil, err
+			return nil, nil, nil, nil, nil, err
 		}
 		log.Eventf(ctx, "listening on port %s", cfg.Addr)
 	}
@@ -80,7 +82,7 @@ func startListenRPCAndSQL(
 			}
 		}
 		if err != nil {
-			return nil, nil, nil, nil, err
+			return nil, nil, nil, nil, nil, err
 		}
 		// The SQL listener shutdown worker, which closes everything under
 		// the SQL port when the stopper indicates we are shutting down.
@@ -96,7 +98,7 @@ func startListenRPCAndSQL(
 		}
 		if err := stopper.RunAsyncTask(workersCtx, "wait-quiesce", waitQuiesce); err != nil {
 			waitQuiesce(workersCtx)
-			return nil, nil, nil, nil, err
+			return nil, nil, nil, nil, nil, err
 		}
 		log.Eventf(ctx, "listening on sql port %s", cfg.SQLAddr)
 	}
@@ -130,10 +132,11 @@ func startListenRPCAndSQL(
 		// Then we update the advertised addr with the right port, if
 		// the port had been auto-allocated.
 		if err := UpdateAddrs(ctx, &cfg.SQLAddr, &cfg.SQLAdvertiseAddr, ln.Addr()); err != nil {
-			return nil, nil, nil, nil, errors.Wrapf(err, "internal error")
+			return nil, nil, nil, nil, nil, errors.Wrapf(err, "internal error")
 		}
 	}
 
+	workersL := m.Match(cmux.HTTP1())
 	anyL := m.Match(cmux.Any())
 	if serverTestKnobs, ok := cfg.TestingKnobs.Server.(*TestingKnobs); ok {
 		if serverTestKnobs.ContextTestingKnobs.InjectedLatencyOracle != nil {
@@ -149,6 +152,7 @@ func startListenRPCAndSQL(
 		<-stopper.ShouldQuiesce()
 		// TODO(bdarnell): Do we need to also close the other listeners?
 		netutil.FatalIfUnexpected(anyL.Close())
+		netutil.FatalIfUnexpected(workersL.Close())
 		netutil.FatalIfUnexpected(rpcLoopbackL.Close())
 		netutil.FatalIfUnexpected(sqlLoopbackL.Close())
 		netutil.FatalIfUnexpected(ln.Close())
@@ -169,7 +173,7 @@ func startListenRPCAndSQL(
 	); err != nil {
 		waitForQuiesce(ctx)
 		stopGRPC()
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 	stopper.AddCloser(stop.CloserFn(stopGRPC))
 
@@ -193,5 +197,5 @@ func startListenRPCAndSQL(
 		})
 	}
 
-	return pgL, sqlLoopbackL, rpcLoopbackL.Connect, startRPCServer, nil
+	return pgL, workersL, sqlLoopbackL, rpcLoopbackL.Connect, startRPCServer, nil
 }

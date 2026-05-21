@@ -78,6 +78,7 @@ require (
 )
 
 require (
+	capnproto.org/go/capnp/v3 v3.1.0-alpha.2 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.3.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.1.0
 	github.com/Azure/azure-sdk-for-go/sdk/keyvault/azkeys v0.9.0
@@ -270,6 +271,7 @@ require (
 	github.com/charmbracelet/lipgloss v0.6.0 // indirect
 	github.com/cockroachdb/fifo v0.0.0-20240606204812-0bbfbd93a7ce // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
+	github.com/colega/zeropool v0.0.0-20230505084239-6fb4a4f75381 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect

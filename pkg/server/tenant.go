@@ -526,7 +526,7 @@ func (s *SQLServerWrapper) PreStart(ctx context.Context) error {
 	// The SQL listener is returned, to start the SQL server later
 	// below when the server has initialized.
 	enableSQLListener := !s.sqlServer.cfg.DisableSQLListener
-	pgL, loopbackPgL, rpcLoopbackDialFn, startRPCServer, err := startListenRPCAndSQL(ctx, workersCtx, *s.sqlServer.cfg, s.stopper, s.grpc, enableSQLListener)
+	pgL, _, loopbackPgL, rpcLoopbackDialFn, startRPCServer, err := startListenRPCAndSQL(ctx, workersCtx, *s.sqlServer.cfg, s.stopper, s.grpc, enableSQLListener)
 	if err != nil {
 		return err
 	}

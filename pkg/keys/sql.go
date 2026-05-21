@@ -185,12 +185,32 @@ func MakeSQLCodec(tenID roachpb.TenantID) SQLCodec {
 	}
 }
 
+// actorPlacementLen is the number of leading hash bytes derived from the entity
+// name alone. Actors sharing this prefix land in the same Raft range.
+const actorPlacementLen = 12
+
 // ActorHash deterministically derives the fixed-width key prefix component for
-// an actor name.
+// an actor name. Used by the SQL-level actor system (SET actor_scope,
+// actor('name').table) where there is no class dimension.
 func ActorHash(name string) [ActorHashLen]byte {
 	sum := sha256.Sum256([]byte(name))
 	var out [ActorHashLen]byte
 	copy(out[:], sum[:ActorHashLen])
+	return out
+}
+
+// ActorClassHash derives a 16-byte actor hash that promotes co-location of
+// actors sharing the same entity name across different DO classes.
+//
+// The first 12 bytes come from SHA-256(name) alone — all classes for "alice"
+// share this prefix and land in the same Raft range. The last 4 bytes come
+// from SHA-256(class + ":" + name), giving each class its own keyspace.
+func ActorClassHash(class, name string) [ActorHashLen]byte {
+	placementSum := sha256.Sum256([]byte(name))
+	identitySum := sha256.Sum256([]byte(class + ":" + name))
+	var out [ActorHashLen]byte
+	copy(out[:actorPlacementLen], placementSum[:actorPlacementLen])
+	copy(out[actorPlacementLen:], identitySum[:ActorHashLen-actorPlacementLen])
 	return out
 }
 
@@ -200,6 +220,42 @@ func MakeActorPrefix(tenantPrefix roachpb.Key, actorName string) roachpb.Key {
 	hash := ActorHash(actorName)
 	k := append(append(roachpb.Key(nil), tenantPrefix...), ActorPrefixByte)
 	return append(k, hash[:]...)
+}
+
+// MakeActorPrefixFromHash returns the actor-scoped prefix for table data using
+// a pre-computed hash. This is used by the Durable Object storage layer where
+// the hash is received from workerd rather than computed from a name.
+func MakeActorPrefixFromHash(tenantPrefix roachpb.Key, hash [ActorHashLen]byte) roachpb.Key {
+	k := make(roachpb.Key, 0, len(tenantPrefix)+1+ActorHashLen)
+	k = append(k, tenantPrefix...)
+	k = append(k, ActorPrefixByte)
+	k = append(k, hash[:]...)
+	return k
+}
+
+// MakeDOKVKey builds the full KV key for a Durable Object storage entry:
+//
+//	[tenantPrefix][0xfb][actorHash][DOKVTableID][1][userKey]
+//
+// The DOKVTableID and index ID (always 1) are varint-encoded to match standard
+// SQL key encoding, even though there is no backing descriptor.
+func MakeDOKVKey(tenantPrefix roachpb.Key, actorHash [ActorHashLen]byte, userKey []byte) roachpb.Key {
+	k := MakeActorPrefixFromHash(tenantPrefix, actorHash)
+	k = encoding.EncodeUvarintAscending(k, DOKVTableID)
+	k = encoding.EncodeUvarintAscending(k, 1) // index ID
+	k = encoding.EncodeBytesAscending(k, userKey)
+	return k
+}
+
+// MakeDOKVPrefix builds the key prefix that covers all DO storage entries for
+// a given actor:
+//
+//	[tenantPrefix][0xfb][actorHash][DOKVTableID][1]
+func MakeDOKVPrefix(tenantPrefix roachpb.Key, actorHash [ActorHashLen]byte) roachpb.Key {
+	k := MakeActorPrefixFromHash(tenantPrefix, actorHash)
+	k = encoding.EncodeUvarintAscending(k, DOKVTableID)
+	k = encoding.EncodeUvarintAscending(k, 1) // index ID
+	return k
 }
 
 // MakeActorSQLCodec constructs a codec whose tenant prefix is extended with the
@@ -294,7 +350,7 @@ func (e sqlEncoder) TenantMetadataKey(tenID roachpb.TenantID) roachpb.Key {
 // SequenceKey returns the key used to store the value of a sequence.
 func (e sqlEncoder) SequenceKey(tableID uint32) roachpb.Key {
 	k := e.IndexPrefix(tableID, SequenceIndexID)
-	k = encoding.EncodeUvarintAscending(k, 0)    // Primary key value
+	k = encoding.EncodeUvarintAscending(k, 0)      // Primary key value
 	k = MakeFamilyKey(k, SequenceColumnRowGroupID) // Row-group suffix
 	return k
 }

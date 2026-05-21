@@ -81,6 +81,7 @@ type apiV2ServerOpts struct {
 	promRuleExporter *metric.PrometheusRuleExporter
 	sqlServer        *SQLServer
 	db               *kv.DB
+	sidecar          *WorkerdSidecar
 }
 
 // apiV2Server implements version 2 API endpoints, under apiV2Path. The
@@ -98,6 +99,7 @@ type apiV2Server struct {
 	mux              *mux.Router
 	sqlServer        *SQLServer
 	db               *kv.DB
+	sidecar          *WorkerdSidecar
 }
 
 var _ ApiV2System = &apiV2Server{}
@@ -131,6 +133,7 @@ func newAPIV2Server(ctx context.Context, opts *apiV2ServerOpts) http.Handler {
 			promRuleExporter: opts.promRuleExporter,
 			sqlServer:        opts.sqlServer,
 			db:               opts.db,
+			sidecar:          opts.sidecar,
 		}
 		a := &apiV2SystemServer{
 			apiV2Server:  inner,
@@ -148,6 +151,7 @@ func newAPIV2Server(ctx context.Context, opts *apiV2ServerOpts) http.Handler {
 			promRuleExporter: opts.promRuleExporter,
 			sqlServer:        opts.sqlServer,
 			db:               opts.db,
+			sidecar:          opts.sidecar,
 		}
 		registerRoutes(innerMux, authMux, a, a)
 		return a
@@ -207,6 +211,8 @@ func registerRoutes(
 		{"rules/", a.listRules, false, regularRole, noOption, true},
 
 		{"sql/", a.execSQL, true, regularRole, noOption, true},
+		{"workers/", a.listWorkers, true, adminRole, noOption, true},
+		{"workers/{name}/", a.deployWorker, true, adminRole, noOption, true},
 	}
 
 	// For all routes requiring authentication, have the outer mux (a.mux)

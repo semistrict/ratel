@@ -14,6 +14,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -141,6 +142,7 @@ type Server struct {
 	tcsFactory       *kvcoord.TxnCoordSenderFactory
 	distSender       *kvcoord.DistSender
 	db               *kv.DB
+	workerdSidecar   *WorkerdSidecar
 	node             *Node
 	registry         *metric.Registry
 	recorder         *status.MetricsRecorder
@@ -1240,6 +1242,20 @@ func NewServer(cfg Config, stopper *stop.Stopper) (*Server, error) {
 		keyVisualizerServer:       keyVisualizerServer,
 	}
 
+	workDir := ""
+	if len(cfg.Stores.Specs) > 0 && cfg.Stores.Specs[0].Path != "" {
+		workDir = filepath.Join(cfg.Stores.Specs[0].Path, "workerd")
+	}
+	sidecar, sidecarErr := NewWorkerdSidecar(
+		WorkerdConfig{WorkDir: workDir},
+		db, keys.SystemSQLCodec, cfg.AmbientCtx.Tracer, stopper,
+	)
+	if sidecarErr != nil {
+		log.Warningf(ctx, "failed to create workerd sidecar: %v", sidecarErr)
+	} else {
+		lateBoundServer.workerdSidecar = sidecar
+	}
+
 	return lateBoundServer, err
 }
 
@@ -1477,7 +1493,7 @@ func (s *Server) PreStart(ctx context.Context) error {
 	// and dispatches the server worker for the RPC.
 	// The SQL listener is returned, to start the SQL server later
 	// below when the server has initialized.
-	pgL, loopbackPgL, rpcLoopbackDialFn, startRPCServer, err := startListenRPCAndSQL(
+	pgL, workersL, loopbackPgL, rpcLoopbackDialFn, startRPCServer, err := startListenRPCAndSQL(
 		ctx, workersCtx, s.cfg.BaseConfig, s.stopper, s.grpc, true /* enableSQLListener */)
 	if err != nil {
 		return err
@@ -1913,6 +1929,14 @@ func (s *Server) PreStart(ctx context.Context) error {
 	// Connect the HTTP endpoints. This also wraps the privileged HTTP
 	// endpoints served by gwMux by the HTTP cookie authentication
 	// check.
+	apiServer := newAPIV2Server(ctx, &apiV2ServerOpts{
+		admin:            s.admin,
+		status:           s.status,
+		promRuleExporter: s.promRuleExporter,
+		sqlServer:        s.sqlServer,
+		db:               s.db,
+		sidecar:          s.workerdSidecar,
+	})
 	if err := s.http.setupRoutes(ctx,
 		s.authentication,  /* authnServer */
 		s.adminAuthzCheck, /* adminAuthzCheck */
@@ -1920,18 +1944,33 @@ func (s *Server) PreStart(ctx context.Context) error {
 		s.runtime,         /* runtimeStatsSampler */
 		gwMux,             /* handleRequestsUnauthenticated */
 		s.debug,           /* handleDebugUnauthenticated */
-		newAPIV2Server(ctx, &apiV2ServerOpts{
-			admin:            s.admin,
-			status:           s.status,
-			promRuleExporter: s.promRuleExporter,
-			sqlServer:        s.sqlServer,
-			db:               s.db,
-		}), /* apiServer */
+		apiServer,         /* apiServer */
 		serverpb.FeatureFlags{
 			CanViewKvMetricDashboards:   s.rpcContext.TenantID.Equal(roachpb.SystemTenantID),
 			DisableKvLevelAdvancedDebug: false,
 		},
 	); err != nil {
+		return err
+	}
+
+	workerdPort := defaultWorkerdListenPort
+	if s.workerdSidecar != nil {
+		workerdPort = s.workerdSidecar.ListenPort()
+	}
+	var router *workerRouter
+	if s.nodeLiveness != nil && s.gossip != nil {
+		router = newWorkerRouter(s.NodeID(), s.gossip, s.nodeLiveness, s.rpcContext)
+	}
+	wp := newWorkerdProxy(apiServer, workerdPort, s.cfg.AmbientCtx.Tracer, s.workerdSidecar, router)
+	workersServer := &http.Server{Handler: wp}
+	s.stopper.AddCloser(stop.CloserFn(func() {
+		_ = workersServer.Close()
+	}))
+	if err := s.stopper.RunAsyncTask(workersCtx, "serve-workers-http", func(ctx context.Context) {
+		if srvErr := workersServer.Serve(workersL); srvErr != nil && !errors.Is(srvErr, http.ErrServerClosed) {
+			log.Warningf(ctx, "workers HTTP server exited: %v", srvErr)
+		}
+	}); err != nil {
 		return err
 	}
 
@@ -2116,6 +2155,13 @@ func (s *Server) AcceptClients(ctx context.Context) error {
 	}
 
 	s.sqlServer.isReady.Set(true)
+
+	if s.workerdSidecar != nil {
+		s.workerdSidecar.SetInternalExecutor(s.sqlServer.internalExecutor)
+		if err := s.workerdSidecar.Start(ctx); err != nil {
+			log.Warningf(ctx, "failed to start workerd sidecar: %v", err)
+		}
+	}
 
 	log.Event(ctx, "server ready")
 	return nil

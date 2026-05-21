@@ -42,7 +42,6 @@ build --define gotags=bazel,gss
 build --experimental_proto_descriptor_sets_include_source_info
 build --incompatible_strict_action_env --incompatible_enable_cc_toolchain_resolution
 common --noincompatible_disallow_empty_glob
-common --@aspect_rules_ts//ts:default_to_tsc_transpiler
 build --symlink_prefix=_bazel/
 build:dev --strip=never
 common --incompatible_allow_tags_propagation

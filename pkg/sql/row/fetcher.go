@@ -36,6 +36,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/eval"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/sessiondatapb"
+	"github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/cockroachdb/cockroach/pkg/storage"
 	"github.com/cockroachdb/cockroach/pkg/util/encoding"
 	"github.com/cockroachdb/cockroach/pkg/util/hlc"
@@ -228,6 +229,17 @@ type Fetcher struct {
 
 	valueColsFound int // how many needed cols we've found so far in the value
 
+	// hasArrayColumns is true when fetched array columns may be represented by
+	// subordinate keys under the row sentinel.
+	hasArrayColumns bool
+
+	// subordinateArrays accumulates array elements from subordinate keys during
+	// row assembly. It is keyed by the ordinal in spec.FetchedColumns.
+	subordinateArrays map[int]*subordinateArrayBuilder
+
+	arrayEqualsAnyFilter              *arrayEqualsAnyFilterState
+	lastRowPassesArrayEqualsAnyFilter bool
+
 	// The current key/value, unless kvEnd is true.
 	kv                roachpb.KeyValue
 	keyRemainingBytes []byte
@@ -243,6 +255,67 @@ type Fetcher struct {
 	// Memory monitor and memory account for the bytes fetched by this fetcher.
 	mon             *mon.BytesMonitor
 	kvFetcherMemAcc *mon.BoundAccount
+}
+
+type arrayEqualsAnyFilterState struct {
+	evalCtx        *eval.Context
+	colIdx         int
+	left           tree.Datum
+	materialize    bool
+	matched        bool
+	sawNull        bool
+	sawSubordinate bool
+}
+
+type subordinateArrayBuilder struct {
+	elemType *types.T
+	elems    tree.Datums
+}
+
+func newSubordinateArrayBuilder(elemType *types.T) *subordinateArrayBuilder {
+	return &subordinateArrayBuilder{elemType: elemType}
+}
+
+func (b *subordinateArrayBuilder) Set(elemIdx int, value tree.Datum) {
+	if elemIdx >= len(b.elems) {
+		elems := make(tree.Datums, elemIdx+1)
+		copy(elems, b.elems)
+		b.elems = elems
+	}
+	b.elems[elemIdx] = value
+}
+
+func (b *subordinateArrayBuilder) Materialize() (*tree.DArray, error) {
+	arr := tree.NewDArray(b.elemType)
+	for i, elem := range b.elems {
+		if elem == nil {
+			return nil, errors.AssertionFailedf("missing subordinate array element %d", i)
+		}
+		if err := arr.Append(elem); err != nil {
+			return nil, err
+		}
+	}
+	return arr, nil
+}
+
+// ConfigureArrayEqualsAnyFilter enables scan-local evaluation of
+// left = ANY(array_col).
+func (rf *Fetcher) ConfigureArrayEqualsAnyFilter(
+	evalCtx *eval.Context, colIdx int, left tree.Datum, materialize bool,
+) {
+	rf.arrayEqualsAnyFilter = &arrayEqualsAnyFilterState{
+		evalCtx:     evalCtx,
+		colIdx:      colIdx,
+		left:        left,
+		materialize: materialize,
+	}
+	rf.lastRowPassesArrayEqualsAnyFilter = true
+}
+
+// RowPassesArrayEqualsAnyFilter reports whether the most recently finalized row
+// passed the configured scan-local array filter.
+func (rf *Fetcher) RowPassesArrayEqualsAnyFilter() bool {
+	return rf.lastRowPassesArrayEqualsAnyFilter
 }
 
 // Reset resets this Fetcher, preserving the memory capacity that was used
@@ -337,10 +410,14 @@ func (rf *Fetcher) Init(ctx context.Context, args FetcherInitArgs) error {
 		timestampOutputIdx: noOutputColumn,
 		oidOutputIdx:       noOutputColumn,
 	}
+	rf.hasArrayColumns = args.Spec.MaxKeysPerRow > 1 || !args.Spec.IsSecondaryIndex
 
 	for idx := range args.Spec.FetchedColumns {
 		colID := args.Spec.FetchedColumns[idx].ColumnID
 		table.colIdxMap.Set(colID, idx)
+		if args.Spec.FetchedColumns[idx].Type.Family() == types.ArrayFamily {
+			rf.hasArrayColumns = true
+		}
 		if colinfo.IsColIDSystemColumn(colID) {
 			switch colinfo.GetSystemColumnKindFromColumnID(colID) {
 			case catpb.SystemColumnKind_MVCCTIMESTAMP:
@@ -643,6 +720,9 @@ func (rf *Fetcher) rowLimitToKeyLimit(rowLimitHint rowinfra.RowLimit) rowinfra.K
 	if rowLimitHint == 0 {
 		return 0
 	}
+	if rf.hasArrayColumns || rf.table.spec.MaxKeysPerRow == 0 {
+		return 0
+	}
 	// If we have a limit hint, we limit the first batch size. Subsequent
 	// batches get larger to avoid making things too slow (e.g. in case we have
 	// a very restrictive filter and actually have to retrieve a lot of rows).
@@ -702,7 +782,8 @@ func (rf *Fetcher) nextKey(ctx context.Context) (newRow bool, spanID int, _ erro
 	// possible for multiple span IDs to be associated with a given row when the
 	// spans cannot overlap.
 	unchangedPrefix := (!rf.args.SpansCanOverlap || rf.spanID == spanID) &&
-		rf.table.spec.MaxKeysPerRow > 1 && rf.indexKey != nil && bytes.HasPrefix(rf.kv.Key, rf.indexKey)
+		(rf.table.spec.MaxKeysPerRow > 1 || rf.hasArrayColumns) &&
+		rf.indexKey != nil && bytes.HasPrefix(rf.kv.Key, rf.indexKey)
 	if unchangedPrefix {
 		// Skip decoding!
 		rf.keyRemainingBytes = rf.kv.Key[len(rf.indexKey):]
@@ -805,6 +886,13 @@ func (rf *Fetcher) processKV(
 	if rf.indexKey == nil {
 		// This is the first key for the row.
 		rf.indexKey = []byte(kv.Key[:len(kv.Key)-len(rf.keyRemainingBytes)])
+		if rf.hasArrayColumns && !table.spec.IsSecondaryIndex {
+			prefixLen, err := keys.GetRowPrefixLength(kv.Key)
+			if err != nil {
+				return "", "", err
+			}
+			rf.indexKey = []byte(kv.Key[:prefixLen])
+		}
 
 		// Reset the row to nil; it will get filled in with the column
 		// values as we decode the key-value pairs for the row.
@@ -823,6 +911,15 @@ func (rf *Fetcher) processKV(
 		}
 
 		rf.valueColsFound = 0
+		for k := range rf.subordinateArrays {
+			delete(rf.subordinateArrays, k)
+		}
+		if rf.arrayEqualsAnyFilter != nil {
+			rf.arrayEqualsAnyFilter.matched = false
+			rf.arrayEqualsAnyFilter.sawNull = false
+			rf.arrayEqualsAnyFilter.sawSubordinate = false
+			rf.lastRowPassesArrayEqualsAnyFilter = true
+		}
 
 		// Reset the MVCC metadata for the next row.
 
@@ -860,6 +957,14 @@ func (rf *Fetcher) processKV(
 		//
 		// In these cases, the correct value is present in the row value and the
 		// table.row value gets overwritten.
+		remaining, famID, subErr := encoding.DecodeUvarintAscending(rf.keyRemainingBytes)
+		if subErr == nil && famID == 0 && len(remaining) > 0 {
+			prettyKey, prettyValue, err = rf.processSubordinateKV(ctx, table, kv, remaining, prettyKey)
+			if err != nil {
+				return "", "", scrub.WrapError(scrub.IndexValueDecodingError, err)
+			}
+			return prettyKey, prettyValue, nil
+		}
 
 		switch kv.Value.GetTag() {
 		case roachpb.ValueType_TUPLE:
@@ -982,6 +1087,12 @@ func (rf *Fetcher) processValueSingle(
 		return prettyKey, "", nil
 	}
 	typ := table.spec.FetchedColumns[idx].Type
+	if typ.Family() == types.ArrayFamily {
+		return "", "", errors.AssertionFailedf(
+			"column %q (id=%d) has array type encoded as single-column row-group value; incompatible data layout; incompatible CockroachDB version",
+			table.spec.FetchedColumns[idx].Name, colID,
+		)
+	}
 	// TODO(arjun): The value is a directly marshaled single value, so we
 	// unmarshal it eagerly here. This can potentially be optimized out,
 	// although that would require changing UnmarshalColumnValue to operate
@@ -1066,6 +1177,79 @@ func (rf *Fetcher) processValueBytes(
 	}
 	if rf.args.TraceKV {
 		prettyValue = rf.prettyValueBuf.String()
+	}
+	return prettyKey, prettyValue, nil
+}
+
+func (rf *Fetcher) processSubordinateKV(
+	ctx context.Context,
+	table *tableInfo,
+	kv roachpb.KeyValue,
+	remaining []byte,
+	prettyKeyPrefix string,
+) (prettyKey string, prettyValue string, err error) {
+	prettyKey = prettyKeyPrefix
+	remaining, colID64, err := encoding.DecodeUvarintAscending(remaining)
+	if err != nil {
+		return "", "", errors.Wrap(err, "decoding subordinate key column ID")
+	}
+	colID := descpb.ColumnID(colID64)
+	_, elemIdx64, err := encoding.DecodeUvarintAscending(remaining)
+	if err != nil {
+		return "", "", errors.Wrap(err, "decoding subordinate key element index")
+	}
+	elemIdx := int(elemIdx64)
+
+	idx, ok := table.colIdxMap.Get(colID)
+	if !ok {
+		if DebugRowFetch {
+			log.Infof(ctx, "Scan %s -> subordinate col %d (skipped)", kv.Key, colID)
+		}
+		return prettyKey, "", nil
+	}
+
+	colSpec := &table.spec.FetchedColumns[idx]
+	elemType := colSpec.Type.ArrayContents()
+	var value tree.Datum
+	if rowenc.IsSubordinateNull(kv.Value) {
+		value = tree.DNull
+	} else {
+		value, err = valueside.UnmarshalLegacy(rf.args.Alloc, elemType, kv.Value)
+		if err != nil {
+			return "", "", errors.Wrapf(err, "decoding subordinate key value for column %d", colID)
+		}
+	}
+
+	filterCol := rf.arrayEqualsAnyFilter != nil && rf.arrayEqualsAnyFilter.colIdx == idx
+	if filterCol {
+		rf.arrayEqualsAnyFilter.sawSubordinate = true
+		if value == tree.DNull || rf.arrayEqualsAnyFilter.left == tree.DNull {
+			rf.arrayEqualsAnyFilter.sawNull = true
+		} else if rf.arrayEqualsAnyFilter.left.Compare(rf.arrayEqualsAnyFilter.evalCtx, value) == 0 {
+			rf.arrayEqualsAnyFilter.matched = true
+		}
+		if !rf.arrayEqualsAnyFilter.materialize {
+			if rf.args.TraceKV {
+				prettyKey = fmt.Sprintf("%s/%s[*]", prettyKey, colSpec.Name)
+				prettyValue = value.String()
+			}
+			return prettyKey, prettyValue, nil
+		}
+	}
+
+	if rf.subordinateArrays == nil {
+		rf.subordinateArrays = make(map[int]*subordinateArrayBuilder)
+	}
+	arr, exists := rf.subordinateArrays[idx]
+	if !exists {
+		arr = newSubordinateArrayBuilder(elemType)
+		rf.subordinateArrays[idx] = arr
+	}
+	arr.Set(elemIdx, value)
+
+	if rf.args.TraceKV {
+		prettyKey = fmt.Sprintf("%s/%s[%d]", prettyKey, colSpec.Name, elemIdx)
+		prettyValue = value.String()
 	}
 	return prettyKey, prettyValue, nil
 }
@@ -1217,8 +1401,49 @@ func (rf *Fetcher) RowIsDeleted() bool {
 	return rf.table.rowIsDeleted
 }
 
+func (rf *Fetcher) finishArrayEqualsAnyFilter() error {
+	if rf.arrayEqualsAnyFilter == nil {
+		rf.lastRowPassesArrayEqualsAnyFilter = true
+		return nil
+	}
+	f := rf.arrayEqualsAnyFilter
+	if !f.sawSubordinate {
+		encDatum := rf.table.row[f.colIdx]
+		if encDatum.IsUnset() {
+			rf.lastRowPassesArrayEqualsAnyFilter = false
+			return nil
+		}
+		if err := encDatum.EnsureDecoded(rf.table.spec.FetchedColumns[f.colIdx].Type, rf.args.Alloc); err != nil {
+			return err
+		}
+		d := encDatum.Datum
+		if d == tree.DNull || f.left == tree.DNull {
+			f.sawNull = true
+		} else if arr, ok := tree.AsDArray(d); ok && arr.Len() > 0 {
+			return errors.AssertionFailedf(
+				"non-empty inline array encountered in array filter fallback for column %q",
+				rf.table.spec.FetchedColumns[f.colIdx].Name,
+			)
+		}
+	}
+	rf.lastRowPassesArrayEqualsAnyFilter = f.matched
+	return nil
+}
+
 func (rf *Fetcher) finalizeRow() error {
 	table := &rf.table
+
+	for idx, arrBuilder := range rf.subordinateArrays {
+		arr, err := arrBuilder.Materialize()
+		if err != nil {
+			return err
+		}
+		table.row[idx] = rowenc.EncDatum{Datum: arr}
+		rf.valueColsFound++
+	}
+	if err := rf.finishArrayEqualsAnyFilter(); err != nil {
+		return err
+	}
 
 	// Fill in any system columns if requested.
 	if table.timestampOutputIdx != noOutputColumn {
@@ -1240,6 +1465,11 @@ func (rf *Fetcher) finalizeRow() error {
 			return nil
 		}
 		if table.row[i].IsUnset() {
+			if rf.arrayEqualsAnyFilter != nil &&
+				rf.arrayEqualsAnyFilter.colIdx == i &&
+				!rf.arrayEqualsAnyFilter.materialize {
+				continue
+			}
 			// If the row was deleted, we'll be missing any non-primary key
 			// columns, including nullable ones, but this is expected. If the column
 			// is not yet active, we can also expect NULLs.

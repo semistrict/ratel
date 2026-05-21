@@ -363,14 +363,34 @@ func (ru *Updater) UpdateRow(
 		return ru.newValues, nil
 	}
 
+	newSubEntries, err := ru.Helper.encodeSubordinateKeys(primaryIndexKey, ru.FetchColIDtoRowIndex, ru.newValues)
+	if err != nil {
+		return nil, err
+	}
+
 	// Add the new values.
 	ru.valueBuf, err = prepareInsertOrUpdateBatch(ctx, putter,
 		&ru.Helper, primaryIndexKey, ru.FetchCols,
 		ru.newValues, ru.FetchColIDtoRowIndex,
 		ru.UpdateColIDtoRowIndex,
-		&ru.key, &ru.value, ru.valueBuf, insertPutFn, true /* overwrite */, traceKV)
+		newSubEntries, &ru.key, &ru.value, ru.valueBuf, insertPutFn, true /* overwrite */, traceKV)
 	if err != nil {
 		return nil, err
+	}
+	oldSubEntries, err := ru.Helper.encodeSubordinateKeys(primaryIndexKey, ru.FetchColIDtoRowIndex, oldValues)
+	if err != nil {
+		return nil, err
+	}
+	for i := range oldSubEntries {
+		oldEntry := &oldSubEntries[i]
+		if i < len(newSubEntries) && bytes.Equal(oldEntry.Key, newSubEntries[i].Key) {
+			continue
+		}
+		insertDelFn(ctx, putter, &oldEntry.Key, traceKV)
+	}
+	for i := range newSubEntries {
+		e := &newSubEntries[i]
+		insertPutFn(ctx, putter, &e.Key, &e.Value, traceKV)
 	}
 
 	// Update secondary indexes.

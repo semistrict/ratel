@@ -140,6 +140,12 @@ func (rd *Deleter) DeleteRow(
 	if err != nil {
 		return err
 	}
+	subordinateStart := rowenc.SubordinateKeysForColumn(primaryIndexKey, 0, 1)[0]
+	subordinateEnd := keys.MakeFamilyKey(primaryIndexKey[:len(primaryIndexKey):len(primaryIndexKey)], 1)
+	if traceKV {
+		log.VEventf(ctx, 2, "DelRange %s - %s", subordinateStart, subordinateEnd)
+	}
+	b.DelRange(subordinateStart, subordinateEnd, false /* returnKeys */)
 
 	// Delete the row.
 	var called bool

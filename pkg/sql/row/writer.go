@@ -17,6 +17,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
+	"github.com/cockroachdb/cockroach/pkg/sql/rowenc"
 	"github.com/cockroachdb/cockroach/pkg/sql/rowenc/valueside"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/util"
@@ -95,6 +96,7 @@ func prepareInsertOrUpdateBatch(
 	values []tree.Datum,
 	valColIDMapping catalog.TableColMap,
 	updatedColIDMapping catalog.TableColMap,
+	subordinateEntries []rowenc.IndexEntry,
 	kvKey *roachpb.Key,
 	kvValue *roachpb.Value,
 	rawValueBuf []byte,
@@ -144,6 +146,11 @@ func prepareInsertOrUpdateBatch(
 			if skip := helper.SkipColumnNotInPrimaryIndexValue(family.DefaultColumnID, values[idx]); skip {
 				continue
 			}
+			if helper.isArrayColumn(family.DefaultColumnID) {
+				if dArr, isDArr := values[idx].(*tree.DArray); isDArr && dArr != nil && dArr.Len() > 0 {
+					continue
+				}
+			}
 			typ := fetchedCols[idx].GetType()
 			marshaled, err := valueside.MarshalLegacy(typ, values[idx])
 			if err != nil {
@@ -160,7 +167,7 @@ func prepareInsertOrUpdateBatch(
 				// We only output non-NULL values. Non-existent column keys are
 				// considered NULL during scanning and the row sentinel ensures we know
 				// the row exists.
-				if err := helper.CheckRowSize(ctx, kvKey, marshaled.RawBytes, family.ID); err != nil {
+				if err := helper.CheckRowSizeWithSubordinates(ctx, kvKey, marshaled.RawBytes, family.ID, subordinateEntries); err != nil {
 					return nil, err
 				}
 				putFn(ctx, batch, kvKey, &marshaled, traceKV)
@@ -185,6 +192,11 @@ func prepareInsertOrUpdateBatch(
 
 			if skip := helper.SkipColumnNotInPrimaryIndexValue(colID, values[idx]); skip {
 				continue
+			}
+			if helper.isArrayColumn(colID) {
+				if dArr, isDArr := values[idx].(*tree.DArray); isDArr && dArr != nil && dArr.Len() > 0 {
+					continue
+				}
 			}
 
 			col := fetchedCols[idx]
@@ -211,7 +223,7 @@ func prepareInsertOrUpdateBatch(
 			// a deep copy so rawValueBuf can be re-used by other calls to the
 			// function.
 			kvValue.SetTuple(rawValueBuf)
-			if err := helper.CheckRowSize(ctx, kvKey, kvValue.RawBytes, family.ID); err != nil {
+			if err := helper.CheckRowSizeWithSubordinates(ctx, kvKey, kvValue.RawBytes, family.ID, subordinateEntries); err != nil {
 				return nil, err
 			}
 			putFn(ctx, batch, kvKey, kvValue, traceKV)

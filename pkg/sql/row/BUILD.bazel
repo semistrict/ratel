@@ -96,6 +96,7 @@ go_test(
     name = "row_test",
     size = "small",
     srcs = [
+        "array_regression_test.go",
         "expr_walker_test.go",
         "fetcher_mvcc_test.go",
         "fetcher_test.go",
@@ -130,6 +131,7 @@ go_test(
         "//pkg/sql/rowinfra",
         "//pkg/sql/sem/eval",
         "//pkg/sql/sem/tree",
+        "//pkg/sql/types",
         "//pkg/storage",
         "//pkg/testutils",
         "//pkg/testutils/serverutils",

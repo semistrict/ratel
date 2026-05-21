@@ -28,6 +28,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/rowenc/rowencpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/rowinfra"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/cockroachdb/cockroach/pkg/util/encoding"
 	"github.com/cockroachdb/cockroach/pkg/util/intsets"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
@@ -107,6 +108,8 @@ type RowHelper struct {
 	primaryIndexKeyCols   catalog.TableColSet
 	primaryIndexValueCols catalog.TableColSet
 	sortedColumnFamilies  map[descpb.RowGroupID][]descpb.ColumnID
+	arrayColIDs           catalog.TableColSet
+	arrayColIDsInit       bool
 
 	// Used to check row size.
 	maxRowSizeLog, maxRowSizeErr uint32
@@ -275,12 +278,50 @@ func (rh *RowHelper) SortedColumnFamily(famID descpb.RowGroupID) ([]descpb.Colum
 	return colIDs, ok
 }
 
+func (rh *RowHelper) isArrayColumn(colID descpb.ColumnID) bool {
+	if !rh.arrayColIDsInit {
+		for _, col := range rh.TableDesc.PublicColumns() {
+			if col.GetType().Family() == types.ArrayFamily {
+				rh.arrayColIDs.Add(col.GetID())
+			}
+		}
+		rh.arrayColIDsInit = true
+	}
+	return rh.arrayColIDs.Contains(colID)
+}
+
+func (rh *RowHelper) encodeSubordinateKeys(
+	primaryIndexKey []byte, colIDtoRowIndex catalog.TableColMap, values []tree.Datum,
+) ([]rowenc.IndexEntry, error) {
+	return rowenc.EncodeSubordinateKeys(rh.TableDesc, primaryIndexKey, colIDtoRowIndex, values)
+}
+
 // CheckRowSize compares the size of a primary key column family against the
 // max_row_size limits.
 func (rh *RowHelper) CheckRowSize(
 	ctx context.Context, key *roachpb.Key, valueBytes []byte, family descpb.RowGroupID,
 ) error {
 	size := uint32(len(*key)) + uint32(len(valueBytes))
+	return rh.checkRowSize(ctx, key, size, family)
+}
+
+func (rh *RowHelper) CheckRowSizeWithSubordinates(
+	ctx context.Context,
+	key *roachpb.Key,
+	valueBytes []byte,
+	family descpb.RowGroupID,
+	subordinateEntries []rowenc.IndexEntry,
+) error {
+	size := uint32(len(*key)) + uint32(len(valueBytes))
+	for i := range subordinateEntries {
+		size += uint32(len(subordinateEntries[i].Key)) + uint32(len(subordinateEntries[i].Value.RawBytes))
+	}
+	return rh.checkRowSize(ctx, key, size, family)
+}
+
+func (rh *RowHelper) checkRowSize(
+	ctx context.Context, key *roachpb.Key, size uint32, family descpb.RowGroupID,
+) error {
 	shouldLog := rh.maxRowSizeLog != 0 && size > rh.maxRowSizeLog
 	shouldErr := rh.maxRowSizeErr != 0 && size > rh.maxRowSizeErr
 	if !shouldLog && !shouldErr {

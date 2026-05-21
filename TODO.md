@@ -1,6 +1,6 @@
 # Outstanding Ramon-Origin Work
 
-This branch has already ported the core CF actors work, explicit actor syntax, subordinate array encoding, S3-backed cluster storage, and the Bazel 9.1.0 migration. The items below were inspected against `origin/main` and still have code missing from this branch.
+This branch has already ported the core CF actors work, explicit actor syntax, subordinate array encoding, S3-backed cluster storage, Ratel CLI/TLS hardening, Pebble v1.1.5 storage fixes, tracing cleanup, and the Bazel 9.1.0 migration. The items below were inspected against Ramon-authored work in `origin/main` and `../ratel-cockroach`.
 
 ## Full Column-Family Removal
 
@@ -68,59 +68,29 @@ Refs:
 Expected missing paths/features:
 - full `TestSyncRatelChaos` stress run in the default target; narrower chaos cases are enabled, but the full churn stress is too slow without further server-background-loop cleanup
 
-## SQL Query UI Page
+## Subordinate JSON Storage / Scan Pushdown
 
 Status: missing.
 
-The pnpm/build migration is mostly covered here, but the DB Console SQL Query page from `origin/main` is absent.
+The subordinate array storage work was ported, but the later JSON-specific stack is absent. Reference-only source files such as `pkg/sql/row/json_access_program.go`, `pkg/sql/json_scan_pushdown.go`, `pkg/sql/row/subordinate_json_row_head_fetcher.go`, `pkg/sql/row/subordinate_json_mutation.go`, `pkg/sql/subordinate_json_update.go`, `pkg/util/json/lazy_array.go`, and `pkg/testutils/inproc/subordinate_json_access_test.go` are not present in this branch.
 
 Refs:
-- `c3feaf3` Migrate UI build to pnpm, add SQL Query page
-- `e638d34` UI dependency/build follow-up
-- `6a3060b` UI dependency/build follow-up
-- `2d22211` UI dependency/build follow-up
-- `969aa31` UI dependency/build follow-up
-- `2c29151` UI dependency/build follow-up
-
-Expected paths/features:
-- `pkg/ui/workspaces/db-console/src/views/sqlQuery/sqlQueryPage.tsx`
-- Any associated routing, exports, tests, and generated UI dependency updates.
-
-## Deploy / Demo Packaging
-
-Status: partially ported.
-
-Runtime S3 storage, node registry, cluster cert upload/download, and Ratel storage URL paths are present. The deployment/demo packaging from `origin/main` is still missing.
-
-Refs:
-- `afc42d5` Add S3-backed cluster storage
-- `90fb6fc` Add cluster cert storage support
-- `3a3ad5e` Add node registry support
-- `57218ba` Add Ratel cluster storage wiring
-- `c6a0e67` Add deploy/demo support
-- `be4255c` Add fly cluster deployment support
-- `96b5149` Add Docker/RustFS demo support
-- `3fc8e67` Refine storage CLI behavior
-- `ff0ab20` Add deploy documentation
-- `dcea9cc` Refine cluster storage behavior
-- `a8352b0` Refine ratel CLI flags
-- `b7d312b` Add storage/deploy follow-up
-- `5890d5d` Add deploy/demo follow-up
-- `e8979af` Add Ratel storage follow-up
-- `829fc4a` Add S3/deploy follow-up
-- `777f3a0` Add storage docs/fixes
-- `01f9d4f` Add deploy cleanup
-- `54cf02b` Add fly deploy cleanup
-- `ac390ce` Add storage/CLI cleanup
-- `22775ce` Add deployment cleanup
-- `a2332eb` Add deploy/demo cleanup
-- `8530a47` Add deploy README updates
-- `23db2c2` Add final deploy/storage cleanup
+- `e38b0f2` Add recursive subordinate JSON scan programs
+- `efdbeb9` Add cfetcher inline JSON regression tests
+- `fae1956` Broaden subordinate JSON logic coverage
+- `48bb05f` Test subordinate JSON rewrite behavior
+- `f07f04f` Implement recursive subordinate JSON scan pushdown
+- `2f121e1` Optimize recursive JSONB scan locality
+- `d61d1d2` Implement Redshift-style JSON dotted access
+- `aae1a66` Stream large JSON aggregate paths lazily
 
 Expected missing paths/features:
-- `demo/`
-- `deploy/fly-cluster/`
-- related README/deploy docs and assets
+- recursive JSON subordinate key encoding and access programs
+- row/columnar fetcher pushdown for JSON paths and containment
+- JSON update/mutation support over subordinate entries
+- Redshift-style dotted JSON access parser/type-checking changes
+- lazy JSON array/object materialization for large aggregate paths
+- logic, row, util/json, and inproc regression coverage
 
 ## Tracing Dependency Cleanup
 

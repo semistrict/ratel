@@ -24,6 +24,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -39,6 +40,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
 	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/cockroachdb/cockroach/pkg/util/tracing"
 	"github.com/stretchr/testify/require"
 )
 
@@ -158,6 +160,21 @@ func TestWorkerdConfigGeneration(t *testing.T) {
 	require.Contains(t, string(counterBytes), "Counter")
 }
 
+func TestWorkerCapnpID(t *testing.T) {
+	tests := []struct {
+		name string
+		id   string
+	}{
+		{name: "hello", id: "workerHello"},
+		{name: "hello-world", id: "workerHelloWorld"},
+		{name: "counter_v2", id: "workerCounterV2"},
+		{name: "multi-word_worker", id: "workerMultiWordWorker"},
+	}
+	for _, tt := range tests {
+		require.Equal(t, tt.id, workerCapnpID(tt.name))
+	}
+}
+
 func TestRouterScriptEmbed(t *testing.T) {
 	require.Contains(t, routerScript, "X-Worker-Name")
 	require.Contains(t, routerScript, "export default")
@@ -181,6 +198,61 @@ func TestSplitWorkerPath(t *testing.T) {
 		require.Equal(t, tt.expectedName, name, "path=%s", tt.path)
 		require.Equal(t, tt.expectedRest, rest, "path=%s", tt.path)
 	}
+}
+
+func TestWorkerdProxyAPIPassThrough(t *testing.T) {
+	api := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/api/v2/workers/", r.URL.Path)
+		w.Header().Set("X-Test-API", "hit")
+		w.WriteHeader(http.StatusAccepted)
+	})
+	proxy := newWorkerdProxy(api, 1, tracing.NewTracer(), nil /* sidecar */, nil /* router */)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v2/workers/", nil)
+	rec := httptest.NewRecorder()
+	proxy.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusAccepted, rec.Code)
+	require.Equal(t, "hit", rec.Header().Get("X-Test-API"))
+}
+
+func TestWorkerdProxyRewritesWorkerRequest(t *testing.T) {
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/foo/bar", r.URL.Path)
+		require.Equal(t, "hello", r.Header.Get("X-Worker-Name"))
+		w.WriteHeader(http.StatusCreated)
+		fmt.Fprint(w, "proxied")
+	}))
+	defer backend.Close()
+
+	port := strings.TrimPrefix(backend.URL, "http://127.0.0.1:")
+	proxy := newWorkerdProxy(http.NotFoundHandler(), atoi(t, port), tracing.NewTracer(), nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/workers/hello/foo/bar?x=1", nil)
+	rec := httptest.NewRecorder()
+	proxy.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusCreated, rec.Code)
+	require.Equal(t, "proxied", rec.Body.String())
+}
+
+func TestWorkerdProxyHealthWithoutSidecar(t *testing.T) {
+	proxy := newWorkerdProxy(http.NotFoundHandler(), 1, tracing.NewTracer(), nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/workers/_health", nil)
+	rec := httptest.NewRecorder()
+	proxy.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	require.Contains(t, rec.Body.String(), "workerd not running")
+}
+
+func atoi(t *testing.T, s string) int {
+	t.Helper()
+	var v int
+	_, err := fmt.Sscanf(s, "%d", &v)
+	require.NoError(t, err)
+	return v
 }
 
 // --- Server-level tests (real Ratel, no workerd needed) ---

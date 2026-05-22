@@ -160,6 +160,12 @@ func findLibraryDirectories(flagLibraryDirectoryValue string, crdbBinaryLoc stri
 			}
 		}
 	}
+	if runtime.GOOS == "darwin" {
+		locs = append(locs,
+			"/opt/homebrew/lib",
+			"/usr/local/lib",
+		)
+	}
 	locs = append(
 		locs,
 		findLibraryDirectoriesInParentingDirectories(crdbBinaryLoc)...,

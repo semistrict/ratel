@@ -304,7 +304,7 @@ func (u *UnresolvedObjectName) ToFunctionName() FunctionName {
 func (u *UnresolvedObjectName) ToUnresolvedName() *UnresolvedName {
 	return &UnresolvedName{
 		NumParts: u.NumParts,
-		Parts:    NameParts{u.Parts[0], u.Parts[1], u.Parts[2]},
+		Parts:    MakeNameParts(u.Parts[0], u.Parts[1], u.Parts[2]),
 	}
 }
 

@@ -139,7 +139,7 @@ type Metadata struct {
 	// the query. This is necessary to handle the case where changes to the search
 	// path cause a function call to be resolved to a UDF with the same signature
 	// as a builtin function.
-	builtinRefsByName map[tree.UnresolvedName]struct{}
+	builtinRefsByName map[string]*tree.UnresolvedName
 
 	// NOTE! When adding fields here, update Init (if reusing allocated
 	// data structures is desired), CopyFrom and TestMetadata.
@@ -208,7 +208,7 @@ func (md *Metadata) Init() {
 
 	builtinRefsByName := md.builtinRefsByName
 	if builtinRefsByName == nil {
-		builtinRefsByName = make(map[tree.UnresolvedName]struct{})
+		builtinRefsByName = make(map[string]*tree.UnresolvedName)
 	}
 	for name := range md.builtinRefsByName {
 		delete(md.builtinRefsByName, name)
@@ -310,9 +310,9 @@ func (md *Metadata) CopyFrom(from *Metadata, copyScalarFn func(Expr) Expr) {
 
 	for name := range from.builtinRefsByName {
 		if md.builtinRefsByName == nil {
-			md.builtinRefsByName = make(map[tree.UnresolvedName]struct{})
+			md.builtinRefsByName = make(map[string]*tree.UnresolvedName)
 		}
-		md.builtinRefsByName[name] = struct{}{}
+		md.builtinRefsByName[name] = from.builtinRefsByName[name]
 	}
 
 	md.sequences = append(md.sequences, from.sequences...)
@@ -448,9 +448,9 @@ func (md *Metadata) CheckDependencies(
 
 	// Check that any references to builtin functions do not now resolve to a UDF
 	// with the same signature (e.g. after changes to the search path).
-	for name := range md.builtinRefsByName {
+	for _, name := range md.builtinRefsByName {
 		definition, err := optCatalog.ResolveFunction(
-			ctx, &name, &evalCtx.SessionData().SearchPath,
+			ctx, name, &evalCtx.SessionData().SearchPath,
 		)
 		if err != nil {
 			return false, maybeSwallowMetadataResolveErr(err)
@@ -572,9 +572,10 @@ func (md *Metadata) AddBuiltin(name *tree.UnresolvedObjectName) {
 		return
 	}
 	if md.builtinRefsByName == nil {
-		md.builtinRefsByName = make(map[tree.UnresolvedName]struct{})
+		md.builtinRefsByName = make(map[string]*tree.UnresolvedName)
 	}
-	md.builtinRefsByName[*name.ToUnresolvedName()] = struct{}{}
+	un := name.ToUnresolvedName()
+	md.builtinRefsByName[un.String()] = un
 }
 
 // AddTable indexes a new reference to a table within the query. Separate

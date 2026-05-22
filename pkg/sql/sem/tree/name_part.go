@@ -170,11 +170,31 @@ type UnresolvedName struct {
 	// a meaningful "length"; its actual length (the number of parts
 	// specified) is populated in NumParts above.
 	Parts NameParts
+
+	// RawParts preserves the original identifier spelling for each name part,
+	// also in reverse order. Empty entries fall back to Parts.
+	RawParts NameParts
 }
 
-// NameParts is the array of strings that composes the path in an
-// UnresolvedName.
-type NameParts = [4]string
+// NameParts is the collection of strings that composes the path in an
+// UnresolvedName. It is padded to at least 4 entries so legacy callers that
+// probe optional qualification parts by index continue to work.
+type NameParts []string
+
+func makeNameParts(size int) NameParts {
+	if size < 4 {
+		size = 4
+	}
+	return make(NameParts, size)
+}
+
+// MakeNameParts constructs a NameParts value padded to the minimum legacy
+// width. The provided parts are copied as-is.
+func MakeNameParts(parts ...string) NameParts {
+	res := makeNameParts(len(parts))
+	copy(res, parts)
+	return res
+}
 
 // Format implements the NodeFormatter interface.
 func (u *UnresolvedName) Format(ctx *FmtCtx) {
@@ -210,11 +230,60 @@ func NewUnresolvedName(args ...string) *UnresolvedName {
 
 // MakeUnresolvedName constructs an UnresolvedName from some strings.
 func MakeUnresolvedName(args ...string) UnresolvedName {
-	n := UnresolvedName{NumParts: len(args)}
+	n := UnresolvedName{
+		NumParts: len(args),
+		Parts:    makeNameParts(len(args)),
+		RawParts: makeNameParts(len(args)),
+	}
 	for i := 0; i < len(args); i++ {
 		n.Parts[i] = args[len(args)-1-i]
+		n.RawParts[i] = n.Parts[i]
 	}
 	return n
+}
+
+// MakeUnresolvedNameWithRawParts constructs an UnresolvedName from normalized
+// and raw identifier strings in natural order.
+func MakeUnresolvedNameWithRawParts(parts []string, rawParts []string) UnresolvedName {
+	n := UnresolvedName{
+		NumParts: len(parts),
+		Parts:    makeNameParts(len(parts)),
+		RawParts: makeNameParts(len(parts)),
+	}
+	for i := 0; i < len(parts); i++ {
+		idx := len(parts) - 1 - i
+		n.Parts[i] = parts[idx]
+		if rawParts != nil && idx < len(rawParts) && rawParts[idx] != "" {
+			n.RawParts[i] = rawParts[idx]
+		} else {
+			n.RawParts[i] = n.Parts[i]
+		}
+	}
+	return n
+}
+
+// RawPart returns the original spelling for the reversed path index i.
+func (u *UnresolvedName) RawPart(i int) string {
+	if raw := u.RawParts[i]; raw != "" {
+		return raw
+	}
+	return u.Parts[i]
+}
+
+// Equal returns true if the unresolved names have the same normalized shape.
+func (u *UnresolvedName) Equal(other *UnresolvedName) bool {
+	if u == nil || other == nil {
+		return u == other
+	}
+	if u.NumParts != other.NumParts || u.Star != other.Star {
+		return false
+	}
+	for i := 0; i < u.NumParts; i++ {
+		if u.Parts[i] != other.Parts[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // ToUnresolvedObjectName converts an UnresolvedName to an UnresolvedObjectName.

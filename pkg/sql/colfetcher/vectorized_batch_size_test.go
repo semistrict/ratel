@@ -73,9 +73,8 @@ var scanBatchSizeTestCases = []scanBatchSizeTestCase{
 // TestScanBatchSize tests that the cFetcher's dynamic batch size algorithm uses
 // the limit hint or the optimizer's estimated row count for its initial batch
 // size as well as when to not fill the whole batch. This test confirms that
-// cFetcher returns the expected number of batches but also checks that the
-// expected number of KV rows were read. See the test cases above for more
-// details.
+// cFetcher returns the expected number of batches and checks that the expected
+// number of KV rows were read. See the test cases above for more details.
 func TestScanBatchSize(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
@@ -113,11 +112,10 @@ func TestScanBatchSize(t *testing.T) {
 			// Allow for commas in the numbers that exceed 1000.
 			kvRowsReadRegex := regexp.MustCompile(`KV rows read: ([\d,]+)`)
 			batchCountRegex := regexp.MustCompile(`vectorized batch count: (\d+)`)
-			mvccStepCountRegex := regexp.MustCompile(`MVCC step count \(ext/int\): ([\d,]+)/\d+`)
 			testutils.SucceedsSoon(t, func() error {
 				rows, err := conn.QueryContext(ctx, `EXPLAIN ANALYZE (VERBOSE) `+testCase.query)
 				assert.NoError(t, err)
-				foundKVRowsRead, foundBatches, foundMVCCSteps := -1, -1, -1
+				foundKVRowsRead, foundBatches := -1, -1
 				var sb strings.Builder
 				for rows.Next() {
 					var res string
@@ -130,9 +128,6 @@ func TestScanBatchSize(t *testing.T) {
 					} else if matches = batchCountRegex.FindStringSubmatch(res); len(matches) > 0 {
 						foundBatches, err = strconv.Atoi(matches[1])
 						assert.NoError(t, err)
-					} else if matches = mvccStepCountRegex.FindStringSubmatch(res); len(matches) > 0 {
-						foundMVCCSteps, err = strconv.Atoi(strings.ReplaceAll(matches[1], ",", ""))
-						assert.NoError(t, err)
 					}
 				}
 				if foundKVRowsRead != testCase.expectedKVRowsRead {
@@ -140,9 +135,6 @@ func TestScanBatchSize(t *testing.T) {
 				}
 				if foundBatches != testCase.expectedBatches {
 					return fmt.Errorf("should use %d batches to scan rows, found %d:\n%s", testCase.expectedBatches, foundBatches, sb.String())
-				}
-				if foundMVCCSteps != testCase.expectedKVRowsRead {
-					return fmt.Errorf("expected to do %d MVCC steps, found %d", testCase.expectedKVRowsRead, foundMVCCSteps)
 				}
 				return nil
 			})

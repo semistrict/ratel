@@ -86,8 +86,7 @@ CREATE FUNCTION f(INT) RETURNS INT VOLATILE LANGUAGE SQL AS $$ SELECT a FROM t $
 		searchPathArray := ec.SessionData().SearchPath.GetPathArray()
 
 		funcResolver := planner.(tree.FunctionReferenceResolver)
-		fname := tree.UnresolvedName{NumParts: 1, Star: false}
-		fname.Parts[0] = "f"
+		fname := tree.MakeUnresolvedName("f")
 		path := sessiondata.MakeSearchPath(searchPathArray)
 		funcDef, err := funcResolver.ResolveFunction(ctx, &fname, &path)
 		require.NoError(t, err)

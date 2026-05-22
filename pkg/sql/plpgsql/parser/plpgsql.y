@@ -50,6 +50,14 @@ func (s *plpgsqlSymType) SetStr(str string) {
   s.str = str
 }
 
+func (s *plpgsqlSymType) RawStr() string {
+  return s.rawStr
+}
+
+func (s *plpgsqlSymType) SetRawStr(str string) {
+  s.rawStr = str
+}
+
 func (s *plpgsqlSymType) UnionVal() interface{} {
   return s.union.val
 }
@@ -264,6 +272,7 @@ func (u *plpgsqlSymUnion) pLpgSQLStmtOpen() *plpgsqltree.PLpgSQLStmtOpen {
   id    int32
   pos   int32
   str   string
+  rawStr string
   union plpgsqlSymUnion
 }
 

@@ -11,12 +11,15 @@
 package optbuilder
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/colinfo/colinfotestutils"
+	"github.com/cockroachdb/cockroach/pkg/sql/parser"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/cockroachdb/cockroach/pkg/sql/types"
 )
 
 var _ colinfotestutils.ColumnItemResolverTester = &scope{}
@@ -73,4 +76,70 @@ func TestResolveQualifiedStar(t *testing.T) {
 func TestResolveColumnItem(t *testing.T) {
 	s := &scope{}
 	colinfotestutils.RunResolveColumnItemTest(t, s)
+}
+
+func TestResolveJSONDottedPath(t *testing.T) {
+	semaCtx := tree.MakeSemaContext()
+	s := &scope{
+		builder: &Builder{
+			ctx:     context.Background(),
+			semaCtx: &semaCtx,
+		},
+	}
+	s.cols = append(s.cols, scopeColumn{
+		name:       scopeColName("j"),
+		table:      tree.MakeUnqualifiedTableName("t"),
+		typ:        types.Jsonb,
+		visibility: visible,
+	})
+
+	testCases := []struct {
+		expr     string
+		expected string
+	}{
+		{expr: `j.Foo`, expected: `j->'Foo':::STRING`},
+		{expr: `t.j.Foo.Bar`, expected: `(j->'Foo':::STRING)->'Bar':::STRING`},
+		{expr: `j.Foo.Bar.Baz.Quux`, expected: `(((j->'Foo':::STRING)->'Bar':::STRING)->'Baz':::STRING)->'Quux':::STRING`},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.expr, func(t *testing.T) {
+			expr, err := parser.ParseExpr(tc.expr)
+			if err != nil {
+				t.Fatal(err)
+			}
+			typed := s.resolveType(expr, types.Any)
+			if actual := tree.Serialize(typed); actual != tc.expected {
+				t.Fatalf("expected %s, got %s", tc.expected, actual)
+			}
+		})
+	}
+}
+
+func TestResolveJSONDottedPathPrefersQualifiedColumn(t *testing.T) {
+	semaCtx := tree.MakeSemaContext()
+	s := &scope{
+		builder: &Builder{
+			ctx:     context.Background(),
+			semaCtx: &semaCtx,
+		},
+	}
+	s.cols = append(s.cols, scopeColumn{
+		name:       scopeColName("foo"),
+		table:      tree.MakeUnqualifiedTableName("j"),
+		typ:        types.Int,
+		visibility: visible,
+	})
+
+	expr, err := parser.ParseExpr(`j.foo`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	typed := s.resolveType(expr, types.Any)
+	if actual := tree.Serialize(typed); actual != `foo` {
+		t.Fatalf("expected foo, got %s", actual)
+	}
+	if actual := typed.ResolvedType(); actual != types.Int {
+		t.Fatalf("expected %s, got %s", types.Int, actual)
+	}
 }

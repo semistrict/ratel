@@ -116,9 +116,10 @@ func (t *parseNode) repeated() *parseNode {
 // scanner.ScanSymType interface so that
 // we can get token ids out of scanner.Scan().
 type fakeSym struct {
-	id  int32
-	pos int32
-	s   string
+	id   int32
+	pos  int32
+	s    string
+	rawS string
 }
 
 var _ scanner.ScanSymType = (*fakeSym)(nil)
@@ -129,5 +130,7 @@ func (s fakeSym) Pos() int32                { return s.pos }
 func (s *fakeSym) SetPos(p int32)           { s.pos = p }
 func (s fakeSym) Str() string               { return s.s }
 func (s *fakeSym) SetStr(v string)          { s.s = v }
+func (s fakeSym) RawStr() string            { return s.rawS }
+func (s *fakeSym) SetRawStr(v string)       { s.rawS = v }
 func (s fakeSym) UnionVal() interface{}     { return nil }
 func (s fakeSym) SetUnionVal(v interface{}) {}

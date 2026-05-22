@@ -65,6 +65,55 @@ func setErr(sqllex sqlLexer, err error) int {
     return 1
 }
 
+func makeUnresolvedNamePart(part, raw string) *tree.UnresolvedName {
+    if raw == "" {
+        raw = part
+    }
+    return &tree.UnresolvedName{
+        NumParts: 1,
+        Parts: tree.MakeNameParts(part),
+        RawParts: tree.MakeNameParts(raw),
+    }
+}
+
+func prependUnresolvedNamePart(n *tree.UnresolvedName, part, raw string) *tree.UnresolvedName {
+    if raw == "" {
+        raw = part
+    }
+    size := n.NumParts + 1
+    if size < 4 {
+        size = 4
+    }
+    parts := make(tree.NameParts, size)
+    rawParts := make(tree.NameParts, size)
+    parts[0] = part
+    rawParts[0] = raw
+    copy(parts[1:], n.Parts[:n.NumParts])
+    copy(rawParts[1:], n.RawParts[:n.NumParts])
+    return &tree.UnresolvedName{
+        NumParts: n.NumParts + 1,
+        Parts: parts,
+        RawParts: rawParts,
+    }
+}
+
+func prependStarToUnresolvedName(n *tree.UnresolvedName) *tree.UnresolvedName {
+    size := n.NumParts + 1
+    if size < 4 {
+        size = 4
+    }
+    parts := make(tree.NameParts, size)
+    rawParts := make(tree.NameParts, size)
+    copy(parts[1:], n.Parts[:n.NumParts])
+    copy(rawParts[1:], n.RawParts[:n.NumParts])
+    return &tree.UnresolvedName{
+        Star: true,
+        NumParts: n.NumParts + 1,
+        Parts: parts,
+        RawParts: rawParts,
+    }
+}
+
 func unimplementedWithIssue(sqllex sqlLexer, issue int) int {
     sqllex.(*lexer).UnimplementedWithIssue(issue)
     return 1
@@ -190,6 +239,14 @@ func (s *sqlSymType) Str() string {
 
 func (s *sqlSymType) SetStr(str string) {
 	s.str = str
+}
+
+func (s *sqlSymType) RawStr() string {
+	return s.rawStr
+}
+
+func (s *sqlSymType) SetRawStr(str string) {
+	s.rawStr = str
 }
 
 func (s *sqlSymType) UnionVal() interface{} {
@@ -1026,6 +1083,7 @@ func (u *sqlSymUnion) beginTransaction() *tree.BeginTransaction {
   id    int32
   pos   int32
   str   string
+  rawStr string
   union sqlSymUnion
 }
 
@@ -1501,7 +1559,7 @@ func (u *sqlSymUnion) beginTransaction() *tree.BeginTransaction {
 %type <*tree.IndexFlags> opt_index_flags
 %type <*tree.IndexFlags> index_flags_param
 %type <*tree.IndexFlags> index_flags_param_list
-%type <tree.Expr> a_expr b_expr c_expr d_expr typed_literal
+%type <tree.Expr> a_expr b_expr c_expr d_expr typed_literal long_column_path_expr
 %type <tree.Expr> substr_from substr_for
 %type <tree.Expr> in_expr
 %type <tree.Expr> having_clause
@@ -6919,7 +6977,7 @@ var_value:
   a_expr
 | extra_var_value
   {
-    $$.val = tree.Expr(&tree.UnresolvedName{NumParts: 1, Parts: tree.NameParts{$1}})
+    $$.val = tree.Expr(makeUnresolvedNamePart($1, sqlDollar[1].rawStr))
   }
 
 // The RHS of a SET statement can contain any valid expression, which
@@ -8824,11 +8882,11 @@ opt_on_targets_roles:
 grant_targets:
   IDENT
   {
-    $$.val = tree.GrantTargetList{Tables: tree.TableAttrs{SequenceOnly: false, TablePatterns: tree.TablePatterns{&tree.UnresolvedName{NumParts:1, Parts: tree.NameParts{$1}}}}}
+    $$.val = tree.GrantTargetList{Tables: tree.TableAttrs{SequenceOnly: false, TablePatterns: tree.TablePatterns{makeUnresolvedNamePart($1, sqlDollar[1].rawStr)}}}
   }
 | col_name_keyword
   {
-    $$.val = tree.GrantTargetList{Tables: tree.TableAttrs{SequenceOnly: false, TablePatterns: tree.TablePatterns{&tree.UnresolvedName{NumParts:1, Parts: tree.NameParts{$1}}}}}
+    $$.val = tree.GrantTargetList{Tables: tree.TableAttrs{SequenceOnly: false, TablePatterns: tree.TablePatterns{makeUnresolvedNamePart($1, sqlDollar[1].rawStr)}}}
   }
 | unreserved_keyword
   {
@@ -8865,7 +8923,7 @@ grant_targets:
     // of increasing (or attempting to modify) the grey magic occurring
     // here.
     $$.val = tree.GrantTargetList{
-      Tables: tree.TableAttrs{SequenceOnly: false, TablePatterns:tree.TablePatterns{&tree.UnresolvedName{NumParts:1, Parts: tree.NameParts{$1}}}},
+      Tables: tree.TableAttrs{SequenceOnly: false, TablePatterns:tree.TablePatterns{makeUnresolvedNamePart($1, sqlDollar[1].rawStr)}},
       ForRoles: $1 == "role", // backdoor for "SHOW GRANTS ON ROLE" (no name list)
     }
   }
@@ -8906,16 +8964,16 @@ grant_targets:
 backup_targets:
   IDENT
   {
-    $$.val = tree.BackupTargetList{Tables: tree.TableAttrs{SequenceOnly: false, TablePatterns: tree.TablePatterns{&tree.UnresolvedName{NumParts:1, Parts: tree.NameParts{$1}}}}}
+    $$.val = tree.BackupTargetList{Tables: tree.TableAttrs{SequenceOnly: false, TablePatterns: tree.TablePatterns{makeUnresolvedNamePart($1, sqlDollar[1].rawStr)}}}
   }
 | col_name_keyword
   {
-    $$.val = tree.BackupTargetList{Tables: tree.TableAttrs{SequenceOnly: false, TablePatterns: tree.TablePatterns{&tree.UnresolvedName{NumParts:1, Parts: tree.NameParts{$1}}}}}
+    $$.val = tree.BackupTargetList{Tables: tree.TableAttrs{SequenceOnly: false, TablePatterns: tree.TablePatterns{makeUnresolvedNamePart($1, sqlDollar[1].rawStr)}}}
   }
 | unreserved_keyword
   {
       $$.val = tree.BackupTargetList{
-      Tables: tree.TableAttrs{SequenceOnly: false, TablePatterns:tree.TablePatterns{&tree.UnresolvedName{NumParts:1, Parts: tree.NameParts{$1}}}},
+      Tables: tree.TableAttrs{SequenceOnly: false, TablePatterns:tree.TablePatterns{makeUnresolvedNamePart($1, sqlDollar[1].rawStr)}},
     }
   }
 | complex_table_pattern
@@ -14670,6 +14728,36 @@ c_expr:
     $$.val = &tree.Subquery{Select: $2.selectStmt(), Exists: true}
   }
 
+long_column_path_expr:
+  db_object_name_component '.' unrestricted_name '.' unrestricted_name '.' unrestricted_name '.' unrestricted_name
+  {
+    rawName := sqlDollar[9].rawStr
+    if rawName == "" {
+      rawName = $9
+    }
+    un := tree.MakeUnresolvedNameWithRawParts(
+      tree.NameParts{$1, $3, $5, $7},
+      tree.NameParts{sqlDollar[1].rawStr, sqlDollar[3].rawStr, sqlDollar[5].rawStr, sqlDollar[7].rawStr},
+    )
+    $$.val = &tree.ColumnAccessExpr{
+      Expr: &un,
+      ColName: tree.Name($9),
+      RawColName: rawName,
+    }
+  }
+| long_column_path_expr '.' unrestricted_name
+  {
+    rawName := sqlDollar[3].rawStr
+    if rawName == "" {
+      rawName = $3
+    }
+    $$.val = &tree.ColumnAccessExpr{
+      Expr: $1.expr(),
+      ColName: tree.Name($3),
+      RawColName: rawName,
+    }
+  }
+
 // Productions that can be followed by a postfix operator.
 //
 // Currently we support array indexing (see c_expr above).
@@ -14748,6 +14836,7 @@ d_expr:
   {
     $$.val = tree.Expr($1.unresolvedName())
   }
+| long_column_path_expr
 | '@' iconst64
   {
     colNum := $2.int64()
@@ -14770,7 +14859,15 @@ d_expr:
   }
 | '(' a_expr ')' '.' unrestricted_name
   {
-    $$.val = &tree.ColumnAccessExpr{Expr: $2.expr(), ColName: tree.Name($5) }
+    rawName := sqllex.(*lexer).lastToken().rawStr
+    if rawName == "" {
+      rawName = $5
+    }
+    $$.val = &tree.ColumnAccessExpr{
+      Expr: $2.expr(),
+      ColName: tree.Name($5),
+      RawColName: rawName,
+    }
   }
 | '(' a_expr ')' '.' '@' ICONST
   {
@@ -15934,15 +16031,15 @@ complex_table_pattern:
   }
 | db_object_name_component '.' unrestricted_name '.' '*'
   {
-     $$.val = &tree.UnresolvedName{Star: true, NumParts: 3, Parts: tree.NameParts{"", $3, $1}}
+     $$.val = prependStarToUnresolvedName(prependUnresolvedNamePart(makeUnresolvedNamePart($1, sqlDollar[1].rawStr), $3, sqlDollar[3].rawStr))
   }
 | db_object_name_component '.' '*'
   {
-     $$.val = &tree.UnresolvedName{Star: true, NumParts: 2, Parts: tree.NameParts{"", $1}}
+     $$.val = prependStarToUnresolvedName(makeUnresolvedNamePart($1, sqlDollar[1].rawStr))
   }
 | '*'
   {
-     $$.val = &tree.UnresolvedName{Star: true, NumParts: 1}
+     $$.val = &tree.UnresolvedName{Star: true, NumParts: 1, Parts: tree.MakeNameParts(""), RawParts: tree.MakeNameParts("")}
   }
 
 name_list:
@@ -16197,22 +16294,34 @@ cursor_name:           name
 column_path:
   name
   {
-      $$.val = &tree.UnresolvedName{NumParts:1, Parts: tree.NameParts{$1}}
+      $$.val = makeUnresolvedNamePart($1, sqlDollar[1].rawStr)
   }
 | prefixed_column_path
 
 prefixed_column_path:
   db_object_name_component '.' unrestricted_name
   {
-      $$.val = &tree.UnresolvedName{NumParts:2, Parts: tree.NameParts{$3,$1}}
+      un := tree.MakeUnresolvedNameWithRawParts(
+        tree.NameParts{$1, $3},
+        tree.NameParts{sqlDollar[1].rawStr, sqlDollar[3].rawStr},
+      )
+      $$.val = &un
   }
 | db_object_name_component '.' unrestricted_name '.' unrestricted_name
   {
-      $$.val = &tree.UnresolvedName{NumParts:3, Parts: tree.NameParts{$5,$3,$1}}
+      un := tree.MakeUnresolvedNameWithRawParts(
+        tree.NameParts{$1, $3, $5},
+        tree.NameParts{sqlDollar[1].rawStr, sqlDollar[3].rawStr, sqlDollar[5].rawStr},
+      )
+      $$.val = &un
   }
 | db_object_name_component '.' unrestricted_name '.' unrestricted_name '.' unrestricted_name
   {
-      $$.val = &tree.UnresolvedName{NumParts:4, Parts: tree.NameParts{$7,$5,$3,$1}}
+      un := tree.MakeUnresolvedNameWithRawParts(
+        tree.NameParts{$1, $3, $5, $7},
+        tree.NameParts{sqlDollar[1].rawStr, sqlDollar[3].rawStr, sqlDollar[5].rawStr, sqlDollar[7].rawStr},
+      )
+      $$.val = &un
   }
 
 // Names for column references and wildcards.
@@ -16224,17 +16333,32 @@ prefixed_column_path:
 // The single unqualified star is handled separately by target_elem.
 column_path_with_star:
   column_path
-| db_object_name_component '.' unrestricted_name '.' unrestricted_name '.' '*'
+| db_object_name_component '.' '*'
   {
-    $$.val = &tree.UnresolvedName{Star:true, NumParts:4, Parts: tree.NameParts{"",$5,$3,$1}}
+    un := tree.MakeUnresolvedNameWithRawParts(
+      tree.NameParts{$1, ""},
+      tree.NameParts{sqlDollar[1].rawStr, ""},
+    )
+    un.Star = true
+    $$.val = &un
   }
 | db_object_name_component '.' unrestricted_name '.' '*'
   {
-    $$.val = &tree.UnresolvedName{Star:true, NumParts:3, Parts: tree.NameParts{"",$3,$1}}
+    un := tree.MakeUnresolvedNameWithRawParts(
+      tree.NameParts{$1, $3, ""},
+      tree.NameParts{sqlDollar[1].rawStr, sqlDollar[3].rawStr, ""},
+    )
+    un.Star = true
+    $$.val = &un
   }
-| db_object_name_component '.' '*'
+| db_object_name_component '.' unrestricted_name '.' unrestricted_name '.' '*'
   {
-    $$.val = &tree.UnresolvedName{Star:true, NumParts:2, Parts: tree.NameParts{"",$1}}
+    un := tree.MakeUnresolvedNameWithRawParts(
+      tree.NameParts{$1, $3, $5, ""},
+      tree.NameParts{sqlDollar[1].rawStr, sqlDollar[3].rawStr, sqlDollar[5].rawStr, ""},
+    )
+    un.Star = true
+    $$.val = &un
   }
 
 // Names for functions.
@@ -16247,12 +16371,12 @@ column_path_with_star:
 func_name:
   type_function_name
   {
-    $$.val = &tree.UnresolvedName{NumParts:1, Parts: tree.NameParts{$1}}
+    $$.val = makeUnresolvedNamePart($1, sqlDollar[1].rawStr)
   }
 | prefixed_column_path
 | INDEX_BEFORE_PAREN
   {
-    $$.val = &tree.UnresolvedName{NumParts:1, Parts: tree.NameParts{$1}}
+    $$.val = makeUnresolvedNamePart($1, sqlDollar[1].rawStr)
   }
 
 // func_name_no_crdb_extra is the same rule as func_name, but does not
@@ -16260,7 +16384,7 @@ func_name:
 func_name_no_crdb_extra:
   type_function_name_no_crdb_extra
   {
-    $$.val = &tree.UnresolvedName{NumParts:1, Parts: tree.NameParts{$1}}
+    $$.val = makeUnresolvedNamePart($1, sqlDollar[1].rawStr)
   }
 | prefixed_column_path
 

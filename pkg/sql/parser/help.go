@@ -141,7 +141,7 @@ func helpWithFunction(sqllex sqlLexer, f tree.ResolvableFunctionReference) int {
 }
 
 func helpWithFunctionByName(sqllex sqlLexer, s string) int {
-	un := &tree.UnresolvedName{NumParts: 1, Parts: tree.NameParts{s}}
+	un := &tree.UnresolvedName{NumParts: 1, Parts: tree.MakeNameParts(s)}
 	return helpWithFunction(sqllex, tree.ResolvableFunctionReference{FunctionReference: un})
 }
 

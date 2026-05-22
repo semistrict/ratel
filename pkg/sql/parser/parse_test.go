@@ -644,6 +644,106 @@ func TestUnimplementedSyntax(t *testing.T) {
 	}
 }
 
+func TestParseJSONColumnAccessPreservesRawCase(t *testing.T) {
+	testCases := []struct {
+		expr           string
+		expectedCol    tree.Name
+		expectedRawCol string
+	}{
+		{expr: `('{"Foo": 1}'::JSONB).Foo`, expectedCol: tree.Name("foo"), expectedRawCol: "Foo"},
+		{expr: `('{"Foo": 1}'::JSONB)."Foo"`, expectedCol: tree.Name("Foo"), expectedRawCol: "Foo"},
+		{expr: `(('{"Foo": {"Bar": 1}}'::JSONB).Foo).Bar`, expectedCol: tree.Name("bar"), expectedRawCol: "Bar"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.expr, func(t *testing.T) {
+			expr, err := parser.ParseExpr(tc.expr)
+			require.NoError(t, err)
+			colAccess, ok := expr.(*tree.ColumnAccessExpr)
+			require.True(t, ok, "expected ColumnAccessExpr, got %T", expr)
+			assert.Equal(t, tc.expectedCol, colAccess.ColName)
+			assert.Equal(t, tc.expectedRawCol, colAccess.RawColName)
+		})
+	}
+}
+
+func TestParseJSONDottedPathPreservesRawCase(t *testing.T) {
+	testCases := []struct {
+		expr             string
+		expectedParts    tree.NameParts
+		expectedRawParts tree.NameParts
+		expectedNumParts int
+		expectedSuffix   []string
+		expectedRawPath  []string
+	}{
+		{
+			expr:             `j.Foo`,
+			expectedParts:    tree.NameParts{"foo", "j"},
+			expectedRawParts: tree.NameParts{"Foo", "j"},
+			expectedNumParts: 2,
+		},
+		{
+			expr:             `t.j.Foo.Bar`,
+			expectedParts:    tree.NameParts{"bar", "foo", "j", "t"},
+			expectedRawParts: tree.NameParts{"Bar", "Foo", "j", "t"},
+			expectedNumParts: 4,
+		},
+		{
+			expr:             `j."Foo"."Bar"`,
+			expectedParts:    tree.NameParts{"Bar", "Foo", "j"},
+			expectedRawParts: tree.NameParts{"Bar", "Foo", "j"},
+			expectedNumParts: 3,
+		},
+		{
+			expr:             `j.Foo.Bar.Baz.Quux`,
+			expectedParts:    tree.NameParts{"baz", "bar", "foo", "j"},
+			expectedRawParts: tree.NameParts{"Baz", "Bar", "Foo", "j"},
+			expectedNumParts: 4,
+			expectedSuffix:   []string{"quux"},
+			expectedRawPath:  []string{"Quux"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.expr, func(t *testing.T) {
+			expr, err := parser.ParseExpr(tc.expr)
+			require.NoError(t, err)
+			un, suffix, rawPath := unwrapColumnAccessChain(t, expr)
+			assert.Equal(t, tc.expectedNumParts, un.NumParts)
+			assert.Equal(t, tc.expectedParts, tree.NameParts(append([]string(nil), un.Parts[:un.NumParts]...)))
+			assert.Equal(t, tc.expectedRawParts, tree.NameParts(append([]string(nil), un.RawParts[:un.NumParts]...)))
+			assert.Equal(t, tc.expectedSuffix, suffix)
+			assert.Equal(t, tc.expectedRawPath, rawPath)
+		})
+	}
+}
+
+func unwrapColumnAccessChain(t *testing.T, expr tree.Expr) (*tree.UnresolvedName, []string, []string) {
+	t.Helper()
+	var parts []string
+	var rawParts []string
+	for {
+		colAccess, ok := expr.(*tree.ColumnAccessExpr)
+		if !ok {
+			break
+		}
+		parts = append(parts, string(colAccess.ColName))
+		raw := colAccess.RawColName
+		if raw == "" {
+			raw = string(colAccess.ColName)
+		}
+		rawParts = append(rawParts, raw)
+		expr = colAccess.Expr
+	}
+	for i, j := 0, len(parts)-1; i < j; i, j = i+1, j-1 {
+		parts[i], parts[j] = parts[j], parts[i]
+		rawParts[i], rawParts[j] = rawParts[j], rawParts[i]
+	}
+	un, ok := expr.(*tree.UnresolvedName)
+	require.True(t, ok, "expected UnresolvedName base, got %T", expr)
+	return un, parts, rawParts
+}
+
 // TestParseSQL verifies that Statement.SQL is set correctly.
 func TestParseSQL(t *testing.T) {
 	testData := []struct {

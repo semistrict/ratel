@@ -29,6 +29,36 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// makeTableDescWithArray builds a table descriptor with an INT PK column (id=1)
+// and an INT[] array column (id=2), both in family 0.
+func makeTableDescWithArray() (catalog.TableDescriptor, catalog.TableColMap) {
+	columns := []descpb.ColumnDescriptor{
+		{ID: 1, Name: "pk", Type: types.Int},
+		{ID: 2, Name: "vals", Type: types.IntArray},
+	}
+	var colMap catalog.TableColMap
+	colMap.Set(1, 0)
+	colMap.Set(2, 1)
+
+	tableDesc := descpb.TableDescriptor{
+		ID:      42,
+		Columns: columns,
+		PrimaryIndex: descpb.IndexDescriptor{
+			ID:                  1,
+			KeyColumnIDs:        []descpb.ColumnID{1},
+			KeyColumnDirections: []descpb.IndexDescriptor_Direction{descpb.IndexDescriptor_ASC},
+		},
+		RowGroups: []descpb.RowGroupDescriptor{{
+			Name:            "primary",
+			ID:              0,
+			ColumnNames:     []string{"pk", "vals"},
+			ColumnIDs:       []descpb.ColumnID{1, 2},
+			DefaultColumnID: 1,
+		}},
+	}
+	return tabledesc.NewBuilder(&tableDesc).BuildImmutableTable(), colMap
+}
+
 func buildPrimaryIndexKey(
 	t *testing.T,
 	codec keys.SQLCodec,

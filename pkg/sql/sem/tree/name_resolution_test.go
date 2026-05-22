@@ -118,12 +118,12 @@ func TestClassifyColumnName(t *testing.T) {
 		{`a.b`, `a.b`, ``},
 		{`a.b.c`, `a.b.c`, ``},
 		{`a.b.c.d`, `a.b.c.d`, ``},
-		{`a.b.c.d.e`, ``, `at or near "\.": syntax error`},
+		{`a.b.c.d.e`, ``, `not a variable name`},
 		{`""`, ``, `invalid column name: ""`},
 		{`a.""`, ``, `invalid column name: a\.""`},
 		{`a.b.""`, ``, `invalid column name: a\.b\.""`},
 		{`a.b.c.""`, ``, `invalid column name: a\.b\.c\.""`},
-		{`a.b.c.d.""`, ``, `at or near "\.": syntax error`},
+		{`a.b.c.d.""`, ``, `not a variable name`},
 		{`"".a`, ``, `invalid column name: ""\.a`},
 		{`"".a.b`, ``, `invalid column name: ""\.a\.b`},
 		// CockroachDB extension: empty catalog name.
@@ -142,14 +142,14 @@ func TestClassifyColumnName(t *testing.T) {
 		{`a.*`, `a.*`, ``},
 		{`a.b.*`, `a.b.*`, ``},
 		{`a.b.c.*`, `a.b.c.*`, ``},
-		{`a.b.c.d.*`, ``, `at or near "\.": syntax error`},
+		{`a.b.c.d.*`, ``, `syntax error`},
 		{`a.b.*.c`, ``, `at or near "\.": syntax error`},
 		{`a.*.b`, ``, `at or near "\.": syntax error`},
 		{`*.b`, ``, `at or near "\.": syntax error`},
 		{`"".*`, ``, `invalid column name: "".\*`},
 		{`a."".*`, ``, `invalid column name: a\.""\.\*`},
 		{`a.b."".*`, ``, `invalid column name: a\.b\.""\.\*`},
-		{`a.b.c."".*`, ``, `at or near "\.": syntax error`},
+		{`a.b.c."".*`, ``, `syntax error`},
 
 		{`"".a.*`, ``, `invalid column name: ""\.a.*`},
 		// CockroachDB extension: empty catalog name.
@@ -172,7 +172,10 @@ func TestClassifyColumnName(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				v := stmt.AST.(*tree.Select).Select.(*tree.SelectClause).Exprs[0].Expr.(tree.VarName)
+				v, ok := stmt.AST.(*tree.Select).Select.(*tree.SelectClause).Exprs[0].Expr.(tree.VarName)
+				if !ok {
+					return nil, fmt.Errorf("not a variable name")
+				}
 				return v.NormalizeVarName()
 			}()
 			if !testutils.IsError(err, tc.err) {

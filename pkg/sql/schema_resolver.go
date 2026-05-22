@@ -504,7 +504,7 @@ func makeFunctionUndefinedError(
 		lowerName = tree.MakeUnresolvedName(strings.ToLower(name.Parts[0]))
 	}
 	wrap := func(err error) error { return err }
-	if lowerName != *name {
+	if !lowerName.Equal(name) {
 		alternative, err := sr.ResolveFunction(ctx, &lowerName, path)
 		if err != nil {
 			switch pgerror.GetPGCode(err) {

@@ -163,6 +163,9 @@ type SelectExpr struct {
 // to catch stars so that sql.checkRenderStar() can see it prior to
 // other expression transformations.
 func (node *SelectExpr) NormalizeTopLevelVarName() error {
+	if n, ok := node.Expr.(*UnresolvedName); ok && n.NumParts > 1 && !n.Star {
+		return nil
+	}
 	if vBase, ok := node.Expr.(VarName); ok {
 		v, err := vBase.NormalizeVarName()
 		if err != nil {

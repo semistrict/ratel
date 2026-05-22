@@ -69,10 +69,7 @@ func ParseDOid(ctx context.Context, evalCtx *Context, s string, t *types.T) (*tr
 			return nil, pgerror.Newf(pgcode.Syntax,
 				"invalid function name: %s", s)
 		}
-		name := tree.UnresolvedName{NumParts: len(substrs)}
-		for i := 0; i < len(substrs); i++ {
-			name.Parts[i] = substrs[len(substrs)-1-i]
-		}
+		name := tree.MakeUnresolvedName(substrs...)
 		funcDef, err := evalCtx.Planner.ResolveFunction(ctx, &name, &evalCtx.SessionData().SearchPath)
 		if err != nil {
 			return nil, err

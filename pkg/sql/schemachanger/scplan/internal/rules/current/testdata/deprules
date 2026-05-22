@@ -1650,6 +1650,20 @@ deprules
     - $index-Node[CurrentStatus] = DELETE_ONLY
     - joinTargetNode($column, $column-Target, $column-Node)
     - joinTargetNode($index, $index-Target, $index-Node)
+- name: column is WRITE_ONLY before index is backfilled
+  from: column-Node
+  kind: Precedence
+  to: index-Node
+  query:
+    - $column[Type] = '*scpb.Column'
+    - $index[Type] IN ['*scpb.PrimaryIndex', '*scpb.SecondaryIndex']
+    - joinOnColumnID($column, $index-column, $table-id, $column-id)
+    - ColumnInIndex($index-column, $index, $table-id, $column-id, $index-id)
+    - ToPublicOrTransient($column-Target, $index-Target)
+    - $column-Node[CurrentStatus] = WRITE_ONLY
+    - $index-Node[CurrentStatus] = BACKFILLED
+    - joinTargetNode($column, $column-Target, $column-Node)
+    - joinTargetNode($index, $index-Target, $index-Node)
 - name: column is WRITE_ONLY before temporary index is WRITE_ONLY
   from: column-Node
   kind: Precedence
@@ -5054,6 +5068,20 @@ deprules
     - ToPublicOrTransient($column-Target, $index-Target)
     - $column-Node[CurrentStatus] = DELETE_ONLY
     - $index-Node[CurrentStatus] = DELETE_ONLY
+    - joinTargetNode($column, $column-Target, $column-Node)
+    - joinTargetNode($index, $index-Target, $index-Node)
+- name: column is WRITE_ONLY before index is backfilled
+  from: column-Node
+  kind: Precedence
+  to: index-Node
+  query:
+    - $column[Type] = '*scpb.Column'
+    - $index[Type] IN ['*scpb.PrimaryIndex', '*scpb.SecondaryIndex']
+    - joinOnColumnID($column, $index-column, $table-id, $column-id)
+    - ColumnInIndex($index-column, $index, $table-id, $column-id, $index-id)
+    - ToPublicOrTransient($column-Target, $index-Target)
+    - $column-Node[CurrentStatus] = WRITE_ONLY
+    - $index-Node[CurrentStatus] = BACKFILLED
     - joinTargetNode($column, $column-Target, $column-Node)
     - joinTargetNode($index, $index-Target, $index-Node)
 - name: column is WRITE_ONLY before temporary index is WRITE_ONLY

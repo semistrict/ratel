@@ -208,6 +208,30 @@ func TestInspect(t *testing.T) {
 	})
 }
 
+func TestScanIdentifierRawStr(t *testing.T) {
+	testCases := []struct {
+		sql         string
+		expectedStr string
+		expectedRaw string
+	}{
+		{sql: `Foo`, expectedStr: `foo`, expectedRaw: `Foo`},
+		{sql: `"Foo"`, expectedStr: `Foo`, expectedRaw: `Foo`},
+		{sql: `needle`, expectedStr: `needle`, expectedRaw: `needle`},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.sql, func(t *testing.T) {
+			var s SQLScanner
+			s.Init(tc.sql)
+			var lval fakeSym
+			s.Scan(&lval)
+			require.Equal(t, int32(lexbase.IDENT), lval.ID())
+			require.Equal(t, tc.expectedStr, lval.Str())
+			require.Equal(t, tc.expectedRaw, lval.RawStr())
+		})
+	}
+}
+
 func tokname(id int32) string {
 	if s, ok := tokenNames[int(id)]; ok {
 		return s

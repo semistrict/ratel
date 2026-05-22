@@ -88,11 +88,77 @@ type ScanParams struct {
 }
 
 // ArrayAnyFilter describes a scan-local filter of the form
-//   <left> = ANY(array_col)
+//
+//	<left> = ANY(array_col)
+//
 // where Left does not depend on scanned row values.
 type ArrayAnyFilter struct {
 	ArrayCol TableColumnOrdinal
 	Left     tree.TypedExpr
+}
+
+// JSONExistsFilter describes a scan-local filter of the form json_col ? key,
+// json_col ?| keys, or json_col ?& keys.
+type JSONExistsFilter struct {
+	SourceCol TableColumnOrdinal
+	Kind      JSONAccessKind
+	Key       string
+	Keys      []string
+}
+
+// JSONPathCompareFilter describes a scan-local comparison filter over a JSON
+// path access whose right side does not depend on scanned row values.
+type JSONPathCompareFilter struct {
+	Access JSONAccessProgram
+	Mode   JSONPathFilterMode
+	Right  tree.TypedExpr
+}
+
+// JSONContainsFilter describes a scan-local containment filter over a JSON
+// source column or JSON path access whose right side does not depend on scanned
+// row values.
+type JSONContainsFilter struct {
+	Access      JSONAccessProgram
+	ContainedBy bool
+	Right       tree.TypedExpr
+}
+
+// JSONPathFilterMode identifies the boolean predicate applied to a scan-local
+// JSON path result.
+type JSONPathFilterMode uint8
+
+const (
+	JSONPathFilterEq JSONPathFilterMode = iota + 1
+	JSONPathFilterNe
+	JSONPathFilterLt
+	JSONPathFilterLe
+	JSONPathFilterGt
+	JSONPathFilterGe
+	JSONPathFilterIsNull
+	JSONPathFilterIsNotNull
+)
+
+// JSONAccessKind identifies a scan-local JSON access operation.
+type JSONAccessKind uint8
+
+const (
+	JSONAccessExists JSONAccessKind = iota + 1
+	JSONAccessExistsAny
+	JSONAccessExistsAll
+	JSONAccessFetchJSONPath
+	JSONAccessFetchTextPath
+)
+
+// JSONAccessProgram describes a scan-local access against a JSON column.
+type JSONAccessProgram struct {
+	SourceCol     TableColumnOrdinal
+	Kind          JSONAccessKind
+	ResultType    *types.T
+	ResultName    string
+	OutputOrdinal NodeColumnOrdinal
+	Key           string
+	Keys          []string
+	Path          []string
 }
 
 // ArrayAnyScanFilterCapable is an optional interface implemented by factories

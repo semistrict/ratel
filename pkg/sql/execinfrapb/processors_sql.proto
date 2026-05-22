@@ -47,6 +47,44 @@ message ValuesCoreSpec {
   repeated bytes raw_bytes = 2;
 }
 
+message ArrayEqualsAnyFilterSpec {
+  optional uint32 col_idx = 1 [(gogoproto.nullable) = false];
+  optional Expression left = 2 [(gogoproto.nullable) = false];
+  optional bool materialize = 3 [(gogoproto.nullable) = false];
+}
+
+message JSONExistsFilterSpec {
+  optional uint32 source_col_idx = 1 [(gogoproto.nullable) = false];
+  optional uint32 kind = 2 [(gogoproto.nullable) = false];
+  optional string key = 3 [(gogoproto.nullable) = false];
+  repeated string keys = 4;
+}
+
+message JSONAccessSpec {
+  optional uint32 source_col_idx = 1 [(gogoproto.nullable) = false];
+  optional uint32 kind = 2 [(gogoproto.nullable) = false];
+  optional string key = 3 [(gogoproto.nullable) = false];
+  repeated string keys = 4;
+  repeated string path = 5;
+  optional bool materialize = 6 [(gogoproto.nullable) = false];
+}
+
+message JSONPathCompareFilterSpec {
+  optional uint32 source_col_idx = 1 [(gogoproto.nullable) = false];
+  optional uint32 kind = 2 [(gogoproto.nullable) = false];
+  repeated string path = 3;
+  optional uint32 mode = 4 [(gogoproto.nullable) = false];
+  optional Expression right = 5 [(gogoproto.nullable) = false];
+}
+
+message JSONContainsFilterSpec {
+  optional uint32 source_col_idx = 1 [(gogoproto.nullable) = false];
+  optional uint32 kind = 2 [(gogoproto.nullable) = false];
+  repeated string path = 3;
+  optional bool contained_by = 4 [(gogoproto.nullable) = false];
+  optional Expression right = 5 [(gogoproto.nullable) = false];
+}
+
 // TableReaderSpec is the specification for a "table reader". A table reader
 // performs KV operations to retrieve rows for a table and outputs the desired
 // columns of the rows that pass a filter expression.
@@ -126,6 +164,12 @@ message TableReaderSpec {
   // (in which case we create a single processor that is placed at the
   // leaseholder of the beginning of the key spans to be scanned).
   optional bool ignore_misplanned_ranges = 22 [(gogoproto.nullable) = false];
+
+  optional ArrayEqualsAnyFilterSpec array_equals_any_filter = 23;
+  optional JSONExistsFilterSpec json_exists_filter = 24;
+  repeated JSONAccessSpec json_accesses = 25 [(gogoproto.nullable) = false];
+  optional JSONPathCompareFilterSpec json_path_compare_filter = 26;
+  repeated JSONContainsFilterSpec json_contains_filters = 27 [(gogoproto.nullable) = false];
 
   reserved 1, 2, 4, 6, 7, 8, 13, 14, 15, 16, 19;
 }

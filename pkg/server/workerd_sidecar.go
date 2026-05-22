@@ -42,6 +42,8 @@ import (
 // is used; in tests a random available port is picked instead.
 const defaultWorkerdListenPort = 18787
 
+const ratelWorkerdDOStorageEnv = "RATEL_WORKERD_DO_STORAGE"
+
 // WorkerdSidecar manages the lifecycle of a workerd child process. It starts
 // workerd on demand when workers exist in system.worker_scripts, passes a
 // socketpair fd for DO storage communication, and supports reloading the
@@ -197,62 +199,81 @@ func (w *WorkerdSidecar) startProcess(ctx context.Context, workers []WorkerDef) 
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	// Create a Unix socketpair for DO storage communication.
-	fds, err := syscall.Socketpair(syscall.AF_UNIX, syscall.SOCK_STREAM, 0)
-	if err != nil {
-		return errors.Wrap(err, "creating socketpair for DO storage")
-	}
-	parentFile := os.NewFile(uintptr(fds[0]), "ratel-storage-parent")
-	childFile := os.NewFile(uintptr(fds[1]), "ratel-storage-child")
+	var parentFile *os.File
+	var childFile *os.File
+	storageFd := -1
+	useRatelStorage := os.Getenv(ratelWorkerdDOStorageEnv) != "in-memory"
+	if useRatelStorage {
+		// Create a Unix socketpair for DO storage communication.
+		fds, err := syscall.Socketpair(syscall.AF_UNIX, syscall.SOCK_STREAM, 0)
+		if err != nil {
+			return errors.Wrap(err, "creating socketpair for DO storage")
+		}
+		parentFile = os.NewFile(uintptr(fds[0]), "ratel-storage-parent")
+		childFile = os.NewFile(uintptr(fds[1]), "ratel-storage-child")
 
-	// The child fd will be passed as fd 3 (ExtraFiles[0]).
-	storageFd := 3
+		// The child fd will be passed as fd 3 (ExtraFiles[0]).
+		storageFd = 3
+	}
 
 	// Generate workerd config.
 	configPath, err := generateWorkerdConfig(w.workDir, workers, w.listenPort, storageFd)
 	if err != nil {
-		parentFile.Close()
-		childFile.Close()
+		if parentFile != nil {
+			parentFile.Close()
+		}
+		if childFile != nil {
+			childFile.Close()
+		}
 		return errors.Wrap(err, "generating workerd config")
 	}
 
 	cmd := exec.Command(w.binaryPath, "serve", configPath, "--verbose")
-	cmd.ExtraFiles = []*os.File{childFile}
+	if childFile != nil {
+		cmd.ExtraFiles = []*os.File{childFile}
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Start(); err != nil {
-		parentFile.Close()
-		childFile.Close()
+		if parentFile != nil {
+			parentFile.Close()
+		}
+		if childFile != nil {
+			childFile.Close()
+		}
 		return errors.Wrap(err, "starting workerd sidecar")
 	}
 
-	// Close the child end in the parent process -- workerd has it now.
-	childFile.Close()
+	var rpcConn *rpc.Conn
+	if useRatelStorage {
+		// Close the child end in the parent process -- workerd has it now.
+		childFile.Close()
 
-	// Wrap the parent end of the socketpair as a net.Conn for capnp RPC.
-	parentConn, err := net.FileConn(parentFile)
-	if err != nil {
+		// Wrap the parent end of the socketpair as a net.Conn for capnp RPC.
+		parentConn, err := net.FileConn(parentFile)
+		if err != nil {
+			parentFile.Close()
+			cmd.Process.Signal(os.Interrupt)
+			cmd.Wait()
+			return errors.Wrap(err, "creating conn from storage socketpair")
+		}
+		// FileConn dups the fd, so close our original handle.
 		parentFile.Close()
-		cmd.Process.Signal(os.Interrupt)
-		cmd.Wait()
-		return errors.Wrap(err, "creating conn from storage socketpair")
-	}
-	// FileConn dups the fd, so close our original handle.
-	parentFile.Close()
 
-	// Create the capnp RPC connection with the ActorStorage server as
-	// the bootstrap capability. workerd will call getStage(actorId) to
-	// get per-actor Stage capabilities.
-	storageServer := &actorstorage.StorageServer{
-		DB:     w.db,
-		Codec:  w.codec,
-		Tracer: w.tracer,
+		// Create the capnp RPC connection with the ActorStorage server as
+		// the bootstrap capability. workerd will call getStage(actorId) to
+		// get per-actor Stage capabilities.
+		storageServer := &actorstorage.StorageServer{
+			DB:     w.db,
+			Codec:  w.codec,
+			Tracer: w.tracer,
+		}
+		transport := rpc.NewStreamTransport(parentConn)
+		rpcConn = rpc.NewConn(transport, &rpc.Options{
+			BootstrapClient: actorstorage.NewClient(storageServer),
+		})
 	}
-	transport := rpc.NewStreamTransport(parentConn)
-	rpcConn := rpc.NewConn(transport, &rpc.Options{
-		BootstrapClient: actorstorage.NewClient(storageServer),
-	})
 
 	// Start the monitor goroutine. It will exit when monCtx is cancelled.
 	monCtx, monCancel := context.WithCancel(context.Background())
@@ -266,7 +287,9 @@ func (w *WorkerdSidecar) startProcess(ctx context.Context, workers []WorkerDef) 
 		w.monitor(monCtx, waitDone)
 	}); err != nil {
 		monCancel()
-		rpcConn.Close()
+		if rpcConn != nil {
+			rpcConn.Close()
+		}
 		cmd.Process.Signal(os.Interrupt)
 		<-waitDone
 		return err
@@ -363,11 +386,18 @@ func (w *WorkerdSidecar) monitor(ctx context.Context, waitDone <-chan struct{}) 
 
 // workerBindings is the JSON structure stored in the bindings column.
 type workerBindings struct {
-	DurableObjects []doBinding `json:"durable_objects,omitempty"`
+	DurableObjects []doBinding    `json:"durable_objects,omitempty"`
+	Assets         []assetBinding `json:"assets,omitempty"`
 }
 
 type doBinding struct {
 	ClassName string `json:"class_name"`
+}
+
+type assetBinding struct {
+	Path        string `json:"path"`
+	ContentType string `json:"content_type,omitempty"`
+	DataBase64  string `json:"data_base64"`
 }
 
 // fetchWorkerDefs queries system.worker_scripts for the latest version of
@@ -405,6 +435,7 @@ func (w *WorkerdSidecar) fetchWorkerDefs(ctx context.Context) ([]WorkerDef, erro
 		compatDate := string(*row[2].(*tree.DString))
 
 		var doClasses []string
+		var assets []WorkerAsset
 		if row[3] != nil && row[3] != tree.DNull {
 			bindingsStr := row[3].(*tree.DJSON).JSON.String()
 			var b workerBindings
@@ -414,6 +445,13 @@ func (w *WorkerdSidecar) fetchWorkerDefs(ctx context.Context) ([]WorkerDef, erro
 				for _, do := range b.DurableObjects {
 					doClasses = append(doClasses, do.ClassName)
 				}
+				for _, asset := range b.Assets {
+					assets = append(assets, WorkerAsset{
+						Path:        asset.Path,
+						ContentType: asset.ContentType,
+						DataBase64:  asset.DataBase64,
+					})
+				}
 			}
 		}
 
@@ -422,6 +460,7 @@ func (w *WorkerdSidecar) fetchWorkerDefs(ctx context.Context) ([]WorkerDef, erro
 			Script:     script,
 			CompatDate: compatDate,
 			DOClasses:  doClasses,
+			Assets:     assets,
 		})
 	}
 	return workers, nil

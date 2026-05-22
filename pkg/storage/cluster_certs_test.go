@@ -163,3 +163,40 @@ func TestDownloadClientCerts(t *testing.T) {
 		require.Error(t, err, "%s should not be present", name)
 	}
 }
+
+func TestGenerateAndUploadCACertsAndGenerateNodeCert(t *testing.T) {
+	ctx := t.Context()
+	store := remote.NewInMem()
+	defer func() { _ = store.Close() }()
+
+	passphrase := []byte("correct horse battery staple")
+	require.NoError(t, GenerateAndUploadCACerts(ctx, store, passphrase))
+
+	for _, name := range []string{"ca.crt", "ca.key", "client.root.crt", "client.root.key"} {
+		size, err := store.Size(name)
+		require.NoError(t, err, "cert %s should exist", name)
+		require.Greater(t, size, int64(0), "cert %s should be non-empty", name)
+	}
+	_, err := store.Size("node.crt")
+	require.Error(t, err, "node cert should not be uploaded with shared CA certs")
+	_, err = store.Size("node.key")
+	require.Error(t, err, "node key should not be uploaded with shared CA certs")
+
+	rawCAKey, err := ReadObject(ctx, store, "ca.key")
+	require.NoError(t, err)
+	require.True(t, bytes.HasPrefix(rawCAKey, encBundleMagic))
+
+	localDir := t.TempDir()
+	require.NoError(t, DownloadCACerts(ctx, store, localDir, passphrase))
+	require.NoError(t, GenerateNodeCert(localDir, []string{"node1.example", "localhost"}))
+
+	for _, name := range []string{
+		"ca.crt", "ca.key",
+		"node.crt", "node.key",
+		"client.root.crt", "client.root.key",
+	} {
+		data, err := os.ReadFile(filepath.Join(localDir, name))
+		require.NoError(t, err, "should be able to read %s", name)
+		require.NotEmpty(t, data, "%s should be non-empty", name)
+	}
+}

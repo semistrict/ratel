@@ -16,9 +16,11 @@ package server
 
 import (
 	_ "embed"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -31,6 +33,13 @@ type WorkerDef struct {
 	Script     string
 	CompatDate string
 	DOClasses  []string // Durable Object class names exported by this worker
+	Assets     []WorkerAsset
+}
+
+type WorkerAsset struct {
+	Path        string
+	ContentType string
+	DataBase64  string
 }
 
 // generateWorkerdConfig writes a workerd capnp config file and the associated
@@ -39,7 +48,8 @@ type WorkerDef struct {
 // The config contains:
 //   - A router worker that dispatches incoming HTTP requests by X-Worker-Name header
 //   - One service per deployed worker
-//   - Durable Object namespace bindings backed by ratel storage (fd)
+//   - Durable Object namespace bindings backed by ratel storage (fd), or
+//     workerd's in-memory storage when storageFd is negative
 //   - An HTTP socket on listenPort
 func generateWorkerdConfig(
 	dir string, workers []WorkerDef, listenPort int, storageFd int,
@@ -66,6 +76,10 @@ func generateWorkerdConfig(
 		cid := workerCapnpID(w.Name)
 		fmt.Fprintf(&cfg, "    ( name = \"%s\",\n", w.Name)
 		fmt.Fprintf(&cfg, "      worker = .%s ),\n", cid)
+		if len(w.Assets) > 0 {
+			fmt.Fprintf(&cfg, "    ( name = \"%s-assets\",\n", w.Name)
+			fmt.Fprintf(&cfg, "      worker = .%sAssets ),\n", cid)
+		}
 	}
 
 	fmt.Fprintf(&cfg, "  ],\n")
@@ -108,6 +122,11 @@ func generateWorkerdConfig(
 		if err := os.WriteFile(scriptPath, []byte(w.Script), 0644); err != nil {
 			return "", err
 		}
+		if len(w.Assets) > 0 {
+			if err := writeWorkerAssets(dir, w); err != nil {
+				return "", err
+			}
+		}
 
 		fmt.Fprintf(&cfg, "const %s :Workerd.Worker = (\n", cid)
 		fmt.Fprintf(&cfg, "  modules = [\n")
@@ -115,7 +134,6 @@ func generateWorkerdConfig(
 		fmt.Fprintf(&cfg, "  ],\n")
 		fmt.Fprintf(&cfg, "  compatibilityDate = \"%s\",\n", w.CompatDate)
 
-		// Durable Object bindings and classes.
 		if len(w.DOClasses) > 0 {
 			fmt.Fprintf(&cfg, "  durableObjectNamespaces = [\n")
 			for _, cls := range w.DOClasses {
@@ -123,16 +141,38 @@ func generateWorkerdConfig(
 				fmt.Fprintf(&cfg, "      uniqueKey = \"%s/%s\" ),\n", w.Name, cls)
 			}
 			fmt.Fprintf(&cfg, "  ],\n")
-			fmt.Fprintf(&cfg, "  durableObjectStorage = ( ratel = %d ),\n", storageFd)
+			if storageFd >= 0 {
+				fmt.Fprintf(&cfg, "  durableObjectStorage = ( ratel = %d ),\n", storageFd)
+			} else {
+				fmt.Fprintf(&cfg, "  durableObjectStorage = ( inMemory = void ),\n")
+			}
+		}
 
+		if len(w.DOClasses) > 0 || len(w.Assets) > 0 {
 			fmt.Fprintf(&cfg, "  bindings = [\n")
+		}
+		if len(w.Assets) > 0 {
+			fmt.Fprintf(&cfg, "    ( name = \"ASSETS\", service = \"%s-assets\" ),\n", w.Name)
+		}
+		if len(w.DOClasses) > 0 {
 			for _, cls := range w.DOClasses {
 				fmt.Fprintf(&cfg, "    ( name = \"%s\", durableObjectNamespace = \"%s\" ),\n", cls, cls)
 			}
+		}
+		if len(w.DOClasses) > 0 || len(w.Assets) > 0 {
 			fmt.Fprintf(&cfg, "  ],\n")
 		}
 
 		fmt.Fprintf(&cfg, ");\n\n")
+
+		if len(w.Assets) > 0 {
+			fmt.Fprintf(&cfg, "const %sAssets :Workerd.Worker = (\n", cid)
+			fmt.Fprintf(&cfg, "  modules = [\n")
+			fmt.Fprintf(&cfg, "    ( name = \"asset-worker\", esModule = embed \"assets_%s/asset-worker.js\" ),\n", w.Name)
+			fmt.Fprintf(&cfg, "  ],\n")
+			fmt.Fprintf(&cfg, "  compatibilityDate = \"%s\",\n", w.CompatDate)
+			fmt.Fprintf(&cfg, ");\n\n")
+		}
 	}
 
 	configPath = filepath.Join(dir, "config.capnp")
@@ -140,6 +180,55 @@ func generateWorkerdConfig(
 		return "", err
 	}
 	return configPath, nil
+}
+
+func writeWorkerAssets(dir string, w WorkerDef) error {
+	assetDir := filepath.Join(dir, "assets_"+w.Name)
+	if err := os.MkdirAll(assetDir, 0755); err != nil {
+		return err
+	}
+
+	var manifest strings.Builder
+	manifest.WriteString("const manifest = new Map([\n")
+	for _, asset := range w.Assets {
+		path := strings.TrimPrefix(asset.Path, "/")
+		if path == "" || strings.Contains(path, "..") {
+			return fmt.Errorf("invalid asset path %q", asset.Path)
+		}
+		if _, err := base64.StdEncoding.DecodeString(asset.DataBase64); err != nil {
+			return err
+		}
+		manifest.WriteString("  [")
+		manifest.WriteString(strconv.Quote("/" + path))
+		manifest.WriteString(", { contentType: ")
+		manifest.WriteString(strconv.Quote(asset.ContentType))
+		manifest.WriteString(", data: ")
+		manifest.WriteString(strconv.Quote(asset.DataBase64))
+		manifest.WriteString(" }],\n")
+	}
+	manifest.WriteString("]);\n")
+	manifest.WriteString(`
+function decodeBase64(data) {
+  const binary = atob(data);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+export default {
+  fetch(request) {
+    const url = new URL(request.url);
+    let path = url.pathname;
+    if (path === "/" || path.endsWith("/")) path += "index.html";
+    const asset = manifest.get(path);
+    if (!asset) return new Response("not found", { status: 404 });
+    const headers = new Headers();
+    if (asset.contentType) headers.set("Content-Type", asset.contentType);
+    return new Response(decodeBase64(asset.data), { headers });
+  }
+};
+`)
+	return os.WriteFile(filepath.Join(assetDir, "asset-worker.js"), []byte(manifest.String()), 0644)
 }
 
 // workerCapnpID converts a worker name like "my-worker" to a camelCase capnp

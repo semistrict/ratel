@@ -15,10 +15,17 @@
 package cli
 
 import (
+	"bytes"
 	"context"
-	"crypto/sha256"
+	"crypto/rand"
+	"encoding/base64"
+	gohex "encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io"
+	"mime"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -48,10 +55,27 @@ import (
 	"golang.org/x/term"
 )
 
+// autoNodeID generates a node ID from hostname plus a random suffix.
+func autoNodeID() string {
+	host, _ := os.Hostname()
+	if host == "" {
+		host = "node"
+	}
+	var b [4]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("%s-%s", host, gohex.EncodeToString(b[:]))
+}
+
 var ratelListenAddr string
 var ratelHTTPAddr string
 var ratelNoPassphrase bool
 var ratelNodeID string
+var ratelDeployCompatDate string
+var ratelDeployConfig string
+var ratelDeployDOClasses []string
+var ratelDeployName string
 var ratelSQLHost string
 var ratelTLS bool
 
@@ -99,6 +123,18 @@ With a storage URL, discover nodes from S3:
 	RunE: runRatelSQL,
 }
 
+var ratelDeployCmd = &cobra.Command{
+	Use:   "deploy <storage-url | host:port> <file.js>",
+	Short: "Deploy a JavaScript worker to the cluster",
+	Long: `Deploy a JavaScript worker file. The worker name is derived from the
+filename (e.g. counter.js becomes "counter").
+
+  ratel deploy s3://bucket/path worker.js
+  ratel deploy localhost:5273 worker.js`,
+	Args: cobra.ExactArgs(2),
+	RunE: runRatelDeploy,
+}
+
 var ratelStartLocalCmd = &cobra.Command{
 	Use:   "start-local",
 	Short: "Start a single-node cluster for local development",
@@ -111,25 +147,24 @@ Connect with:  ratel sql localhost:26257`,
 }
 
 func init() {
-	ratelCmd.AddCommand(ratelInitCmd, ratelJoinCmd, ratelSQLCmd, ratelStartLocalCmd)
+	ratelCmd.AddCommand(ratelInitCmd, ratelJoinCmd, ratelSQLCmd, ratelDeployCmd, ratelStartLocalCmd)
 
 	ratelStartLocalCmd.Flags().StringVar(&ratelListenAddr, "listen-addr", "localhost:26257",
 		"Address to listen on for RPC and SQL connections")
-	ratelStartLocalCmd.Flags().StringVar(&ratelHTTPAddr, "http-addr", "localhost:8080",
+	ratelStartLocalCmd.Flags().StringVar(&ratelHTTPAddr, "http-addr", "localhost:5273",
 		"Address to listen on for the admin HTTP interface")
 
 	for _, cmd := range []*cobra.Command{ratelInitCmd, ratelJoinCmd} {
 		cmd.Flags().StringVar(&ratelListenAddr, "listen-addr", "localhost:26257",
 			"Address to listen on for RPC and SQL connections")
-		cmd.Flags().StringVar(&ratelHTTPAddr, "http-addr", "localhost:8080",
+		cmd.Flags().StringVar(&ratelHTTPAddr, "http-addr", "localhost:5273",
 			"Address to listen on for the admin HTTP interface")
 		cmd.Flags().BoolVar(&ratelTLS, "tls", false,
 			"Enable application-level TLS (generates and manages certificates via S3)")
 		cmd.Flags().BoolVar(&ratelNoPassphrase, "no-passphrase", false,
 			"Do not encrypt the CA key (skip passphrase prompt, only with --tls)")
 		cmd.Flags().StringVar(&ratelNodeID, "node-id", "",
-			"Stable operator-assigned node identity (e.g. ratel-1)")
-		_ = cmd.MarkFlagRequired("node-id")
+			"Stable operator-assigned node identity (e.g. ratel-1); auto-generated if omitted")
 	}
 
 	// SQL-specific flags.
@@ -138,6 +173,15 @@ func init() {
 		"Override the node address to connect to (e.g. localhost:26257 when using fly proxy)")
 	ratelSQLCmd.Flags().BoolVar(&ratelTLS, "tls", false,
 		"Connect using TLS (download client certs from S3)")
+
+	ratelDeployCmd.Flags().StringVar(&ratelDeployCompatDate, "compat-date", "2024-01-01",
+		"Cloudflare Workers compatibility date for the deployed worker")
+	ratelDeployCmd.Flags().StringVar(&ratelDeployConfig, "config", "",
+		"Path to worker.jsonc config; defaults to worker.jsonc beside the JavaScript file when present")
+	ratelDeployCmd.Flags().StringArrayVar(&ratelDeployDOClasses, "do-class", nil,
+		"Durable Object class exported by this worker; repeat for multiple classes")
+	ratelDeployCmd.Flags().StringVar(&ratelDeployName, "name", "",
+		"Worker name to deploy; defaults to the JavaScript filename without extension")
 }
 
 // ratelSQLExecStmts holds -e statements for ratel sql.
@@ -204,10 +248,11 @@ func ratelPassphrase(confirm bool) ([]byte, error) {
 	return pass, nil
 }
 
-// ratelLocalDir returns a stable temp directory derived from the cluster URL.
-func ratelLocalDir(clusterURL string) string {
-	h := sha256.Sum256([]byte(clusterURL))
-	return filepath.Join(os.TempDir(), fmt.Sprintf("ratel-%x", h[:8]))
+// ratelLocalDir returns a stable temp directory derived from the cluster UUID.
+// Each cluster gets its own local store directory, preventing stale data
+// conflicts when the same URL is reused for a new cluster.
+func ratelLocalDir(clusterID string) string {
+	return filepath.Join(os.TempDir(), fmt.Sprintf("ratel-%s", clusterID))
 }
 
 func runRatelStartLocal(cmd *cobra.Command, args []string) error {
@@ -234,13 +279,36 @@ func runRatelStartLocal(cmd *cobra.Command, args []string) error {
 
 func runRatelInit(cmd *cobra.Command, args []string) error {
 	clusterURL := args[0]
+	ctx := context.Background()
+
+	// Probe storage; offer to create the bucket if it does not exist.
+	if err := storage.ProbeStorage(ctx, clusterURL); err != nil {
+		if errors.Is(err, storage.ErrBucketNotFound) {
+			bucket := storage.BucketName(clusterURL)
+			fmt.Fprintf(os.Stderr, "Bucket %q does not exist. Create it? [y/N] ", bucket)
+			var answer string
+			fmt.Scanln(&answer)
+			if answer != "y" && answer != "Y" {
+				return errors.New("bucket does not exist")
+			}
+			if err := storage.CreateBucket(ctx, clusterURL); err != nil {
+				return errors.Wrap(err, "creating bucket")
+			}
+			fmt.Fprintf(os.Stderr, "Created bucket %q\n", bucket)
+		} else {
+			return errors.Wrap(err, "probing storage")
+		}
+	}
 
 	cs, err := storage.ClusterStorageFromURL(clusterURL)
 	if err != nil {
 		return err
 	}
 
-	ctx := context.Background()
+	if ratelNodeID == "" {
+		ratelNodeID = autoNodeID()
+		fmt.Fprintf(os.Stderr, "Auto-assigned node ID: %s\n", ratelNodeID)
+	}
 
 	// Check for duplicate running node with same --node-id.
 	if err := checkNodeLiveness(ctx, cs.Nodes, ratelNodeID); err != nil {
@@ -256,7 +324,13 @@ func runRatelInit(cmd *cobra.Command, args []string) error {
 		return errors.Newf("cluster already initialized: found %d node(s) at %s", len(nodes), clusterURL)
 	}
 
-	ld := ratelLocalDir(clusterURL)
+	clusterUUID, err := storage.WriteClusterID(ctx, cs.Metadata)
+	if err != nil {
+		return errors.Wrap(err, "writing cluster ID")
+	}
+	fmt.Fprintf(os.Stderr, "Cluster ID: %s\n", clusterUUID)
+
+	ld := ratelLocalDir(clusterUUID.String())
 	certsDir := ""
 	storeDir := filepath.Join(ld, "store")
 
@@ -274,14 +348,18 @@ func runRatelInit(cmd *cobra.Command, args []string) error {
 		}
 		if !exists {
 			fmt.Fprintln(os.Stderr, "Generating CA and client certificates...")
-			if err := storage.GenerateAndUploadCerts(ctx, cs.Certs, passphrase); err != nil {
+			if err := storage.GenerateAndUploadCACerts(ctx, cs.Certs, passphrase); err != nil {
 				return err
 			}
 		}
 
-		// Download the shared CA, node, and client cert set.
+		// Download CA + client certs, then generate this node's cert locally.
 		certsDir = filepath.Join(ld, "certs")
-		if err := storage.DownloadCerts(ctx, cs.Certs, certsDir, passphrase); err != nil {
+		if err := storage.DownloadCACerts(ctx, cs.Certs, certsDir, passphrase); err != nil {
+			return err
+		}
+		hostname := ratelAdvertiseHost()
+		if err := storage.GenerateNodeCert(certsDir, []string{hostname, "localhost"}); err != nil {
 			return err
 		}
 	}
@@ -311,9 +389,20 @@ func runRatelJoin(cmd *cobra.Command, args []string) error {
 
 	ctx := context.Background()
 
+	if ratelNodeID == "" {
+		ratelNodeID = autoNodeID()
+		fmt.Fprintf(os.Stderr, "Auto-assigned node ID: %s\n", ratelNodeID)
+	}
+
 	// Check for duplicate running node with same --node-id.
 	if err := checkNodeLiveness(ctx, cs.Nodes, ratelNodeID); err != nil {
 		return err
+	}
+
+	// Read cluster UUID from metadata storage.
+	clusterUUID, err := storage.ReadClusterID(ctx, cs.Metadata)
+	if err != nil {
+		return errors.Wrap(err, "reading cluster ID (is the cluster initialized?)")
 	}
 
 	// Discover peers.
@@ -330,7 +419,7 @@ func runRatelJoin(cmd *cobra.Command, args []string) error {
 		joinList = append(joinList, n.Addr)
 	}
 
-	ld := ratelLocalDir(clusterURL)
+	ld := ratelLocalDir(clusterUUID.String())
 	certsDir := ""
 	storeDir := filepath.Join(ld, "store")
 
@@ -342,8 +431,12 @@ func runRatelJoin(cmd *cobra.Command, args []string) error {
 		}
 
 		certsDir = filepath.Join(ld, "certs")
-		if err := storage.DownloadCerts(ctx, cs.Certs, certsDir, passphrase); err != nil {
+		if err := storage.DownloadCACerts(ctx, cs.Certs, certsDir, passphrase); err != nil {
 			return errors.Wrap(err, "downloading certs (is the cluster initialized?)")
+		}
+		hostname := ratelAdvertiseHost()
+		if err := storage.GenerateNodeCert(certsDir, []string{hostname, "localhost"}); err != nil {
+			return err
 		}
 	}
 
@@ -558,6 +651,410 @@ func runHeartbeat(ctx context.Context, quiesce <-chan struct{}, store remote.Sto
 	}
 }
 
+func runRatelDeploy(cmd *cobra.Command, args []string) error {
+	target := args[0]
+	jsFile := args[1]
+
+	script, err := os.ReadFile(jsFile)
+	if err != nil {
+		return errors.Wrapf(err, "reading %s", jsFile)
+	}
+
+	base := filepath.Base(jsFile)
+	name := strings.TrimSuffix(base, filepath.Ext(base))
+	compatDate := ratelDeployCompatDate
+	doClasses := append([]string(nil), ratelDeployDOClasses...)
+
+	cfg, err := readRatelWorkerConfig(jsFile, ratelDeployConfig)
+	if err != nil {
+		return err
+	}
+	if cfg.Name != "" {
+		name = cfg.Name
+	}
+	if cfg.CompatibilityDate != "" {
+		compatDate = cfg.CompatibilityDate
+	}
+	if len(cfg.DOClasses) > 0 {
+		doClasses = cfg.DOClasses
+	}
+	if ratelDeployName != "" && ratelDeployFlagChanged(cmd, "name") {
+		name = ratelDeployName
+	}
+	if ratelDeployCompatDate != "" && ratelDeployFlagChanged(cmd, "compat-date") {
+		compatDate = ratelDeployCompatDate
+	}
+	if len(ratelDeployDOClasses) > 0 && ratelDeployFlagChanged(cmd, "do-class") {
+		doClasses = ratelDeployDOClasses
+	}
+	if name == "" {
+		return errors.Newf("cannot derive worker name from %q", jsFile)
+	}
+
+	var httpAddr string
+	if strings.Contains(target, "://") {
+		cs, err := storage.ClusterStorageFromURL(target)
+		if err != nil {
+			return err
+		}
+		ctx := context.Background()
+		nodes, err := storage.ListNodes(ctx, cs.Nodes)
+		if err != nil {
+			return errors.Wrap(err, "listing nodes")
+		}
+		if len(nodes) == 0 {
+			return errors.New("no nodes found; is the cluster running?")
+		}
+		httpAddr = nodes[0].HTTPAddr
+	} else {
+		httpAddr = target
+	}
+
+	if !strings.HasPrefix(httpAddr, "http") {
+		httpAddr = "http://" + httpAddr
+	}
+
+	deployURL := fmt.Sprintf("%s/api/v2/workers/%s/", httpAddr, name)
+	req, err := http.NewRequest("PUT", deployURL, bytes.NewReader(script))
+	if err != nil {
+		return errors.Wrap(err, "creating request")
+	}
+	req.Header.Set("Content-Type", "application/javascript")
+	if compatDate != "" {
+		req.Header.Set("X-Compat-Date", compatDate)
+	}
+	bindings := struct {
+		DurableObjects []struct {
+			ClassName string `json:"class_name"`
+		} `json:"durable_objects,omitempty"`
+		Assets []ratelWorkerAsset `json:"assets,omitempty"`
+	}{}
+	if len(doClasses) > 0 {
+		for _, cls := range doClasses {
+			bindings.DurableObjects = append(bindings.DurableObjects, struct {
+				ClassName string `json:"class_name"`
+			}{ClassName: cls})
+		}
+	}
+	if cfg.AssetsDir != "" {
+		assets, err := readRatelWorkerAssets(cfg.AssetsDir)
+		if err != nil {
+			return err
+		}
+		bindings.Assets = assets
+	}
+	if len(bindings.DurableObjects) > 0 || len(bindings.Assets) > 0 {
+		bindingsJSON, err := json.Marshal(bindings)
+		if err != nil {
+			return errors.Wrap(err, "marshaling worker bindings")
+		}
+		req.Header.Set("X-Bindings", string(bindingsJSON))
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return errors.Wrapf(err, "deploying to %s", deployURL)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		return errors.Newf("deploy failed (%s): %s", resp.Status, string(body))
+	}
+
+	var result struct {
+		Name    string `json:"name"`
+		Version int64  `json:"version"`
+	}
+	if err := json.Unmarshal(body, &result); err == nil {
+		fmt.Fprintf(os.Stderr, "Deployed %s v%d\n", result.Name, result.Version)
+	} else {
+		fmt.Fprintf(os.Stderr, "Deployed %s\n", name)
+	}
+	return nil
+}
+
+type ratelWorkerConfig struct {
+	Name              string
+	CompatibilityDate string
+	DOClasses         []string
+	AssetsDir         string
+}
+
+func ratelDeployFlagChanged(cmd *cobra.Command, name string) bool {
+	return cmd == nil || cmd.Flags().Changed(name)
+}
+
+func readRatelWorkerConfig(jsFile, configPath string) (ratelWorkerConfig, error) {
+	if configPath == "" {
+		configPath = filepath.Join(filepath.Dir(jsFile), "worker.jsonc")
+		if _, err := os.Stat(configPath); err != nil {
+			if os.IsNotExist(err) {
+				return ratelWorkerConfig{}, nil
+			}
+			return ratelWorkerConfig{}, errors.Wrapf(err, "checking %s", configPath)
+		}
+	}
+
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return ratelWorkerConfig{}, errors.Wrapf(err, "reading %s", configPath)
+	}
+	cfg, err := parseRatelWorkerJSONC(data)
+	if err != nil {
+		return ratelWorkerConfig{}, errors.Wrapf(err, "parsing %s", configPath)
+	}
+	if cfg.AssetsDir != "" && !filepath.IsAbs(cfg.AssetsDir) {
+		cfg.AssetsDir = filepath.Join(filepath.Dir(configPath), cfg.AssetsDir)
+	}
+	return cfg, nil
+}
+
+func parseRatelWorkerJSONC(data []byte) (ratelWorkerConfig, error) {
+	jsonData := stripJSONCTrailingCommas(stripJSONCComments(string(data)))
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(jsonData), &raw); err != nil {
+		return ratelWorkerConfig{}, err
+	}
+
+	var cfg ratelWorkerConfig
+	if err := unmarshalOptionalString(raw, "name", &cfg.Name); err != nil {
+		return cfg, err
+	}
+	if err := unmarshalOptionalString(raw, "compatibility_date", &cfg.CompatibilityDate); err != nil {
+		return cfg, err
+	}
+	if cfg.CompatibilityDate == "" {
+		if err := unmarshalOptionalString(raw, "compat_date", &cfg.CompatibilityDate); err != nil {
+			return cfg, err
+		}
+	}
+	if err := unmarshalOptionalStringArray(raw, "do_classes", &cfg.DOClasses); err != nil {
+		return cfg, err
+	}
+	if err := appendDurableObjectClasses(raw["durable_objects"], &cfg.DOClasses); err != nil {
+		return cfg, err
+	}
+	if err := unmarshalAssets(raw["assets"], &cfg.AssetsDir); err != nil {
+		return cfg, err
+	}
+	return cfg, nil
+}
+
+func unmarshalAssets(raw json.RawMessage, dest *string) error {
+	if len(raw) == 0 {
+		return nil
+	}
+	var dir string
+	if err := json.Unmarshal(raw, &dir); err == nil {
+		*dest = dir
+		return nil
+	}
+	var obj struct {
+		Directory string `json:"directory"`
+	}
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		return errors.Wrap(err, "assets must be a string or object")
+	}
+	*dest = obj.Directory
+	return nil
+}
+
+type ratelWorkerAsset struct {
+	Path        string `json:"path"`
+	ContentType string `json:"content_type,omitempty"`
+	DataBase64  string `json:"data_base64"`
+}
+
+func readRatelWorkerAssets(dir string) ([]ratelWorkerAsset, error) {
+	var assets []ratelWorkerAsset
+	err := filepath.WalkDir(dir, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		if !info.Mode().IsRegular() {
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(dir, path)
+		if err != nil {
+			return err
+		}
+		rel = filepath.ToSlash(rel)
+		contentType := mime.TypeByExtension(filepath.Ext(path))
+		if contentType == "" {
+			contentType = http.DetectContentType(data)
+		}
+		assets = append(assets, ratelWorkerAsset{
+			Path:        "/" + strings.TrimPrefix(rel, "/"),
+			ContentType: contentType,
+			DataBase64:  base64.StdEncoding.EncodeToString(data),
+		})
+		return nil
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "reading assets directory %s", dir)
+	}
+	if len(assets) == 0 {
+		return nil, errors.Newf("assets directory %s is empty", dir)
+	}
+	return assets, nil
+}
+
+func unmarshalOptionalString(raw map[string]json.RawMessage, key string, dest *string) error {
+	if len(raw[key]) == 0 {
+		return nil
+	}
+	if err := json.Unmarshal(raw[key], dest); err != nil {
+		return errors.Wrapf(err, "%s must be a string", key)
+	}
+	return nil
+}
+
+func unmarshalOptionalStringArray(raw map[string]json.RawMessage, key string, dest *[]string) error {
+	if len(raw[key]) == 0 {
+		return nil
+	}
+	if err := json.Unmarshal(raw[key], dest); err != nil {
+		return errors.Wrapf(err, "%s must be an array of strings", key)
+	}
+	return nil
+}
+
+func appendDurableObjectClasses(raw json.RawMessage, dest *[]string) error {
+	if len(raw) == 0 {
+		return nil
+	}
+
+	var arr []struct {
+		ClassName string `json:"class_name"`
+	}
+	if err := json.Unmarshal(raw, &arr); err == nil {
+		for _, binding := range arr {
+			if binding.ClassName != "" {
+				*dest = append(*dest, binding.ClassName)
+			}
+		}
+		return nil
+	}
+
+	var obj struct {
+		Bindings []struct {
+			ClassName string `json:"class_name"`
+		} `json:"bindings"`
+		Classes []string `json:"classes"`
+	}
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		return errors.Wrap(err, "durable_objects must be an array or object")
+	}
+	for _, cls := range obj.Classes {
+		if cls != "" {
+			*dest = append(*dest, cls)
+		}
+	}
+	for _, binding := range obj.Bindings {
+		if binding.ClassName != "" {
+			*dest = append(*dest, binding.ClassName)
+		}
+	}
+	return nil
+}
+
+func stripJSONCComments(s string) string {
+	var b strings.Builder
+	inString := false
+	escaped := false
+	for i := 0; i < len(s); i++ {
+		ch := s[i]
+		if inString {
+			b.WriteByte(ch)
+			if escaped {
+				escaped = false
+			} else if ch == '\\' {
+				escaped = true
+			} else if ch == '"' {
+				inString = false
+			}
+			continue
+		}
+		if ch == '"' {
+			inString = true
+			b.WriteByte(ch)
+			continue
+		}
+		if ch == '/' && i+1 < len(s) {
+			switch s[i+1] {
+			case '/':
+				for i < len(s) && s[i] != '\n' {
+					i++
+				}
+				if i < len(s) {
+					b.WriteByte(s[i])
+				}
+				continue
+			case '*':
+				i += 2
+				for i+1 < len(s) && !(s[i] == '*' && s[i+1] == '/') {
+					if s[i] == '\n' {
+						b.WriteByte('\n')
+					}
+					i++
+				}
+				i++
+				continue
+			}
+		}
+		b.WriteByte(ch)
+	}
+	return b.String()
+}
+
+func stripJSONCTrailingCommas(s string) string {
+	var b strings.Builder
+	inString := false
+	escaped := false
+	for i := 0; i < len(s); i++ {
+		ch := s[i]
+		if inString {
+			b.WriteByte(ch)
+			if escaped {
+				escaped = false
+			} else if ch == '\\' {
+				escaped = true
+			} else if ch == '"' {
+				inString = false
+			}
+			continue
+		}
+		if ch == '"' {
+			inString = true
+			b.WriteByte(ch)
+			continue
+		}
+		if ch == ',' {
+			j := i + 1
+			for j < len(s) && (s[j] == ' ' || s[j] == '\t' || s[j] == '\r' || s[j] == '\n') {
+				j++
+			}
+			if j < len(s) && (s[j] == '}' || s[j] == ']') {
+				continue
+			}
+		}
+		b.WriteByte(ch)
+	}
+	return b.String()
+}
+
 func runRatelSQL(cmd *cobra.Command, args []string) error {
 	arg := args[0]
 
@@ -587,7 +1084,11 @@ func runRatelSQL(cmd *cobra.Command, args []string) error {
 			}
 		}
 		if ratelTLS {
-			ld := ratelLocalDir(arg)
+			clusterUUID, err := storage.ReadClusterID(ctx, cs.Metadata)
+			if err != nil {
+				return errors.Wrap(err, "reading cluster ID")
+			}
+			ld := ratelLocalDir(clusterUUID.String())
 			passphrase, err := ratelPassphrase(false /* confirm */)
 			if err != nil {
 				return err

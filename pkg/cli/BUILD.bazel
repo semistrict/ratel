@@ -342,6 +342,7 @@ go_test(
         "node_test.go",
         "nodelocal_test.go",
         "prefixer_test.go",
+        "ratel_test.go",
         "sqlfmt_test.go",
         "start_linux_test.go",
         "start_test.go",

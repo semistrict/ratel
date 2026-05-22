@@ -44,12 +44,6 @@ const (
 	certLifetime   = 10 * 365 * 24 * time.Hour
 )
 
-// Ratel uses a single shared cert set (CA, node, root client) for every node
-// in the cluster. TLS is only wire-encryption — the client connects with
-// `sslmode=verify-ca`, so hostname SANs are not validated. Keeping one cert
-// set sidesteps all the hostname-discovery problems of per-node certs in
-// dynamic environments (containers, serverless, etc.).
-
 // encBundleMagic tags a blob encrypted with encryptBlob so we can tell
 // ciphertext from plaintext PEM at download time.
 var encBundleMagic = []byte("RATELAES")
@@ -190,6 +184,46 @@ func GenerateAndUploadCerts(ctx context.Context, store remote.Storage, passphras
 	return nil
 }
 
+// GenerateAndUploadCACerts generates the CA and root client certificates and
+// uploads them to certs/ storage. Node certificates are generated locally by
+// each node after downloading the CA.
+func GenerateAndUploadCACerts(ctx context.Context, store remote.Storage, passphrase []byte) error {
+	caCertPEM, caKeyPEM, err := security.CreateCACertAndKey(ctx, nil, certLifetime, "Ratel CA")
+	if err != nil {
+		return errors.Wrap(err, "generating CA cert")
+	}
+
+	clientCertPEM, clientKeyPEM, err := security.CreateServiceCertAndKey(
+		ctx, nil, certLifetime, username.RootUser,
+		nil,
+		caCertPEM, caKeyPEM,
+		true,
+	)
+	if err != nil {
+		return errors.Wrap(err, "generating client root cert")
+	}
+
+	uploads := []certUpload{
+		{name: caCertName, data: pem.EncodeToMemory(caCertPEM)},
+		{name: caKeyName, data: pem.EncodeToMemory(caKeyPEM), encrypted: true},
+		{name: clientRootCert, data: pem.EncodeToMemory(clientCertPEM)},
+		{name: clientRootKey, data: pem.EncodeToMemory(clientKeyPEM)},
+	}
+	for _, u := range uploads {
+		payload := u.data
+		if u.encrypted && len(passphrase) > 0 {
+			payload, err = encryptBlob(u.data, passphrase)
+			if err != nil {
+				return errors.Wrapf(err, "encrypting %s", u.name)
+			}
+		}
+		if err := WriteObject(store, u.name, payload); err != nil {
+			return errors.Wrapf(err, "uploading %s", u.name)
+		}
+	}
+	return nil
+}
+
 // DownloadCerts downloads the full cert set (CA, node, root client) from the
 // given certs/ storage into a local directory. Private keys are decrypted
 // with passphrase if they were encrypted at upload time.
@@ -204,6 +238,56 @@ func DownloadCerts(
 		{clientRootCert, 0644, false},
 		{clientRootKey, 0600, true},
 	})
+}
+
+// DownloadCACerts downloads the CA and client cert set from certs/ storage.
+// Private keys are decrypted with passphrase if they were encrypted at upload
+// time. The CA key is included so the node can generate a per-node cert.
+func DownloadCACerts(ctx context.Context, store remote.Storage, localDir string, passphrase []byte) error {
+	return downloadCertFiles(ctx, store, localDir, passphrase, []certFile{
+		{caCertName, 0644, false},
+		{caKeyName, 0600, true},
+		{clientRootCert, 0644, false},
+		{clientRootKey, 0600, true},
+	})
+}
+
+// GenerateNodeCert generates a node certificate signed by the CA in localDir,
+// with the given hostnames as SANs. The CA cert and key must already exist in
+// localDir. The node cert and key are written as node.crt and node.key.
+func GenerateNodeCert(localDir string, hostnames []string) error {
+	caCertData, err := os.ReadFile(filepath.Join(localDir, caCertName))
+	if err != nil {
+		return errors.Wrap(err, "reading CA cert")
+	}
+	caKeyData, err := os.ReadFile(filepath.Join(localDir, caKeyName))
+	if err != nil {
+		return errors.Wrap(err, "reading CA key")
+	}
+
+	caCertBlock, _ := pem.Decode(caCertData)
+	caKeyBlock, _ := pem.Decode(caKeyData)
+	if caCertBlock == nil || caKeyBlock == nil {
+		return errors.New("failed to decode CA PEM")
+	}
+
+	nodeCertPEM, nodeKeyPEM, err := security.CreateServiceCertAndKey(
+		context.Background(), nil, certLifetime, username.NodeUser,
+		hostnames,
+		caCertBlock, caKeyBlock,
+		true,
+	)
+	if err != nil {
+		return errors.Wrap(err, "generating node cert")
+	}
+
+	if err := os.WriteFile(filepath.Join(localDir, nodeCertName), pem.EncodeToMemory(nodeCertPEM), 0644); err != nil {
+		return errors.Wrap(err, "writing node cert")
+	}
+	if err := os.WriteFile(filepath.Join(localDir, nodeKeyName), pem.EncodeToMemory(nodeKeyPEM), 0600); err != nil {
+		return errors.Wrap(err, "writing node key")
+	}
+	return nil
 }
 
 // DownloadClientCerts downloads only the client cert set (CA, root client

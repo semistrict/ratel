@@ -120,6 +120,13 @@ func TestWorkerdConfigGeneration(t *testing.T) {
 			Name:       "hello",
 			Script:     testWorkerHello,
 			CompatDate: "2024-01-01",
+			Assets: []WorkerAsset{
+				{
+					Path:        "/index.html",
+					ContentType: "text/html; charset=utf-8",
+					DataBase64:  "PGgxPmhlbGxvPC9oMT4=",
+				},
+			},
 		},
 		{
 			Name:       "counter",
@@ -140,10 +147,13 @@ func TestWorkerdConfigGeneration(t *testing.T) {
 
 	require.Contains(t, config, "name = \"router\"")
 	require.Contains(t, config, "name = \"hello\"")
+	require.Contains(t, config, "name = \"hello-assets\"")
 	require.Contains(t, config, "name = \"counter\"")
 	require.Contains(t, config, ".workerHello")
+	require.Contains(t, config, ".workerHelloAssets")
 	require.Contains(t, config, ".workerCounter")
 	require.Contains(t, config, "localhost:18787")
+	require.Contains(t, config, "name = \"ASSETS\"")
 	require.Contains(t, config, "durableObjectStorage = ( ratel = 3 )")
 	require.Contains(t, config, "className = \"Counter\"")
 
@@ -155,9 +165,35 @@ func TestWorkerdConfigGeneration(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(helloBytes), "hello")
 
+	assetWorkerBytes, err := os.ReadFile(dir + "/assets_hello/asset-worker.js")
+	require.NoError(t, err)
+	require.Contains(t, string(assetWorkerBytes), "/index.html")
+	require.Contains(t, string(assetWorkerBytes), "PGgxPmhlbGxvPC9oMT4=")
+
 	counterBytes, err := os.ReadFile(dir + "/worker_counter.js")
 	require.NoError(t, err)
 	require.Contains(t, string(counterBytes), "Counter")
+}
+
+func TestWorkerdConfigGenerationInMemoryDOStorage(t *testing.T) {
+	workers := []WorkerDef{
+		{
+			Name:       "counter",
+			Script:     testWorkerCounterBindings,
+			CompatDate: "2024-01-01",
+			DOClasses:  []string{"Counter"},
+		},
+	}
+
+	configPath, err := generateWorkerdConfig(t.TempDir(), workers, 18787, -1)
+	require.NoError(t, err)
+
+	configBytes, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+	config := string(configBytes)
+	require.Contains(t, config, "durableObjectStorage = ( inMemory = void )")
+	require.NotContains(t, config, "durableObjectStorage = ( ratel =")
+	require.Contains(t, config, "name = \"Counter\", durableObjectNamespace = \"Counter\"")
 }
 
 func TestWorkerCapnpID(t *testing.T) {

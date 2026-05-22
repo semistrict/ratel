@@ -1,0 +1,56 @@
+body {
+  font: 15px system-ui, sans-serif;
+  margin: 0;
+  background: #f7f7f4;
+  color: #20201d;
+}
+
+main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+h1 {
+  font-size: 24px;
+  margin: 0 0 16px;
+}
+
+form {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+input {
+  flex: 1;
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+}
+
+button {
+  font: inherit;
+  padding: 10px 14px;
+  border: 1px solid #333;
+  border-radius: 4px;
+  background: #222;
+  color: white;
+}
+
+#log {
+  height: 50vh;
+  overflow: auto;
+  background: white;
+  border: 1px solid #ddd;
+  padding: 12px;
+}
+
+.meta {
+  color: #666;
+}
+
+.err {
+  color: #9b1c1c;
+}

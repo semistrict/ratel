@@ -26,6 +26,7 @@ go_library(
         "subordinate_builders.go",
         "subordinate_json_lazy_fetch.go",
         "subordinate_json_mutation.go",
+        "subordinate_json_row_head_fetcher.go",
         "truncate.go",
         "updater.go",
         "writer.go",

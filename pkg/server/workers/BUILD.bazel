@@ -1,0 +1,16 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "workers",
+    srcs = ["deploy.go"],
+    importpath = "github.com/cockroachdb/cockroach/pkg/server/workers",
+    visibility = ["//pkg/server:__subpackages__"],
+    deps = [
+        "//pkg/kv",
+        "//pkg/security/username",
+        "//pkg/sql/isql",
+        "//pkg/sql/sem/tree",
+        "//pkg/sql/sessiondata",
+        "@com_github_cockroachdb_errors//:errors",
+    ],
+)

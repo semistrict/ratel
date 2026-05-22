@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -37,6 +38,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/kv"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/server/actorstorage"
+	"github.com/cockroachdb/cockroach/pkg/server/workers"
 	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
 	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
@@ -124,7 +126,7 @@ func TestWorkerdConfigGeneration(t *testing.T) {
 				{
 					Path:        "/index.html",
 					ContentType: "text/html; charset=utf-8",
-					DataBase64:  "PGgxPmhlbGxvPC9oMT4=",
+					Content:     []byte("<h1>hello</h1>"),
 				},
 			},
 		},
@@ -314,7 +316,7 @@ func TestWorkerdDeployAndList(t *testing.T) {
 
 	var name string
 	var version int64
-	err = sqlDB.QueryRow("SELECT name, version FROM system.worker_scripts WHERE name = 'hello'").Scan(&name, &version)
+	err = sqlDB.QueryRow("SELECT worker_name, version FROM system.worker_versions WHERE worker_name = 'hello'").Scan(&name, &version)
 	require.NoError(t, err)
 	require.Equal(t, "hello", name)
 	require.Equal(t, int64(1), version)
@@ -383,9 +385,167 @@ func TestWorkerdDeployWithBindings(t *testing.T) {
 	require.Equal(t, float64(1), body["version"])
 
 	var bindingsJSON string
-	err = sqlDB.QueryRow("SELECT bindings::STRING FROM system.worker_scripts WHERE name = 'counter'").Scan(&bindingsJSON)
+	err = sqlDB.QueryRow("SELECT bindings::STRING FROM system.worker_versions WHERE worker_name = 'counter'").Scan(&bindingsJSON)
 	require.NoError(t, err)
 	require.Contains(t, bindingsJSON, "Counter")
+}
+
+func TestWorkerdDeployWithAssets(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+	defer log.Scope(t).Close(t)
+
+	s, sqlDB, _ := serverutils.StartServer(t, base.TestServerArgs{})
+	ctx := context.Background()
+	defer s.Stopper().Stop(ctx)
+
+	adminClient, err := s.GetAdminHTTPClient()
+	require.NoError(t, err)
+	baseURL := s.AdminURL()
+
+	resp := doMultipartDeploy(t, adminClient, baseURL, "chat", testWorkerHello, `{"durable_objects":[{"class_name":"ChatRoom"}]}`, []workers.DeployAsset{
+		{
+			Path:        "/index.html",
+			ContentType: "text/html; charset=utf-8",
+			Content:     []byte("<h1>chat</h1>"),
+		},
+		{
+			Path:        "/client.js",
+			ContentType: "application/javascript",
+			Content:     []byte("console.log('chat');"),
+		},
+	})
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	body := readBody(t, resp)
+	require.Equal(t, float64(1), body["version"])
+
+	var bindingsJSON string
+	require.NoError(t, sqlDB.QueryRow("SELECT bindings::STRING FROM system.worker_versions WHERE worker_name = 'chat'").Scan(&bindingsJSON))
+	require.Contains(t, bindingsJSON, "ChatRoom")
+	require.NotContains(t, bindingsJSON, "data_base64")
+	require.NotContains(t, bindingsJSON, "PGgx")
+
+	rows, err := sqlDB.Query(
+		`SELECT wva.path, wva.content_type, wa.content, wa.size
+		 FROM system.worker_versions wv
+		 INNER JOIN system.worker_version_assets wva ON wva.worker_version_id = wv.id
+		 INNER JOIN system.worker_assets wa ON wa.etag = wva.asset_etag
+		 WHERE wv.worker_name = 'chat' AND wv.version = 1
+		 ORDER BY wva.path`,
+	)
+	require.NoError(t, err)
+	defer rows.Close()
+
+	var got []string
+	for rows.Next() {
+		var path, contentType string
+		var content []byte
+		var size int64
+		require.NoError(t, rows.Scan(&path, &contentType, &content, &size))
+		got = append(got, fmt.Sprintf("%s:%s:%s:%d", path, contentType, string(content), size))
+	}
+	require.NoError(t, rows.Err())
+	require.Equal(t, []string{
+		"/client.js:application/javascript:console.log('chat');:20",
+		"/index.html:text/html; charset=utf-8:<h1>chat</h1>:13",
+	}, got)
+}
+
+func TestWorkerdDeployWithEmptyAsset(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+	defer log.Scope(t).Close(t)
+
+	s, sqlDB, _ := serverutils.StartServer(t, base.TestServerArgs{})
+	ctx := context.Background()
+	defer s.Stopper().Stop(ctx)
+
+	adminClient, err := s.GetAdminHTTPClient()
+	require.NoError(t, err)
+	baseURL := s.AdminURL()
+
+	resp := doMultipartDeploy(t, adminClient, baseURL, "emptyasset", testWorkerHello, `{}`, []workers.DeployAsset{
+		{
+			Path:        "/empty.txt",
+			ContentType: "text/plain; charset=utf-8",
+			Content:     nil,
+		},
+	})
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	resp.Body.Close()
+
+	var content []byte
+	var size int64
+	require.NoError(t, sqlDB.QueryRow(
+		`SELECT wa.content, wa.size
+		 FROM system.worker_versions wv
+		 INNER JOIN system.worker_version_assets wva ON wva.worker_version_id = wv.id
+		 INNER JOIN system.worker_assets wa ON wa.etag = wva.asset_etag
+		 WHERE wv.worker_name = 'emptyasset' AND wv.version = 1 AND wva.path = '/empty.txt'`,
+	).Scan(&content, &size))
+	require.Empty(t, content)
+	require.Equal(t, int64(0), size)
+}
+
+func TestWorkerdDeployReusesUnchangedAssets(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+	defer log.Scope(t).Close(t)
+
+	s, sqlDB, _ := serverutils.StartServer(t, base.TestServerArgs{})
+	ctx := context.Background()
+	defer s.Stopper().Stop(ctx)
+
+	adminClient, err := s.GetAdminHTTPClient()
+	require.NoError(t, err)
+	baseURL := s.AdminURL()
+
+	assets := []workers.DeployAsset{{
+		Path:        "/index.html",
+		ContentType: "text/html; charset=utf-8",
+		Content:     []byte("<h1>chat</h1>"),
+	}}
+	resp := doMultipartDeploy(t, adminClient, baseURL, "chat", testWorkerHello, `{}`, assets)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	resp.Body.Close()
+
+	resp = doMultipartDeploy(t, adminClient, baseURL, "chat", testWorkerHelloV2, `{}`, assets)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	resp.Body.Close()
+
+	var assetCount, linkCount int
+	require.NoError(t, sqlDB.QueryRow("SELECT count(*) FROM system.worker_assets").Scan(&assetCount))
+	require.Equal(t, 1, assetCount)
+	require.NoError(t, sqlDB.QueryRow("SELECT count(*) FROM system.worker_version_assets").Scan(&linkCount))
+	require.Equal(t, 2, linkCount)
+}
+
+func TestWorkerdDeployMultipartAssetFailureIsAtomic(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+	defer log.Scope(t).Close(t)
+
+	s, sqlDB, _ := serverutils.StartServer(t, base.TestServerArgs{})
+	ctx := context.Background()
+	defer s.Stopper().Stop(ctx)
+
+	adminClient, err := s.GetAdminHTTPClient()
+	require.NoError(t, err)
+	baseURL := s.AdminURL()
+
+	req, err := http.NewRequest(
+		http.MethodPut,
+		fmt.Sprintf("%s/api/v2/workers/%s/", baseURL, "badassets"),
+		strings.NewReader("not multipart"),
+	)
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "multipart/form-data; boundary=missing")
+	resp, err := adminClient.Do(req)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	resp.Body.Close()
+
+	var count int
+	require.NoError(t, sqlDB.QueryRow("SELECT count(*) FROM system.worker_versions WHERE worker_name = 'badassets'").Scan(&count))
+	require.Equal(t, 0, count)
+	require.NoError(t, sqlDB.QueryRow("SELECT count(*) FROM system.worker_version_assets").Scan(&count))
+	require.Equal(t, 0, count)
 }
 
 // --- DO storage capnp tests (real KV, no workerd) ---
@@ -1030,6 +1190,56 @@ func doDeploy(t *testing.T, client http.Client, baseURL, name, script, bindings 
 	if bindings != "" {
 		req.Header.Set("X-Bindings", bindings)
 	}
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	return resp
+}
+
+func doMultipartDeploy(
+	t *testing.T, client http.Client, baseURL, name, script, bindings string, assets []workers.DeployAsset,
+) *http.Response {
+	t.Helper()
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	scriptPart, err := writer.CreateFormFile("script", "worker.js")
+	require.NoError(t, err)
+	_, err = scriptPart.Write([]byte(script))
+	require.NoError(t, err)
+
+	metadata := struct {
+		CompatDate string                        `json:"compat_date"`
+		Bindings   json.RawMessage               `json:"bindings"`
+		Assets     []workers.DeployAssetMetadata `json:"assets"`
+	}{
+		CompatDate: "2024-01-01",
+		Bindings:   json.RawMessage(bindings),
+	}
+	for _, asset := range assets {
+		metadata.Assets = append(metadata.Assets, workers.DeployAssetMetadata{
+			Path:        asset.Path,
+			ContentType: asset.ContentType,
+			Size:        int64(len(asset.Content)),
+		})
+	}
+	metadataJSON, err := json.Marshal(metadata)
+	require.NoError(t, err)
+	require.NoError(t, writer.WriteField("metadata", string(metadataJSON)))
+
+	for _, asset := range assets {
+		assetPart, err := writer.CreateFormFile("asset", asset.Path)
+		require.NoError(t, err)
+		_, err = assetPart.Write(asset.Content)
+		require.NoError(t, err)
+	}
+	require.NoError(t, writer.Close())
+
+	req, err := http.NewRequest(
+		http.MethodPut,
+		fmt.Sprintf("%s/api/v2/workers/%s/", baseURL, name),
+		&body,
+	)
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
 	resp, err := client.Do(req)
 	require.NoError(t, err)
 	return resp

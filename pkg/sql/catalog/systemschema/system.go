@@ -879,16 +879,39 @@ CREATE TABLE system.actors (
 	FAMILY "primary" (tenant_id, actor_name, actor_hash, created_at)
 );`
 
-	WorkerScriptsTableSchema = `
-CREATE TABLE system.worker_scripts (
-	name         STRING NOT NULL,
+	WorkerVersionsTableSchema = `
+CREATE TABLE system.worker_versions (
+	id           INT8 NOT NULL DEFAULT unique_rowid(),
+	worker_name  STRING NOT NULL,
 	version      INT8 NOT NULL DEFAULT 1:::INT8,
 	script       BYTES NOT NULL,
 	compat_date  STRING NOT NULL,
 	bindings     JSONB,
 	created_at   TIMESTAMP NOT NULL DEFAULT now(),
-	CONSTRAINT "primary" PRIMARY KEY (name, version),
-	FAMILY "primary" (name, version, script, compat_date, bindings, created_at)
+	CONSTRAINT "primary" PRIMARY KEY (id),
+	UNIQUE INDEX worker_versions_worker_name_version_key (worker_name, version),
+	FAMILY "primary" (worker_name, version, id, script, compat_date, bindings, created_at)
+);`
+
+	WorkerAssetsTableSchema = `
+CREATE TABLE system.worker_assets (
+	etag            STRING NOT NULL,
+	content         BYTES NOT NULL,
+	size            INT8 NOT NULL,
+	created_at      TIMESTAMP NOT NULL DEFAULT now(),
+	CONSTRAINT "primary" PRIMARY KEY (etag),
+	FAMILY "primary" (etag, content, size, created_at)
+);`
+
+	WorkerVersionAssetsTableSchema = `
+CREATE TABLE system.worker_version_assets (
+	worker_version_id  INT8 NOT NULL,
+	path               STRING NOT NULL,
+	asset_etag         STRING NOT NULL,
+	content_type       STRING,
+	created_at         TIMESTAMP NOT NULL DEFAULT now(),
+	CONSTRAINT "primary" PRIMARY KEY (worker_version_id, path),
+	FAMILY "primary" (worker_version_id, path, asset_etag, content_type, created_at)
 );`
 
 	SystemPrivilegeTableSchema = `
@@ -3778,31 +3801,110 @@ var (
 		),
 	)
 
-	// WorkerScriptsTable is the descriptor for deployed workers.
-	WorkerScriptsTable = makeSystemTable(
-		WorkerScriptsTableSchema,
+	// WorkerVersionsTable is the descriptor for deployed worker versions.
+	WorkerVersionsTable = makeSystemTable(
+		WorkerVersionsTableSchema,
 		systemTable(
-			catconstants.WorkerScriptsTableName,
-			keys.WorkerScriptsTableID,
+			catconstants.WorkerVersionsTableName,
+			keys.WorkerVersionsTableID,
 			[]descpb.ColumnDescriptor{
-				{Name: "name", ID: 1, Type: types.String, Nullable: false},
-				{Name: "version", ID: 2, Type: types.Int, Nullable: false, DefaultExpr: &oneString},
-				{Name: "script", ID: 3, Type: types.Bytes, Nullable: false},
-				{Name: "compat_date", ID: 4, Type: types.String, Nullable: false},
-				{Name: "bindings", ID: 5, Type: types.Jsonb, Nullable: true},
-				{Name: "created_at", ID: 6, Type: types.Timestamp, Nullable: false, DefaultExpr: &nowString},
+				{Name: "id", ID: 1, Type: types.Int, Nullable: false, DefaultExpr: &uniqueRowIDString},
+				{Name: "worker_name", ID: 2, Type: types.String, Nullable: false},
+				{Name: "version", ID: 3, Type: types.Int, Nullable: false, DefaultExpr: &oneString},
+				{Name: "script", ID: 4, Type: types.Bytes, Nullable: false},
+				{Name: "compat_date", ID: 5, Type: types.String, Nullable: false},
+				{Name: "bindings", ID: 6, Type: types.Jsonb, Nullable: true},
+				{Name: "created_at", ID: 7, Type: types.Timestamp, Nullable: false, DefaultExpr: &nowString},
 			},
 			[]descpb.ColumnFamilyDescriptor{{
 				Name:        "primary",
 				ID:          0,
-				ColumnNames: []string{"name", "version", "script", "compat_date", "bindings", "created_at"},
-				ColumnIDs:   []descpb.ColumnID{1, 2, 3, 4, 5, 6},
+				ColumnNames: []string{"worker_name", "version", "id", "script", "compat_date", "bindings", "created_at"},
+				ColumnIDs:   []descpb.ColumnID{2, 3, 1, 4, 5, 6, 7},
 			}},
 			descpb.IndexDescriptor{
 				Name:           tabledesc.LegacyPrimaryKeyIndexName,
 				ID:             1,
 				Unique:         true,
-				KeyColumnNames: []string{"name", "version"},
+				KeyColumnNames: []string{"id"},
+				KeyColumnDirections: []catenumpb.IndexColumn_Direction{
+					catenumpb.IndexColumn_ASC,
+				},
+				KeyColumnIDs: []descpb.ColumnID{1},
+				Version:      descpb.StrictIndexColumnIDGuaranteesVersion,
+			},
+			descpb.IndexDescriptor{
+				Name:           "worker_versions_worker_name_version_key",
+				ID:             2,
+				Unique:         true,
+				KeyColumnNames: []string{"worker_name", "version"},
+				KeyColumnDirections: []catenumpb.IndexColumn_Direction{
+					catenumpb.IndexColumn_ASC,
+					catenumpb.IndexColumn_ASC,
+				},
+				KeyColumnIDs:       []descpb.ColumnID{2, 3},
+				KeySuffixColumnIDs: []descpb.ColumnID{1},
+				Version:            descpb.StrictIndexColumnIDGuaranteesVersion,
+			},
+		),
+	)
+
+	// WorkerAssetsTable stores deduplicated static asset content for deployed workers.
+	WorkerAssetsTable = makeSystemTable(
+		WorkerAssetsTableSchema,
+		systemTable(
+			catconstants.WorkerAssetsTableName,
+			keys.WorkerAssetsTableID,
+			[]descpb.ColumnDescriptor{
+				{Name: "etag", ID: 1, Type: types.String, Nullable: false},
+				{Name: "content", ID: 2, Type: types.Bytes, Nullable: false},
+				{Name: "size", ID: 3, Type: types.Int, Nullable: false},
+				{Name: "created_at", ID: 4, Type: types.Timestamp, Nullable: false, DefaultExpr: &nowString},
+			},
+			[]descpb.ColumnFamilyDescriptor{{
+				Name:        "primary",
+				ID:          0,
+				ColumnNames: []string{"etag", "content", "size", "created_at"},
+				ColumnIDs:   []descpb.ColumnID{1, 2, 3, 4},
+			}},
+			descpb.IndexDescriptor{
+				Name:           tabledesc.LegacyPrimaryKeyIndexName,
+				ID:             1,
+				Unique:         true,
+				KeyColumnNames: []string{"etag"},
+				KeyColumnDirections: []catenumpb.IndexColumn_Direction{
+					catenumpb.IndexColumn_ASC,
+				},
+				KeyColumnIDs: []descpb.ColumnID{1},
+				Version:      descpb.StrictIndexColumnIDGuaranteesVersion,
+			},
+		),
+	)
+
+	// WorkerVersionAssetsTable maps worker versions to their asset paths.
+	WorkerVersionAssetsTable = makeSystemTable(
+		WorkerVersionAssetsTableSchema,
+		systemTable(
+			catconstants.WorkerVersionAssetsTableName,
+			keys.WorkerVersionAssetsTableID,
+			[]descpb.ColumnDescriptor{
+				{Name: "worker_version_id", ID: 1, Type: types.Int, Nullable: false},
+				{Name: "path", ID: 2, Type: types.String, Nullable: false},
+				{Name: "asset_etag", ID: 3, Type: types.String, Nullable: false},
+				{Name: "content_type", ID: 4, Type: types.String, Nullable: true},
+				{Name: "created_at", ID: 5, Type: types.Timestamp, Nullable: false, DefaultExpr: &nowString},
+			},
+			[]descpb.ColumnFamilyDescriptor{{
+				Name:        "primary",
+				ID:          0,
+				ColumnNames: []string{"worker_version_id", "path", "asset_etag", "content_type", "created_at"},
+				ColumnIDs:   []descpb.ColumnID{1, 2, 3, 4, 5},
+			}},
+			descpb.IndexDescriptor{
+				Name:           tabledesc.LegacyPrimaryKeyIndexName,
+				ID:             1,
+				Unique:         true,
+				KeyColumnNames: []string{"worker_version_id", "path"},
 				KeyColumnDirections: []catenumpb.IndexColumn_Direction{
 					catenumpb.IndexColumn_ASC,
 					catenumpb.IndexColumn_ASC,

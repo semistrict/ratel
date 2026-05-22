@@ -39,7 +39,7 @@ type WorkerDef struct {
 type WorkerAsset struct {
 	Path        string
 	ContentType string
-	DataBase64  string
+	Content     []byte
 }
 
 // generateWorkerdConfig writes a workerd capnp config file and the associated
@@ -195,15 +195,12 @@ func writeWorkerAssets(dir string, w WorkerDef) error {
 		if path == "" || strings.Contains(path, "..") {
 			return fmt.Errorf("invalid asset path %q", asset.Path)
 		}
-		if _, err := base64.StdEncoding.DecodeString(asset.DataBase64); err != nil {
-			return err
-		}
 		manifest.WriteString("  [")
 		manifest.WriteString(strconv.Quote("/" + path))
 		manifest.WriteString(", { contentType: ")
 		manifest.WriteString(strconv.Quote(asset.ContentType))
 		manifest.WriteString(", data: ")
-		manifest.WriteString(strconv.Quote(asset.DataBase64))
+		manifest.WriteString(strconv.Quote(base64.StdEncoding.EncodeToString(asset.Content)))
 		manifest.WriteString(" }],\n")
 	}
 	manifest.WriteString("]);\n")

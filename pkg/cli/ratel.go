@@ -18,12 +18,13 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"encoding/base64"
+	"crypto/sha256"
 	gohex "encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"mime"
+	"mime/multipart"
 	"net"
 	"net/http"
 	"os"
@@ -715,19 +716,10 @@ func runRatelDeploy(cmd *cobra.Command, args []string) error {
 	}
 
 	deployURL := fmt.Sprintf("%s/api/v2/workers/%s/", httpAddr, name)
-	req, err := http.NewRequest("PUT", deployURL, bytes.NewReader(script))
-	if err != nil {
-		return errors.Wrap(err, "creating request")
-	}
-	req.Header.Set("Content-Type", "application/javascript")
-	if compatDate != "" {
-		req.Header.Set("X-Compat-Date", compatDate)
-	}
 	bindings := struct {
 		DurableObjects []struct {
 			ClassName string `json:"class_name"`
 		} `json:"durable_objects,omitempty"`
-		Assets []ratelWorkerAsset `json:"assets,omitempty"`
 	}{}
 	if len(doClasses) > 0 {
 		for _, cls := range doClasses {
@@ -736,19 +728,42 @@ func runRatelDeploy(cmd *cobra.Command, args []string) error {
 			}{ClassName: cls})
 		}
 	}
+	var assets []ratelWorkerAsset
 	if cfg.AssetsDir != "" {
-		assets, err := readRatelWorkerAssets(cfg.AssetsDir)
+		var err error
+		assets, err = readRatelWorkerAssets(cfg.AssetsDir)
 		if err != nil {
 			return err
 		}
-		bindings.Assets = assets
 	}
-	if len(bindings.DurableObjects) > 0 || len(bindings.Assets) > 0 {
+
+	var req *http.Request
+	if len(assets) > 0 {
 		bindingsJSON, err := json.Marshal(bindings)
 		if err != nil {
 			return errors.Wrap(err, "marshaling worker bindings")
 		}
-		req.Header.Set("X-Bindings", string(bindingsJSON))
+		req, err = newRatelMultipartDeployRequest(deployURL, script, compatDate, bindingsJSON, assets)
+		if err != nil {
+			return err
+		}
+	} else {
+		var err error
+		req, err = http.NewRequest("PUT", deployURL, bytes.NewReader(script))
+		if err != nil {
+			return errors.Wrap(err, "creating request")
+		}
+		req.Header.Set("Content-Type", "application/javascript")
+		if compatDate != "" {
+			req.Header.Set("X-Compat-Date", compatDate)
+		}
+		if len(bindings.DurableObjects) > 0 {
+			bindingsJSON, err := json.Marshal(bindings)
+			if err != nil {
+				return errors.Wrap(err, "marshaling worker bindings")
+			}
+			req.Header.Set("X-Bindings", string(bindingsJSON))
+		}
 	}
 
 	resp, err := http.DefaultClient.Do(req)
@@ -861,13 +876,83 @@ func unmarshalAssets(raw json.RawMessage, dest *string) error {
 }
 
 type ratelWorkerAsset struct {
+	Path        string
+	ContentType string
+	Content     []byte
+	ETag        string
+	Size        int64
+}
+
+type ratelWorkerAssetMetadata struct {
 	Path        string `json:"path"`
 	ContentType string `json:"content_type,omitempty"`
-	DataBase64  string `json:"data_base64"`
+	ETag        string `json:"etag"`
+	Size        int64  `json:"size"`
+}
+
+func newRatelMultipartDeployRequest(
+	deployURL string, script []byte, compatDate string, bindings json.RawMessage, assets []ratelWorkerAsset,
+) (*http.Request, error) {
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	scriptPart, err := writer.CreateFormFile("script", "worker.js")
+	if err != nil {
+		return nil, errors.Wrap(err, "creating script multipart part")
+	}
+	if _, err := scriptPart.Write(script); err != nil {
+		return nil, errors.Wrap(err, "writing script multipart part")
+	}
+
+	assetMetadata := make([]ratelWorkerAssetMetadata, 0, len(assets))
+	for _, asset := range assets {
+		assetMetadata = append(assetMetadata, ratelWorkerAssetMetadata{
+			Path:        asset.Path,
+			ContentType: asset.ContentType,
+			ETag:        asset.ETag,
+			Size:        asset.Size,
+		})
+	}
+	metadata := struct {
+		CompatDate string                     `json:"compat_date"`
+		Bindings   json.RawMessage            `json:"bindings,omitempty"`
+		Assets     []ratelWorkerAssetMetadata `json:"assets,omitempty"`
+	}{
+		CompatDate: compatDate,
+		Bindings:   bindings,
+		Assets:     assetMetadata,
+	}
+	metadataJSON, err := json.Marshal(metadata)
+	if err != nil {
+		return nil, errors.Wrap(err, "marshaling worker metadata")
+	}
+	if err := writer.WriteField("metadata", string(metadataJSON)); err != nil {
+		return nil, errors.Wrap(err, "writing metadata multipart part")
+	}
+
+	for _, asset := range assets {
+		assetPart, err := writer.CreateFormFile("asset", asset.Path)
+		if err != nil {
+			return nil, errors.Wrapf(err, "creating asset multipart part for %s", asset.Path)
+		}
+		if _, err := assetPart.Write(asset.Content); err != nil {
+			return nil, errors.Wrapf(err, "writing asset multipart part for %s", asset.Path)
+		}
+	}
+	if err := writer.Close(); err != nil {
+		return nil, errors.Wrap(err, "finalizing multipart deploy request")
+	}
+
+	req, err := http.NewRequest("PUT", deployURL, &body)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating request")
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	return req, nil
 }
 
 func readRatelWorkerAssets(dir string) ([]ratelWorkerAsset, error) {
 	var assets []ratelWorkerAsset
+	seen := make(map[string]struct{})
 	err := filepath.WalkDir(dir, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -891,14 +976,25 @@ func readRatelWorkerAssets(dir string) ([]ratelWorkerAsset, error) {
 			return err
 		}
 		rel = filepath.ToSlash(rel)
+		assetPath, err := normalizeRatelWorkerAssetPath(rel)
+		if err != nil {
+			return err
+		}
+		if _, ok := seen[assetPath]; ok {
+			return errors.Newf("duplicate asset path %q", assetPath)
+		}
+		seen[assetPath] = struct{}{}
 		contentType := mime.TypeByExtension(filepath.Ext(path))
 		if contentType == "" {
 			contentType = http.DetectContentType(data)
 		}
+		sum := sha256.Sum256(data)
 		assets = append(assets, ratelWorkerAsset{
-			Path:        "/" + strings.TrimPrefix(rel, "/"),
+			Path:        assetPath,
 			ContentType: contentType,
-			DataBase64:  base64.StdEncoding.EncodeToString(data),
+			Content:     data,
+			ETag:        gohex.EncodeToString(sum[:]),
+			Size:        int64(len(data)),
 		})
 		return nil
 	})
@@ -909,6 +1005,16 @@ func readRatelWorkerAssets(dir string) ([]ratelWorkerAsset, error) {
 		return nil, errors.Newf("assets directory %s is empty", dir)
 	}
 	return assets, nil
+}
+
+func normalizeRatelWorkerAssetPath(path string) (string, error) {
+	path = strings.TrimSpace(strings.ReplaceAll(filepath.ToSlash(path), "\\", "/"))
+	path = "/" + strings.TrimPrefix(path, "/")
+	if path == "/" || strings.Contains(path, "/../") || strings.HasSuffix(path, "/..") ||
+		strings.Contains(path, "/./") || strings.HasSuffix(path, "/.") {
+		return "", errors.Newf("invalid asset path %q", path)
+	}
+	return path, nil
 }
 
 func unmarshalOptionalString(raw map[string]json.RawMessage, key string, dest *string) error {

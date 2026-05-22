@@ -45,7 +45,7 @@ const defaultWorkerdListenPort = 18787
 const ratelWorkerdDOStorageEnv = "RATEL_WORKERD_DO_STORAGE"
 
 // WorkerdSidecar manages the lifecycle of a workerd child process. It starts
-// workerd on demand when workers exist in system.worker_scripts, passes a
+// workerd on demand when workers exist in system.worker_versions, passes a
 // socketpair fd for DO storage communication, and supports reloading the
 // config when workers are deployed or updated.
 type WorkerdSidecar struct {
@@ -127,7 +127,7 @@ func NewWorkerdSidecar(
 }
 
 // SetInternalExecutor sets the internal executor used for querying
-// system.worker_scripts. Must be called before Start.
+// system.worker_versions. Must be called before Start.
 func (w *WorkerdSidecar) SetInternalExecutor(ie *sql.InternalExecutor) {
 	w.ie = ie
 }
@@ -386,21 +386,14 @@ func (w *WorkerdSidecar) monitor(ctx context.Context, waitDone <-chan struct{}) 
 
 // workerBindings is the JSON structure stored in the bindings column.
 type workerBindings struct {
-	DurableObjects []doBinding    `json:"durable_objects,omitempty"`
-	Assets         []assetBinding `json:"assets,omitempty"`
+	DurableObjects []doBinding `json:"durable_objects,omitempty"`
 }
 
 type doBinding struct {
 	ClassName string `json:"class_name"`
 }
 
-type assetBinding struct {
-	Path        string `json:"path"`
-	ContentType string `json:"content_type,omitempty"`
-	DataBase64  string `json:"data_base64"`
-}
-
-// fetchWorkerDefs queries system.worker_scripts for the latest version of
+// fetchWorkerDefs queries system.worker_versions for the latest version of
 // each deployed worker, including bindings metadata.
 func (w *WorkerdSidecar) fetchWorkerDefs(ctx context.Context) ([]WorkerDef, error) {
 	if w.ie == nil {
@@ -415,29 +408,35 @@ func (w *WorkerdSidecar) fetchWorkerDefs(ctx context.Context) ([]WorkerDef, erro
 			User:     username.RootUserName(),
 			Database: "system",
 		},
-		`SELECT ws.name, ws.script, ws.compat_date, ws.bindings
-		 FROM system.worker_scripts ws
+		`SELECT wv.worker_name, wv.id, wv.version, wv.script, wv.compat_date, wv.bindings
+		 FROM system.worker_versions wv
 		 INNER JOIN (
-		   SELECT name, max(version) AS max_version
-		   FROM system.worker_scripts
-		   GROUP BY name
-		 ) latest ON ws.name = latest.name AND ws.version = latest.max_version
-		 ORDER BY ws.name`,
+		   SELECT worker_name, max(version) AS max_version
+		   FROM system.worker_versions
+		   GROUP BY worker_name
+		 ) latest ON wv.worker_name = latest.worker_name AND wv.version = latest.max_version
+		 ORDER BY wv.worker_name`,
 	)
 	if err != nil {
 		return nil, err
 	}
 
 	workers := make([]WorkerDef, 0, len(rows))
+	workerIndexes := make(map[string]int, len(rows))
+	type workerVersion struct {
+		name string
+		id   int64
+	}
+	versions := make([]workerVersion, 0, len(rows))
 	for _, row := range rows {
 		name := string(*row[0].(*tree.DString))
-		script := string(*row[1].(*tree.DBytes))
-		compatDate := string(*row[2].(*tree.DString))
+		versionID := int64(*row[1].(*tree.DInt))
+		script := string(*row[3].(*tree.DBytes))
+		compatDate := string(*row[4].(*tree.DString))
 
 		var doClasses []string
-		var assets []WorkerAsset
-		if row[3] != nil && row[3] != tree.DNull {
-			bindingsStr := row[3].(*tree.DJSON).JSON.String()
+		if row[5] != nil && row[5] != tree.DNull {
+			bindingsStr := row[5].(*tree.DJSON).JSON.String()
 			var b workerBindings
 			if jsonErr := json.Unmarshal([]byte(bindingsStr), &b); jsonErr != nil {
 				log.Warningf(ctx, "invalid bindings JSON for worker %s: %v", name, jsonErr)
@@ -445,23 +444,51 @@ func (w *WorkerdSidecar) fetchWorkerDefs(ctx context.Context) ([]WorkerDef, erro
 				for _, do := range b.DurableObjects {
 					doClasses = append(doClasses, do.ClassName)
 				}
-				for _, asset := range b.Assets {
-					assets = append(assets, WorkerAsset{
-						Path:        asset.Path,
-						ContentType: asset.ContentType,
-						DataBase64:  asset.DataBase64,
-					})
-				}
 			}
 		}
 
+		workerIndexes[name] = len(workers)
+		versions = append(versions, workerVersion{name: name, id: versionID})
 		workers = append(workers, WorkerDef{
 			Name:       name,
 			Script:     script,
 			CompatDate: compatDate,
 			DOClasses:  doClasses,
-			Assets:     assets,
 		})
+	}
+	for _, version := range versions {
+		assetRows, err := w.ie.QueryBufferedEx(
+			ctx,
+			"fetch-worker-assets",
+			nil, // no txn
+			sessiondata.InternalExecutorOverride{
+				User:     username.RootUserName(),
+				Database: "system",
+			},
+			`SELECT wva.path, wva.content_type, wa.content
+			 FROM system.worker_version_assets wva
+			 INNER JOIN system.worker_assets wa ON wa.etag = wva.asset_etag
+			 WHERE wva.worker_version_id = $1
+			 ORDER BY wva.path`,
+			version.id,
+		)
+		if err != nil {
+			return nil, err
+		}
+		idx := workerIndexes[version.name]
+		for _, assetRow := range assetRows {
+			path := string(*assetRow[0].(*tree.DString))
+			contentType := ""
+			if assetRow[1] != nil && assetRow[1] != tree.DNull {
+				contentType = string(*assetRow[1].(*tree.DString))
+			}
+			content := []byte(*assetRow[2].(*tree.DBytes))
+			workers[idx].Assets = append(workers[idx].Assets, WorkerAsset{
+				Path:        path,
+				ContentType: contentType,
+				Content:     content,
+			})
+		}
 	}
 	return workers, nil
 }

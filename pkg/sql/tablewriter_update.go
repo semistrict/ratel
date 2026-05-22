@@ -16,6 +16,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/kv"
 	"github.com/cockroachdb/cockroach/pkg/settings"
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog"
+	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/row"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/eval"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
@@ -58,6 +59,20 @@ func (tu *tableUpdater) rowForUpdate(
 ) (tree.Datums, error) {
 	tu.currentBatchSize++
 	return tu.ru.UpdateRow(ctx, tu.b, oldValues, updateValues, pm, traceKV)
+}
+
+func (tu *tableUpdater) rowForSubordinateJSONMutation(
+	ctx context.Context, oldValues tree.Datums, mutation row.SubordinateJSONMutationOp, traceKV bool,
+) error {
+	tu.currentBatchSize++
+	return tu.ru.UpdateSubordinateJSONRow(ctx, tu.txn, tu.b, oldValues, mutation, traceKV)
+}
+
+func (tu *tableUpdater) rowForSubordinateJSONNull(
+	ctx context.Context, oldValues tree.Datums, colID descpb.ColumnID, traceKV bool,
+) error {
+	tu.currentBatchSize++
+	return tu.ru.ClearSubordinateJSONColumn(ctx, tu.b, oldValues, colID, traceKV)
 }
 
 // tableDesc is part of the tableWriter interface.

@@ -1523,6 +1523,12 @@ func (ef *execFactory) ConstructUpdate(
 	// since it compiles tuples and subqueries into a simple sequence of target
 	// columns.
 	updateCols := makeColList(table, updateColOrdSet)
+	subordinateJSONMutationPlan, err := tryPlanSubordinateJSONDirectUpdate(
+		ef.ctx, ef.planner.EvalContext(), tabDesc, input.(planNode), fetchCols, updateCols, rowsNeeded, checks,
+	)
+	if err != nil {
+		return nil, err
+	}
 	sourceSlots := make([]sourceSlot, len(updateCols))
 	for i := range sourceSlots {
 		sourceSlots[i] = scalarSlot{column: updateCols[i], sourceIndex: len(fetchCols) + i}
@@ -1566,10 +1572,11 @@ func (ef *execFactory) ConstructUpdate(
 				Cols:         ru.FetchCols,
 				Mapping:      ru.FetchColIDtoRowIndex,
 			},
-			sourceSlots:    sourceSlots,
-			updateValues:   make(tree.Datums, len(ru.UpdateCols)),
-			updateColsIdx:  updateColsIdx,
-			numPassthrough: len(passthrough),
+			sourceSlots:             sourceSlots,
+			updateValues:            make(tree.Datums, len(ru.UpdateCols)),
+			updateColsIdx:           updateColsIdx,
+			numPassthrough:          len(passthrough),
+			subordinateJSONMutation: subordinateJSONMutationPlan,
 		},
 	}
 

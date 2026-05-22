@@ -726,6 +726,7 @@ go_test(
         "sql_exec_log_test.go",
         "sql_prepare_test.go",
         "statement_mark_redaction_test.go",
+        "subordinate_json_update_test.go",
         "table_ref_test.go",
         "table_test.go",
         "telemetry_logging_test.go",

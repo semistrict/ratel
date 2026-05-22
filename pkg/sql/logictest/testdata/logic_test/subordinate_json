@@ -1,0 +1,332 @@
+subtest access_and_exists_vectorized
+
+statement ok
+SET distsql = always
+
+statement ok
+SET vectorize = on
+
+statement ok
+CREATE TABLE t (id INT PRIMARY KEY, j JSONB)
+
+statement ok
+INSERT INTO t VALUES
+  (1, '{"a": {"b": [10, 20]}, "z": 7}'),
+  (2, '{"a": {"b": [30]}, "z": 8}'),
+  (3, '{"q": "r"}'),
+  (4, NULL),
+  (5, 'null')
+
+query TTT
+SELECT
+  (j ? 'a')::STRING,
+  coalesce(j->>'z', 'NULL'),
+  coalesce(j#>>'{a,b,1}', 'NULL')
+FROM t
+ORDER BY id
+----
+true  7     20
+true  8     NULL
+false NULL  NULL
+NULL  NULL  NULL
+false NULL  NULL
+
+statement ok
+DROP TABLE t
+
+subtest same_path_dual_containment_projection_vectorized
+
+statement ok
+CREATE TABLE t (id INT PRIMARY KEY, j JSONB)
+
+statement ok
+INSERT INTO t VALUES
+  (1, '{"a": {"b": [10, 20]}, "z": 7}'),
+  (2, '{"a": {"b": [20], "c": null}, "z": 8}'),
+  (3, '{"a": {"b": [20], "c": true}, "z": 9}'),
+  (4, '{"q": "r"}')
+
+query IT
+SELECT id, j#>'{a}'
+FROM t
+WHERE j#>'{a}' @> '{"b": [20]}'
+  AND j#>'{a}' <@ '{"b": [20], "c": null}'
+ORDER BY id
+----
+2 {"b": [20], "c": null}
+
+statement ok
+DROP TABLE t
+
+subtest negative_index_and_residual_vectorized
+
+statement ok
+CREATE TABLE t (id INT PRIMARY KEY, j JSONB)
+
+statement ok
+INSERT INTO t VALUES
+  (1, '{"a": {"b": [10, 20]}}'),
+  (2, '{"a": {"b": [30]}}'),
+  (3, '{"a": {"b": [40]}}'),
+  (4, '{"q": "r"}')
+
+query I
+SELECT id
+FROM t
+WHERE j#>>'{a,b,-1}' = '20' AND id < 3
+ORDER BY id
+----
+1
+
+statement ok
+DROP TABLE t
+
+subtest same_path_json_and_text_projection_vectorized
+
+statement ok
+CREATE TABLE t (id INT PRIMARY KEY, j JSONB)
+
+statement ok
+INSERT INTO t VALUES
+  (1, '{"a": {"b": [10, 20]}}'),
+  (2, '{"a": {"b": [30]}}'),
+  (3, '{"q": "r"}')
+
+query ITT
+SELECT
+  id,
+  coalesce((j#>'{a,b,-1}')::STRING, 'NULL'),
+  coalesce(j#>>'{a,b,-1}', 'NULL')
+FROM t
+ORDER BY id
+----
+1 20 20
+2 30 30
+3 NULL NULL
+
+statement ok
+DROP TABLE t
+
+subtest same_path_containment_projection_vectorized
+
+statement ok
+CREATE TABLE t (id INT PRIMARY KEY, j JSONB)
+
+statement ok
+INSERT INTO t VALUES
+  (1, '{"a": {"b": [10, 20]}}'),
+  (2, '{"a": {"b": [30]}}'),
+  (3, '{"a": {"b": [40]}}')
+
+query IT
+SELECT id, j#>>'{a,b,0}'
+FROM t
+WHERE j#>'{a}' @> '{"b": [30]}'
+ORDER BY id
+----
+2 30
+
+statement ok
+DROP TABLE t
+
+subtest multiple_containment_filters_vectorized
+
+statement ok
+CREATE TABLE t (id INT PRIMARY KEY, j JSONB)
+
+statement ok
+INSERT INTO t VALUES
+  (1, '{"a": {"b": [10, 20]}, "z": 7}'),
+  (2, '{"a": {"b": [30]}, "z": 8}'),
+  (3, '{"a": {"b": [30]}, "z": 9}'),
+  (4, '{"a": {"b": [20], "c": null}, "z": 7}')
+
+query I
+SELECT id
+FROM t
+WHERE j @> '{"z": 8}'
+  AND j->'a' @> '{"b": [30]}'
+ORDER BY id
+----
+2
+
+query I
+SELECT id
+FROM t
+WHERE j->'a' @> '{"b": [20]}'
+  AND j->'a' <@ '{"b": [20], "c": null}'
+ORDER BY id
+----
+4
+
+statement ok
+DROP TABLE t
+
+subtest null_and_empty_containment_vectorized
+
+statement ok
+CREATE TABLE t (id INT PRIMARY KEY, j JSONB)
+
+statement ok
+INSERT INTO t VALUES
+  (1, '{}'),
+  (2, '[]'),
+  (3, 'null'),
+  (4, NULL),
+  (5, '{"a": null}'),
+  (6, '{"a": []}'),
+  (7, '{"a": {}}')
+
+query I
+SELECT id FROM t WHERE j @> '{}' ORDER BY id
+----
+1
+5
+6
+7
+
+query I
+SELECT id FROM t WHERE j->'a' <@ 'null' ORDER BY id
+----
+5
+
+query I
+SELECT id FROM t WHERE j->'a' <@ '[]' ORDER BY id
+----
+6
+
+query I
+SELECT id FROM t WHERE j->'a' <@ '{}' ORDER BY id
+----
+7
+
+statement ok
+DROP TABLE t
+
+subtest virtual_column_vectorized
+
+statement ok
+CREATE TABLE t (
+  id INT PRIMARY KEY,
+  j JSONB,
+  jt STRING AS (j#>>'{a,b,-1}') VIRTUAL
+)
+
+statement ok
+INSERT INTO t (id, j) VALUES
+  (1, '{"a": {"b": [10, 20]}}'),
+  (2, '{"a": {"b": [30]}}'),
+  (3, '{"q": "r"}')
+
+query IT
+SELECT id, coalesce(jt, 'NULL')
+FROM t
+WHERE jt IS NOT NULL
+ORDER BY id
+----
+1 20
+2 30
+
+statement ok
+DROP TABLE t
+
+subtest join_pushdown_vectorized
+
+statement ok
+CREATE TABLE t (id INT PRIMARY KEY, j JSONB)
+
+statement ok
+CREATE TABLE u (id INT PRIMARY KEY, tag STRING NOT NULL)
+
+statement ok
+INSERT INTO t VALUES
+  (1, '{"a": {"b": [10, 20]}}'),
+  (2, '{"a": {"b": [30]}}'),
+  (3, '{"q": "r"}')
+
+statement ok
+INSERT INTO u VALUES
+  (1, 'x'),
+  (2, 'y'),
+  (3, 'z')
+
+query IT
+SELECT t.id, u.tag
+FROM t
+JOIN u USING (id)
+WHERE t.j#>>'{a,b,-1}' = '20'
+ORDER BY t.id
+----
+1 x
+
+statement ok
+DROP TABLE u
+
+statement ok
+DROP TABLE t
+
+subtest update_rewrite_vectorized
+
+statement ok
+CREATE TABLE t (id INT PRIMARY KEY, j JSONB)
+
+statement ok
+INSERT INTO t VALUES
+  (1, '{"a": {"b": [10, 20]}, "z": 7}'),
+  (2, '{"a": {"b": [30]}, "z": 8}'),
+  (3, '{"q": "r"}')
+
+statement ok
+UPDATE t SET j = '{"a": {"b": [40, 50]}, "z": 9}' WHERE id = 1
+
+statement ok
+UPDATE t SET j = 'null' WHERE id = 2
+
+statement ok
+UPDATE t SET j = NULL WHERE id = 3
+
+query ITT
+SELECT
+  id,
+  coalesce(j#>>'{a,b,-1}', 'NULL'),
+  coalesce((j ? 'a')::STRING, 'NULL')
+FROM t
+ORDER BY id
+----
+1 50   true
+2 NULL false
+3 NULL NULL
+
+statement ok
+DROP TABLE t
+
+subtest upsert_and_delete_vectorized
+
+statement ok
+CREATE TABLE t (id INT PRIMARY KEY, j JSONB)
+
+statement ok
+INSERT INTO t VALUES
+  (1, '{"a": {"b": [10, 20]}}'),
+  (2, NULL),
+  (3, '{"q": "r"}')
+
+statement ok
+UPSERT INTO t VALUES
+  (1, '{"a": {"b": [99]}}'),
+  (2, '{"a": {"b": [5]}}')
+
+statement ok
+DELETE FROM t WHERE id = 3
+
+query IT
+SELECT id, coalesce(j#>>'{a,b,-1}', 'NULL')
+FROM t
+WHERE j ? 'a'
+ORDER BY id
+----
+1 99
+2 5
+
+statement ok
+DROP TABLE t

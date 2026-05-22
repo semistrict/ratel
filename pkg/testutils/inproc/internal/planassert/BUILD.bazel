@@ -1,0 +1,16 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "planassert",
+    srcs = [
+        "kvkeys.go",
+        "planassert.go",
+    ],
+    importpath = "github.com/cockroachdb/cockroach/pkg/testutils/inproc/internal/planassert",
+    visibility = ["//pkg/testutils/inproc:__pkg__"],
+    deps = [
+        "//pkg/kv/kvpb",
+        "//pkg/roachpb",
+        "@com_github_stretchr_testify//require",
+    ],
+)

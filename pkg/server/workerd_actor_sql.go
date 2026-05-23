@@ -48,9 +48,6 @@ func (w *WorkerdSidecar) startActorSQLService(
 	if w.ie == nil || !workersNeedActorSQL(workers) {
 		return nil, nil, nil
 	}
-	if err := w.ensureActorSQLSchema(ctx); err != nil {
-		return nil, nil, errors.Wrap(err, "creating actor SQL schema")
-	}
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return nil, nil, err
@@ -71,26 +68,6 @@ func workersNeedActorSQL(workers []WorkerDef) bool {
 		}
 	}
 	return false
-}
-
-func (w *WorkerdSidecar) ensureActorSQLSchema(ctx context.Context) error {
-	_, err := w.ie.ExecEx(
-		ctx,
-		"create-ratel-chat-messages",
-		nil,
-		sessiondata.InternalExecutorOverride{
-			User:     username.NodeUserName(),
-			Database: "system",
-		},
-		`CREATE TABLE IF NOT EXISTS system.ratel_chat_messages (
-			actor_id STRING NOT NULL,
-			timestamp INT8 NOT NULL,
-			name STRING NOT NULL,
-			message STRING NOT NULL,
-			CONSTRAINT "primary" PRIMARY KEY (actor_id, timestamp)
-		)`,
-	)
-	return err
 }
 
 func (w *WorkerdSidecar) handleActorSQL(rw http.ResponseWriter, req *http.Request) {
@@ -178,7 +155,6 @@ func actorSQLColumnNames(sql string) []string {
 		if len(parts) >= 3 && strings.EqualFold(parts[len(parts)-2], "AS") {
 			name = parts[len(parts)-1]
 		} else {
-			name = strings.TrimPrefix(name, "system.ratel_chat_messages.")
 			if dot := strings.LastIndexByte(name, '.'); dot >= 0 {
 				name = name[dot+1:]
 			}

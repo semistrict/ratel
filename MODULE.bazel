@@ -35,6 +35,7 @@ archive_override(
         "//build/workerd/patches/workerd:0007-use-rust-2024-for-proc-macros.patch",
         "//build/workerd/patches/workerd:0008-fix-v8-fast-float-includes.patch",
         "//build/workerd/patches/workerd:0009-link-kj-gzip-into-workerd-binary.patch",
+        "//build/workerd/patches/workerd:0010-add-ratel-actor-storage.patch",
     ],
     patch_cmds = [
         "python3 - <<'PY'\nfrom pathlib import Path\nfor p in list(Path('build').rglob('*.bzl')) + list(Path('src').rglob('*.bzl')) + list(Path('src').rglob('BUILD.bazel')):\n    s = p.read_text()\n    ns = s.replace('@@//', '//').replace('@//', '//')\n    if ns != s:\n        p.write_text(ns)\nPY",

@@ -2,6 +2,7 @@ load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
 exports_files([
     "README.md",
+    "schema.sql",
     "worker.jsonc",
 ])
 
@@ -64,8 +65,12 @@ sh_test(
     srcs = ["tests/run_playwright.sh"],
     data = [
         ":chat_worker",
+        "//pkg/cmd/ratel:ratel",
         "@npm_playwright//:pkg",
         "@npm_playwright_core//:pkg",
+        "schema.sql",
+        "scripts/install_schema.sh",
+        "scripts/start.sh",
         "tests/chat.spec.js",
     ] + glob(["assets/**"]),
     tags = [

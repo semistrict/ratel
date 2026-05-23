@@ -20,7 +20,7 @@ bazel build //examples/workers/chat:chat_worker
 Deploy it to a running local Ratel node:
 
 ```sh
-ratel deploy --config examples/workers/chat/worker.jsonc localhost:5273 _bazel/bin/examples/workers/chat/chat_worker.js
+examples/workers/chat/scripts/start.sh
 ```
 
 Open:
@@ -32,7 +32,7 @@ http://localhost:5273/workers/chat/
 Run the Playwright smoke test against a running local deployment:
 
 ```sh
-RATEL_CHAT_URL=http://localhost:26257/workers/chat/ PLAYWRIGHT_NODE_PATH=/path/to/node_modules \
+RATEL_CHAT_URL=http://localhost:5273/workers/chat/ PLAYWRIGHT_NODE_PATH=/path/to/node_modules \
   bazel test //examples/workers/chat:playwright_test
 ```
 

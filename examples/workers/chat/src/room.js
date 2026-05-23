@@ -37,7 +37,7 @@ export class ChatRoom {
 
     const history = (await this.sql
       .exec(
-        "SELECT name, message, timestamp FROM system.ratel_chat_messages WHERE actor_id = $1 ORDER BY timestamp DESC LIMIT 100",
+        "SELECT name, message, timestamp FROM defaultdb.public.ratel_chat_messages WHERE actor_id = $1 ORDER BY timestamp DESC LIMIT 100",
       )
       .toArray())
       .reverse();
@@ -86,7 +86,7 @@ export class ChatRoom {
       const dataStr = JSON.stringify(data);
       this.broadcast(dataStr);
       await this.sql.exec(
-        "INSERT INTO system.ratel_chat_messages (actor_id, timestamp, name, message) VALUES ($1, $2, $3, $4)",
+        "INSERT INTO defaultdb.public.ratel_chat_messages (actor_id, timestamp, name, message) VALUES ($1, $2, $3, $4)",
         timestamp,
         session.name,
         message,

@@ -1,0 +1,168 @@
+diff -ruN workerd-1.20260523.1/src/workerd/server/server.c++ workerd-1.20260523.1/src/workerd/server/server.c++
+--- workerd-1.20260523.1/src/workerd/server/server.c++	2026-05-23 06:59:56
++++ workerd-1.20260523.1/src/workerd/server/server.c++	2026-05-23 06:59:56
+@@ -16,6 +16,7 @@
+ #include <workerd/api/worker-rpc.h>
+ #include <workerd/io/actor-cache.h>
+ #include <workerd/io/actor-id.h>
++#include <workerd/io/actor-storage.capnp.h>
+ #include <workerd/io/actor-sqlite.h>
+ #include <workerd/io/bundle-fs.h>
+ #include <workerd/io/compatibility-date.h>
+@@ -180,6 +181,7 @@
+     kj::Timer& timer,
+     const kj::MonotonicClock& monotonicClock,
+     kj::Network& network,
++    kj::LowLevelAsyncIoProvider& lowLevelProvider,
+     kj::EntropySource& entropySource,
+     Worker::LoggingOptions loggingOptions,
+     kj::Function<void(kj::String)> reportConfigError)
+@@ -187,6 +189,7 @@
+       timer(timer),
+       monotonicClock(monotonicClock),
+       network(network),
++      lowLevelProvider(lowLevelProvider),
+       entropySource(entropySource),
+       reportConfigError(kj::mv(reportConfigError)),
+       loggingOptions(loggingOptions),
+@@ -1897,6 +1900,19 @@
+   }
+ };
+ 
++struct RatelActorStorage final {
++  kj::Own<kj::AsyncIoStream> connection;
++  capnp::TwoPartyClient rpcSystem;
++  rpc::ActorStorage::Client client;
++
++  RatelActorStorage(kj::LowLevelAsyncIoProvider& lowLevelProvider, uint fd)
++      : connection(lowLevelProvider.wrapSocketFd(fd,
++            kj::LowLevelAsyncIoProvider::TAKE_OWNERSHIP |
++                kj::LowLevelAsyncIoProvider::ALREADY_CLOEXEC)),
++        rpcSystem(*connection),
++        client(rpcSystem.bootstrap().castAs<rpc::ActorStorage>()) {}
++};
++
+ class Server::WorkerService final: public Service,
+                                    private kj::TaskSet::ErrorHandler,
+                                    private IoChannelFactory,
+@@ -1912,6 +1928,7 @@
+     kj::Array<kj::Own<ActorClass>> actorClass;
+     kj::Maybe<kj::Own<IoChannelFactory::SubrequestChannel>> cache;
+     kj::Maybe<const kj::Directory&> actorStorage;
++    kj::Maybe<kj::Own<RatelActorStorage>> ratelActorStorage;
+     kj::Array<kj::Own<IoChannelFactory::SubrequestChannel>> tails;
+     kj::Array<kj::Own<IoChannelFactory::SubrequestChannel>> streamingTails;
+     kj::Array<kj::Rc<WorkerLoaderNamespace>> workerLoaders;
+@@ -2079,7 +2096,10 @@
+     auto linked = callback(*this, errorReporter);
+ 
+     for (auto& ns: actorNamespaces) {
+-      ns.value->link(linked.actorStorage);
++      ns.value->link(linked.actorStorage,
++          linked.ratelActorStorage.map([](kj::Own<RatelActorStorage>& storage) {
++        return storage->client;
++      }));
+     }
+ 
+     ioChannels = kj::mv(linked);
+@@ -2269,13 +2289,17 @@
+           containerEgressInterceptorImage(containerEgressInterceptorImage),
+           waitUntilTasks(waitUntilTasks) {}
+ 
+-    void link(kj::Maybe<const kj::Directory&> serviceActorStorage) {
++    void link(kj::Maybe<const kj::Directory&> serviceActorStorage,
++        kj::Maybe<rpc::ActorStorage::Client> serviceRatelActorStorage) {
+       KJ_IF_SOME(dir, serviceActorStorage) {
+         KJ_IF_SOME(d, config.tryGet<Durable>()) {
+           this->actorStorage.emplace(dir.openSubdir(
+               kj::Path({d.uniqueKey}), kj::WriteMode::CREATE | kj::WriteMode::MODIFY));
+         }
+       }
++      KJ_IF_SOME(client, serviceRatelActorStorage) {
++        this->ratelActorStorage = client;
++      }
+ 
+       KJ_IF_SOME(d, config.tryGet<Durable>()) {
+         auto idFactory = kj::heap<ActorIdFactoryImpl>(d.uniqueKey);
+@@ -2855,6 +2879,11 @@
+                   [](SpanParent) -> kj::Promise<void> { return kj::READY_NOW; }, *sqliteHooks)
+                   .attach(kj::mv(sqliteHooks));
+             } else {
++              KJ_IF_SOME(storage, ns.ratelActorStorage) {
++                auto request = storage.getStageRequest();
++                request.setStableId(key);
++                return kj::heap<ActorCache>(request.send().getStage(), sharedLru, outputGate, hooks);
++              }
+               // Create an ActorCache backed by a fake, empty storage. Elsewhere, we configure
+               // ActorCache never to flush, so this effectively creates in-memory storage.
+               return kj::heap<ActorCache>(
+@@ -3052,6 +3081,7 @@
+     // Note: The Vfs, actorStorage, and ownAlarmScheduler must not be torn down until all actors
+     // have been torn down, so we declare them before `actors`.
+     kj::Maybe<ActorStorage> actorStorage;
++    kj::Maybe<rpc::ActorStorage::Client> ratelActorStorage;
+     kj::Maybe<kj::Own<AlarmScheduler>> ownAlarmScheduler;
+ 
+     // Tracks the canceler and cleanup promise for a Docker container's lifecycle cleanup.
+@@ -4972,6 +5002,9 @@
+         errorReporter.addError(kj::str("durableObjectStorage config refers to a service \"",
+             diskName, "\", but no such service is defined."));
+       }
++    } else if (def.actorStorageConf.isRatel()) {
++      result.ratelActorStorage =
++          kj::heap<RatelActorStorage>(lowLevelProvider, def.actorStorageConf.getRatel());
+     }
+ 
+     result.tails = KJ_MAP(tail, def.tails) { return kj::mv(tail).lookup(*this); };
+@@ -5940,6 +5973,7 @@
+           goto validDurableObjectStorage;
+         case config::Worker::DurableObjectStorage::IN_MEMORY:
+         case config::Worker::DurableObjectStorage::LOCAL_DISK:
++        case config::Worker::DurableObjectStorage::RATEL:
+           goto validDurableObjectStorage;
+       }
+       reportConfigError(kj::str("Encountered unknown durableObjectStorage type in service \"", name,
+diff -ruN workerd-1.20260523.1/src/workerd/server/server.h workerd-1.20260523.1/src/workerd/server/server.h
+--- workerd-1.20260523.1/src/workerd/server/server.h	2026-05-23 06:59:56
++++ workerd-1.20260523.1/src/workerd/server/server.h	2026-05-23 06:59:56
+@@ -39,6 +39,7 @@
+       kj::Timer& timer,
+       const kj::MonotonicClock& monotonicClock,
+       kj::Network& network,
++      kj::LowLevelAsyncIoProvider& lowLevelProvider,
+       kj::EntropySource& entropySource,
+       Worker::LoggingOptions loggingOptions,
+       kj::Function<void(kj::String)> reportConfigError);
+@@ -138,6 +139,7 @@
+   // timer updates, but monotonicClock updates continuously (not just when system I/O is polled).
+   const kj::MonotonicClock& monotonicClock;
+   kj::Network& network;
++  kj::LowLevelAsyncIoProvider& lowLevelProvider;
+   kj::EntropySource& entropySource;
+   kj::Function<void(kj::String)> reportConfigError;
+   PythonConfig pythonConfig = PythonConfig{.packageDiskCacheRoot = kj::none,
+diff -ruN workerd-1.20260523.1/src/workerd/server/workerd.c++ workerd-1.20260523.1/src/workerd/server/workerd.c++
+--- workerd-1.20260523.1/src/workerd/server/workerd.c++	2026-05-23 06:59:56
++++ workerd-1.20260523.1/src/workerd/server/workerd.c++	2026-05-23 06:59:56
+@@ -686,6 +686,7 @@
+             io.provider->getTimer(),
+             kj::systemPreciseMonotonicClock(),
+             network,
++            *io.lowLevelProvider,
+             entropySource,
+             Worker::LoggingOptions(Worker::ConsoleMode::STDOUT),
+             [&](kj::String error) {
+diff -ruN workerd-1.20260523.1/src/workerd/server/workerd.capnp workerd-1.20260523.1/src/workerd/server/workerd.capnp
+--- workerd-1.20260523.1/src/workerd/server/workerd.capnp	2026-05-23 06:59:55
++++ workerd-1.20260523.1/src/workerd/server/workerd.capnp	2026-05-23 06:59:56
+@@ -708,6 +708,10 @@
+     # subdirectory will be created using `uniqueKey` as the name. Within the directory, one or
+     # more files are created for each object, with names `<id>.<ext>`, where `.<ext>` may be any of
+     # a number of different extensions depending on the storage mode. (Currently, the main storage
++
++    ratel @18 :UInt32;
++    # Ratel extension: Durable Object data is stored by the parent Ratel process. The value is an
++    # inherited socket file descriptor connected to an ActorStorage Cap'n Proto RPC server.
+     # is a file with the extension `.sqlite`, and in certain situations extra files with the
+     # extensions `.sqlite-wal`, and `.sqlite-shm` may also be present.)
+   }

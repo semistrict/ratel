@@ -5,6 +5,21 @@ if [[ -n "${PLAYWRIGHT_NODE_PATH:-}" ]]; then
   export NODE_PATH="${PLAYWRIGHT_NODE_PATH}${NODE_PATH:+:${NODE_PATH}}"
 fi
 
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+if [[ "${RATEL_SKIP_SCHEMA_INSTALL:-}" != "1" ]]; then
+  if [[ -x "$script_dir/../scripts/install_schema.sh" ]]; then
+    "$script_dir/../scripts/install_schema.sh"
+  elif [[ -n "${RUNFILES_DIR:-}" ]]; then
+    for root in "$RUNFILES_DIR" "$RUNFILES_DIR/_main"; do
+      installer="$root/examples/workers/chat/scripts/install_schema.sh"
+      if [[ -x "$installer" ]]; then
+        "$installer"
+        break
+      fi
+    done
+  fi
+fi
+
 if [[ -n "${RUNFILES_DIR:-}" ]]; then
   node_modules="$(mktemp -d)"
 for repo_root in "$RUNFILES_DIR" "$RUNFILES_DIR/_main"; do
@@ -36,7 +51,6 @@ for repo_root in "$RUNFILES_DIR" "$RUNFILES_DIR/_main"; do
   done
 fi
 
-script_dir="$(cd "$(dirname "$0")" && pwd)"
 if [[ -f "$script_dir/chat.spec.js" ]]; then
   node "$script_dir/chat.spec.js"
 else

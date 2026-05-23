@@ -143,7 +143,7 @@ func TestWorkerdConfigGeneration(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	configPath, err := generateWorkerdConfig(dir, workers, 18787, -2, 0)
+	configPath, err := generateWorkerdConfig(dir, workers, 18787, 3, 0)
 	require.NoError(t, err)
 	require.FileExists(t, configPath)
 
@@ -160,8 +160,8 @@ func TestWorkerdConfigGeneration(t *testing.T) {
 	require.Contains(t, config, ".workerCounter")
 	require.Contains(t, config, "localhost:18787")
 	require.Contains(t, config, "name = \"ASSETS\"")
-	require.Contains(t, config, "name = \"durable-object-storage\"")
-	require.Contains(t, config, "durableObjectStorage = ( localDisk = \"durable-object-storage\" )")
+	require.NotContains(t, config, "name = \"durable-object-storage\"")
+	require.Contains(t, config, "durableObjectStorage = ( ratel = 3 )")
 	require.Contains(t, config, "className = \"Counter\"")
 	require.Contains(t, config, "uniqueKey = \"workerCounter_Counter\"")
 	require.Contains(t, config, "enableSql = true")

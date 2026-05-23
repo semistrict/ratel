@@ -62,17 +62,17 @@ func TestValidateActorSQLScopeRequiresActorPlaceholder(t *testing.T) {
 	defer log.Scope(t).Close(t)
 
 	for _, stmt := range []string{
-		`SELECT * FROM system.ratel_chat_messages`,
-		`SELECT * FROM system.ratel_chat_messages WHERE actor_id = 'lobby'`,
-		`INSERT INTO system.ratel_chat_messages (actor_id, timestamp) VALUES ('lobby', $1)`,
+		`SELECT * FROM defaultdb.public.ratel_chat_messages`,
+		`SELECT * FROM defaultdb.public.ratel_chat_messages WHERE actor_id = 'lobby'`,
+		`INSERT INTO defaultdb.public.ratel_chat_messages (actor_id, timestamp) VALUES ('lobby', $1)`,
 	} {
 		require.Error(t, ValidateActorSQLScope(stmt), stmt)
 	}
 
 	for _, stmt := range []string{
-		`SELECT * FROM system.ratel_chat_messages WHERE actor_id = $1`,
-		`INSERT INTO system.ratel_chat_messages (actor_id, timestamp) VALUES ($1, $2)`,
-		`DELETE FROM system.ratel_chat_messages WHERE actor_id = $1 AND timestamp = $2`,
+		`SELECT * FROM defaultdb.public.ratel_chat_messages WHERE actor_id = $1`,
+		`INSERT INTO defaultdb.public.ratel_chat_messages (actor_id, timestamp) VALUES ($1, $2)`,
+		`DELETE FROM defaultdb.public.ratel_chat_messages WHERE actor_id = $1 AND timestamp = $2`,
 	} {
 		require.NoError(t, ValidateActorSQLScope(stmt), stmt)
 	}

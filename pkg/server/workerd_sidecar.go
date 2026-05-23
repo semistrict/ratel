@@ -43,8 +43,6 @@ import (
 // is used; in tests a random available port is picked instead.
 const defaultWorkerdListenPort = 18787
 
-const ratelWorkerdDOStorageEnv = "RATEL_WORKERD_DO_STORAGE"
-
 // WorkerdSidecar manages the lifecycle of a workerd child process. It starts
 // workerd on demand when workers exist in system.worker_versions, passes a
 // socketpair fd for DO storage communication, and supports reloading the
@@ -205,13 +203,8 @@ func (w *WorkerdSidecar) startProcess(ctx context.Context, workers []WorkerDef) 
 	var parentFile *os.File
 	var childFile *os.File
 	storageFd := -1
-	doStorageMode := os.Getenv(ratelWorkerdDOStorageEnv)
-	useRatelStorage := doStorageMode == "ratel"
-	useInMemoryStorage := doStorageMode == "in-memory"
-	if !useRatelStorage && !useInMemoryStorage {
-		storageFd = -2
-	}
-	if useRatelStorage {
+	hasDurableObjects := workersNeedActorSQL(workers)
+	if hasDurableObjects {
 		// Create a Unix socketpair for DO storage communication.
 		fds, err := syscall.Socketpair(syscall.AF_UNIX, syscall.SOCK_STREAM, 0)
 		if err != nil {
@@ -275,7 +268,7 @@ func (w *WorkerdSidecar) startProcess(ctx context.Context, workers []WorkerDef) 
 	}
 
 	var rpcConn *rpc.Conn
-	if useRatelStorage {
+	if hasDurableObjects {
 		// Close the child end in the parent process -- workerd has it now.
 		childFile.Close()
 

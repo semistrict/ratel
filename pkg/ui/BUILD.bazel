@@ -1,8 +1,10 @@
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-load("@npm//:defs.bzl", "npm_link_all_packages")
+load(":npm_defs.bzl", "npm_link_all_packages")
 
 npm_link_all_packages(name = "node_modules")
+
+filegroup(name = "empty_node_modules")
 
 exports_files([
     ".npmrc.bazel",

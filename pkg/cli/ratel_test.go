@@ -142,7 +142,11 @@ func TestRunRatelDeployWorkerJSONC(t *testing.T) {
 		// Ratel worker metadata.
 		"name": "chat",
 		"compatibility_date": "2024-04-01",
-		"assets": { "directory": "assets" },
+		"assets": {
+			"directory": "assets",
+			"run_worker_first": true,
+			"not_found_handling": "single-page-application",
+		},
 		"durable_objects": {
 			"bindings": [
 				{ "name": "CHAT_ROOM", "class_name": "ChatRoom" },
@@ -164,6 +168,9 @@ func TestRunRatelDeployWorkerJSONC(t *testing.T) {
 	require.True(t, ok)
 	dos := bindings["durable_objects"].([]interface{})
 	require.Equal(t, "ChatRoom", dos[0].(map[string]interface{})["class_name"])
+	assetsConfig := bindings["assets"].(map[string]interface{})
+	require.Equal(t, true, assetsConfig["run_worker_first"])
+	require.Equal(t, "single-page-application", assetsConfig["not_found_handling"])
 	assets := gotMetadata["assets"].([]interface{})
 	asset := assets[0].(map[string]interface{})
 	require.Equal(t, "/index.html", asset["path"])
@@ -187,6 +194,32 @@ func TestParseRatelWorkerJSONCKeepsCommentLikeStringContent(t *testing.T) {
 	require.Equal(t, "2024-04-01", cfg.CompatibilityDate)
 	require.Equal(t, "./assets", cfg.AssetsDir)
 	require.Equal(t, []string{"ChatRoom", "OtherRoom"}, cfg.DOClasses)
+}
+
+func TestParseRatelWorkerJSONCAssetsConfig(t *testing.T) {
+	cfg, err := parseRatelWorkerJSONC([]byte(`{
+		"assets": {
+			"directory": "./public",
+			"run_worker_first": true,
+			"not_found_handling": "404-page",
+		},
+	}`))
+	require.NoError(t, err)
+	require.Equal(t, "./public", cfg.AssetsDir)
+	require.True(t, cfg.AssetsConfig.RunWorkerFirst)
+	require.Equal(t, "404-page", cfg.AssetsConfig.NotFoundHandling)
+}
+
+func TestParseRatelWorkerJSONCAssetsRunWorkerFirstRoutes(t *testing.T) {
+	cfg, err := parseRatelWorkerJSONC([]byte(`{
+		"assets": {
+			"directory": "./public",
+			"run_worker_first": ["/api/*", "!/api/docs/*"],
+		},
+	}`))
+	require.NoError(t, err)
+	require.Equal(t, []string{"/api/*", "!/api/docs/*"}, cfg.AssetsConfig.RunWorkerFirstRoutes)
+	require.False(t, cfg.AssetsConfig.RunWorkerFirst)
 }
 
 func TestNormalizeRatelWorkerAssetPathRejectsInvalidPaths(t *testing.T) {

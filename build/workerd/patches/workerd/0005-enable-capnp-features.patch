@@ -1,0 +1,13 @@
+diff --git a/build/deps/gen/deps.MODULE.bazel b/build/deps/gen/deps.MODULE.bazel
+--- a/build/deps/gen/deps.MODULE.bazel
++++ b/build/deps/gen/deps.MODULE.bazel
+@@ -29,6 +29,9 @@ http.archive(
+     name = "capnp-cpp",
+     sha256 = "a87651d1772c138643e1fc28ca0cbc8eda0445ca265bc200c083c31a75919386",
+     strip_prefix = "capnproto-capnproto-911e53d/c++",
++    patch_cmds = [
++        "python3 -c 'from pathlib import Path; p=Path(\"src/kj/configure.bzl\"); s=p.read_text(); s=s.replace(\"name = \\\"brotli\\\",\\n        build_setting_default = False\", \"name = \\\"brotli\\\",\\n        build_setting_default = True\"); s=s.replace(\"name = \\\"openssl\\\",\\n        build_setting_default = False\", \"name = \\\"openssl\\\",\\n        build_setting_default = True\"); s=s.replace(\"name = \\\"zlib\\\",\\n        build_setting_default = False\", \"name = \\\"zlib\\\",\\n        build_setting_default = True\"); p.write_text(s)'",
++    ],
+     type = "tgz",
+     url = "https://github.com/capnproto/capnproto/tarball/911e53d67841687afe9a349fd8c0d39fe024515a",
+ )

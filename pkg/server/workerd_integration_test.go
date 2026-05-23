@@ -129,6 +129,10 @@ func TestWorkerdConfigGeneration(t *testing.T) {
 					Content:     []byte("<h1>hello</h1>"),
 				},
 			},
+			AssetsConfig: WorkerAssetsConfig{
+				RunWorkerFirstRoutes: []string{"/api/*", "!/api/docs/*"},
+				NotFoundHandling:     "single-page-application",
+			},
 		},
 		{
 			Name:       "counter",
@@ -139,7 +143,7 @@ func TestWorkerdConfigGeneration(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	configPath, err := generateWorkerdConfig(dir, workers, 18787, 3)
+	configPath, err := generateWorkerdConfig(dir, workers, 18787, -2, 0)
 	require.NoError(t, err)
 	require.FileExists(t, configPath)
 
@@ -156,12 +160,20 @@ func TestWorkerdConfigGeneration(t *testing.T) {
 	require.Contains(t, config, ".workerCounter")
 	require.Contains(t, config, "localhost:18787")
 	require.Contains(t, config, "name = \"ASSETS\"")
-	require.Contains(t, config, "durableObjectStorage = ( ratel = 3 )")
+	require.Contains(t, config, "name = \"durable-object-storage\"")
+	require.Contains(t, config, "durableObjectStorage = ( localDisk = \"durable-object-storage\" )")
 	require.Contains(t, config, "className = \"Counter\"")
+	require.Contains(t, config, "uniqueKey = \"workerCounter_Counter\"")
+	require.Contains(t, config, "enableSql = true")
 
 	routerBytes, err := os.ReadFile(dir + "/router.js")
 	require.NoError(t, err)
 	require.Contains(t, string(routerBytes), "X-Worker-Name")
+	workersManifestBytes, err := os.ReadFile(dir + "/workers.json")
+	require.NoError(t, err)
+	require.Contains(t, string(workersManifestBytes), `"hello":{"assets":true`)
+	require.Contains(t, string(workersManifestBytes), `"run_worker_first_routes":["/api/*","!/api/docs/*"]`)
+	require.Contains(t, string(workersManifestBytes), `"not_found_handling":"single-page-application"`)
 
 	helloBytes, err := os.ReadFile(dir + "/worker_hello.js")
 	require.NoError(t, err)
@@ -171,6 +183,7 @@ func TestWorkerdConfigGeneration(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(assetWorkerBytes), "/index.html")
 	require.Contains(t, string(assetWorkerBytes), "PGgxPmhlbGxvPC9oMT4=")
+	require.Contains(t, string(assetWorkerBytes), `const notFoundHandling = "single-page-application"`)
 
 	counterBytes, err := os.ReadFile(dir + "/worker_counter.js")
 	require.NoError(t, err)
@@ -187,7 +200,7 @@ func TestWorkerdConfigGenerationInMemoryDOStorage(t *testing.T) {
 		},
 	}
 
-	configPath, err := generateWorkerdConfig(t.TempDir(), workers, 18787, -1)
+	configPath, err := generateWorkerdConfig(t.TempDir(), workers, 18787, -1, 0)
 	require.NoError(t, err)
 
 	configBytes, err := os.ReadFile(configPath)
@@ -196,6 +209,7 @@ func TestWorkerdConfigGenerationInMemoryDOStorage(t *testing.T) {
 	require.Contains(t, config, "durableObjectStorage = ( inMemory = void )")
 	require.NotContains(t, config, "durableObjectStorage = ( ratel =")
 	require.Contains(t, config, "name = \"Counter\", durableObjectNamespace = \"Counter\"")
+	require.Contains(t, config, "enableSql = true")
 }
 
 func TestWorkerCapnpID(t *testing.T) {

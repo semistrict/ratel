@@ -16,6 +16,7 @@ build --enable_platform_specific_config
 # rest of CRDB's ~300 external deps.
 common --enable_workspace
 common --enable_bzlmod
+build --@rules_python//python/config_settings:python_version=3.13
 
 # Define a set up flag aliases, so people can use `--cross` instead of the
 # longer `//build/toolchains:cross_flag`.
@@ -41,6 +42,10 @@ build:test --crdb_test
 build --define gotags=bazel,gss
 build --experimental_proto_descriptor_sets_include_source_info
 build --incompatible_strict_action_env --incompatible_enable_cc_toolchain_resolution
+build --cxxopt=-std=c++23
+build --host_cxxopt=-std=c++23
+build --cxxopt=-Wno-unused-function
+build --host_cxxopt=-Wno-unused-function
 common --noincompatible_disallow_empty_glob
 build --symlink_prefix=_bazel/
 build:dev --strip=never

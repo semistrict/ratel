@@ -1,0 +1,11 @@
+diff --git a/build/wd_ts_bundle.bzl b/build/wd_ts_bundle.bzl
+--- a/build/wd_ts_bundle.bzl
++++ b/build/wd_ts_bundle.bzl
+@@ -59,6 +59,7 @@ def wd_ts_bundle(
+         deps = deps,
+         out_dir = out_dir.removesuffix("/"),
+         visibility = ["//visibility:public"],
++        validate = False,
+     )
+ 
+     wd_js_bundle(

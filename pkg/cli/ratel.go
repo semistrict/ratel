@@ -720,6 +720,7 @@ func runRatelDeploy(cmd *cobra.Command, args []string) error {
 		DurableObjects []struct {
 			ClassName string `json:"class_name"`
 		} `json:"durable_objects,omitempty"`
+		Assets *ratelWorkerAssetsConfig `json:"assets,omitempty"`
 	}{}
 	if len(doClasses) > 0 {
 		for _, cls := range doClasses {
@@ -735,6 +736,7 @@ func runRatelDeploy(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		bindings.Assets = &cfg.AssetsConfig
 	}
 
 	var req *http.Request
@@ -794,6 +796,26 @@ type ratelWorkerConfig struct {
 	CompatibilityDate string
 	DOClasses         []string
 	AssetsDir         string
+	AssetsConfig      ratelWorkerAssetsConfig
+}
+
+type ratelWorkerAssetsConfig struct {
+	RunWorkerFirst       bool
+	RunWorkerFirstRoutes []string
+	NotFoundHandling     string
+}
+
+func (c ratelWorkerAssetsConfig) MarshalJSON() ([]byte, error) {
+	obj := map[string]interface{}{}
+	if len(c.RunWorkerFirstRoutes) > 0 {
+		obj["run_worker_first"] = c.RunWorkerFirstRoutes
+	} else if c.RunWorkerFirst {
+		obj["run_worker_first"] = true
+	}
+	if c.NotFoundHandling != "" {
+		obj["not_found_handling"] = c.NotFoundHandling
+	}
+	return json.Marshal(obj)
 }
 
 func ratelDeployFlagChanged(cmd *cobra.Command, name string) bool {
@@ -850,13 +872,13 @@ func parseRatelWorkerJSONC(data []byte) (ratelWorkerConfig, error) {
 	if err := appendDurableObjectClasses(raw["durable_objects"], &cfg.DOClasses); err != nil {
 		return cfg, err
 	}
-	if err := unmarshalAssets(raw["assets"], &cfg.AssetsDir); err != nil {
+	if err := unmarshalAssets(raw["assets"], &cfg.AssetsDir, &cfg.AssetsConfig); err != nil {
 		return cfg, err
 	}
 	return cfg, nil
 }
 
-func unmarshalAssets(raw json.RawMessage, dest *string) error {
+func unmarshalAssets(raw json.RawMessage, dest *string, config *ratelWorkerAssetsConfig) error {
 	if len(raw) == 0 {
 		return nil
 	}
@@ -866,12 +888,30 @@ func unmarshalAssets(raw json.RawMessage, dest *string) error {
 		return nil
 	}
 	var obj struct {
-		Directory string `json:"directory"`
+		Directory        string          `json:"directory"`
+		RunWorkerFirst   json.RawMessage `json:"run_worker_first"`
+		NotFoundHandling string          `json:"not_found_handling"`
 	}
 	if err := json.Unmarshal(raw, &obj); err != nil {
 		return errors.Wrap(err, "assets must be a string or object")
 	}
 	*dest = obj.Directory
+	if len(obj.RunWorkerFirst) > 0 {
+		if err := json.Unmarshal(obj.RunWorkerFirst, &config.RunWorkerFirst); err != nil {
+			var routes []string
+			if routesErr := json.Unmarshal(obj.RunWorkerFirst, &routes); routesErr == nil {
+				config.RunWorkerFirstRoutes = routes
+			} else {
+				return errors.Wrap(err, "assets.run_worker_first must be a boolean or array of strings")
+			}
+		}
+	}
+	switch obj.NotFoundHandling {
+	case "", "none", "single-page-application", "404-page":
+		config.NotFoundHandling = obj.NotFoundHandling
+	default:
+		return errors.New("assets.not_found_handling must be one of \"none\", \"single-page-application\", or \"404-page\"")
+	}
 	return nil
 }
 

@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"sync"
@@ -66,6 +67,8 @@ type WorkerdSidecar struct {
 		running    bool
 		cancelMon  context.CancelFunc
 		rpcConn    *rpc.Conn // capnp RPC connection on the socketpair
+		sqlServer  *http.Server
+		sqlLn      net.Listener
 		workerDefs []WorkerDef
 		waitDone   chan struct{} // closed when cmd.Wait() returns
 	}
@@ -202,7 +205,12 @@ func (w *WorkerdSidecar) startProcess(ctx context.Context, workers []WorkerDef) 
 	var parentFile *os.File
 	var childFile *os.File
 	storageFd := -1
-	useRatelStorage := os.Getenv(ratelWorkerdDOStorageEnv) != "in-memory"
+	doStorageMode := os.Getenv(ratelWorkerdDOStorageEnv)
+	useRatelStorage := doStorageMode == "ratel"
+	useInMemoryStorage := doStorageMode == "in-memory"
+	if !useRatelStorage && !useInMemoryStorage {
+		storageFd = -2
+	}
 	if useRatelStorage {
 		// Create a Unix socketpair for DO storage communication.
 		fds, err := syscall.Socketpair(syscall.AF_UNIX, syscall.SOCK_STREAM, 0)
@@ -216,9 +224,27 @@ func (w *WorkerdSidecar) startProcess(ctx context.Context, workers []WorkerDef) 
 		storageFd = 3
 	}
 
-	// Generate workerd config.
-	configPath, err := generateWorkerdConfig(w.workDir, workers, w.listenPort, storageFd)
+	sqlPort := 0
+	sqlServer, sqlLn, err := w.startActorSQLService(ctx, workers)
 	if err != nil {
+		if parentFile != nil {
+			parentFile.Close()
+		}
+		if childFile != nil {
+			childFile.Close()
+		}
+		return err
+	}
+	if sqlLn != nil {
+		sqlPort = sqlLn.Addr().(*net.TCPAddr).Port
+	}
+
+	// Generate workerd config.
+	configPath, err := generateWorkerdConfig(w.workDir, workers, w.listenPort, storageFd, sqlPort)
+	if err != nil {
+		if sqlServer != nil {
+			_ = sqlServer.Close()
+		}
 		if parentFile != nil {
 			parentFile.Close()
 		}
@@ -236,6 +262,9 @@ func (w *WorkerdSidecar) startProcess(ctx context.Context, workers []WorkerDef) 
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Start(); err != nil {
+		if sqlServer != nil {
+			_ = sqlServer.Close()
+		}
 		if parentFile != nil {
 			parentFile.Close()
 		}
@@ -290,6 +319,9 @@ func (w *WorkerdSidecar) startProcess(ctx context.Context, workers []WorkerDef) 
 		if rpcConn != nil {
 			rpcConn.Close()
 		}
+		if sqlServer != nil {
+			_ = sqlServer.Close()
+		}
 		cmd.Process.Signal(os.Interrupt)
 		<-waitDone
 		return err
@@ -299,6 +331,8 @@ func (w *WorkerdSidecar) startProcess(ctx context.Context, workers []WorkerDef) 
 	w.mu.running = true
 	w.mu.cancelMon = monCancel
 	w.mu.rpcConn = rpcConn
+	w.mu.sqlServer = sqlServer
+	w.mu.sqlLn = sqlLn
 	w.mu.workerDefs = workers
 	w.mu.waitDone = waitDone
 	log.Infof(ctx, "workerd sidecar started (pid %d) with %d workers", cmd.Process.Pid, len(workers))
@@ -333,6 +367,11 @@ func (w *WorkerdSidecar) stopProcess() {
 	if w.mu.rpcConn != nil {
 		w.mu.rpcConn.Close()
 		w.mu.rpcConn = nil
+	}
+	if w.mu.sqlServer != nil {
+		_ = w.mu.sqlServer.Close()
+		w.mu.sqlServer = nil
+		w.mu.sqlLn = nil
 	}
 
 	w.mu.Unlock()
@@ -387,6 +426,10 @@ func (w *WorkerdSidecar) monitor(ctx context.Context, waitDone <-chan struct{}) 
 // workerBindings is the JSON structure stored in the bindings column.
 type workerBindings struct {
 	DurableObjects []doBinding `json:"durable_objects,omitempty"`
+	Assets         struct {
+		RunWorkerFirst   json.RawMessage `json:"run_worker_first,omitempty"`
+		NotFoundHandling string          `json:"not_found_handling,omitempty"`
+	} `json:"assets,omitempty"`
 }
 
 type doBinding struct {
@@ -435,6 +478,7 @@ func (w *WorkerdSidecar) fetchWorkerDefs(ctx context.Context) ([]WorkerDef, erro
 		compatDate := string(*row[4].(*tree.DString))
 
 		var doClasses []string
+		var assetsConfig WorkerAssetsConfig
 		if row[5] != nil && row[5] != tree.DNull {
 			bindingsStr := row[5].(*tree.DJSON).JSON.String()
 			var b workerBindings
@@ -444,16 +488,28 @@ func (w *WorkerdSidecar) fetchWorkerDefs(ctx context.Context) ([]WorkerDef, erro
 				for _, do := range b.DurableObjects {
 					doClasses = append(doClasses, do.ClassName)
 				}
+				if len(b.Assets.RunWorkerFirst) > 0 {
+					if err := json.Unmarshal(b.Assets.RunWorkerFirst, &assetsConfig.RunWorkerFirst); err != nil {
+						var routes []string
+						if routesErr := json.Unmarshal(b.Assets.RunWorkerFirst, &routes); routesErr == nil {
+							assetsConfig.RunWorkerFirstRoutes = routes
+						} else {
+							log.Warningf(ctx, "invalid assets.run_worker_first for worker %s: %v", name, err)
+						}
+					}
+				}
+				assetsConfig.NotFoundHandling = b.Assets.NotFoundHandling
 			}
 		}
 
 		workerIndexes[name] = len(workers)
 		versions = append(versions, workerVersion{name: name, id: versionID})
 		workers = append(workers, WorkerDef{
-			Name:       name,
-			Script:     script,
-			CompatDate: compatDate,
-			DOClasses:  doClasses,
+			Name:         name,
+			Script:       script,
+			CompatDate:   compatDate,
+			DOClasses:    doClasses,
+			AssetsConfig: assetsConfig,
 		})
 	}
 	for _, version := range versions {

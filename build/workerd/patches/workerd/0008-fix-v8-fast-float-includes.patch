@@ -1,0 +1,13 @@
+diff --git a/build/deps/v8.MODULE.bazel b/build/deps/v8.MODULE.bazel
+--- a/build/deps/v8.MODULE.bazel
++++ b/build/deps/v8.MODULE.bazel
+@@ -55,6 +55,9 @@ http_archive(
+     integrity = INTEGRITY,
+     patch_args = ["-p1"],
+     patches = ["//:patches/v8/" + p for p in PATCHES],
++    patch_cmds = [
++        "python3 -c 'from pathlib import Path; p=Path(\"src/numbers/conversions.cc\"); s=p.read_text(); s=s.replace(\"third_party/fast_float/src/include/fast_float/fast_float.h\", \"fast_float/fast_float.h\").replace(\"third_party/fast_float/src/include/fast_float/float_common.h\", \"fast_float/float_common.h\"); p.write_text(s)'",
++    ],
+     strip_prefix = "v8-" + VERSION,
+     url = "https://github.com/v8/v8/archive/refs/tags/" + VERSION + ".tar.gz",
+ )

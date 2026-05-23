@@ -1,6 +1,6 @@
 load("@aspect_rules_jest//jest:defs.bzl", "jest_test")
 load("@aspect_rules_js//js:defs.bzl", "js_library")
-load("@aspect_rules_js//npm:defs.bzl", "npm_package")
+load("@aspect_rules_js_npm_translate//npm:defs.bzl", "npm_package")
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("@npm//:defs.bzl", "npm_link_all_packages")
@@ -57,6 +57,7 @@ webpack_bin.webpack_cli(
         "--env.output=./dist/js/main.js",
     ],
     chdir = package_name(),
+    copy_srcs_to_bin = False,
 )
 
 js_library(

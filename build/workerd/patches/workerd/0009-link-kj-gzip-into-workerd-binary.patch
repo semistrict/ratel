@@ -1,0 +1,12 @@
+diff --git a/src/workerd/server/BUILD.bazel b/src/workerd/server/BUILD.bazel
+index 030458576..d7b0a879c 100644
+--- a/src/workerd/server/BUILD.bazel
++++ b/src/workerd/server/BUILD.bazel
+@@ -320,6 +320,7 @@ wd_cc_binary(
+         "//src/workerd/util:autogate",
+         "//src/workerd/util:perfetto",
+         "@capnp-cpp//src/capnp:capnpc",
++        "@capnp-cpp//src/kj/compat:kj-gzip",
+     ],
+ )
+ 

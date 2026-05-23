@@ -4,7 +4,9 @@ const { chromium } = require("playwright");
 const baseURL = process.env.RATEL_CHAT_URL || "http://localhost:26257/workers/chat/";
 
 async function main() {
-  const browser = await chromium.launch();
+  const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ||
+    (process.platform === "darwin" ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" : undefined);
+  const browser = await chromium.launch({ executablePath });
   try {
     const page = await browser.newPage();
     const errors = [];
@@ -17,6 +19,7 @@ async function main() {
 
     const response = await page.goto(baseURL, { waitUntil: "domcontentloaded" });
     assert.equal(response.status(), 200, "chat page should load");
+    assert.match(await page.content(), /Ratel Chat/, "chat page HTML should render");
     assert.equal(await page.locator("h1").textContent(), "Ratel Chat");
     await assertVisible(page, "#log");
     await assertVisible(page, "#name");

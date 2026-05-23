@@ -1,9 +1,10 @@
 import { handleErrors } from "./errors.js";
+import { createRatelSQL } from "./ratel-sql.js";
 
 export class ChatRoom {
   constructor(state, env) {
     this.state = state;
-    this.storage = state.storage;
+    this.env = env;
     this.sessions = new Map();
     this.lastTimestamp = 0;
   }
@@ -12,6 +13,9 @@ export class ChatRoom {
     return handleErrors(request, async () => {
       const url = new URL(request.url);
       if (url.pathname !== "/websocket") return new Response("not found", { status: 404 });
+      const actor = request.headers.get("X-Ratel-Actor-Scope");
+      if (!actor) return new Response("missing actor scope", { status: 400 });
+      this.sql = createRatelSQL(this.env.__RATEL_SQL, actor);
       if (request.headers.get("Upgrade") !== "websocket") {
         return new Response("expected websocket", { status: 400 });
       }
@@ -31,9 +35,19 @@ export class ChatRoom {
       if (other.name) session.blockedMessages.push(JSON.stringify({ joined: other.name }));
     }
 
-    const history = await this.storage.list({ reverse: true, limit: 100 });
-    const backlog = Array.from(history.values()).reverse();
-    for (const value of backlog) session.blockedMessages.push(value);
+    const history = (await this.sql
+      .exec(
+        "SELECT name, message, timestamp FROM system.ratel_chat_messages WHERE actor_id = $1 ORDER BY timestamp DESC LIMIT 100",
+      )
+      .toArray())
+      .reverse();
+    for (const row of history) {
+      session.blockedMessages.push(JSON.stringify({
+        name: row.name,
+        message: row.message,
+        timestamp: Number(row.timestamp),
+      }));
+    }
 
     webSocket.addEventListener("message", event => {
       this.webSocketMessage(webSocket, event.data);
@@ -71,7 +85,12 @@ export class ChatRoom {
       data = { name: session.name, message, timestamp };
       const dataStr = JSON.stringify(data);
       this.broadcast(dataStr);
-      await this.storage.put(new Date(timestamp).toISOString(), dataStr);
+      await this.sql.exec(
+        "INSERT INTO system.ratel_chat_messages (actor_id, timestamp, name, message) VALUES ($1, $2, $3, $4)",
+        timestamp,
+        session.name,
+        message,
+      ).toArray();
     } catch (err) {
       webSocket.send(JSON.stringify({ error: err.stack || String(err) }));
     }

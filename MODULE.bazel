@@ -10,13 +10,189 @@ bazel_dep(name = "rules_cc", version = "0.2.17")
 bazel_dep(name = "rules_java", version = "9.6.1")
 bazel_dep(name = "rules_python", version = "1.7.0")
 bazel_dep(name = "rules_proto", version = "7.1.0")
+bazel_dep(name = "rules_nodejs", version = "6.7.4")
 bazel_dep(name = "protobuf", version = "33.4", repo_name = "com_google_protobuf")
 bazel_dep(name = "bazel_skylib", version = "1.8.2")
 bazel_dep(name = "rules_go", version = "0.60.0", repo_name = "io_bazel_rules_go")
 bazel_dep(name = "rules_shell", version = "0.8.0")
-bazel_dep(name = "aspect_rules_js", version = "1.26.1")
-bazel_dep(name = "aspect_rules_ts", version = "1.4.0")
-bazel_dep(name = "aspect_rules_jest", version = "0.18.4")
+bazel_dep(name = "rules_foreign_cc", version = "0.15.1")
+bazel_dep(name = "aspect_rules_js", version = "3.1.2")
+bazel_dep(name = "aspect_rules_ts", version = "3.8.10")
+bazel_dep(name = "aspect_rules_jest", version = "0.25.2")
+bazel_dep(name = "workerd", version = "1.20260523.1")
+
+archive_override(
+    module_name = "workerd",
+    integrity = "sha256-pleBwSZzQgAy0+xqxWzA7wzJylAdqvn0gV2k0t8IyNI=",
+    patch_args = ["-p1"],
+    patches = [
+        "//build/workerd/patches/workerd:0001-use-module-relative-labels-in-module-includes.patch",
+        "//build/workerd/patches/workerd:0002-use-workerd-cxx-as-module.patch",
+        "//build/workerd/patches/workerd:0003-fix-icu-build-for-bazel-9.patch",
+        "//build/workerd/patches/workerd:0004-fix-dragonbox-build-for-bazel-9.patch",
+        "//build/workerd/patches/workerd:0005-enable-capnp-features.patch",
+        "//build/workerd/patches/workerd:0006-disable-ts-project-validation.patch",
+        "//build/workerd/patches/workerd:0007-use-rust-2024-for-proc-macros.patch",
+        "//build/workerd/patches/workerd:0008-fix-v8-fast-float-includes.patch",
+        "//build/workerd/patches/workerd:0009-link-kj-gzip-into-workerd-binary.patch",
+    ],
+    patch_cmds = [
+        "python3 - <<'PY'\nfrom pathlib import Path\nfor p in list(Path('build').rglob('*.bzl')) + list(Path('src').rglob('*.bzl')) + list(Path('src').rglob('BUILD.bazel')):\n    s = p.read_text()\n    ns = s.replace('@@//', '//').replace('@//', '//')\n    if ns != s:\n        p.write_text(ns)\nPY",
+    ],
+    strip_prefix = "workerd-1.20260523.1",
+    urls = ["https://github.com/cloudflare/workerd/archive/refs/tags/v1.20260523.1.tar.gz"],
+)
+
+archive_override(
+    module_name = "workerd-cxx",
+    patch_args = ["-p1"],
+    patches = [
+        "//build/workerd/patches/workerd-cxx:0001-use-workerd-capnp-version.patch",
+    ],
+    sha256 = "fbba1b102b2c4fe879b2f610d7e94ceda6beceac3d57a27196482ce3e9536b50",
+    strip_prefix = "cloudflare-workerd-cxx-c677ef5",
+    type = "tgz",
+    urls = ["https://github.com/cloudflare/workerd-cxx/tarball/c677ef53092a8425ce9f059074441fdb1b7c1ed3"],
+)
+
+archive_override(
+    module_name = "sqlite3",
+    build_file = "//build/workerd:BUILD.sqlite3",
+    patch_args = ["-p1"],
+    patches = [
+        "//build/workerd/patches/sqlite:0001-row-counts-plain.patch",
+        "//build/workerd/patches/sqlite:0002-macOS-missing-PATH-fix.patch",
+        "//build/workerd/patches/sqlite:0003-sqlite-complete-early-exit.patch",
+        "//build/workerd/patches/sqlite:0004-invalid-wal-on-rollback-fix.patch",
+    ],
+    remote_file_integrity = {
+        "MODULE.bazel": "sha256-+H38CSP6DtMT+YPSy9lplRLcfBApkukY4vdX6lBjDfI=",
+    },
+    remote_file_urls = {
+        "MODULE.bazel": ["https://raw.githubusercontent.com/bazelbuild/bazel-central-registry/refs/heads/main/modules/sqlite3/3.51.2.bcr.1/MODULE.bazel"],
+    },
+    sha256 = "f59c349bedb470203586a6b6d10adb35f2afefa49f91e55a672a36a09a8fedf7",
+    strip_prefix = "sqlite-src-3470000",
+    urls = ["https://sqlite.org/2024/sqlite-src-3470000.zip"],
+)
+
+archive_override(
+    module_name = "ada-url",
+    build_file = "//build/workerd:BUILD.ada-url",
+    integrity = "sha384-2cEfF3fHoslLDkuigR1oXYgtE4cYppMhuQE9RQFyuVmWNm7mEAZ1o3KGiWH8iJ5E",
+    remote_file_integrity = {
+        "MODULE.bazel": "sha256-ujTEH5kWcEmClwL6epkU0fChC00GJGoLPkoslR1Io1c=",
+    },
+    remote_file_urls = {
+        "MODULE.bazel": ["https://bcr.bazel.build/modules/ada-url/3.4.4/MODULE.bazel"],
+    },
+    remote_module_file_integrity = "sha256-tDiM72A0DK/tKVW9dpdYW5KxKY5Or7G7gT55DMxWfzc=",
+    remote_module_file_urls = ["file:///Users/ramon/src/cockroach/build/workerd/MODULE.ada-url"],
+    urls = ["https://github.com/ada-url/ada/releases/download/v3.4.4/singleheader.zip"],
+)
+
+archive_override(
+    module_name = "boringssl",
+    patch_strip = 1,
+    patches = [
+        "//build/workerd/patches/boringssl:0001-Expose-libdecrepit-so-NodeJS-can-use-it-for-ncrypto.patch",
+    ],
+    sha256 = "c54bb763140d86bc13ce1ec256f02189ddb59597c9765b75f945b7401b4916a7",
+    strip_prefix = "google-boringssl-bc2e0ff",
+    type = "tgz",
+    urls = ["https://api.github.com/repos/google/boringssl/tarball/0.20251002.0"],
+)
+
+archive_override(
+    module_name = "fast_float",
+    patch_cmds = [
+        "python3 -c 'from pathlib import Path; p=Path(\"MODULE.bazel\"); s=p.read_text(); p.write_text(s + \"\\nbazel_dep(name = \\\"rules_cc\\\", version = \\\"0.2.18\\\")\\n\" if \"rules_cc\" not in s else s)'",
+        "python3 -c 'from pathlib import Path; p=Path(\"BUILD.bazel\"); s=p.read_text(); p.write_text(\"load(\\\"@rules_cc//cc:cc_library.bzl\\\", \\\"cc_library\\\")\\n\" + s if \"cc_library.bzl\" not in s else s)'",
+    ],
+    remote_file_integrity = {
+        "MODULE.bazel": "sha256-Q1BGZO/fpMbPE0libIcTXJuHkmMlxyBFjzlu7iVWjto=",
+    },
+    remote_file_urls = {
+        "MODULE.bazel": ["https://raw.githubusercontent.com/bazelbuild/bazel-central-registry/refs/heads/main/modules/fast_float/8.0.2/MODULE.bazel"],
+    },
+    sha256 = "8f1dc06ac2ea1a39343c1bfbd8319134f295677ed04f0a4e63c296f5bd4d20d6",
+    strip_prefix = "fastfloat-fast_float-cb1d42a",
+    type = "tgz",
+    urls = ["https://github.com/fastfloat/fast_float/tarball/cb1d42aaa1e14b09e1452cfdef373d051b8c02a4"],
+)
+
+archive_override(
+    module_name = "fp16",
+    build_file_content = "exports_files(glob(['**']))",
+    remote_file_integrity = {
+        "MODULE.bazel": "sha256-2YAHXAyoWo6FapWo2MBLpWyewByY+F4tSWUMbYt8gmg=",
+    },
+    remote_file_urls = {
+        "MODULE.bazel": ["https://raw.githubusercontent.com/bazelbuild/bazel-central-registry/refs/heads/main/modules/fp16/0.0.0-20210320-0a92994/MODULE.bazel"],
+    },
+    sha256 = "81686dc45a7897cf958ee99f655879a066dde41db5fc1379a1e8db338ad17589",
+    strip_prefix = "Maratyszcza-FP16-3d2de18",
+    type = "tgz",
+    urls = ["https://github.com/Maratyszcza/FP16/tarball/3d2de1816307bac63c16a297e8c4dc501b4076df"],
+)
+
+archive_override(
+    module_name = "highway",
+    patch_cmds = [
+        "python3 -c 'from pathlib import Path; p=Path(\"MODULE.bazel\"); s=p.read_text(); p.write_text(s + \"\\nbazel_dep(name = \\\"rules_cc\\\", version = \\\"0.2.18\\\")\\n\" if \"rules_cc\" not in s else s)'",
+        "python3 -c 'from pathlib import Path; p=Path(\"BUILD\"); s=p.read_text(); p.write_text(\"load(\\\"@rules_cc//cc:cc_binary.bzl\\\", \\\"cc_binary\\\")\\nload(\\\"@rules_cc//cc:cc_library.bzl\\\", \\\"cc_library\\\")\\nload(\\\"@rules_cc//cc:cc_test.bzl\\\", \\\"cc_test\\\")\\n\" + s if \"cc_library.bzl\" not in s else s)'",
+    ],
+    remote_file_integrity = {
+        "MODULE.bazel": "sha256-2UVSfmwaox6VsgqN+q+Ci+ofGKIJCDc+psSq2YsurfQ=",
+    },
+    remote_file_urls = {
+        "MODULE.bazel": ["https://raw.githubusercontent.com/bazelbuild/bazel-central-registry/refs/heads/main/modules/highway/1.3.0/MODULE.bazel"],
+    },
+    sha256 = "840fa6f31239aa9f900e2aa8a62330950881501981343f70d7db868529bcd15b",
+    strip_prefix = "google-highway-84379d1",
+    type = "tgz",
+    urls = ["https://github.com/google/highway/tarball/84379d1c73de9681b54fbe1c035a23c7bd5d272d"],
+)
+
+archive_override(
+    module_name = "perfetto",
+    patch_strip = 1,
+    patches = [
+        "//build/workerd/patches/perfetto:0001-Don-t-attempt-to-use-rules_android.patch",
+        "//build/workerd/patches/perfetto:0002-disable-info-level-logging.patch",
+        "//build/workerd/patches/perfetto:0003-load-protoinfo-for-bazel-9.patch",
+    ],
+    sha256 = "90aea67f5ac88ae7bb56bc24574beb5cd924a5ae9d861826a6fd151c13b4767b",
+    strip_prefix = "google-perfetto-b34c975",
+    type = "tgz",
+    urls = ["https://api.github.com/repos/google/perfetto/tarball/v54.0"],
+)
+
+git_override(
+    module_name = "zlib",
+    build_file = "//build/workerd:BUILD.zlib",
+    commit = "5c1dfd53066bf58d3d28197f715717dd88762443",
+    patch_strip = 1,
+    patches = [
+        "//build/workerd/patches/zlib:0001-Add-dummy-MODULE.bazel.patch",
+    ],
+    remote = "https://chromium.googlesource.com/chromium/src/third_party/zlib.git",
+)
+
+local_path_override(
+    module_name = "workerd-v8",
+    path = "build/workerd-v8",
+)
+
+local_path_override(
+    module_name = "google_benchmark",
+    path = "build/workerd-google-benchmark",
+)
+
+local_path_override(
+    module_name = "perfetto_cfg",
+    path = "build/workerd-perfetto",
+)
 
 go_sdk = use_extension("@io_bazel_rules_go//go:extensions.bzl", "go_sdk")
 go_sdk.download(
@@ -133,41 +309,58 @@ filegroup(
     ],
 )
 
-pnpm = use_extension("@aspect_rules_js//npm:extensions.bzl", "pnpm")
-pnpm.pnpm(
-    name = "pnpm",
-    pnpm_version = "8.5.1",
-)
-use_repo(pnpm, "pnpm", "pnpm__links")
-
-npm = use_extension("@aspect_rules_js//npm:extensions.bzl", "npm")
-npm.npm_translate_lock(
-    name = "npm",
-    data = [
-        "//pkg/ui:package.json",
-        "//pkg/ui:pnpm-workspace.yaml",
-        "//pkg/ui/patches:topojson@3.0.2.patch",
-        "//pkg/ui/workspaces/cluster-ui:package.json",
-        "//pkg/ui/workspaces/db-console:package.json",
-        "//pkg/ui/workspaces/db-console/src/js:package.json",
-        "//pkg/ui/workspaces/e2e-tests:package.json",
-        "//pkg/ui/workspaces/eslint-plugin-crdb:package.json",
-    ],
-    npmrc = "//pkg/ui:.npmrc.bazel",
-    patch_args = {
-        "*": ["-p1"],
-    },
-    pnpm_lock = "//pkg/ui:pnpm-lock.yaml",
-    verify_node_modules_ignored = "//:.bazelignore",
-)
-use_repo(npm, "npm")
-
 rules_ts_ext = use_extension("@aspect_rules_ts//ts:extensions.bzl", "ext")
 rules_ts_ext.deps(
-    name = "npm_typescript",
-    ts_version = "4.2.4",
+    ts_version = "6.0.2",
 )
 use_repo(rules_ts_ext, "npm_typescript")
+
+npm_ext = use_extension("@aspect_rules_js//npm:extensions.bzl", "npm")
+npm_ext.npm_import(
+    name = "npm_esbuild_darwin_64",
+    integrity = "sha512-/3PSilx011ttoieRGkSZ0XV8zjBf2C9enV4ScMMbCT4dpx0mFhMOpFnCHkOK0pWGB8LklykFyHrWk2z6DENVUg==",
+    package = "esbuild-darwin-64",
+    version = "0.14.43",
+)
+npm_ext.npm_import(
+    name = "npm_esbuild_darwin_arm64",
+    integrity = "sha512-1HyFUKs8DMCBOvw1Qxpr5Vv/ThNcVIFb5xgXWK3pyT40WPvgYIiRTwJCvNs4l8i5qWF8/CK5bQxJVDjQvtv0Yw==",
+    package = "esbuild-darwin-arm64",
+    version = "0.14.43",
+)
+npm_ext.npm_import(
+    name = "npm_esbuild_linux_64",
+    integrity = "sha512-EwINwGMyiJMgBby5/SbMqKcUhS5AYAZ2CpEBzSowsJPNBJEdhkCTtEjk757TN/wxgbu3QklqDM6KghY660QCUw==",
+    package = "esbuild-linux-64",
+    version = "0.14.43",
+)
+npm_ext.npm_import(
+    name = "npm_esbuild_linux_arm64",
+    integrity = "sha512-UlSpjMWllAc70zYbHxWuDS3FJytyuR/gHJYBr8BICcTNb/TSOYVBg6U7b3jZ3mILTrgzwJUHwhEwK18FZDouUQ==",
+    package = "esbuild-linux-arm64",
+    version = "0.14.43",
+)
+npm_ext.npm_import(
+    name = "npm_playwright_core",
+    integrity = "sha512-hutraynyn31F+Bifme+Ps9Vq59hKuUCz7H1kDOcBs+2oGguKkWTU50bBWrtz34OUWmIwpBTWDxaRPXrIXkgvmQ==",
+    package = "playwright-core",
+    version = "1.56.1",
+)
+npm_ext.npm_import(
+    name = "npm_playwright",
+    integrity = "sha512-aFi5B0WovBHTEvpM3DzXTUaeN6eN0qWnTkKx4NQaH4Wvcmc153PdaY2UBdSYKaGYw+UyWXSVyxDUg5DoPEttjw==",
+    package = "playwright",
+    version = "1.56.1",
+)
+use_repo(
+    npm_ext,
+    "npm_esbuild_darwin_64",
+    "npm_esbuild_darwin_arm64",
+    "npm_esbuild_linux_64",
+    "npm_esbuild_linux_arm64",
+    "npm_playwright",
+    "npm_playwright_core",
+)
 
 # Activate rules_cc's compatibility_proxy extension (creates @cc_compatibility_proxy).
 cc_compatibility_proxy = use_extension("@rules_cc//cc:extensions.bzl", "compatibility_proxy")

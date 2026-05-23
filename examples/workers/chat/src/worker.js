@@ -7,10 +7,6 @@ export default {
       const url = new URL(request.url);
       const path = url.pathname.split("/").filter(Boolean);
 
-      if (!path[0]) {
-        return env.ASSETS.fetch(new URL("/index.html", request.url));
-      }
-
       if (path[0] === "api" && path[1] === "room" && path[2]) {
         const roomName = path[2];
         if (roomName.length > 64) return new Response("room name too long", { status: 400 });
@@ -19,10 +15,12 @@ export default {
         const room = env.ChatRoom.get(id);
         const nextURL = new URL(request.url);
         nextURL.pathname = "/" + path.slice(3).join("/");
-        return room.fetch(nextURL, request);
+        const headers = new Headers(request.headers);
+        headers.set("X-Ratel-Actor-Scope", roomName);
+        return room.fetch(new Request(nextURL, request), { headers });
       }
 
-      return env.ASSETS.fetch(request);
+      return new Response("not found", { status: 404 });
     });
   },
 };

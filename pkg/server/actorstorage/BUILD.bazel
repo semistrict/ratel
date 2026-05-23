@@ -1,10 +1,11 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "actorstorage",
     srcs = [
         "actor_storage.capnp.go",
         "server.go",
+        "sql.go",
     ],
     importpath = "github.com/cockroachdb/cockroach/pkg/server/actorstorage",
     visibility = ["//pkg/server:__subpackages__"],
@@ -12,14 +13,28 @@ go_library(
         "//pkg/keys",
         "//pkg/kv",
         "//pkg/roachpb",
+        "//pkg/sql/parser",
+        "//pkg/sql/sem/tree",
         "//pkg/util/encoding",
         "//pkg/util/log",
         "//pkg/util/tracing",
+        "@com_github_cockroachdb_errors//:errors",
         "@org_capnproto_go_capnp_v3//:capnp",
         "@org_capnproto_go_capnp_v3//encoding/text",
         "@org_capnproto_go_capnp_v3//flowcontrol",
         "@org_capnproto_go_capnp_v3//schemas",
         "@org_capnproto_go_capnp_v3//server",
         "@org_capnproto_go_capnp_v3//std/capnp/stream",
+    ],
+)
+
+go_test(
+    name = "actorstorage_test",
+    srcs = ["sql_test.go"],
+    embed = [":actorstorage"],
+    deps = [
+        "//pkg/util/leaktest",
+        "//pkg/util/log",
+        "@com_github_stretchr_testify//require",
     ],
 )

@@ -1,0 +1,12 @@
+diff --git a/build/deps/gen/deps.MODULE.bazel b/build/deps/gen/deps.MODULE.bazel
+--- a/build/deps/gen/deps.MODULE.bazel
++++ b/build/deps/gen/deps.MODULE.bazel
+@@ -37,7 +37,7 @@ use_repo(http, "c-ares")
+ # dragonbox
+ http.archive(
+     name = "dragonbox",
+-    build_file_content = "cc_library(name = 'dragonbox', hdrs = glob(['include/dragonbox/*.h']), visibility = ['//visibility:public'], include_prefix = 'third_party/dragonbox/src')",
++    build_file_content = "load('@rules_cc//cc:cc_library.bzl', 'cc_library')\ncc_library(name = 'dragonbox', hdrs = glob(['include/dragonbox/*.h']), visibility = ['//visibility:public'], include_prefix = 'third_party/dragonbox/src')",
+     sha256 = "4848e8e48f39a36de2ebf67e7f5d6deb6308d4145008f56a305923d2a6df91f0",
+     strip_prefix = "jk-jeon-dragonbox-beeeef9",
+     type = "tgz",

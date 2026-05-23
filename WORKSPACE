@@ -17,24 +17,42 @@ http_archive(
 # Like the above, but for JS.
 http_archive(
     name = "aspect_rules_js",
+    sha256 = "4cd58cc27167ac7319de2039f936c711055a823f69dd457409226f5ec8e4237e",
+    strip_prefix = "rules_js-3.1.2",
+    url = "https://github.com/aspect-build/rules_js/releases/download/v3.1.2/rules_js-v3.1.2.tar.gz",
+)
+
+http_archive(
+    name = "aspect_rules_js_npm_translate",
+    patch_args = ["-p1"],
+    patches = ["//build/patches:aspect_rules_js_npm_translate_repo_name.patch"],
     sha256 = "08061ba5e5e7f4b1074538323576dac819f9337a0c7d75aee43afc8ae7cb6e18",
     strip_prefix = "rules_js-1.26.1",
     url = "https://storage.googleapis.com/public-bazel-artifacts/js/rules_js-v1.26.1.tar.gz",
 )
 
 http_archive(
+    name = "aspect_bazel_lib",
+    patch_args = ["-p1"],
+    patches = ["//build/patches:aspect_bazel_lib.patch"],
+    sha256 = "0da75299c5a52737b2ac39458398b3f256e41a1a6748e5457ceb3a6225269485",
+    strip_prefix = "bazel-lib-1.31.2",
+    url = "https://storage.googleapis.com/public-bazel-artifacts/bazel/bazel-lib-v1.31.2.tar.gz",
+)
+
+http_archive(
     name = "aspect_rules_ts",
-    sha256 = "ace5b609603d9b5b875d56c9c07182357c4ee495030f40dcefb10d443ba8c208",
-    strip_prefix = "rules_ts-1.4.0",
-    url = "https://storage.googleapis.com/public-bazel-artifacts/js/rules_ts-v1.4.0.tar.gz",
+    sha256 = "06a432998e3f0b4c1057926b3946b51057413c6ffcb19bbc5e2674191a061063",
+    strip_prefix = "rules_ts-3.8.10",
+    url = "https://github.com/aspect-build/rules_ts/releases/download/v3.8.10/rules_ts-v3.8.10.tar.gz",
 )
 
 # NOTE: aspect_rules_webpack exists for webpack, but it's incompatible with webpack v4.
 http_archive(
     name = "aspect_rules_jest",
-    sha256 = "d3bb833f74b8ad054e6bff5e41606ff10a62880cc99e4d480f4bdfa70add1ba7",
-    strip_prefix = "rules_jest-0.18.4",
-    url = "https://storage.googleapis.com/public-bazel-artifacts/js/rules_jest-v0.18.4.tar.gz",
+    sha256 = "6c7c9d043aae96c315bf2d77cd3bf4dc385bd080e3086edd17cada49747e81fa",
+    strip_prefix = "rules_jest-0.25.2",
+    url = "https://github.com/aspect-build/rules_jest/releases/download/v0.25.2/rules_jest-v0.25.2.tar.gz",
 )
 
 # Load gazelle. This lets us auto-generate BUILD.bazel files throughout the
@@ -186,17 +204,72 @@ go_register_toolchains(nogo = "@com_github_cockroachdb_cockroach//:crdb_nogo")
 # The rules_nodejs "core" module.
 http_archive(
     name = "rules_nodejs",
-    sha256 = "764a3b3757bb8c3c6a02ba3344731a3d71e558220adcb0cf7e43c9bba2c37ba8",
-    urls = ["https://storage.googleapis.com/public-bazel-artifacts/js/rules_nodejs-core-5.8.2.tar.gz"],
+    sha256 = "32894b914e4aed4245afdcece6fad94413f7f86eaefb863ff71e8ba6e5992b6b",
+    strip_prefix = "rules_nodejs-6.7.3",
+    url = "https://github.com/bazel-contrib/rules_nodejs/releases/download/v6.7.3/rules_nodejs-v6.7.3.tar.gz",
 )
 
 http_archive(
-    name = "aspect_bazel_lib",
-    patch_args = ["-p1"],
-    patches = ["//build/patches:aspect_bazel_lib.patch"],
-    sha256 = "0da75299c5a52737b2ac39458398b3f256e41a1a6748e5457ceb3a6225269485",
-    strip_prefix = "bazel-lib-1.31.2",
-    url = "https://storage.googleapis.com/public-bazel-artifacts/bazel/bazel-lib-v1.31.2.tar.gz",
+    name = "bazel_features",
+    sha256 = "966c211ec42c4deb2af4c6dd6948408100b752f61753c97055bdac9bfb5cc0c7",
+    strip_prefix = "bazel_features-1.41.0",
+    url = "https://github.com/bazel-contrib/bazel_features/releases/download/v1.41.0/bazel_features-v1.41.0.tar.gz",
+)
+
+load("@bazel_features//:deps.bzl", "bazel_features_deps")
+
+bazel_features_deps()
+
+http_archive(
+    name = "tar.bzl",
+    sha256 = "fea07e17117bf264f78bd4fc522c6b07a843cdcd82c6dfbeafa5bdaff70ae198",
+    strip_prefix = "tar.bzl-0.10.4",
+    url = "https://github.com/bazel-contrib/tar.bzl/releases/download/v0.10.4/tar.bzl-v0.10.4.tar.gz",
+)
+
+http_archive(
+    name = "yq.bzl",
+    sha256 = "975dd1db2663d1809ae8f07ed00ef9b0e5396a58fb73777a84bac379667f6ea2",
+    strip_prefix = "yq.bzl-0.3.4",
+    url = "https://github.com/bazel-contrib/yq.bzl/releases/download/v0.3.4/yq.bzl-v0.3.4.tar.gz",
+)
+
+http_archive(
+    name = "jq.bzl",
+    sha256 = "21617eb71fb775a748ef5639131ab943ef39946bd2a4ce96ea60b03f985db0c5",
+    strip_prefix = "jq.bzl-0.4.0",
+    url = "https://github.com/bazel-contrib/jq.bzl/releases/download/v0.4.0/jq.bzl-v0.4.0.tar.gz",
+)
+
+http_archive(
+    name = "aspect_tools_telemetry",
+    sha256 = "3d6372792dd0654b2e77806bf9b358e06706234f179132575a178d0ce7312790",
+    strip_prefix = "tools_telemetry-0.3.3",
+    url = "https://github.com/aspect-build/tools_telemetry/releases/download/v0.3.3/tools_telemetry-v0.3.3.tar.gz",
+)
+
+http_archive(
+    name = "aspect_tools_telemetry_report",
+    sha256 = "3d6372792dd0654b2e77806bf9b358e06706234f179132575a178d0ce7312790",
+    strip_prefix = "tools_telemetry-0.3.3",
+    url = "https://github.com/aspect-build/tools_telemetry/releases/download/v0.3.3/tools_telemetry-v0.3.3.tar.gz",
+)
+
+http_archive(
+    name = "protobuf",
+    repo_mapping = {
+        "@proto_bazel_features": "@bazel_features",
+    },
+    sha256 = "687e98a471973b5c5fd711750c40b8b82c0ade33f649db65e00b290f29345a2b",
+    strip_prefix = "protobuf-33.4",
+    url = "https://github.com/protocolbuffers/protobuf/releases/download/v33.4/protobuf-33.4.bazel.tar.gz",
+)
+
+http_archive(
+    name = "bazel_lib",
+    sha256 = "3d62bf30b95b71a566d9ebca50ee78d370b12522d244235b41166f65b142705d",
+    strip_prefix = "bazel-lib-3.2.2",
+    url = "https://github.com/bazel-contrib/bazel-lib/releases/download/v3.2.2/bazel-lib-v3.2.2.tar.gz",
 )
 
 # Load custom toolchains.
@@ -216,14 +289,13 @@ load("@aspect_rules_ts//ts/private:npm_repositories.bzl", ts_http_archive = "htt
 
 ts_http_archive(
     name = "npm_typescript",
-    build_file = "@aspect_rules_ts//ts:BUILD.typescript",
     urls = ["https://storage.googleapis.com/cockroach-npm-deps/typescript/-/typescript-{}.tgz"],
     version = "4.2.4",
 )
 
 # NOTE: The version is expected to match up to what version we use in db-console.
 # TODO(ricky): We should add a lint check to ensure it does match.
-load("@aspect_rules_js//npm:repositories.bzl", "npm_import", "npm_translate_lock")
+load("@aspect_rules_js_npm_translate//npm:repositories.bzl", "npm_import", "npm_translate_lock")
 
 npm_import(
     name = "pnpm",
@@ -239,7 +311,7 @@ npm_import(
     version = "8.5.1",
 )
 
-load("@aspect_rules_js//js:repositories.bzl", "rules_js_dependencies")
+load("@aspect_rules_js_npm_translate//js:repositories.bzl", "rules_js_dependencies")
 
 rules_js_dependencies()
 
@@ -261,6 +333,22 @@ npm_translate_lock(
     },
     pnpm_lock = "//pkg/ui:pnpm-lock.yaml",
     verify_node_modules_ignored = "//:.bazelignore",
+)
+
+npm_import(
+    name = "npm_playwright_core",
+    integrity = "sha512-hutraynyn31F+Bifme+Ps9Vq59hKuUCz7H1kDOcBs+2oGguKkWTU50bBWrtz34OUWmIwpBTWDxaRPXrIXkgvmQ==",
+    package = "playwright-core",
+    url = "https://registry.npmjs.org/playwright-core/-/playwright-core-1.56.1.tgz",
+    version = "1.56.1",
+)
+
+npm_import(
+    name = "npm_playwright",
+    integrity = "sha512-aFi5B0WovBHTEvpM3DzXTUaeN6eN0qWnTkKx4NQaH4Wvcmc153PdaY2UBdSYKaGYw+UyWXSVyxDUg5DoPEttjw==",
+    package = "playwright",
+    url = "https://registry.npmjs.org/playwright/-/playwright-1.56.1.tgz",
+    version = "1.56.1",
 )
 
 load("@npm//:repositories.bzl", "npm_repositories")
@@ -528,12 +616,24 @@ register_toolchains(
     "@copy_directory_toolchains//:linux_amd64_toolchain",
     "@copy_directory_toolchains//:linux_arm64_toolchain",
     "@copy_directory_toolchains//:windows_amd64_toolchain",
+    "@copy_directory_toolchains_legacy//:darwin_amd64_toolchain",
+    "@copy_directory_toolchains_legacy//:darwin_arm64_toolchain",
+    "@copy_directory_toolchains_legacy//:freebsd_amd64_toolchain",
+    "@copy_directory_toolchains_legacy//:linux_amd64_toolchain",
+    "@copy_directory_toolchains_legacy//:linux_arm64_toolchain",
+    "@copy_directory_toolchains_legacy//:windows_amd64_toolchain",
     "@copy_to_directory_toolchains//:darwin_amd64_toolchain",
     "@copy_to_directory_toolchains//:darwin_arm64_toolchain",
     "@copy_to_directory_toolchains//:freebsd_amd64_toolchain",
     "@copy_to_directory_toolchains//:linux_amd64_toolchain",
     "@copy_to_directory_toolchains//:linux_arm64_toolchain",
     "@copy_to_directory_toolchains//:windows_amd64_toolchain",
+    "@copy_to_directory_toolchains_legacy//:darwin_amd64_toolchain",
+    "@copy_to_directory_toolchains_legacy//:darwin_arm64_toolchain",
+    "@copy_to_directory_toolchains_legacy//:freebsd_amd64_toolchain",
+    "@copy_to_directory_toolchains_legacy//:linux_amd64_toolchain",
+    "@copy_to_directory_toolchains_legacy//:linux_arm64_toolchain",
+    "@copy_to_directory_toolchains_legacy//:windows_amd64_toolchain",
     "@nodejs_toolchains//:darwin_amd64_toolchain",
     "@nodejs_toolchains//:darwin_arm64_toolchain",
     # NB: The freebsd node toolchain is above as //build/toolchains:node_freebsd_toolchain

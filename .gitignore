@@ -9,6 +9,8 @@
 #
 # https://github.com/github/gitignore/tree/master/Global
 
+.DS_Store
+
 artifacts
 /bin
 /bin.*

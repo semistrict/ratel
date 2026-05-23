@@ -1,9 +1,12 @@
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
 exports_files([
     "README.md",
     "worker.jsonc",
 ])
 
 ESBUILD_ARGS = "examples/workers/chat/src/worker.js --bundle --format=esm --outfile=$@ --platform=browser --target=es2022"
+ESBUILD_CMD = "tmp=$$(mktemp -d); tar -xzf %s -C $$tmp; $$tmp/package/bin/esbuild " + ESBUILD_ARGS
 
 config_setting(
     name = "darwin_arm64",
@@ -42,16 +45,16 @@ genrule(
     srcs = glob(["src/**"]),
     outs = ["chat_worker.js"],
     cmd = select({
-        ":darwin_arm64": "$(location @npm//:aspect_rules_js~~npm~npm__esbuild-darwin-arm64__0.14.43_source_directory)/bin/esbuild " + ESBUILD_ARGS,
-        ":darwin_x86_64": "$(location @npm//:aspect_rules_js~~npm~npm__esbuild-darwin-64__0.14.43_source_directory)/bin/esbuild " + ESBUILD_ARGS,
-        ":linux_arm64": "$(location @npm//:aspect_rules_js~~npm~npm__esbuild-linux-arm64__0.14.43_source_directory)/bin/esbuild " + ESBUILD_ARGS,
-        ":linux_x86_64": "$(location @npm//:aspect_rules_js~~npm~npm__esbuild-linux-64__0.14.43_source_directory)/bin/esbuild " + ESBUILD_ARGS,
+        ":darwin_arm64": ESBUILD_CMD % "$(location @npm_esbuild_darwin_arm64//:pkg)",
+        ":darwin_x86_64": ESBUILD_CMD % "$(location @npm_esbuild_darwin_64//:pkg)",
+        ":linux_arm64": ESBUILD_CMD % "$(location @npm_esbuild_linux_arm64//:pkg)",
+        ":linux_x86_64": ESBUILD_CMD % "$(location @npm_esbuild_linux_64//:pkg)",
     }),
     tools = select({
-        ":darwin_arm64": ["@npm//:aspect_rules_js~~npm~npm__esbuild-darwin-arm64__0.14.43_source_directory"],
-        ":darwin_x86_64": ["@npm//:aspect_rules_js~~npm~npm__esbuild-darwin-64__0.14.43_source_directory"],
-        ":linux_arm64": ["@npm//:aspect_rules_js~~npm~npm__esbuild-linux-arm64__0.14.43_source_directory"],
-        ":linux_x86_64": ["@npm//:aspect_rules_js~~npm~npm__esbuild-linux-64__0.14.43_source_directory"],
+        ":darwin_arm64": ["@npm_esbuild_darwin_arm64//:pkg"],
+        ":darwin_x86_64": ["@npm_esbuild_darwin_64//:pkg"],
+        ":linux_arm64": ["@npm_esbuild_linux_arm64//:pkg"],
+        ":linux_x86_64": ["@npm_esbuild_linux_64//:pkg"],
     }),
     visibility = ["//visibility:public"],
 )
@@ -60,8 +63,11 @@ sh_test(
     name = "playwright_test",
     srcs = ["tests/run_playwright.sh"],
     data = [
+        ":chat_worker",
+        "@npm_playwright//:pkg",
+        "@npm_playwright_core//:pkg",
         "tests/chat.spec.js",
-    ],
+    ] + glob(["assets/**"]),
     tags = [
         "external",
         "manual",

@@ -1,0 +1,28 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load(":opt_transition.bzl", "opt_binary")
+
+alias(
+    name = "workerd",
+    actual = "@workerd//src/workerd/server:workerd",
+    visibility = ["//visibility:public"],
+)
+
+opt_binary(
+    name = "workerd_opt",
+    binary = "@workerd//src/workerd/server:workerd",
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "zstd_compress_lib",
+    srcs = ["zstd_compress.go"],
+    importpath = "github.com/cockroachdb/cockroach/build/workerd/zstd_compress",
+    visibility = ["//visibility:private"],
+    deps = ["@com_github_klauspost_compress//zstd"],
+)
+
+go_binary(
+    name = "zstd_compress",
+    embed = [":zstd_compress_lib"],
+    visibility = ["//visibility:public"],
+)

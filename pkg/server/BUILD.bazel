@@ -82,6 +82,7 @@ go_library(
         "testserver_http.go",
         "user.go",
         "workerd_config.go",
+        "workerd_actor_sql.go",
         "workerd_embed.go",
         "workerd_extract.go",
         "workerd_noembed.go",
@@ -91,6 +92,7 @@ go_library(
     ],
     cgo = True,
     embedsrcs = [
+        ":embedded_workerd",
         "workerd_router.js",
         "workerd_bin/.gitignore",
         "workerd_bin/README.md",
@@ -416,6 +418,14 @@ go_library(
         ],
         "//conditions:default": [],
     }),
+)
+
+genrule(
+    name = "embedded_workerd",
+    srcs = ["//build/workerd:workerd_opt"],
+    outs = ["workerd_bin/workerd.zst"],
+    cmd = "$(location //build/workerd:zstd_compress) $(location //build/workerd:workerd_opt) $@",
+    tools = ["//build/workerd:zstd_compress"],
 )
 
 go_test(

@@ -17,6 +17,7 @@ package server
 import (
 	_ "embed"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -29,11 +30,12 @@ var routerScript string
 
 // WorkerDef describes a deployed worker script.
 type WorkerDef struct {
-	Name       string
-	Script     string
-	CompatDate string
-	DOClasses  []string // Durable Object class names exported by this worker
-	Assets     []WorkerAsset
+	Name         string
+	Script       string
+	CompatDate   string
+	DOClasses    []string // Durable Object class names exported by this worker
+	Assets       []WorkerAsset
+	AssetsConfig WorkerAssetsConfig
 }
 
 type WorkerAsset struct {
@@ -42,17 +44,24 @@ type WorkerAsset struct {
 	Content     []byte
 }
 
+type WorkerAssetsConfig struct {
+	RunWorkerFirst       bool
+	RunWorkerFirstRoutes []string
+	NotFoundHandling     string
+}
+
 // generateWorkerdConfig writes a workerd capnp config file and the associated
 // worker scripts to dir. It returns the path to the config file.
 //
 // The config contains:
 //   - A router worker that dispatches incoming HTTP requests by X-Worker-Name header
 //   - One service per deployed worker
-//   - Durable Object namespace bindings backed by ratel storage (fd), or
-//     workerd's in-memory storage when storageFd is negative
+//   - Durable Object namespace bindings backed by workerd local disk storage,
+//     ratel storage when storageFd is non-negative, or in-memory storage when
+//     storageFd is -1
 //   - An HTTP socket on listenPort
 func generateWorkerdConfig(
-	dir string, workers []WorkerDef, listenPort int, storageFd int,
+	dir string, workers []WorkerDef, listenPort int, storageFd int, sqlPort int,
 ) (configPath string, err error) {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return "", err
@@ -71,6 +80,14 @@ func generateWorkerdConfig(
 	fmt.Fprintf(&cfg, "    ( name = \"router\",\n")
 	fmt.Fprintf(&cfg, "      worker = .routerWorker ),\n")
 
+	hasDurableObjects := false
+	for _, w := range workers {
+		if len(w.DOClasses) > 0 {
+			hasDurableObjects = true
+			break
+		}
+	}
+
 	// Per-worker services. Service names are strings — underscores are fine.
 	for _, w := range workers {
 		cid := workerCapnpID(w.Name)
@@ -80,6 +97,18 @@ func generateWorkerdConfig(
 			fmt.Fprintf(&cfg, "    ( name = \"%s-assets\",\n", w.Name)
 			fmt.Fprintf(&cfg, "      worker = .%sAssets ),\n", cid)
 		}
+	}
+	if hasDurableObjects && storageFd == -2 {
+		doDir := filepath.Join(dir, "durable-objects")
+		if err := os.MkdirAll(doDir, 0755); err != nil {
+			return "", err
+		}
+		fmt.Fprintf(&cfg, "    ( name = \"durable-object-storage\",\n")
+		fmt.Fprintf(&cfg, "      disk = ( path = %s, writable = true ) ),\n", strconv.Quote(doDir))
+	}
+	if hasDurableObjects && sqlPort > 0 {
+		fmt.Fprintf(&cfg, "    ( name = \"ratel-sql\",\n")
+		fmt.Fprintf(&cfg, "      external = ( address = \"localhost:%d\", http = () ) ),\n", sqlPort)
 	}
 
 	fmt.Fprintf(&cfg, "  ],\n")
@@ -110,7 +139,14 @@ func generateWorkerdConfig(
 		fmt.Fprintf(&cfg, "  bindings = [\n")
 		for _, w := range workers {
 			fmt.Fprintf(&cfg, "    ( name = \"%s\", service = \"%s\" ),\n", w.Name, w.Name)
+			if len(w.Assets) > 0 {
+				fmt.Fprintf(&cfg, "    ( name = \"%s-assets\", service = \"%s-assets\" ),\n", w.Name, w.Name)
+			}
 		}
+		if err := writeRouterManifest(dir, workers); err != nil {
+			return "", err
+		}
+		fmt.Fprintf(&cfg, "    ( name = \"__RATEL_WORKERS\", text = embed \"workers.json\" ),\n")
 		fmt.Fprintf(&cfg, "  ],\n")
 	}
 	fmt.Fprintf(&cfg, ");\n\n")
@@ -138,11 +174,14 @@ func generateWorkerdConfig(
 			fmt.Fprintf(&cfg, "  durableObjectNamespaces = [\n")
 			for _, cls := range w.DOClasses {
 				fmt.Fprintf(&cfg, "    ( className = \"%s\",\n", cls)
-				fmt.Fprintf(&cfg, "      uniqueKey = \"%s/%s\" ),\n", w.Name, cls)
+				fmt.Fprintf(&cfg, "      uniqueKey = \"%s\",\n", durableObjectUniqueKey(w.Name, cls))
+				fmt.Fprintf(&cfg, "      enableSql = true ),\n")
 			}
 			fmt.Fprintf(&cfg, "  ],\n")
 			if storageFd >= 0 {
 				fmt.Fprintf(&cfg, "  durableObjectStorage = ( ratel = %d ),\n", storageFd)
+			} else if storageFd == -2 {
+				fmt.Fprintf(&cfg, "  durableObjectStorage = ( localDisk = \"durable-object-storage\" ),\n")
 			} else {
 				fmt.Fprintf(&cfg, "  durableObjectStorage = ( inMemory = void ),\n")
 			}
@@ -157,6 +196,9 @@ func generateWorkerdConfig(
 		if len(w.DOClasses) > 0 {
 			for _, cls := range w.DOClasses {
 				fmt.Fprintf(&cfg, "    ( name = \"%s\", durableObjectNamespace = \"%s\" ),\n", cls, cls)
+			}
+			if sqlPort > 0 {
+				fmt.Fprintf(&cfg, "    ( name = \"__RATEL_SQL\", service = \"ratel-sql\" ),\n")
 			}
 		}
 		if len(w.DOClasses) > 0 || len(w.Assets) > 0 {
@@ -182,6 +224,33 @@ func generateWorkerdConfig(
 	return configPath, nil
 }
 
+func writeRouterManifest(dir string, workers []WorkerDef) error {
+	type workerManifest struct {
+		Assets               bool     `json:"assets"`
+		RunWorkerFirst       bool     `json:"run_worker_first,omitempty"`
+		RunWorkerFirstRoutes []string `json:"run_worker_first_routes,omitempty"`
+		NotFoundHandling     string   `json:"not_found_handling,omitempty"`
+	}
+	manifest := make(map[string]workerManifest, len(workers))
+	for _, w := range workers {
+		manifest[w.Name] = workerManifest{
+			Assets:               len(w.Assets) > 0,
+			RunWorkerFirst:       w.AssetsConfig.RunWorkerFirst,
+			RunWorkerFirstRoutes: w.AssetsConfig.RunWorkerFirstRoutes,
+			NotFoundHandling:     w.AssetsConfig.NotFoundHandling,
+		}
+	}
+	data, err := json.Marshal(manifest)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, "workers.json"), data, 0644)
+}
+
+func durableObjectUniqueKey(workerName, className string) string {
+	return workerCapnpID(workerName) + "_" + className
+}
+
 func writeWorkerAssets(dir string, w WorkerDef) error {
 	assetDir := filepath.Join(dir, "assets_"+w.Name)
 	if err := os.MkdirAll(assetDir, 0755); err != nil {
@@ -204,6 +273,9 @@ func writeWorkerAssets(dir string, w WorkerDef) error {
 		manifest.WriteString(" }],\n")
 	}
 	manifest.WriteString("]);\n")
+	manifest.WriteString("const notFoundHandling = ")
+	manifest.WriteString(strconv.Quote(w.AssetsConfig.NotFoundHandling))
+	manifest.WriteString(";\n")
 	manifest.WriteString(`
 function decodeBase64(data) {
   const binary = atob(data);
@@ -217,11 +289,20 @@ export default {
     const url = new URL(request.url);
     let path = url.pathname;
     if (path === "/" || path.endsWith("/")) path += "index.html";
-    const asset = manifest.get(path);
+    let asset = manifest.get(path);
+    let status = 200;
+    if (!asset && notFoundHandling === "single-page-application") {
+      asset = manifest.get("/index.html");
+    }
+    if (!asset && notFoundHandling === "404-page") {
+      asset = manifest.get("/404.html");
+      status = 404;
+    }
     if (!asset) return new Response("not found", { status: 404 });
     const headers = new Headers();
     if (asset.contentType) headers.set("Content-Type", asset.contentType);
-    return new Response(decodeBase64(asset.data), { headers });
+    headers.set("X-Ratel-Asset", "hit");
+    return new Response(decodeBase64(asset.data), { status, headers });
   }
 };
 `)
